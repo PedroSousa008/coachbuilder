@@ -1,0 +1,123 @@
+export type Position =
+  | "GK"
+  | "CB"
+  | "LB"
+  | "RB"
+  | "CDM"
+  | "CM"
+  | "CAM"
+  | "LW"
+  | "RW"
+  | "ST";
+
+export type FormationId = "4-3-3" | "4-2-3-1" | "3-5-2";
+
+export interface PitchPlayer {
+  id: string;
+  label: string;
+  x: number;
+  y: number;
+}
+
+export interface Tactic {
+  id: string;
+  name: string;
+  formation: FormationId;
+  opponent: string;
+  notes: string;
+  matchesUsed: number;
+  wins: number;
+  losses: number;
+  players: PitchPlayer[];
+  updatedAt: string;
+}
+
+export interface Player {
+  id: string;
+  name: string;
+  position: Position;
+  age: number;
+  availability: "available" | "doubt" | "out";
+  performance: "up" | "steady" | "down";
+  number: number;
+  photoUrl?: string;
+}
+
+export interface TrainingSession {
+  id: string;
+  title: string;
+  date: string;
+  durationMin: number;
+  intensity: "low" | "medium" | "high";
+  categories: DrillCategory[];
+  description: string;
+}
+
+export type DrillCategory =
+  | "Possession"
+  | "Finishing"
+  | "Defensive shape"
+  | "Pressing"
+  | "Recovery";
+
+export interface Message {
+  id: string;
+  conversationId: string;
+  authorId: string;
+  authorName: string;
+  body: string;
+  sentAt: string;
+}
+
+export interface Conversation {
+  id: string;
+  type: "group" | "dm";
+  title: string;
+  subtitle?: string;
+  avatarInitials: string;
+  lastMessagePreview: string;
+  lastMessageAt: string;
+  unread?: number;
+  participantIds: string[];
+}
+
+export interface MatchClip {
+  id: string;
+  title: string;
+  durationSec: number;
+  tags: AnalysisTag[];
+  thumbnailTone: "green" | "slate" | "amber";
+}
+
+export type AnalysisTag =
+  | "Defensive mistake"
+  | "Build-up"
+  | "Pressing trigger"
+  | "Chance created";
+
+export interface Coach {
+  id: string;
+  name: string;
+  club: string;
+  role: string;
+  email: string;
+  avatarUrl?: string;
+  plan: "free" | "pro";
+  tacticsCreated: number;
+  sessionsPlanned: number;
+  matchesAnalyzed: number;
+}
+
+export interface TeamQuickStats {
+  formLast5: ("W" | "D" | "L")[];
+  goalsFor: number;
+  goalsAgainst: number;
+  cleanSheets: number;
+}
+
+export interface NextMatch {
+  opponent: string;
+  competition: string;
+  kickoff: string;
+  venue: "home" | "away";
+}
