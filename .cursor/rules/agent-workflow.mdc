@@ -1,0 +1,33 @@
+---
+description: Agent runs all terminal work, commits, pushes; Vercel via GitHub
+alwaysApply: true
+---
+
+# CoachBuilder — agent workflow
+
+## Terminal and tooling
+
+- **Do not** ask the user to run commands in their terminal. **You** run shell commands (`npm`, `git`, etc.) in the environment.
+- Prefer **absolute paths** under the project when running commands, e.g. `/Users/pedrocastrosousa/Desktop/Sousa/CoachBrain/coachbuilder` (or the workspace root for this repo).
+
+## Git and delivery
+
+- After **meaningful code or config changes** (anything that should ship), run:
+  1. `git status` / `git diff` as needed
+  2. `git add -A`
+  3. `git commit -m "<clear, conventional message>"`
+  4. `git push origin main` (or the current default branch)
+- If there is **nothing to commit**, do not create empty commits; still **push** if local commits exist that are not on `origin`.
+- Resolve merge conflicts in the workspace if they appear; do not leave the branch broken.
+
+## Vercel deployment
+
+- This project is intended to deploy **automatically** when code reaches GitHub: [Vercel Git integration](https://vercel.com/docs/deployments/git) builds on every push to the connected branch (usually `main`).
+- **Pushing to `origin/main` is the deploy trigger** — there is no separate “push to Vercel” step when the Vercel project is imported from [github.com/PedroSousa008/coachbuilder](https://github.com/PedroSousa008/coachbuilder).
+- Only if Git integration is **not** used: deploy with Vercel CLI using a token already present in the environment (e.g. `VERCEL_TOKEN`), non-interactively. **Never** commit tokens or put them in the repo.
+
+## When the user asks for “deploy” or “ship it”
+
+1. Ensure the app builds if possible (`npm run build`) when dependencies are available.
+2. Commit and **push** to GitHub.
+3. Confirm that Vercel will pick up the deployment from the push (no extra user terminal steps).
