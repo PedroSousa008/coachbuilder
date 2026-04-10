@@ -17,9 +17,11 @@ function hexToBytes(hex: string): Uint8Array {
   return new Uint8Array(pairs.map((b) => parseInt(b, 16)));
 }
 
-/** `Pbkdf2Params.salt` typed as `BufferSource`; cópia estável para o checker do TS. */
+/** Cópia dedicada: evita `SharedArrayBuffer` no tipo de `.buffer.slice` e views sobre buffer partilhado. */
 function saltAsArrayBuffer(bytes: Uint8Array): ArrayBuffer {
-  return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+  const copy = new Uint8Array(bytes.byteLength);
+  copy.set(bytes);
+  return copy.buffer as ArrayBuffer;
 }
 
 export async function hashPassword(password: string): Promise<{ salt: string; hash: string }> {
