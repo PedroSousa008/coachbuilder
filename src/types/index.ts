@@ -72,6 +72,25 @@ export type QualityStatId =
 
 export type PlayerQualities = Record<QualityStatId, number>;
 
+export type EvaluationTestId =
+  | "sprint20m"
+  | "dribblingSlalom"
+  | "yoyoEndurance"
+  | "verticalJump"
+  | "shortPassingAccuracy"
+  | "reactionTest"
+  | "strengthTest";
+
+/** Resultado de um teste físico/técnico (valor inserido + AI 0–100 quando calculável). */
+export type EvaluationTestEntry = {
+  /** Valor bruto introduzido pelo treinador (ex.: segundos, cm, repetições). */
+  raw?: string;
+  /** Pontuação 0–100 derivada de tabelas idade/tempo (ou provisória). */
+  aiOverall?: number;
+};
+
+export type PlayerEvaluationTests = Partial<Record<EvaluationTestId, EvaluationTestEntry>>;
+
 export interface Player {
   id: string;
   name: string;
@@ -89,6 +108,8 @@ export interface Player {
   photoUrl?: string;
   /** FIFA-style attributes 0–100; merged with defaults when missing. */
   qualities?: Partial<PlayerQualities>;
+  /** Testes de campo / balneário com valores e AI overall. */
+  evaluationTests?: PlayerEvaluationTests;
 }
 
 export interface TrainingSession {

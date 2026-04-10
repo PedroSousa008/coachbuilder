@@ -1,13 +1,26 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import type { Player, PlayerQualities, Position, PreferredFoot } from "@/types";
+import type {
+  EvaluationTestId,
+  Player,
+  PlayerEvaluationTests,
+  PlayerQualities,
+  Position,
+  PreferredFoot,
+} from "@/types";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { cn } from "@/lib/utils";
 import { QUALITY_GROUPS, mergeQualities } from "@/lib/player-qualities";
 import { buildPlayerInsights } from "@/lib/player-insights";
 import { PlayerInsightsBox } from "@/components/team/PlayerInsightsBox";
+import { Badge } from "@/components/ui/Badge";
+import {
+  computeAiOverallProvisional,
+  EVALUATION_TESTS,
+  EVALUATION_TEST_IDS,
+} from "@/lib/evaluation-tests";
 
 const POSITIONS: Position[] = [
   "GK",
@@ -22,7 +35,11 @@ const POSITIONS: Position[] = [
   "ST",
 ];
 
-type Tab = "dados" | "qualidades";
+type Tab = "dados" | "qualidades" | "avaliacao";
+
+function emptyEvaluationDraft(): Record<EvaluationTestId, string> {
+  return Object.fromEntries(EVALUATION_TEST_IDS.map((id) => [id, ""])) as Record<EvaluationTestId, string>;
+}
 
 export function PlayerDetailModal({
   player,
@@ -48,6 +65,7 @@ export function PlayerDetailModal({
   const [availability, setAvailability] = useState<Player["availability"]>("available");
   const [performance, setPerformance] = useState<Player["performance"]>("steady");
   const [qualitiesDraft, setQualitiesDraft] = useState<PlayerQualities>(() => mergeQualities());
+  const [evaluationDraft, setEvaluationDraft] = useState<Record<EvaluationTestId, string>>(emptyEvaluationDraft);
 
   useEffect(() => {
     if (!player) return;
@@ -62,6 +80,11 @@ export function PlayerDetailModal({
     setAvailability(player.availability);
     setPerformance(player.performance);
     setQualitiesDraft(mergeQualities(player.qualities));
+    const ev = emptyEvaluationDraft();
+    for (const id of EVALUATION_TEST_IDS) {
+      ev[id] = player.evaluationTests?.[id]?.raw ?? "";
+    }
+    setEvaluationDraft(ev);
     setTab("dados");
   }, [player]);
 
@@ -102,6 +125,14 @@ export function PlayerDetailModal({
     const h = heightCm.trim() ? Math.min(220, Math.max(120, parseInt(heightCm, 10) || 170)) : undefined;
     const w = weightKg.trim() ? Math.min(150, Math.max(35, parseInt(weightKg, 10) || 70)) : undefined;
     const posList: Position[] = selectedPos.length > 0 ? selectedPos : [player.position];
+    const evaluationTests: PlayerEvaluationTests = {};
+    for (const id of EVALUATION_TEST_IDS) {
+      const raw = evaluationDraft[id]?.trim();
+      if (!raw) continue;
+      const ai = computeAiOverallProvisional(id, raw, a);
+      evaluationTests[id] = { raw, ...(ai != null ? { aiOverall: ai } : {}) };
+    }
+
     onSave(player.id, {
       name: n,
       number: num,
@@ -114,6 +145,7 @@ export function PlayerDetailModal({
       availability,
       performance,
       qualities: qualitiesDraft,
+      evaluationTests,
     });
   };
 
@@ -131,7 +163,7 @@ export function PlayerDetailModal({
       onClick={onClose}
     >
       <div
-        className="flex max-h-[min(92vh,720px)] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-surface-border bg-[#0f1419] shadow-2xl sm:max-h-[min(90vh,800px)]"
+        className="flex max-h-[min(92vh,720px)] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-surface-border bg-[#0f1419] shadow-2xl sm:max-h-[min(90vh,800px)]"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="border-b border-surface-border px-5 py-4">
@@ -144,12 +176,12 @@ export function PlayerDetailModal({
               <PlayerInsightsBox insights={insights} />
             </div>
           )}
-          <div className="mt-4 flex gap-1 rounded-xl bg-black/40 p-1">
+          <div className="mt-4 grid grid-cols-3 gap-1 rounded-xl bg-black/40 p-1">
             <button
               type="button"
               onClick={() => setTab("dados")}
               className={cn(
-                "flex-1 rounded-lg py-2 text-sm font-medium transition-colors",
+                "rounded-lg py-2 text-xs font-medium transition-colors sm:text-sm",
                 tab === "dados" ? "bg-accent/20 text-accent" : "text-zinc-500 hover:text-zinc-300"
               )}
             >
@@ -159,11 +191,21 @@ export function PlayerDetailModal({
               type="button"
               onClick={() => setTab("qualidades")}
               className={cn(
-                "flex-1 rounded-lg py-2 text-sm font-medium transition-colors",
+                "rounded-lg py-2 text-xs font-medium transition-colors sm:text-sm",
                 tab === "qualidades" ? "bg-accent/20 text-accent" : "text-zinc-500 hover:text-zinc-300"
               )}
             >
               Qualidades
+            </button>
+            <button
+              type="button"
+              onClick={() => setTab("avaliacao")}
+              className={cn(
+                "rounded-lg py-2 text-xs font-medium transition-colors sm:text-sm",
+                tab === "avaliacao" ? "bg-accent/20 text-accent" : "text-zinc-500 hover:text-zinc-300"
+              )}
+            >
+              Avaliação
             </button>
           </div>
         </div>
@@ -346,6 +388,61 @@ export function PlayerDetailModal({
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+
+          {tab === "avaliacao" && (
+            <div className="space-y-4">
+              <p className="text-xs leading-relaxed text-zinc-500">
+                Regista o resultado de cada teste. O <span className="text-zinc-400">AI Overall</span> (0–100) é
+                calculado de forma <strong className="text-zinc-400">provisória</strong> até integrarmos a tabela
+                oficial por idade/tempo; depois poderás sincronizar automaticamente com as Qualidades.
+              </p>
+              <div className="overflow-x-auto rounded-xl border border-surface-border">
+                <table className="w-full min-w-[520px] text-left text-sm">
+                  <thead>
+                    <tr className="border-b border-surface-border bg-zinc-900/50 text-xs uppercase tracking-wider text-zinc-500">
+                      <th className="px-3 py-2 font-medium">Teste</th>
+                      <th className="px-3 py-2 font-medium">Valor</th>
+                      <th className="px-3 py-2 font-medium text-right">AI Overall</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {EVALUATION_TESTS.map((t) => {
+                      const raw = evaluationDraft[t.id] ?? "";
+                      const ageNum = Math.min(45, Math.max(14, parseInt(age, 10) || 17));
+                      const ai = raw.trim() ? computeAiOverallProvisional(t.id, raw, ageNum) : null;
+                      return (
+                        <tr key={t.id} className="border-b border-surface-border/60 last:border-0">
+                          <td className="px-3 py-3 align-top">
+                            <p className="font-medium text-zinc-200">{t.label}</p>
+                            <p className="mt-0.5 text-xs text-zinc-600">{t.hint}</p>
+                          </td>
+                          <td className="px-3 py-3 align-top">
+                            <Input
+                              value={raw}
+                              placeholder={t.valuePlaceholder}
+                              onChange={(e) =>
+                                setEvaluationDraft((d) => ({ ...d, [t.id]: e.target.value }))
+                              }
+                              className="min-w-[140px]"
+                            />
+                          </td>
+                          <td className="px-3 py-3 align-middle text-right">
+                            {ai != null ? (
+                              <Badge variant="accent" className="min-w-[2.5rem] justify-center tabular-nums">
+                                {ai}
+                              </Badge>
+                            ) : (
+                              <span className="text-zinc-600">—</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
         </div>
