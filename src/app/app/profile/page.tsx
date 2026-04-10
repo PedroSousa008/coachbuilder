@@ -1,10 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { mockCoach } from "@/data/mock";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+
+function initialsFromName(full: string) {
+  const parts = full.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  return parts
+    .map((n) => n[0]!.toUpperCase())
+    .join("")
+    .slice(0, 2);
+}
 
 export default function ProfilePage() {
   const [name, setName] = useState(mockCoach.name);
@@ -12,19 +21,20 @@ export default function ProfilePage() {
   const [role, setRole] = useState(mockCoach.role);
   const [email, setEmail] = useState(mockCoach.email);
 
+  const avatarLetters = useMemo(() => initialsFromName(name), [name]);
+
   return (
     <div className="mx-auto max-w-3xl space-y-8">
       <div className="flex flex-col items-start gap-6 sm:flex-row sm:items-center">
         <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-accent/30 to-zinc-800 font-display text-2xl font-bold text-white">
-          {mockCoach.name
-            .split(" ")
-            .map((n) => n[0])
-            .join("")}
+          {avatarLetters}
         </div>
         <div>
-          <h2 className="font-display text-2xl font-semibold text-white">{name}</h2>
+          <h2 className="font-display text-2xl font-semibold text-white">
+            {name.trim() || "Your name"}
+          </h2>
           <p className="text-sm text-zinc-500">
-            {club} · {role}
+            {club.trim() || "Your club"} · {role}
           </p>
           <div className="mt-3">
             <Badge variant={mockCoach.plan === "pro" ? "accent" : "default"}>

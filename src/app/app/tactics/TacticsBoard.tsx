@@ -8,6 +8,8 @@ import { TacticCard } from "@/components/tactics/TacticCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 
+const DRAFT_ID = "draft";
+
 function clonePlayers(formation: FormationId, prefix: string): PitchPlayer[] {
   return FORMATION_LAYOUTS[formation].map((p, i) => ({
     ...p,
@@ -15,16 +17,39 @@ function clonePlayers(formation: FormationId, prefix: string): PitchPlayer[] {
   }));
 }
 
-export function TacticsBoard({ initialTactics }: { initialTactics: Tactic[] }) {
-  const [tactics] = useState(initialTactics);
-  const [activeId, setActiveId] = useState(initialTactics[0]?.id ?? "");
-  const active = useMemo(() => tactics.find((t) => t.id === activeId) ?? tactics[0], [tactics, activeId]);
+function buildDraftTactic(): Tactic {
+  return {
+    id: DRAFT_ID,
+    name: "",
+    formation: "4-3-3",
+    opponent: "",
+    notes: "",
+    matchesUsed: 0,
+    wins: 0,
+    losses: 0,
+    players: clonePlayers("4-3-3", DRAFT_ID),
+    updatedAt: new Date().toISOString(),
+  };
+}
 
-  const [name, setName] = useState(active?.name ?? "");
-  const [opponent, setOpponent] = useState(active?.opponent ?? "");
-  const [notes, setNotes] = useState(active?.notes ?? "");
-  const [formation, setFormation] = useState<FormationId>(active?.formation ?? "4-3-3");
-  const [players, setPlayers] = useState<PitchPlayer[]>(active?.players ?? []);
+export function TacticsBoard({ initialTactics }: { initialTactics: Tactic[] }) {
+  const draftTactic = useMemo(() => buildDraftTactic(), []);
+  const [tactics] = useState(initialTactics);
+  const initialSnapshot = initialTactics[0] ?? draftTactic;
+  const [activeId, setActiveId] = useState(() => initialTactics[0]?.id ?? DRAFT_ID);
+
+  const active = useMemo(() => {
+    const saved = tactics.find((t) => t.id === activeId);
+    if (saved) return saved;
+    if (activeId === DRAFT_ID) return draftTactic;
+    return tactics[0] ?? draftTactic;
+  }, [tactics, activeId, draftTactic]);
+
+  const [name, setName] = useState(() => initialSnapshot.name);
+  const [opponent, setOpponent] = useState(() => initialSnapshot.opponent);
+  const [notes, setNotes] = useState(() => initialSnapshot.notes);
+  const [formation, setFormation] = useState<FormationId>(() => initialSnapshot.formation);
+  const [players, setPlayers] = useState<PitchPlayer[]>(() => initialSnapshot.players);
 
   const syncFromTactic = useCallback((t: Tactic) => {
     setName(t.name);
@@ -41,23 +66,22 @@ export function TacticsBoard({ initialTactics }: { initialTactics: Tactic[] }) {
 
   const applyFormation = (f: FormationId) => {
     setFormation(f);
-    setPlayers(clonePlayers(f, active?.id ?? "new"));
+    setPlayers(clonePlayers(f, active.id));
   };
-
-  if (!active) {
-    return (
-      <div className="rounded-2xl border border-dashed border-surface-border p-12 text-center text-zinc-500">
-        No tactics yet. Create one from your dashboard (demo uses sample data).
-      </div>
-    );
-  }
 
   const denom = active.wins + active.losses;
   const winRate = denom > 0 ? Math.round((active.wins / denom) * 100) : 0;
+  const isDraft = active.id === DRAFT_ID;
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6 lg:space-y-0 lg:grid lg:grid-cols-[minmax(0,1fr)_280px] lg:gap-8">
+    <div className="mx-auto max-w-7xl space-y-6 lg:grid lg:grid-cols-[minmax(0,1fr)_280px] lg:gap-8 lg:space-y-0">
       <div className="space-y-6">
+        {isDraft && tactics.length === 0 && (
+          <p className="rounded-xl border border-dashed border-surface-border bg-surface-raised/40 px-4 py-3 text-sm text-zinc-400">
+            You don&apos;t have any saved tactics yet. Shape your formation below, then save will connect when your
+            backend is ready.
+          </p>
+        )}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div className="grid flex-1 gap-3 sm:grid-cols-2">
             <div>
@@ -69,6 +93,7 @@ export function TacticsBoard({ initialTactics }: { initialTactics: Tactic[] }) {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 className="mt-1.5 h-11 w-full rounded-xl border border-surface-border bg-surface-raised px-4 text-sm text-white focus:border-accent/50 focus:outline-none focus:ring-2 focus:ring-accent/20"
+                placeholder="e.g. vs Riverside — high press"
               />
             </div>
             <div>
@@ -80,6 +105,7 @@ export function TacticsBoard({ initialTactics }: { initialTactics: Tactic[] }) {
                 value={opponent}
                 onChange={(e) => setOpponent(e.target.value)}
                 className="mt-1.5 h-11 w-full rounded-xl border border-surface-border bg-surface-raised px-4 text-sm text-white focus:border-accent/50 focus:outline-none focus:ring-2 focus:ring-accent/20"
+                placeholder="Opponent name"
               />
             </div>
           </div>
@@ -120,7 +146,7 @@ export function TacticsBoard({ initialTactics }: { initialTactics: Tactic[] }) {
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Performance</CardTitle>
-            <p className="text-xs text-zinc-500">Tracked when you log results (mock)</p>
+            <p className="text-xs text-zinc-500">Log match results to see wins and win rate here.</p>
           </CardHeader>
           <CardContent className="grid grid-cols-2 gap-3">
             <div className="rounded-xl bg-zinc-900/60 p-3 text-center">
@@ -144,11 +170,17 @@ export function TacticsBoard({ initialTactics }: { initialTactics: Tactic[] }) {
 
         <div>
           <p className="mb-2 text-xs font-medium uppercase tracking-wider text-zinc-500">Saved tactics</p>
-          <div className="flex max-h-[min(50vh,420px)] flex-col gap-2 overflow-y-auto pr-1">
-            {tactics.map((t) => (
-              <TacticCard key={t.id} tactic={t} active={t.id === active.id} onSelect={() => selectTactic(t)} />
-            ))}
-          </div>
+          {tactics.length === 0 ? (
+            <p className="rounded-xl border border-dashed border-surface-border px-3 py-6 text-center text-xs text-zinc-500">
+              No saved tactics yet.
+            </p>
+          ) : (
+            <div className="flex max-h-[min(50vh,420px)] flex-col gap-2 overflow-y-auto pr-1">
+              {tactics.map((t) => (
+                <TacticCard key={t.id} tactic={t} active={t.id === active.id} onSelect={() => selectTactic(t)} />
+              ))}
+            </div>
+          )}
         </div>
       </aside>
     </div>

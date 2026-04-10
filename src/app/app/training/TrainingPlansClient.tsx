@@ -33,7 +33,9 @@ export function TrainingPlansClient({ sessions }: { sessions: TrainingSession[] 
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="font-display text-lg font-semibold text-white">Weekly micro-cycle</h2>
-          <p className="text-sm text-zinc-500">{weekLabel(sorted[0]?.date ?? new Date().toISOString())}</p>
+          <p className="text-sm text-zinc-500">
+            {sorted.length > 0 ? weekLabel(sorted[0].date) : "No sessions this week yet"}
+          </p>
         </div>
         <Button type="button" variant="primary">
           New training session
@@ -51,18 +53,25 @@ export function TrainingPlansClient({ sessions }: { sessions: TrainingSession[] 
       <div className="grid gap-8 lg:grid-cols-5">
         <div className="space-y-3 lg:col-span-2">
           <p className="text-xs font-medium uppercase tracking-wider text-zinc-500">Sessions</p>
-          {sorted.map((s) => (
-            <SessionCard
-              key={s.id}
-              session={s}
-              selected={s.id === selected?.id}
-              onClick={() => setSelectedId(s.id)}
-            />
-          ))}
+          {sorted.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-surface-border px-4 py-10 text-center text-sm text-zinc-500">
+              No sessions planned yet. Tap <span className="font-medium text-zinc-400">New training session</span> once
+              your workspace saves to the cloud.
+            </div>
+          ) : (
+            sorted.map((s) => (
+              <SessionCard
+                key={s.id}
+                session={s}
+                selected={s.id === selected?.id}
+                onClick={() => setSelectedId(s.id)}
+              />
+            ))
+          )}
         </div>
         <Card className="lg:col-span-3">
           <CardHeader>
-            <CardTitle>{selected?.title ?? "Select a session"}</CardTitle>
+            <CardTitle>{selected?.title ?? "Session details"}</CardTitle>
             {selected && (
               <p className="text-sm text-zinc-500">
                 {new Date(selected.date).toLocaleString("en-GB", {
@@ -94,7 +103,9 @@ export function TrainingPlansClient({ sessions }: { sessions: TrainingSession[] 
                 </div>
               </>
             ) : (
-              <p className="text-sm text-zinc-500">No sessions in this demo week.</p>
+              <p className="text-sm text-zinc-500">
+                Create your first session to plan the week — duration, intensity, and drill focus will appear here.
+              </p>
             )}
           </CardContent>
         </Card>

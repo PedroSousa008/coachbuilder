@@ -23,7 +23,7 @@ export function MessagesClient({
   const [activeId, setActiveId] = useState(
     () => conversations.find((c) => c.type === "group")?.id ?? conversations[0]?.id ?? ""
   );
-  const activeConv = conversations.find((c) => c.id === activeId) ?? conversations[0];
+  const activeConv = conversations.find((c) => c.id === activeId);
   const thread = [...(messagesByConv[activeId] ?? [])].sort(
     (a, b) => new Date(a.sentAt).getTime() - new Date(b.sentAt).getTime()
   );
@@ -32,8 +32,9 @@ export function MessagesClient({
   const send = () => {
     if (!draft.trim() || !activeId) return;
     setDraft("");
-    // MVP: local-only; structure ready for mutation
   };
+
+  const hasConversations = conversations.length > 0;
 
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-4 lg:h-[calc(100vh-8rem)] lg:flex-row lg:gap-0 lg:overflow-hidden lg:rounded-2xl lg:border lg:border-surface-border lg:bg-surface-raised/20">
@@ -45,6 +46,7 @@ export function MessagesClient({
               setTab("group");
               const first = conversations.find((c) => c.type === "group");
               if (first) setActiveId(first.id);
+              else setActiveId("");
             }}
             className={`flex-1 rounded-lg py-2 text-sm font-medium transition-colors ${
               tab === "group" ? "bg-accent/15 text-accent" : "text-zinc-500 hover:bg-white/5"
@@ -58,6 +60,7 @@ export function MessagesClient({
               setTab("dm");
               const first = conversations.find((c) => c.type === "dm");
               if (first) setActiveId(first.id);
+              else setActiveId("");
             }}
             className={`flex-1 rounded-lg py-2 text-sm font-medium transition-colors ${
               tab === "dm" ? "bg-accent/15 text-accent" : "text-zinc-500 hover:bg-white/5"
@@ -67,26 +70,50 @@ export function MessagesClient({
           </button>
         </div>
         <div className="max-h-48 space-y-0.5 overflow-y-auto p-2 lg:max-h-none lg:flex-1">
-          {filtered.map((c) => (
-            <ChatConversationItem
-              key={c.id}
-              conversation={c}
-              active={c.id === activeId}
-              onClick={() => setActiveId(c.id)}
-            />
-          ))}
+          {!hasConversations ? (
+            <p className="px-3 py-8 text-center text-sm text-zinc-500">
+              No conversations yet. When your squad joins, group and direct threads will show here.
+            </p>
+          ) : filtered.length === 0 ? (
+            <p className="px-3 py-8 text-center text-sm text-zinc-500">
+              {tab === "group"
+                ? "No group chat yet. Create a squad channel from your team settings (coming with backend)."
+                : "No direct messages yet."}
+            </p>
+          ) : (
+            filtered.map((c) => (
+              <ChatConversationItem
+                key={c.id}
+                conversation={c}
+                active={c.id === activeId}
+                onClick={() => setActiveId(c.id)}
+              />
+            ))
+          )}
         </div>
       </div>
 
       <div className="flex min-h-[420px] flex-1 flex-col lg:min-h-0">
-        {activeConv && (
+        {activeConv ? (
           <div className="border-b border-surface-border px-4 py-4 lg:px-6">
             <p className="font-display font-semibold text-white">{activeConv.title}</p>
             {activeConv.subtitle && <p className="text-xs text-zinc-500">{activeConv.subtitle}</p>}
           </div>
+        ) : (
+          <div className="border-b border-surface-border px-4 py-4 lg:px-6">
+            <p className="font-display font-semibold text-white">Messages</p>
+            <p className="text-xs text-zinc-500">Select a conversation when available</p>
+          </div>
         )}
         <div className="flex flex-1 flex-col gap-3 overflow-y-auto px-4 py-4 lg:px-6">
-          {thread.length === 0 ? (
+          {!activeConv ? (
+            <div className="flex flex-1 flex-col items-center justify-center gap-2 text-center">
+              <p className="text-sm text-zinc-500">No conversation open.</p>
+              <p className="max-w-sm text-xs text-zinc-600">
+                Your inbox is empty. Invite players and staff to start group and private threads.
+              </p>
+            </div>
+          ) : thread.length === 0 ? (
             <p className="text-center text-sm text-zinc-500">No messages yet. Say hello to the group.</p>
           ) : (
             thread.map((m) => (
@@ -101,21 +128,29 @@ export function MessagesClient({
           )}
         </div>
         <div className="border-t border-surface-border p-4 lg:p-6">
-          <div className="flex gap-2">
-            <Input
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && (e.preventDefault(), send())}
-              placeholder="Write a message…"
-              className="flex-1"
-            />
-            <Button type="button" onClick={send}>
-              Send
-            </Button>
-          </div>
-          <p className="mt-2 text-[11px] text-zinc-600">
-            Demo UI — sends are not persisted. Wire to your messaging API later.
-          </p>
+          {hasConversations && activeConv ? (
+            <>
+              <div className="flex gap-2">
+                <Input
+                  value={draft}
+                  onChange={(e) => setDraft(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && (e.preventDefault(), send())}
+                  placeholder="Write a message…"
+                  className="flex-1"
+                />
+                <Button type="button" onClick={send}>
+                  Send
+                </Button>
+              </div>
+              <p className="mt-2 text-[11px] text-zinc-600">
+                Demo UI — sends are not persisted. Wire to your messaging API later.
+              </p>
+            </>
+          ) : (
+            <p className="text-center text-xs text-zinc-600">
+              Connect your squad to enable sending. Composer unlocks when at least one conversation exists.
+            </p>
+          )}
         </div>
       </div>
     </div>

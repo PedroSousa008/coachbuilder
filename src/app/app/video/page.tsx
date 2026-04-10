@@ -64,47 +64,56 @@ export default function VideoAnalysisPage() {
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-3 lg:col-span-1">
           <p className="text-xs font-medium uppercase tracking-wider text-zinc-500">Match clips</p>
-          {mockClips.map((clip) => (
-            <button
-              key={clip.id}
-              type="button"
-              className="flex w-full items-center gap-3 rounded-2xl border border-surface-border bg-surface-raised/40 p-3 text-left transition-all hover:border-zinc-600"
-            >
-              <div
-                className={`relative flex h-14 w-24 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${toneClass[clip.thumbnailTone]}`}
+          {mockClips.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-surface-border px-4 py-10 text-center text-sm text-zinc-500">
+              No clips yet. Upload a match and cut moments to tag them here.
+            </div>
+          ) : (
+            mockClips.map((clip) => (
+              <button
+                key={clip.id}
+                type="button"
+                className="flex w-full items-center gap-3 rounded-2xl border border-surface-border bg-surface-raised/40 p-3 text-left transition-all hover:border-zinc-600"
               >
-                <Play className="h-6 w-6 text-white/90" fill="currentColor" />
-                <span className="absolute bottom-1 right-1 rounded bg-black/60 px-1 text-[10px] text-white">
-                  {clip.durationSec}s
-                </span>
-              </div>
-              <div className="min-w-0">
-                <p className="line-clamp-2 text-sm font-medium text-white">{clip.title}</p>
-                <div className="mt-1 flex flex-wrap gap-1">
-                  {clip.tags.map((t) => (
-                    <span key={t} className="text-[10px] text-zinc-500">
-                      {t}
-                    </span>
-                  ))}
+                <div
+                  className={`relative flex h-14 w-24 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${toneClass[clip.thumbnailTone]}`}
+                >
+                  <Play className="h-6 w-6 text-white/90" fill="currentColor" />
+                  <span className="absolute bottom-1 right-1 rounded bg-black/60 px-1 text-[10px] text-white">
+                    {clip.durationSec}s
+                  </span>
                 </div>
-              </div>
-            </button>
-          ))}
+                <div className="min-w-0">
+                  <p className="line-clamp-2 text-sm font-medium text-white">{clip.title}</p>
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    {clip.tags.map((t) => (
+                      <span key={t} className="text-[10px] text-zinc-500">
+                        {t}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </button>
+            ))
+          )}
         </div>
 
         <Card className="lg:col-span-2">
           <CardHeader className="flex flex-row items-start justify-between gap-4">
             <div>
               <CardTitle>Notes & annotations</CardTitle>
-              <p className="text-sm text-zinc-500">Selected clip: {mockClips[0]?.title}</p>
+              <p className="text-sm text-zinc-500">
+                {mockClips[0] ? `Selected clip: ${mockClips[0].title}` : "Select a clip from the list when available"}
+              </p>
             </div>
             <PenLine className="h-5 w-5 text-zinc-500" strokeWidth={1.5} />
           </CardHeader>
           <CardContent className="space-y-4">
             <textarea
               readOnly
-              className="min-h-[120px] w-full resize-y rounded-xl border border-surface-border bg-surface-raised/50 px-4 py-3 text-sm text-zinc-300"
-              defaultValue="LB steps early on throw — CB line not shifting. Consider staggering CAM to cover half-space on restart."
+              className="min-h-[120px] w-full resize-y rounded-xl border border-surface-border bg-surface-raised/50 px-4 py-3 text-sm text-zinc-300 placeholder:text-zinc-600"
+              placeholder="Clip-specific notes will appear here after you select a moment from the timeline."
+              defaultValue=""
             />
             <div className="rounded-2xl border border-dashed border-accent/25 bg-accent/5 p-6 text-center">
               <p className="text-sm font-medium text-zinc-200">Tactical drawing layer</p>
