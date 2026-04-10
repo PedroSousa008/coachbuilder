@@ -7,7 +7,8 @@ import {
   parseFpfMatchesFromHtml,
 } from "@/lib/league-import-fpf";
 
-export const maxDuration = 60;
+/** FPF loads many matchday fragments; allow enough time on cold starts. */
+export const maxDuration = 120;
 
 export async function POST(req: Request) {
   try {

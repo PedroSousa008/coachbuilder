@@ -55,7 +55,15 @@ type PrevRow =
       match: LeagueImportedMatch;
       outcome: "W" | "D" | "L";
       line: string;
-    };
+    }
+  | { kind: "imported-neutral"; match: LeagueImportedMatch; line: string };
+
+function neutralResultLine(m: LeagueImportedMatch): string {
+  if (m.homeScore != null && m.awayScore != null) {
+    return `${m.homeTeam} ${m.homeScore}–${m.awayScore} ${m.awayTeam}`;
+  }
+  return `${m.homeTeam} vs ${m.awayTeam}`;
+}
 
 function isImportedPlayed(m: LeagueImportedMatch): boolean {
   return m.homeScore !== undefined && m.awayScore !== undefined;
@@ -118,7 +126,7 @@ export function CalendarPageClient() {
     [leagueCompetitionName]
   );
 
-  /** All imported rows involving the coach’s club, split by result (played vs not). */
+  /** Imported rows: filtered to the coach’s club when set; otherwise the whole competition schedule. */
   const { nextGameRows, previousGameRows } = useMemo(() => {
     const next: NextRow[] = [];
     const prev: PrevRow[] = [];
@@ -135,6 +143,14 @@ export function CalendarPageClient() {
         if (isImportedPlayed(m)) {
           const o = outcomeForMyTeam(m, club, candidates);
           if (o) prev.push({ kind: "imported", match: m, outcome: o.outcome, line: o.short });
+        } else {
+          next.push({ kind: "imported", match: m, scheduleKind: sk });
+        }
+      }
+    } else {
+      for (const m of leagueMatches) {
+        if (isImportedPlayed(m)) {
+          prev.push({ kind: "imported-neutral", match: m, line: neutralResultLine(m) });
         } else {
           next.push({ kind: "imported", match: m, scheduleKind: sk });
         }
@@ -232,16 +248,26 @@ export function CalendarPageClient() {
           </Button>
         </CardHeader>
         <CardContent className="space-y-10">
-          {!club && (
+          {!club && leagueMatches.length > 0 && (
+            <p className="text-sm text-zinc-400">
+              Showing every fixture from the league import. Add your club under Profile to filter to your team only.
+            </p>
+          )}
+          {!club && leagueMatches.length === 0 && (
             <p className="text-sm text-amber-200/90">
-              Set your club name in Profile and save — then refresh the league URL so we can attach the right team.
+              Add your club in Profile to highlight your matches — or leave it blank to see all fixtures once the league
+              URL is refreshed.
             </p>
           )}
 
           <div>
             <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-zinc-400">Next games</p>
             {nextGameRows.length === 0 ? (
-              <p className="text-sm text-zinc-500">No upcoming games for your club yet.</p>
+              <p className="text-sm text-zinc-500">
+                {leagueMatches.length === 0 && leagueTableUrl.trim()
+                  ? "No fixtures imported yet — use Refresh now on the league table below."
+                  : "No upcoming games yet."}
+              </p>
             ) : (
               <ul className="space-y-3">
                 {nextGameRows.map((row) => {
@@ -286,10 +312,30 @@ export function CalendarPageClient() {
                     );
                   }
                   const m = row.match;
+                  const b = badgeForScheduleKind(row.scheduleKind);
+                  if (!club) {
+                    return (
+                      <li
+                        key={`next-imp-${m.id}`}
+                        className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-900 bg-black px-4 py-3 text-white shadow-sm"
+                      >
+                        <div>
+                          <p className="font-medium">
+                            {m.homeTeam} <span className="text-zinc-500">vs</span> {m.awayTeam}
+                          </p>
+                          <p className="text-xs text-zinc-400">{leagueCompetitionName ?? "Competition"}</p>
+                          <p className="mt-1 text-xs text-zinc-500">{formatKickoffShort(m.kickoff)}</p>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge variant={b.variant}>{b.label}</Badge>
+                          <Badge variant="default">Imported</Badge>
+                        </div>
+                      </li>
+                    );
+                  }
                   const homeHit = userClubMatchesOfficialTeam(club, m.homeTeam, candidates);
                   const venue = homeHit ? "home" : "away";
                   const opp = homeHit ? m.awayTeam : m.homeTeam;
-                  const b = badgeForScheduleKind(row.scheduleKind);
                   return (
                     <li
                       key={`next-imp-${m.id}`}
@@ -317,7 +363,11 @@ export function CalendarPageClient() {
           <div>
             <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-zinc-400">Previous games</p>
             {previousGameRows.length === 0 ? (
-              <p className="text-sm text-zinc-500">No finished games with a result yet.</p>
+              <p className="text-sm text-zinc-500">
+                {leagueMatches.length === 0 && leagueTableUrl.trim()
+                  ? "No finished games with a result in the import yet — use Refresh now on the league table."
+                  : "No finished games with a result yet."}
+              </p>
             ) : (
               <ul className="space-y-3">
                 {previousGameRows.map((row) => {
@@ -332,6 +382,23 @@ export function CalendarPageClient() {
                         <p className="text-xs text-zinc-500">{f.competition}</p>
                         <p className="mt-1 text-xs text-zinc-500">{formatKickoff(f.kickoff)}</p>
                         <p className="mt-1 text-xs text-zinc-600">Manual entry (no score stored)</p>
+                      </li>
+                    );
+                  }
+                  if (row.kind === "imported-neutral") {
+                    const { match: m, line } = row;
+                    return (
+                      <li
+                        key={`prev-neu-${m.id}`}
+                        className="rounded-xl border border-zinc-600 bg-zinc-900/70 px-4 py-3 text-sm text-zinc-100 shadow-sm"
+                      >
+                        <p className="font-semibold">{line}</p>
+                        <p className="mt-1 text-xs text-zinc-500">{formatKickoff(m.kickoff)}</p>
+                        <div className="mt-2">
+                          <Badge variant="muted" className="bg-black/20">
+                            {badgeForScheduleKind(pageScheduleKind).label}
+                          </Badge>
+                        </div>
                       </li>
                     );
                   }

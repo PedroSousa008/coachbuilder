@@ -98,8 +98,11 @@ function parseFpfBareGamesFromHtml(html: string, pageUrl: string): LeagueImporte
 
   const out: LeagueImportedMatch[] = [];
 
-  $("#matches")
-    .find("> div.game")
+  // FPF mixes standings rows (`div.game.classification`) with real fixtures (`div.game` only).
+  // There may also be multiple `id="matches"` fragments; include every block.
+  $('div[id="matches"]')
+    .find("div.game")
+    .not(".classification")
     .each((_, el) => {
       const $g = $(el);
       const home = $g.find(".home-team").first().text().trim().replace(/\s+/g, " ");
@@ -175,7 +178,7 @@ function parseFpfGameLinksFromHtml(html: string, pageUrl: string): LeagueImporte
     if (mid && seen.has(mid)) return;
     if (mid) seen.add(mid);
 
-    const game = $(el).find("div.game").first();
+    const game = $(el).find("div.game").not(".classification").first();
     const home = game.find(".home-team").first().text().trim().replace(/\s+/g, " ");
     const away = game.find(".away-team").first().text().trim().replace(/\s+/g, " ");
     const scoreSpan = game.find(".score > span").not(".game-schedule").first();
