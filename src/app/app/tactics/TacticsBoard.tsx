@@ -14,6 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { PlayerPickerModal } from "@/components/players/PlayerPickerModal";
 import { useAppData } from "@/contexts/AppDataContext";
+import { playerEligibleForTacticsSlot } from "@/lib/tactics-slot-positions";
 
 const DRAFT_ID = "draft";
 
@@ -97,6 +98,8 @@ export function TacticsBoard() {
     if (!FORMATION_LAYOUTS[f]) return;
     setFormation(f);
     setPlayers(clonePlayers(f, active.id));
+    setPickerOpen(false);
+    setPickerSlotId(null);
   };
 
   const openPickerForSlot = (slot: PitchPlayer) => {
@@ -104,8 +107,37 @@ export function TacticsBoard() {
     setPickerOpen(true);
   };
 
+  const pickerSlot = useMemo(
+    () => (pickerSlotId ? players.find((s) => s.id === pickerSlotId) ?? null : null),
+    [pickerSlotId, players]
+  );
+
+  const pickerPlayers = useMemo(() => {
+    if (!pickerSlot) return roster;
+    const usedElsewhere = new Set(
+      players.filter((s) => s.id !== pickerSlot.id && s.playerId).map((s) => s.playerId as string)
+    );
+    return roster.filter(
+      (p) => !usedElsewhere.has(p.id) && playerEligibleForTacticsSlot(pickerSlot.formationLabel, p)
+    );
+  }, [roster, players, pickerSlot]);
+
+  const pickerTitle = pickerSlot
+    ? `Assign ${pickerSlot.formationLabel}`
+    : "Assign player to position";
+
+  const pickerEmptyHint =
+    roster.length === 0
+      ? "Add players from Team → Add player, then return here."
+      : "No players available for this position, or they are already placed on another slot.";
+
   const assignPlayerToSlot = (player: Player) => {
-    if (!pickerSlotId) return;
+    if (!pickerSlotId || !pickerSlot) return;
+    if (!playerEligibleForTacticsSlot(pickerSlot.formationLabel, player)) return;
+    const usedElsewhere = players.some(
+      (s) => s.id !== pickerSlotId && s.playerId && s.playerId === player.id
+    );
+    if (usedElsewhere) return;
     setPlayers((prev) =>
       prev.map((s) =>
         s.id === pickerSlotId
@@ -138,7 +170,7 @@ export function TacticsBoard() {
     setPickerSlotId(null);
   };
 
-  const allSlotsFilled = players.length > 0 && players.every((p) => p.playerId);
+  const allSlotsFilled = players.length === 11 && players.every((p) => p.playerId);
 
   const handleSave = () => {
     if (!allSlotsFilled) return;
@@ -177,15 +209,15 @@ export function TacticsBoard() {
     <div className="mx-auto max-w-7xl space-y-6 lg:grid lg:grid-cols-[minmax(0,1fr)_280px] lg:gap-8 lg:space-y-0">
       <PlayerPickerModal
         open={pickerOpen}
-        title="Assign player to position"
-        players={roster}
+        title={pickerTitle}
+        players={pickerPlayers}
         onClose={() => {
           setPickerOpen(false);
           setPickerSlotId(null);
         }}
         onSelect={assignPlayerToSlot}
         onClear={pickerSlotId ? clearSlot : undefined}
-        emptyHint="Add players from Team → Add player, then return here."
+        emptyHint={pickerEmptyHint}
       />
 
       <div className="space-y-6">
@@ -246,8 +278,8 @@ export function TacticsBoard() {
               More
             </button>
             {allSlotsFilled && (
-              <Button type="button" variant="primary" size="sm" onClick={handleSave} className="min-w-[5.5rem]">
-                Guardar
+              <Button type="button" variant="primary" size="sm" onClick={handleSave} className="min-w-[7rem]">
+                Guardar equipa
               </Button>
             )}
           </div>
@@ -356,7 +388,7 @@ export function TacticsBoard() {
           <p className="mb-2 text-xs font-medium uppercase tracking-wider text-zinc-500">Saved tactics</p>
           {tactics.length === 0 ? (
             <p className="rounded-xl border border-dashed border-surface-border px-3 py-6 text-center text-xs text-zinc-500">
-              No saved tactics yet. Fill every position and tap Guardar.
+              No saved tactics yet. Fill all 11 positions and tap Guardar equipa.
             </p>
           ) : (
             <div className="flex max-h-[min(50vh,420px)] flex-col gap-2 overflow-y-auto pr-1">
