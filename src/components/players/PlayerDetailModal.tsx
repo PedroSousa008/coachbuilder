@@ -82,7 +82,7 @@ export function PlayerDetailModal({
     const a = Math.min(45, Math.max(14, parseInt(age, 10) || 17));
     const h = heightCm.trim() ? Math.min(220, Math.max(120, parseInt(heightCm, 10) || 170)) : undefined;
     const w = weightKg.trim() ? Math.min(150, Math.max(35, parseInt(weightKg, 10) || 70)) : undefined;
-    const posList = selectedPos.length ? selectedPos : [player.position];
+    const posList: Position[] = selectedPos.length > 0 ? selectedPos : [player.position];
     onSave(player.id, {
       name: n,
       number: num,

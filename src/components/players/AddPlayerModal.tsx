@@ -56,7 +56,7 @@ export function AddPlayerModal({
     if (!n) return;
     const num = Math.min(99, Math.max(1, parseInt(number, 10) || 1));
     const a = Math.min(45, Math.max(14, parseInt(age, 10) || 17));
-    const posList = selectedPos.length ? selectedPos : ["CM"];
+    const posList: Position[] = selectedPos.length > 0 ? selectedPos : ["CM"];
     const h = heightCm.trim() ? Math.min(220, Math.max(120, parseInt(heightCm, 10) || 170)) : undefined;
     const w = weightKg.trim() ? Math.min(150, Math.max(35, parseInt(weightKg, 10) || 70)) : undefined;
     onSave({
