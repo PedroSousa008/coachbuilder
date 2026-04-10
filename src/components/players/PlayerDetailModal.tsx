@@ -66,6 +66,7 @@ export function PlayerDetailModal({
   const [performance, setPerformance] = useState<Player["performance"]>("steady");
   const [qualitiesDraft, setQualitiesDraft] = useState<PlayerQualities>(() => mergeQualities());
   const [evaluationDraft, setEvaluationDraft] = useState<Record<EvaluationTestId, string>>(emptyEvaluationDraft);
+  const [evaluationHelpOpenId, setEvaluationHelpOpenId] = useState<EvaluationTestId | null>(null);
 
   useEffect(() => {
     if (!player) return;
@@ -86,7 +87,12 @@ export function PlayerDetailModal({
     }
     setEvaluationDraft(ev);
     setTab("dados");
+    setEvaluationHelpOpenId(null);
   }, [player]);
+
+  useEffect(() => {
+    if (tab !== "avaliacao") setEvaluationHelpOpenId(null);
+  }, [tab]);
 
   const insights = useMemo(() => {
     if (!player) return null;
@@ -415,8 +421,32 @@ export function PlayerDetailModal({
                       return (
                         <tr key={t.id} className="border-b border-surface-border/60 last:border-0">
                           <td className="px-3 py-3 align-top">
-                            <p className="font-medium text-zinc-200">{t.label}</p>
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-medium leading-snug text-zinc-200">{t.label}</span>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setEvaluationHelpOpenId((open) => (open === t.id ? null : t.id))
+                                }
+                                className={cn(
+                                  "inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border text-[10px] font-bold leading-none transition-colors",
+                                  "border-zinc-500/80 text-zinc-400 hover:border-accent/80 hover:text-accent",
+                                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40",
+                                  evaluationHelpOpenId === t.id &&
+                                    "border-accent/80 bg-accent/10 text-accent"
+                                )}
+                                aria-label={`Como registar o teste: ${t.label}`}
+                                aria-expanded={evaluationHelpOpenId === t.id}
+                              >
+                                !
+                              </button>
+                            </div>
                             <p className="mt-0.5 text-xs text-zinc-600">{t.hint}</p>
+                            {evaluationHelpOpenId === t.id && (
+                              <p className="mt-2 rounded-lg border border-surface-border bg-zinc-900/85 p-2.5 text-xs leading-relaxed text-zinc-400">
+                                {t.protocolNote}
+                              </p>
+                            )}
                           </td>
                           <td className="px-3 py-3 align-top">
                             <Input

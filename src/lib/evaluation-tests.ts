@@ -6,48 +6,64 @@ export const EVALUATION_TESTS: readonly {
   readonly label: string;
   readonly valuePlaceholder: string;
   readonly hint: string;
+  /** Como executar o teste para resultados comparáveis e precisos (mostrado ao treinador). */
+  readonly protocolNote: string;
 }[] = [
   {
     id: "sprint20m",
     label: "Sprint 20 metros",
     valuePlaceholder: "ex.: 3,45",
     hint: "Tempo em segundos (menor = melhor).",
+    protocolNote:
+      "Usa sempre a mesma distância (20 m) e superfície plana e seca. Partida de pé, sem passo de arranque antes da linha; cronómetro manual ou laser na altura do tronco, parado na linha de chegada. Faz 2 tentativas com recuperação completa e regista o melhor tempo. Evita vento forte ou piso irregular — isso distorce a comparação com a tabela.",
   },
   {
     id: "dribblingSlalom",
     label: "Dribbling Slalom",
     valuePlaceholder: "ex.: 8,2",
     hint: "Tempo total em segundos (menor = melhor).",
+    protocolNote:
+      "Coloca os cones à distância e alinhamento que a equipa usa sempre (anota essa configuração). O tempo começa no 1.º toque na bola e termina ao passar a última linha/cone, sem cortar nem desviar o percurso. Mantém a bola próxima dos pés; regista o melhor de 2 tentativas após aquecimento semelhante.",
   },
   {
     id: "yoyoEndurance",
     label: "Yo-Yo Endurance",
     valuePlaceholder: "ex.: 17.1",
     hint: "Nível / distância conforme protocolo (maior = melhor).",
+    protocolNote:
+      "Segue o protocolo oficial (IR ou Endurance) com marcas no chão e sinal sonoro fiável. O jogador deve atingir a linha a tempo em cada repetição; regista o nível final ou a distância total conforme o teste que usas — sempre o mesmo protocolo entre avaliações para comparar evolução.",
   },
   {
     id: "verticalJump",
     label: "Vertical Jump",
     valuePlaceholder: "ex.: 52",
     hint: "Altura em cm (maior = melhor).",
+    protocolNote:
+      "Parede lisa com escala ou sensor; salto a partir de pé parado (sem passo de corrida), braços livres ou protocolo fixo que repitas sempre. Faz várias tentativas (ex.: 3) e regista a melhor ou a média — desde que sejas consistente entre jogadores e datas.",
   },
   {
     id: "shortPassingAccuracy",
     label: "Short Passing Accuracy",
     valuePlaceholder: "ex.: 8/10",
     hint: "Acertos (podes usar fração ou %).",
+    protocolNote:
+      "Define distância fixa até ao alvo (ex.: gaiola ou cone), número de passes (ex.: 10) e superfície. Conta só passes que cumprem o critério (ex.: parar dentro da zona); regista acertos/total ou % — o importante é o mesmo critério para todos.",
   },
   {
     id: "reactionTest",
     label: "Reaction Test",
     valuePlaceholder: "ex.: 0,28",
     hint: "Tempo de reação em segundos (menor = melhor).",
+    protocolNote:
+      "Estímulo visual ou sonoro aleatório; o jogador reage com um toque ou botão sem “saltar a vez”. Descarta tentativas em que antecipou o sinal; faz várias repetições e regista a média ou a mediana conforme o teu protocolo, sempre igual entre avaliações.",
   },
   {
     id: "strengthTest",
     label: "Strength Test",
     valuePlaceholder: "ex.: 5",
     hint: "Repetições ou carga (maior = melhor).",
+    protocolNote:
+      "Escolhe um exercício claro (ex.: prancha, agachamento, supino) e regista o mesmo tipo de métrica: repetições máximas com técnica correta, ou carga a X reps. Amplitude e cadência devem ser as mesmas entre avaliações; não compares resultados de exercícios diferentes.",
   },
 ] as const;
 
