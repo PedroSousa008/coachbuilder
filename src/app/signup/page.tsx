@@ -52,7 +52,8 @@ function SignupForm() {
         </Link>
         <h1 className="mt-6 font-display text-2xl font-semibold text-white">Criar conta</h1>
         <p className="mt-2 text-sm text-zinc-500">
-          Os teus dados ficam guardados neste dispositivo. No próximo acesso, entra só com email e palavra-passe.
+          Os teus dados ficam neste navegador e são guardados automaticamente sempre que usas a app. Novas versões do site
+          não os apagam. No próximo acesso, entra só com email e palavra-passe.
         </p>
       </div>
 

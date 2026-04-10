@@ -29,6 +29,7 @@ import { mockCoach } from "@/data/mock";
 import { dedupeMatches } from "@/lib/league-match-dedupe";
 import { formatPlayerPositions } from "@/lib/player-positions";
 import { getAllUserDataKeys, migrateLegacyDataIfNeeded } from "@/lib/user-storage-keys";
+import { safeLoadJSON, safeSaveJSON } from "@/lib/coachbuilder-persist";
 import { useAuth } from "@/contexts/AuthContext";
 
 function tacticPlayerNoteKey(tacticId: string, playerId: string) {
@@ -46,19 +47,11 @@ const defaultCoachProfile = (): CoachProfileState => ({
 export const SQUAD_GROUP_ID = "conv-squad";
 
 function loadJSON<T>(key: string, fallback: T): T {
-  if (typeof window === "undefined") return fallback;
-  try {
-    const raw = localStorage.getItem(key);
-    if (!raw) return fallback;
-    return JSON.parse(raw) as T;
-  } catch {
-    return fallback;
-  }
+  return safeLoadJSON(key, fallback);
 }
 
 function saveJSON(key: string, value: unknown) {
-  if (typeof window === "undefined") return;
-  localStorage.setItem(key, JSON.stringify(value));
+  safeSaveJSON(key, value);
 }
 
 function uid(prefix: string) {

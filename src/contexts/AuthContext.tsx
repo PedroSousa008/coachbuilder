@@ -10,9 +10,7 @@ import {
   type ReactNode,
 } from "react";
 import { hashPassword, verifyPassword } from "@/lib/password-crypto";
-
-const LS_USERS = "coachbuilder-auth-users-v1";
-const LS_SESSION = "coachbuilder-auth-session-v1";
+import { AUTH_STORAGE_KEYS, runCoachbuilderStorageMigrations } from "@/lib/coachbuilder-persist";
 
 export type AuthUser = {
   id: string;
@@ -45,7 +43,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 function loadUsers(): StoredUser[] {
   if (typeof window === "undefined") return [];
   try {
-    const raw = localStorage.getItem(LS_USERS);
+    const raw = localStorage.getItem(AUTH_STORAGE_KEYS.users);
     if (!raw) return [];
     const parsed = JSON.parse(raw) as unknown;
     return Array.isArray(parsed) ? (parsed as StoredUser[]) : [];
@@ -56,13 +54,13 @@ function loadUsers(): StoredUser[] {
 
 function saveUsers(users: StoredUser[]) {
   if (typeof window === "undefined") return;
-  localStorage.setItem(LS_USERS, JSON.stringify(users));
+  localStorage.setItem(AUTH_STORAGE_KEYS.users, JSON.stringify(users));
 }
 
 function loadSession(): SessionPayload | null {
   if (typeof window === "undefined") return null;
   try {
-    const raw = localStorage.getItem(LS_SESSION);
+    const raw = localStorage.getItem(AUTH_STORAGE_KEYS.session);
     if (!raw) return null;
     const s = JSON.parse(raw) as SessionPayload;
     if (typeof s?.userId === "string" && typeof s?.email === "string") return s;
@@ -75,10 +73,10 @@ function loadSession(): SessionPayload | null {
 function saveSession(s: SessionPayload | null) {
   if (typeof window === "undefined") return;
   if (!s) {
-    localStorage.removeItem(LS_SESSION);
+    localStorage.removeItem(AUTH_STORAGE_KEYS.session);
     return;
   }
-  localStorage.setItem(LS_SESSION, JSON.stringify(s));
+  localStorage.setItem(AUTH_STORAGE_KEYS.session, JSON.stringify(s));
 }
 
 function normalizeEmail(email: string): string {
@@ -98,6 +96,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [authReady, setAuthReady] = useState(false);
 
   useEffect(() => {
+    runCoachbuilderStorageMigrations();
     const session = loadSession();
     if (!session) {
       setUser(null);

@@ -3,12 +3,15 @@ import { Check } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { TeamAccentSettings } from "@/components/settings/TeamAccentSettings";
+import { DataPersistenceNotice } from "@/components/settings/DataPersistenceNotice";
 import { mockCoach } from "@/data/mock";
 
 export default function SettingsPage() {
   return (
     <div className="mx-auto max-w-4xl space-y-10">
       <TeamAccentSettings />
+
+      <DataPersistenceNotice />
 
       <div>
         <h2 className="font-display text-lg font-semibold text-white">Subscription</h2>
@@ -71,7 +74,8 @@ export default function SettingsPage() {
           <CardTitle>Account</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4 text-sm text-zinc-400">
-          <p>Authentication, password, and connected devices will appear here.</p>
+          <p>Email e palavra-passe da conta estão guardados neste dispositivo. Para alterar a palavra-passe, contacta o
+            suporte ou aguarda a opção na app.</p>
           <Link href="/app/profile" className="inline-flex text-accent hover:underline">
             Edit profile →
           </Link>
