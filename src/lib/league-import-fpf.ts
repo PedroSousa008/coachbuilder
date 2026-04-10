@@ -1,6 +1,7 @@
 import * as cheerio from "cheerio";
 import type { LeagueImportedMatch } from "@/types";
 import { dedupeMatches } from "@/lib/league-match-dedupe";
+import { wallClockLisbonToUtcIso } from "@/lib/lisbon-date";
 
 export { dedupeMatches };
 
@@ -41,8 +42,7 @@ export function parsePortugueseScheduleToIso(
   const hm = raw.match(/(\d{1,2}):(\d{2})/);
   const hour = hm ? parseInt(hm[1]!, 10) : 15;
   const min = hm ? parseInt(hm[2]!, 10) : 0;
-  const d = new Date(year, monthIdx, day, hour, min, 0);
-  return d.toISOString();
+  return wallClockLisbonToUtcIso(year, monthIdx + 1, day, hour, min);
 }
 
 export function extractSeasonYearsFromHtml(html: string): { start: number; end: number } {
@@ -64,13 +64,22 @@ export function extractCompetitionLabelFromHtml(html: string): string | null {
 
 /** FPF loads each matchday via AJAX; IDs appear on the main competition page. */
 export function extractFpfFixtureIdsFromHtml(html: string): string[] {
-  const re = /GetClassificationAndMatchesByFixture\?fixtureId=(\d+)/gi;
-  const ids: string[] = [];
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(html)) !== null) {
-    ids.push(m[1]!);
+  const ids = new Set<string>();
+  const patterns = [
+    /GetClassificationAndMatchesByFixture\?fixtureId=(\d+)/gi,
+    /\/Competition\/[^\s"'<>]*fixtureId=(\d+)/gi,
+  ];
+  for (const re of patterns) {
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(html)) !== null) ids.add(m[1]!);
   }
-  return [...new Set(ids)];
+  const $ = cheerio.load(html);
+  $('a[href*="GetClassificationAndMatchesByFixture"]').each((_, el) => {
+    const href = ($(el).attr("href") ?? "").trim();
+    const id = href.match(/fixtureId=(\d+)/i)?.[1];
+    if (id) ids.add(id);
+  });
+  return [...ids];
 }
 
 /** fixtureId → jornada label (1…34) from the numbered tabs on the competition page. */
@@ -81,6 +90,19 @@ export function extractFpfFixtureRoundMapFromHtml(html: string): Map<string, num
   while ((m = re.exec(html)) !== null) {
     map.set(m[1]!, parseInt(m[2]!, 10));
   }
+
+  const $ = cheerio.load(html);
+  $("a[href*='fixtureId=']").each((_, el) => {
+    const href = ($(el).attr("href") ?? "").trim();
+    const fid = href.match(/fixtureId=(\d+)/i)?.[1];
+    if (!fid) return;
+    const text = $(el).text().replace(/\s+/g, " ").trim();
+    const num = /^(\d+)$/.exec(text)?.[1];
+    if (!num) return;
+    const j = parseInt(num, 10);
+    if (j >= 1 && j <= 50) map.set(fid, j);
+  });
+
   return map;
 }
 

@@ -13,7 +13,7 @@ import { formatKickoff } from "@/lib/format";
 import { collectUniqueTeamNames, pickBestTeamMatch, userClubMatchesOfficialTeam } from "@/lib/team-match";
 import { inferCompetitionKind, type CompetitionKind } from "@/lib/competition-kind";
 import { useScheduleNow } from "@/hooks/useScheduleNow";
-import { isKickoffStillUpcomingLisbon } from "@/lib/lisbon-date";
+import { isKickoffInFuture } from "@/lib/lisbon-date";
 
 function formatKickoffShort(iso: string) {
   const d = new Date(iso);
@@ -65,10 +65,6 @@ function neutralResultLine(m: LeagueImportedMatch): string {
     return `${m.homeTeam} ${m.homeScore}–${m.awayScore} ${m.awayTeam}`;
   }
   return `${m.homeTeam} vs ${m.awayTeam}`;
-}
-
-function isImportedPlayed(m: LeagueImportedMatch): boolean {
-  return m.homeScore !== undefined && m.awayScore !== undefined;
 }
 
 export function CalendarPageClient() {
@@ -132,8 +128,8 @@ export function CalendarPageClient() {
   );
 
   /**
-   * Imported rows: **result on the page first** — if FPF has scores, the match is always Previous, even when
-   * the parsed kick-off is wrong. Only fixtures **without** a result use date (Lisbon) for Next vs Previous.
+   * Next vs Previous by **real kick-off time** (UTC from Lisbon wall clock in the import) vs the user’s current
+   * time. Past games show V/E/D colours when the import has a score; future games are all in Next.
    */
   const { nextGameRows, previousGameRows } = useMemo(() => {
     const next: NextRow[] = [];
@@ -147,52 +143,35 @@ export function CalendarPageClient() {
           userClubMatchesOfficialTeam(club, m.awayTeam, candidates);
         if (!mine) continue;
 
-        if (isImportedPlayed(m)) {
-          const o = outcomeForMyTeam(m, club, candidates);
-          if (o) prev.push({ kind: "imported", match: m, outcome: o.outcome, line: o.short });
-          else {
-            const homeHit = userClubMatchesOfficialTeam(club, m.homeTeam, candidates);
-            const opp = homeHit ? m.awayTeam : m.homeTeam;
-            prev.push({
-              kind: "imported-neutral",
-              match: m,
-              line: `vs ${opp} · ${neutralResultLine(m)}`,
-            });
-          }
-          continue;
-        }
-        if (isKickoffStillUpcomingLisbon(m.kickoff, nowMs)) {
+        if (isKickoffInFuture(m.kickoff, nowMs)) {
           next.push({ kind: "imported", match: m, scheduleKind: sk });
           continue;
         }
-        const homeHit = userClubMatchesOfficialTeam(club, m.homeTeam, candidates);
-        const opp = homeHit ? m.awayTeam : m.homeTeam;
-        prev.push({
-          kind: "imported-neutral",
-          match: m,
-          line: `vs ${opp} · jogado (sem resultado na importação)`,
-        });
-      }
-    } else {
-      for (const m of leagueMatches) {
-        if (isImportedPlayed(m)) {
-          prev.push({ kind: "imported-neutral", match: m, line: neutralResultLine(m) });
-          continue;
-        }
-        if (isKickoffStillUpcomingLisbon(m.kickoff, nowMs)) {
-          next.push({ kind: "imported", match: m, scheduleKind: sk });
+        const o = outcomeForMyTeam(m, club, candidates);
+        if (o) {
+          prev.push({ kind: "imported", match: m, outcome: o.outcome, line: o.short });
         } else {
+          const homeHit = userClubMatchesOfficialTeam(club, m.homeTeam, candidates);
+          const opp = homeHit ? m.awayTeam : m.homeTeam;
           prev.push({
             kind: "imported-neutral",
             match: m,
-            line: `${neutralResultLine(m)} · jogado (sem resultado na importação)`,
+            line: `vs ${opp} · ${neutralResultLine(m)}`,
           });
+        }
+      }
+    } else {
+      for (const m of leagueMatches) {
+        if (isKickoffInFuture(m.kickoff, nowMs)) {
+          next.push({ kind: "imported", match: m, scheduleKind: sk });
+        } else {
+          prev.push({ kind: "imported-neutral", match: m, line: neutralResultLine(m) });
         }
       }
     }
 
     for (const f of fixtures) {
-      if (isKickoffStillUpcomingLisbon(f.kickoff, nowMs)) next.push({ kind: "manual", fixture: f });
+      if (isKickoffInFuture(f.kickoff, nowMs)) next.push({ kind: "manual", fixture: f });
       else prev.push({ kind: "manual", fixture: f });
     }
 
@@ -252,11 +231,11 @@ export function CalendarPageClient() {
       <div>
         <h2 className="font-display text-xl font-semibold text-white">Calendar & matchweek</h2>
         <p className="mt-1 text-sm text-zinc-500">
-          <span className="font-semibold text-zinc-300">Próximos:</span> todos os jogos em falta da tua equipa, ordenados
-          por <span className="text-zinc-400">jornada</span> (crescente) até ao fim do campeonato.{" "}
-          <span className="font-semibold text-zinc-300">Anteriores:</span> jogos já disputados com resultado, da
-          jornada mais recente para a primeira. A lista atualiza ao minuto; usa Refresh na tabela para novos marcadores
-          na FPF.
+          <span className="font-semibold text-zinc-300">Próximos:</span> todos os jogos da tua equipa com hora de
+          pontapé <span className="text-zinc-400">ainda no futuro</span> (hoje ou mais tarde), por jornada.{" "}
+          <span className="font-semibold text-zinc-300">Anteriores:</span> jogos com pontapé já passado (incluindo hoje,
+          depois do apito). Cores V/E/D quando o import tem marcador. A lista segue o relógio do teu dispositivo; usa
+          Refresh na tabela para trazer todas as jornadas e resultados da FPF.
         </p>
         {resolvedClub && (
           <p className="mt-2 text-xs text-accent">
@@ -286,7 +265,8 @@ export function CalendarPageClient() {
               Your fixtures
             </CardTitle>
             <CardDescription>
-              Próximos: por disputar. Anteriores: concluídos com marcador (V/E/D a cores para a tua equipa).
+              Próximos: pontapé ainda no futuro. Anteriores: pontapé já passado; V/E/D a cores quando há resultado no
+              import.
             </CardDescription>
           </div>
           <Button
@@ -453,8 +433,8 @@ export function CalendarPageClient() {
               (previousGameRows.length === 0 ? (
               <p className="text-sm text-zinc-500">
                 {leagueMatches.length === 0 && leagueTableUrl.trim()
-                  ? "No finished games with a result in the import yet — use Refresh now on the league table."
-                  : "No finished games with a result yet."}
+                  ? "No past games yet — refresh the league import, or your club name may not match the table."
+                  : "No past games yet (kick-offs before now appear here)."}
               </p>
             ) : (
               <ul className="space-y-3">

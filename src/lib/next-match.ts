@@ -1,5 +1,5 @@
 import type { LeagueImportedMatch, MatchFixture } from "@/types";
-import { isKickoffStillUpcomingLisbon } from "@/lib/lisbon-date";
+import { isKickoffInFuture } from "@/lib/lisbon-date";
 import { userClubMatchesOfficialTeam } from "@/lib/team-match";
 
 export type ResolvedNextMatch = {
@@ -33,7 +33,7 @@ export function resolveNextMatchForCoach(args: {
   const cands: Cand[] = [];
 
   for (const f of args.manualFixtures) {
-    if (!isKickoffStillUpcomingLisbon(f.kickoff, nowMs)) continue;
+    if (!isKickoffInFuture(f.kickoff, nowMs)) continue;
     const t = new Date(f.kickoff).getTime();
     cands.push({
       opponent: f.opponent,
@@ -47,8 +47,7 @@ export function resolveNextMatchForCoach(args: {
 
   if (club.length > 0) {
     for (const m of args.leagueMatches) {
-      if (m.homeScore !== undefined && m.awayScore !== undefined) continue;
-      if (!isKickoffStillUpcomingLisbon(m.kickoff, nowMs)) continue;
+      if (!isKickoffInFuture(m.kickoff, nowMs)) continue;
       const t = new Date(m.kickoff).getTime();
       const homeHit = userClubMatchesOfficialTeam(club, m.homeTeam, names);
       const awayHit = userClubMatchesOfficialTeam(club, m.awayTeam, names);
