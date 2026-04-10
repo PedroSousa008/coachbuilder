@@ -18,6 +18,8 @@ import { playerEligibleForTacticsSlot } from "@/lib/tactics-slot-positions";
 import { lastMatchesSorted, tallyForTactic, winRatePercent } from "@/lib/tactics-match-stats";
 import { PlayerTacticInsightModal } from "@/components/tactics/PlayerTacticInsightModal";
 import { TacticMatchEditorModal } from "@/components/tactics/TacticMatchEditorModal";
+import { StyleOfPlayHelperModal } from "@/components/tactics/StyleOfPlayHelperModal";
+import { Sparkles } from "lucide-react";
 
 const DRAFT_ID = "draft";
 
@@ -102,6 +104,7 @@ export function TacticsBoard() {
   const [insightSlot, setInsightSlot] = useState<PitchPlayer | null>(null);
   const [matchEditorOpen, setMatchEditorOpen] = useState(false);
   const [editingMatch, setEditingMatch] = useState<TacticMatch | null>(null);
+  const [styleHelperOpen, setStyleHelperOpen] = useState(false);
 
   const syncFromTactic = useCallback((t: Tactic) => {
     setName(t.name);
@@ -120,6 +123,26 @@ export function TacticsBoard() {
     if (!FORMATION_LAYOUTS[f]) return;
     setFormation(f);
     setPlayers(clonePlayers(f, active.id));
+    setPickerOpen(false);
+    setPickerSlotId(null);
+  };
+
+  const applyAILineup = (f: FormationId, picks: (Player | null)[]) => {
+    if (!FORMATION_LAYOUTS[f]) return;
+    setFormation(f);
+    const layout = FORMATION_LAYOUTS[f];
+    setPlayers(
+      layout.map((slot, i) => {
+        const pl = picks[i] ?? null;
+        return {
+          ...slot,
+          id: `${active.id}-live-${i}`,
+          playerId: pl?.id ?? null,
+          label: pl ? String(pl.number) : slot.formationLabel,
+          playerName: pl?.name?.trim() ?? null,
+        };
+      })
+    );
     setPickerOpen(false);
     setPickerSlotId(null);
   };
@@ -294,6 +317,15 @@ export function TacticsBoard() {
         }}
       />
 
+      <StyleOfPlayHelperModal
+        open={styleHelperOpen}
+        onClose={() => setStyleHelperOpen(false)}
+        roster={roster}
+        currentFormation={formation}
+        onApplyFormation={applyFormation}
+        onApplyLineup={applyAILineup}
+      />
+
       {!isDraft ? (
         <TacticMatchEditorModal
           open={matchEditorOpen}
@@ -367,6 +399,18 @@ export function TacticsBoard() {
             >
               More
             </button>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => setStyleHelperOpen(true)}
+              className="gap-1.5 border-accent/25 bg-accent/10 text-accent hover:bg-accent/15"
+              title="Análise por estilo de jogo, formação, onze e substituições"
+            >
+              <Sparkles className="h-3.5 w-3.5 shrink-0" strokeWidth={2} />
+              <span className="hidden sm:inline">AI Style of Play</span>
+              <span className="sm:hidden">AI</span>
+            </Button>
             {allSlotsFilled && (
               <Button type="button" variant="primary" size="sm" onClick={handleSave} className="min-w-[7rem]">
                 Guardar equipa
