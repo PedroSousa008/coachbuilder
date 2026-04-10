@@ -10,9 +10,9 @@ const config: Config = {
     extend: {
       colors: {
         pitch: {
-          DEFAULT: "#1a3d2e",
-          light: "#234d3a",
-          line: "rgba(255,255,255,0.22)",
+          DEFAULT: "#131316",
+          light: "#1a1a1f",
+          line: "rgba(255, 255, 255, 0.2)",
         },
         surface: {
           DEFAULT: "#0f1419",
@@ -20,9 +20,8 @@ const config: Config = {
           border: "#252d38",
         },
         accent: {
-          DEFAULT: "#22c55e",
-          muted: "#16a34a",
-          glow: "rgba(34, 197, 94, 0.15)",
+          DEFAULT: "rgb(var(--accent-rgb) / <alpha-value>)",
+          muted: "rgb(var(--accent-muted-rgb) / <alpha-value>)",
         },
       },
       fontFamily: {
@@ -31,7 +30,7 @@ const config: Config = {
       },
       boxShadow: {
         card: "0 1px 0 rgba(255,255,255,0.04), 0 8px 32px rgba(0,0,0,0.35)",
-        glow: "0 0 40px rgba(34, 197, 94, 0.12)",
+        glow: "0 0 40px rgb(var(--accent-rgb) / 0.14)",
       },
     },
   },

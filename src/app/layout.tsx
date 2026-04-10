@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Outfit } from "next/font/google";
+import { AccentProvider } from "@/components/providers/AccentProvider";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -34,7 +35,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${outfit.variable} min-h-screen bg-[#0a0d10] font-sans text-zinc-100 antialiased`}
       >
-        {children}
+        <AccentProvider>{children}</AccentProvider>
       </body>
     </html>
   );

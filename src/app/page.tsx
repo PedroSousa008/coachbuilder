@@ -22,7 +22,7 @@ export default function LandingPage() {
         <section className="relative overflow-hidden pt-28 pb-20 sm:pt-32 sm:pb-28">
           <div className="bg-grid pointer-events-none absolute inset-0 opacity-40" />
           <div className="pointer-events-none absolute -right-40 top-20 h-96 w-96 rounded-full bg-accent/10 blur-3xl" />
-          <div className="pointer-events-none absolute -left-40 bottom-0 h-80 w-80 rounded-full bg-emerald-900/20 blur-3xl" />
+          <div className="pointer-events-none absolute -left-40 bottom-0 h-80 w-80 rounded-full bg-accent/10 blur-3xl" />
           <div className="relative mx-auto max-w-6xl px-4 sm:px-6">
             <p className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium text-zinc-400">
               <span className="h-1.5 w-1.5 rounded-full bg-accent" />

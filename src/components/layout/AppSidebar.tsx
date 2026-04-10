@@ -67,7 +67,7 @@ export function AppSidebar() {
           href="/app/settings"
           className="mt-2 inline-flex text-xs font-medium text-accent hover:underline"
         >
-          View plans
+          Plans &amp; team colour
         </Link>
       </div>
     </aside>

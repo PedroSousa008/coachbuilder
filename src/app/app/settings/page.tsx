@@ -2,11 +2,14 @@ import Link from "next/link";
 import { Check } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { TeamAccentSettings } from "@/components/settings/TeamAccentSettings";
 import { mockCoach } from "@/data/mock";
 
 export default function SettingsPage() {
   return (
     <div className="mx-auto max-w-4xl space-y-10">
+      <TeamAccentSettings />
+
       <div>
         <h2 className="font-display text-lg font-semibold text-white">Subscription</h2>
         <p className="text-sm text-zinc-500">
