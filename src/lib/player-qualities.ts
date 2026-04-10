@@ -72,10 +72,12 @@ export const QUALITY_GROUPS: readonly {
   },
 ] as const;
 
-const ALL_IDS: QualityStatId[] = QUALITY_GROUPS.flatMap((g) => g.stats.map((s) => s.id));
+export const ALL_QUALITY_STAT_IDS: QualityStatId[] = QUALITY_GROUPS.flatMap((g) =>
+  g.stats.map((s) => s.id)
+);
 
 export function createDefaultQualities(value = 50): PlayerQualities {
-  return Object.fromEntries(ALL_IDS.map((id) => [id, value])) as PlayerQualities;
+  return Object.fromEntries(ALL_QUALITY_STAT_IDS.map((id) => [id, value])) as PlayerQualities;
 }
 
 export function mergeQualities(partial?: Partial<PlayerQualities>): PlayerQualities {

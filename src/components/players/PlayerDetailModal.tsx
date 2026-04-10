@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Player, PlayerQualities, Position, PreferredFoot } from "@/types";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { cn } from "@/lib/utils";
 import { QUALITY_GROUPS, mergeQualities } from "@/lib/player-qualities";
+import { buildPlayerInsights } from "@/lib/player-insights";
+import { PlayerInsightsBox } from "@/components/team/PlayerInsightsBox";
 
 const POSITIONS: Position[] = [
   "GK",
@@ -62,6 +64,23 @@ export function PlayerDetailModal({
     setQualitiesDraft(mergeQualities(player.qualities));
     setTab("dados");
   }, [player]);
+
+  const insights = useMemo(() => {
+    if (!player) return null;
+    const hRaw = heightCm.trim() ? parseInt(heightCm, 10) : NaN;
+    const wRaw = weightKg.trim() ? parseInt(weightKg, 10) : NaN;
+    const h = Number.isFinite(hRaw) && hRaw > 0 ? Math.min(220, Math.max(120, hRaw)) : undefined;
+    const w = Number.isFinite(wRaw) && wRaw > 0 ? Math.min(150, Math.max(35, wRaw)) : undefined;
+    const posList: Position[] = selectedPos.length > 0 ? selectedPos : [player.position];
+    return buildPlayerInsights({
+      ...player,
+      heightCm: h,
+      weightKg: w,
+      position: posList[0]!,
+      positions: posList.length > 1 ? posList : undefined,
+      qualities: qualitiesDraft,
+    });
+  }, [player, heightCm, weightKg, selectedPos, qualitiesDraft]);
 
   if (!open || !player) return null;
 
@@ -120,6 +139,11 @@ export function PlayerDetailModal({
             {player.name}
           </h3>
           <p className="mt-0.5 text-xs text-zinc-500">Editar dados e qualidades</p>
+          {insights && (
+            <div className="mt-4">
+              <PlayerInsightsBox insights={insights} />
+            </div>
+          )}
           <div className="mt-4 flex gap-1 rounded-xl bg-black/40 p-1">
             <button
               type="button"
