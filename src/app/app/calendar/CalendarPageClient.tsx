@@ -12,7 +12,6 @@ import { FixtureFormModal } from "@/components/calendar/FixtureFormModal";
 import { formatKickoff } from "@/lib/format";
 import { collectUniqueTeamNames, pickBestTeamMatch, userClubMatchesOfficialTeam } from "@/lib/team-match";
 import { inferCompetitionKind, type CompetitionKind } from "@/lib/competition-kind";
-import { dedupeMatches } from "@/lib/league-match-dedupe";
 
 function formatKickoffShort(iso: string) {
   const d = new Date(iso);
@@ -112,11 +111,9 @@ export function CalendarPageClient() {
     return () => clearInterval(id);
   }, [leagueTableUrl, refreshLeagueTable]);
 
-  const leagueMatchesDeduped = useMemo(() => dedupeMatches(leagueMatches), [leagueMatches]);
-
   const candidates = useMemo(
-    () => collectUniqueTeamNames({ tableRows: leagueTableRows, matches: leagueMatchesDeduped }),
-    [leagueTableRows, leagueMatchesDeduped]
+    () => collectUniqueTeamNames({ tableRows: leagueTableRows, matches: leagueMatches }),
+    [leagueTableRows, leagueMatches]
   );
 
   const club = coachProfile.club.trim();
@@ -139,7 +136,7 @@ export function CalendarPageClient() {
     const cut = Date.now() - 3600000;
 
     if (club) {
-      for (const m of leagueMatchesDeduped) {
+      for (const m of leagueMatches) {
         const mine =
           userClubMatchesOfficialTeam(club, m.homeTeam, candidates) ||
           userClubMatchesOfficialTeam(club, m.awayTeam, candidates);
@@ -153,7 +150,7 @@ export function CalendarPageClient() {
         }
       }
     } else {
-      for (const m of leagueMatchesDeduped) {
+      for (const m of leagueMatches) {
         if (isImportedPlayed(m)) {
           prev.push({ kind: "imported-neutral", match: m, line: neutralResultLine(m) });
         } else {
@@ -180,7 +177,7 @@ export function CalendarPageClient() {
     });
 
     return { nextGameRows: next, previousGameRows: prev };
-  }, [leagueMatchesDeduped, fixtures, club, candidates, pageScheduleKind]);
+  }, [leagueMatches, fixtures, club, candidates, pageScheduleKind]);
 
   const showFullStats = leagueTableRows.some((r) => r.played != null);
 
@@ -253,12 +250,12 @@ export function CalendarPageClient() {
           </Button>
         </CardHeader>
         <CardContent className="space-y-10">
-          {!club && leagueMatchesDeduped.length > 0 && (
+          {!club && leagueMatches.length > 0 && (
             <p className="text-sm text-zinc-400">
               Showing every fixture from the league import. Add your club under Profile to filter to your team only.
             </p>
           )}
-          {!club && leagueMatchesDeduped.length === 0 && (
+          {!club && leagueMatches.length === 0 && (
             <p className="text-sm text-amber-200/90">
               Add your club in Profile to highlight your matches — or leave it blank to see all fixtures once the league
               URL is refreshed.
@@ -284,7 +281,7 @@ export function CalendarPageClient() {
             {nextSectionOpen &&
               (nextGameRows.length === 0 ? (
               <p className="text-sm text-zinc-500">
-                {leagueMatchesDeduped.length === 0 && leagueTableUrl.trim()
+                {leagueMatches.length === 0 && leagueTableUrl.trim()
                   ? "No fixtures imported yet — use Refresh now on the league table below."
                   : "No upcoming games yet."}
               </p>
@@ -399,7 +396,7 @@ export function CalendarPageClient() {
             {previousSectionOpen &&
               (previousGameRows.length === 0 ? (
               <p className="text-sm text-zinc-500">
-                {leagueMatchesDeduped.length === 0 && leagueTableUrl.trim()
+                {leagueMatches.length === 0 && leagueTableUrl.trim()
                   ? "No finished games with a result in the import yet — use Refresh now on the league table."
                   : "No finished games with a result yet."}
               </p>

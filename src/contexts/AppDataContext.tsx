@@ -21,6 +21,7 @@ import type {
   TrainingSession,
 } from "@/types";
 import { mockCoach } from "@/data/mock";
+import { dedupeMatches } from "@/lib/league-match-dedupe";
 
 const LS_PLAYERS = "coachbuilder-players";
 const LS_CONVS = "coachbuilder-conversations";
@@ -196,7 +197,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     const league = loadJSON<Partial<LeaguePersist>>(LS_LEAGUE, {});
     setLeagueTableUrlState(league.url ?? "");
     setLeagueTableRows(league.rows ?? []);
-    setLeagueMatches(league.matches ?? []);
+    setLeagueMatches(dedupeMatches(league.matches ?? []));
     setLeagueCompetitionName(league.competitionName ?? null);
     setLeagueTableLastFetched(league.lastFetched ?? null);
     setLeagueTableFetchError(league.lastError ?? null);
@@ -453,7 +454,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         return;
       }
       setLeagueTableRows(data.rows ?? []);
-      setLeagueMatches(Array.isArray(data.matches) ? data.matches : []);
+      setLeagueMatches(dedupeMatches(Array.isArray(data.matches) ? data.matches : []));
       setLeagueCompetitionName(
         typeof data.competitionName === "string" && data.competitionName.trim() ? data.competitionName.trim() : null
       );
