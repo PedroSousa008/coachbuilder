@@ -71,9 +71,63 @@ function clamp01to100(x: number): number {
   return Math.min(100, Math.max(0, Math.round(x)));
 }
 
+/** Tempos de referência (segundos) por idade — Aceleração + Sprint 20 m (tabela fornecida). Menor tempo = melhor. */
+export type SprintNormRow = { p10: number; p25: number; p50: number; p75: number; p90: number };
+
+export const SPRINT_20M_BY_AGE: Record<number, SprintNormRow> = {
+  8: { p10: 4.15, p25: 4.29, p50: 4.41, p75: 4.51, p90: 5.02 },
+  9: { p10: 4.01, p25: 4.15, p50: 4.28, p75: 4.44, p90: 4.88 },
+  10: { p10: 3.87, p25: 4.01, p50: 4.15, p75: 4.36, p90: 4.73 },
+  11: { p10: 3.53, p25: 3.71, p50: 4.12, p75: 4.55, p90: 4.69 },
+  12: { p10: 3.59, p25: 3.73, p50: 3.89, p75: 4.21, p90: 4.44 },
+  13: { p10: 3.44, p25: 3.61, p50: 3.82, p75: 4.07, p90: 4.27 },
+  14: { p10: 3.2, p25: 3.34, p50: 3.5, p75: 3.71, p90: 3.93 },
+  15: { p10: 3.19, p25: 3.3, p50: 3.45, p75: 3.76, p90: 3.93 },
+  16: { p10: 3.05, p25: 3.15, p50: 3.34, p75: 3.64, p90: 3.76 },
+  17: { p10: 3.02, p25: 3.09, p50: 3.16, p75: 3.3, p90: 3.44 },
+  18: { p10: 3.01, p25: 3.05, p50: 3.22, p75: 3.41, p90: 3.58 },
+  19: { p10: 2.95, p25: 2.99, p50: 3.09, p75: 3.35, p90: 3.56 },
+  20: { p10: 2.97, p25: 3.03, p50: 3.11, p75: 3.31, p90: 3.5 },
+  21: { p10: 2.99, p25: 3.06, p50: 3.2, p75: 3.32, p90: 3.44 },
+  22: { p10: 2.98, p25: 3.04, p50: 3.17, p75: 3.3, p90: 3.42 },
+  23: { p10: 2.97, p25: 3.03, p50: 3.15, p75: 3.29, p90: 3.41 },
+};
+
+/** Escala 0–100 nos nós P (P10 elite … P90 fraco); interpolação linear no tempo entre nós. */
+const SPRINT_SCORE_AT = { p10: 100, p25: 95, p50: 87, p75: 40, p90: 10 } as const;
+
+function clampAgeToSprintRow(age: number): number {
+  const a = Math.round(age);
+  return Math.min(23, Math.max(8, a));
+}
+
+function lerpScore(t: number, t0: number, t1: number, s0: number, s1: number): number {
+  if (t1 === t0) return Math.round((s0 + s1) / 2);
+  const u = (t - t0) / (t1 - t0);
+  return s0 + u * (s1 - s0);
+}
+
 /**
- * Pontuação AI provisória (0–100) até existirem tabelas oficiais por idade.
- * Quando integrares a tabela, substitui esta função pela consulta aos intervalos.
+ * Sprint 20 m: tempo em segundos + idade → overall 0–100 (tabela P10–P90 por idade).
+ * Tempos mais baixos = melhor. Fora [p10,p90] faz clip (≤p10 → 100, ≥p90 → 10).
+ */
+export function computeSprint20mScore(timeSec: number, age: number): number | null {
+  if (!Number.isFinite(timeSec) || timeSec <= 0) return null;
+  const rowAge = clampAgeToSprintRow(age);
+  const row = SPRINT_20M_BY_AGE[rowAge];
+  if (!row) return null;
+  const { p10, p25, p50, p75, p90 } = row;
+
+  if (timeSec <= p10) return 100;
+  if (timeSec >= p90) return 10;
+  if (timeSec <= p25) return Math.round(lerpScore(timeSec, p10, p25, SPRINT_SCORE_AT.p10, SPRINT_SCORE_AT.p25));
+  if (timeSec <= p50) return Math.round(lerpScore(timeSec, p25, p50, SPRINT_SCORE_AT.p25, SPRINT_SCORE_AT.p50));
+  if (timeSec <= p75) return Math.round(lerpScore(timeSec, p50, p75, SPRINT_SCORE_AT.p50, SPRINT_SCORE_AT.p75));
+  return Math.round(lerpScore(timeSec, p75, p90, SPRINT_SCORE_AT.p75, SPRINT_SCORE_AT.p90));
+}
+
+/**
+ * Pontuação AI (0–100): Sprint 20 m usa tabela oficial; outros testes mantêm heurística até haver tabelas.
  */
 export function computeAiOverallProvisional(
   testId: EvaluationTestId,
@@ -87,10 +141,8 @@ export function computeAiOverallProvisional(
 
   switch (testId) {
     case "sprint20m": {
-      const sec = v;
-      if (sec < 2.4 || sec > 8) return null;
-      const score = 100 - ((sec - 2.85) / (5.8 - 2.85)) * 85;
-      return clamp01to100(score * ageAdj);
+      const score = computeSprint20mScore(v, age);
+      return score == null ? null : clamp01to100(score);
     }
     case "dribblingSlalom": {
       const sec = v;
