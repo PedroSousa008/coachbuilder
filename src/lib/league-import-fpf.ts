@@ -30,7 +30,8 @@ export function parsePortugueseScheduleToIso(
   seasonYearEnd: number
 ): string | null {
   const raw = scheduleText.trim().toLowerCase().replace(/\s+/g, " ");
-  const m = raw.match(/^(\d{1,2})\s+(?:de\s+)?([a-záàãâéêíóôõúç]+)/u);
+  // Do not anchor: FPF often prefixes weekday (“sáb 11 abr 20:00”) or extra text before the day.
+  const m = raw.match(/(\d{1,2})\s+(?:de\s+)?([a-záàãâéêíóôõúç]+)/u);
   if (!m) return null;
   const day = parseInt(m[1]!, 10);
   const monNorm = m[2]!.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
@@ -39,7 +40,9 @@ export function parsePortugueseScheduleToIso(
   if (monthIdx === undefined || day < 1 || day > 31) return null;
 
   const year = monthIdx >= 7 ? seasonYearStart : seasonYearEnd;
-  const hm = raw.match(/(\d{1,2}):(\d{2})/);
+  // Prefer time after the date token (avoids picking a time from elsewhere in the string).
+  const fromDate = m.index != null ? raw.slice(m.index + m[0].length) : raw;
+  const hm = fromDate.match(/(\d{1,2}):(\d{2})/) ?? raw.match(/(\d{1,2}):(\d{2})/);
   const hour = hm ? parseInt(hm[1]!, 10) : 15;
   const min = hm ? parseInt(hm[2]!, 10) : 0;
   return wallClockLisbonToUtcIso(year, monthIdx + 1, day, hour, min);

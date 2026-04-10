@@ -66,10 +66,10 @@ export function wallClockLisbonToUtcIso(
 
   const target = { y: year, m: month1, d: day, h: hour, mi: minute };
 
-  // Linear scan: binary search can fail when local wall time is not monotonic in UTC (DST).
+  // Linear scan: wide window so DST / calendar mismatches still resolve.
   const dayStart = Date.UTC(year, month1 - 1, day, 0, 0, 0);
-  const lo = dayStart - 5 * 24 * 60 * 60 * 1000;
-  const hi = dayStart + 6 * 24 * 60 * 60 * 1000;
+  const lo = dayStart - 14 * 24 * 60 * 60 * 1000;
+  const hi = dayStart + 15 * 24 * 60 * 60 * 1000;
   for (let ms = lo; ms <= hi; ms += 60 * 1000) {
     const w = readWall(ms);
     if (cmp(w, target) === 0) return new Date(ms).toISOString();
@@ -86,5 +86,18 @@ export function wallClockLisbonToUtcIso(
 export function isKickoffInFuture(iso: string, nowMs: number): boolean {
   const t = new Date(iso).getTime();
   if (!Number.isFinite(t)) return false;
+  return t > nowMs;
+}
+
+/**
+ * League import: a row is **finished** when both scores exist on the page.
+ * Otherwise it is **upcoming** if the kick-off instant is in the future, or the date could not be parsed
+ * (treat as still to play). Past kick-off without score → previous (played / postponed / lag).
+ */
+export function isImportedMatchUpcoming(m: { kickoff: string; homeScore?: number; awayScore?: number }, nowMs: number): boolean {
+  const finished = typeof m.homeScore === "number" && typeof m.awayScore === "number";
+  if (finished) return false;
+  const t = new Date(m.kickoff).getTime();
+  if (!Number.isFinite(t)) return true;
   return t > nowMs;
 }

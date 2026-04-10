@@ -13,7 +13,7 @@ import { formatKickoff } from "@/lib/format";
 import { collectUniqueTeamNames, pickBestTeamMatch, userClubMatchesOfficialTeam } from "@/lib/team-match";
 import { inferCompetitionKind, type CompetitionKind } from "@/lib/competition-kind";
 import { useScheduleNow } from "@/hooks/useScheduleNow";
-import { isKickoffInFuture } from "@/lib/lisbon-date";
+import { isImportedMatchUpcoming, isKickoffInFuture } from "@/lib/lisbon-date";
 
 function formatKickoffShort(iso: string) {
   const d = new Date(iso);
@@ -28,12 +28,17 @@ function formatKickoffShort(iso: string) {
 
 function outcomeForMyTeam(
   m: LeagueImportedMatch,
-  club: string,
+  profileClub: string,
+  label: string,
   candidates: string[]
 ): { opponent: string; short: string; outcome: "W" | "D" | "L" } | null {
   if (m.homeScore === undefined || m.awayScore === undefined) return null;
-  const homeHit = userClubMatchesOfficialTeam(club, m.homeTeam, candidates);
-  const awayHit = userClubMatchesOfficialTeam(club, m.awayTeam, candidates);
+  const homeHit =
+    userClubMatchesOfficialTeam(label, m.homeTeam, candidates) ||
+    (!!profileClub && userClubMatchesOfficialTeam(profileClub, m.homeTeam, candidates));
+  const awayHit =
+    userClubMatchesOfficialTeam(label, m.awayTeam, candidates) ||
+    (!!profileClub && userClubMatchesOfficialTeam(profileClub, m.awayTeam, candidates));
   if (!homeHit && !awayHit) return null;
   const gf = homeHit ? m.homeScore : m.awayScore;
   const ga = homeHit ? m.awayScore : m.homeScore;
@@ -65,6 +70,26 @@ function neutralResultLine(m: LeagueImportedMatch): string {
     return `${m.homeTeam} ${m.homeScore}–${m.awayScore} ${m.awayTeam}`;
   }
   return `${m.homeTeam} vs ${m.awayTeam}`;
+}
+
+/** Canonical table name first; fall back to profile spelling so we never miss the club. */
+function myTeamPlaysMatch(
+  m: LeagueImportedMatch,
+  profileClub: string,
+  label: string,
+  candidates: string[]
+): boolean {
+  const primary =
+    userClubMatchesOfficialTeam(label, m.homeTeam, candidates) ||
+    userClubMatchesOfficialTeam(label, m.awayTeam, candidates);
+  if (primary) return true;
+  if (profileClub && label !== profileClub) {
+    return (
+      userClubMatchesOfficialTeam(profileClub, m.homeTeam, candidates) ||
+      userClubMatchesOfficialTeam(profileClub, m.awayTeam, candidates)
+    );
+  }
+  return false;
 }
 
 export function CalendarPageClient() {
@@ -131,8 +156,8 @@ export function CalendarPageClient() {
   );
 
   /**
-   * Next = kick-off **after** now (ainda por disputar). Previous = kick-off **at or before** now (já disputados).
-   * Team filter: nome oficial da tabela/jogos quando possível (`teamLabel`).
+   * Importados FPF: **marcador** = jogo já disputado (Previous). Sem marcador: futuro → Next; passado → Previous.
+   * Jogos manuais: só pela data/hora.
    */
   const { nextGameRows, previousGameRows } = useMemo(() => {
     const next: NextRow[] = [];
@@ -141,20 +166,19 @@ export function CalendarPageClient() {
 
     if (club) {
       for (const m of leagueMatches) {
-        const mine =
-          userClubMatchesOfficialTeam(teamLabel, m.homeTeam, candidates) ||
-          userClubMatchesOfficialTeam(teamLabel, m.awayTeam, candidates);
-        if (!mine) continue;
+        if (!myTeamPlaysMatch(m, club, teamLabel, candidates)) continue;
 
-        if (isKickoffInFuture(m.kickoff, nowMs)) {
+        if (isImportedMatchUpcoming(m, nowMs)) {
           next.push({ kind: "imported", match: m, scheduleKind: sk });
           continue;
         }
-        const o = outcomeForMyTeam(m, teamLabel, candidates);
+        const o = outcomeForMyTeam(m, club, teamLabel, candidates);
         if (o) {
           prev.push({ kind: "imported", match: m, outcome: o.outcome, line: o.short });
         } else {
-          const homeHit = userClubMatchesOfficialTeam(teamLabel, m.homeTeam, candidates);
+          const homeHit =
+            userClubMatchesOfficialTeam(teamLabel, m.homeTeam, candidates) ||
+            (!!club && userClubMatchesOfficialTeam(club, m.homeTeam, candidates));
           const opp = homeHit ? m.awayTeam : m.homeTeam;
           prev.push({
             kind: "imported-neutral",
@@ -165,7 +189,7 @@ export function CalendarPageClient() {
       }
     } else {
       for (const m of leagueMatches) {
-        if (isKickoffInFuture(m.kickoff, nowMs)) {
+        if (isImportedMatchUpcoming(m, nowMs)) {
           next.push({ kind: "imported", match: m, scheduleKind: sk });
         } else {
           prev.push({ kind: "imported-neutral", match: m, line: neutralResultLine(m) });
@@ -234,11 +258,10 @@ export function CalendarPageClient() {
       <div>
         <h2 className="font-display text-xl font-semibold text-white">Calendar & matchweek</h2>
         <p className="mt-1 text-sm text-zinc-500">
-          <span className="font-semibold text-zinc-300">Next:</span> jogos da tua equipa com data/hora de pontapé{" "}
-          <span className="text-zinc-400">depois de agora</span>.{" "}
-          <span className="font-semibold text-zinc-300">Previous:</span> jogos com pontapé{" "}
-          <span className="text-zinc-400">já passado</span> (com resultado a cores quando a FPF o mostra). O nome da
-          equipa vem da classificação + jogos do link; usa Refresh na tabela para atualizar.
+          <span className="font-semibold text-zinc-300">Next:</span> jogos{" "}
+          <span className="text-zinc-400">sem resultado na FPF</span> e com horário ainda no futuro (ou data em falta).
+          <span className="font-semibold text-zinc-300"> Previous:</span> jogos já com marcador, ou já disputados no
+          calendário (hora passada) sem marcador. Refresh na tabela para sincronizar.
         </p>
         {resolvedClub && (
           <p className="mt-2 text-xs text-accent">
@@ -268,7 +291,7 @@ export function CalendarPageClient() {
               Your fixtures
             </CardTitle>
             <CardDescription>
-              Next = futuro; Previous = passado. Filtrado pelo teu clube no perfil (nome alinhado à tabela).
+              Import FPF: resultado na página → Previous; resto pela data/hora. Perfil = filtro da equipa.
             </CardDescription>
           </div>
           <Button
@@ -385,7 +408,9 @@ export function CalendarPageClient() {
                       </li>
                     );
                   }
-                  const homeHit = userClubMatchesOfficialTeam(teamLabel, m.homeTeam, candidates);
+                  const homeHit =
+                    userClubMatchesOfficialTeam(teamLabel, m.homeTeam, candidates) ||
+                    (!!club && userClubMatchesOfficialTeam(club, m.homeTeam, candidates));
                   const venue = homeHit ? "home" : "away";
                   const opp = homeHit ? m.awayTeam : m.homeTeam;
                   return (

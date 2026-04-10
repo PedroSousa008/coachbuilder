@@ -1,5 +1,5 @@
 import type { LeagueImportedMatch, MatchFixture } from "@/types";
-import { isKickoffInFuture } from "@/lib/lisbon-date";
+import { isImportedMatchUpcoming, isKickoffInFuture } from "@/lib/lisbon-date";
 import { userClubMatchesOfficialTeam } from "@/lib/team-match";
 
 export type ResolvedNextMatch = {
@@ -49,7 +49,7 @@ export function resolveNextMatchForCoach(args: {
 
   if (club.length > 0) {
     for (const m of args.leagueMatches) {
-      if (!isKickoffInFuture(m.kickoff, nowMs)) continue;
+      if (!isImportedMatchUpcoming(m, nowMs)) continue;
       const t = new Date(m.kickoff).getTime();
       const homeHit = userClubMatchesOfficialTeam(club, m.homeTeam, names);
       const awayHit = userClubMatchesOfficialTeam(club, m.awayTeam, names);
