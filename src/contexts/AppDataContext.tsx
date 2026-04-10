@@ -10,7 +10,9 @@ import {
   type ReactNode,
 } from "react";
 import type {
+  CoachProfileState,
   Conversation,
+  LeagueImportedMatch,
   LeagueTableRow,
   MatchFixture,
   Message,
@@ -27,6 +29,14 @@ const LS_SESSIONS = "coachbuilder-sessions";
 const LS_TRAINING_PLAYERS = "coachbuilder-training-session-players";
 const LS_FIXTURES = "coachbuilder-fixtures";
 const LS_LEAGUE = "coachbuilder-league";
+const LS_COACH_PROFILE = "coachbuilder-coach-profile";
+
+const defaultCoachProfile = (): CoachProfileState => ({
+  name: "",
+  club: "",
+  role: "Head Coach",
+  email: "",
+});
 
 /** Stable id for the default squad group chat (localStorage + UI). */
 export const SQUAD_GROUP_ID = "conv-squad";
@@ -103,6 +113,8 @@ export type NewFixtureInput = {
 type LeaguePersist = {
   url: string;
   rows: LeagueTableRow[];
+  matches: LeagueImportedMatch[];
+  competitionName: string | null;
   lastFetched: string | null;
   lastError: string | null;
 };
@@ -133,9 +145,14 @@ type AppDataContextValue = {
   leagueTableUrl: string;
   setLeagueTableUrl: (url: string) => void;
   leagueTableRows: LeagueTableRow[];
+  leagueMatches: LeagueImportedMatch[];
+  leagueCompetitionName: string | null;
   leagueTableLastFetched: string | null;
   leagueTableFetchError: string | null;
   refreshLeagueTable: () => Promise<void>;
+
+  coachProfile: CoachProfileState;
+  setCoachProfile: (patch: Partial<CoachProfileState>) => void;
 };
 
 const AppDataContext = createContext<AppDataContextValue | null>(null);
@@ -150,8 +167,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [fixtures, setFixtures] = useState<MatchFixture[]>([]);
   const [leagueTableUrl, setLeagueTableUrlState] = useState("");
   const [leagueTableRows, setLeagueTableRows] = useState<LeagueTableRow[]>([]);
+  const [leagueMatches, setLeagueMatches] = useState<LeagueImportedMatch[]>([]);
+  const [leagueCompetitionName, setLeagueCompetitionName] = useState<string | null>(null);
   const [leagueTableLastFetched, setLeagueTableLastFetched] = useState<string | null>(null);
   const [leagueTableFetchError, setLeagueTableFetchError] = useState<string | null>(null);
+  const [coachProfile, setCoachProfileState] = useState<CoachProfileState>(defaultCoachProfile);
 
   useEffect(() => {
     const loadedPlayers = loadJSON<Player[]>(LS_PLAYERS, []);
@@ -169,16 +189,17 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setTrainingSessions(loadJSON<TrainingSession[]>(LS_SESSIONS, []));
     setTrainingPlayerIdsBySession(loadJSON<Record<string, string[]>>(LS_TRAINING_PLAYERS, {}));
     setFixtures(loadJSON<MatchFixture[]>(LS_FIXTURES, []));
-    const league = loadJSON<LeaguePersist>(LS_LEAGUE, {
-      url: "",
-      rows: [],
-      lastFetched: null,
-      lastError: null,
+    setCoachProfileState({
+      ...defaultCoachProfile(),
+      ...loadJSON<Partial<CoachProfileState>>(LS_COACH_PROFILE, {}),
     });
-    setLeagueTableUrlState(league.url);
-    setLeagueTableRows(league.rows);
-    setLeagueTableLastFetched(league.lastFetched);
-    setLeagueTableFetchError(league.lastError);
+    const league = loadJSON<Partial<LeaguePersist>>(LS_LEAGUE, {});
+    setLeagueTableUrlState(league.url ?? "");
+    setLeagueTableRows(league.rows ?? []);
+    setLeagueMatches(league.matches ?? []);
+    setLeagueCompetitionName(league.competitionName ?? null);
+    setLeagueTableLastFetched(league.lastFetched ?? null);
+    setLeagueTableFetchError(league.lastError ?? null);
     setHydrated(true);
   }, []);
 
@@ -217,10 +238,25 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     saveJSON(LS_LEAGUE, {
       url: leagueTableUrl,
       rows: leagueTableRows,
+      matches: leagueMatches,
+      competitionName: leagueCompetitionName,
       lastFetched: leagueTableLastFetched,
       lastError: leagueTableFetchError,
     } satisfies LeaguePersist);
-  }, [hydrated, leagueTableUrl, leagueTableRows, leagueTableLastFetched, leagueTableFetchError]);
+  }, [
+    hydrated,
+    leagueTableUrl,
+    leagueTableRows,
+    leagueMatches,
+    leagueCompetitionName,
+    leagueTableLastFetched,
+    leagueTableFetchError,
+  ]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    saveJSON(LS_COACH_PROFILE, coachProfile);
+  }, [coachProfile, hydrated]);
 
   const addPlayer = useCallback((input: NewPlayerInput) => {
     const p: Player = {
@@ -394,6 +430,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setLeagueTableUrlState(url);
   }, []);
 
+  const setCoachProfile = useCallback((patch: Partial<CoachProfileState>) => {
+    setCoachProfileState((prev) => ({ ...prev, ...patch }));
+  }, []);
+
   const refreshLeagueTable = useCallback(async () => {
     const u = leagueTableUrl.trim();
     if (!u) {
@@ -412,7 +452,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         setLeagueTableFetchError(typeof data.error === "string" ? data.error : "Could not update table.");
         return;
       }
-      setLeagueTableRows(data.rows);
+      setLeagueTableRows(data.rows ?? []);
+      setLeagueMatches(Array.isArray(data.matches) ? data.matches : []);
+      setLeagueCompetitionName(
+        typeof data.competitionName === "string" && data.competitionName.trim() ? data.competitionName.trim() : null
+      );
       setLeagueTableLastFetched(data.fetchedAt ?? new Date().toISOString());
       setLeagueTableFetchError(null);
     } catch {
@@ -443,9 +487,13 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       leagueTableUrl,
       setLeagueTableUrl,
       leagueTableRows,
+      leagueMatches,
+      leagueCompetitionName,
       leagueTableLastFetched,
       leagueTableFetchError,
       refreshLeagueTable,
+      coachProfile,
+      setCoachProfile,
     }),
     [
       hydrated,
@@ -469,9 +517,13 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       leagueTableUrl,
       setLeagueTableUrl,
       leagueTableRows,
+      leagueMatches,
+      leagueCompetitionName,
       leagueTableLastFetched,
       leagueTableFetchError,
       refreshLeagueTable,
+      coachProfile,
+      setCoachProfile,
     ]
   );
 

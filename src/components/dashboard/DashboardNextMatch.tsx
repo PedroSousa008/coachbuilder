@@ -5,17 +5,21 @@ import { useMemo } from "react";
 import { Badge } from "@/components/ui/Badge";
 import { useAppData } from "@/contexts/AppDataContext";
 import { formatKickoff } from "@/lib/format";
+import { resolveNextMatchForCoach } from "@/lib/next-match";
 
 export function DashboardNextMatch() {
-  const { fixtures, hydrated } = useAppData();
+  const { fixtures, leagueMatches, leagueCompetitionName, coachProfile, hydrated } = useAppData();
 
-  const next = useMemo(() => {
-    const t = Date.now() - 3600000;
-    const upcoming = fixtures
-      .filter((f) => new Date(f.kickoff).getTime() >= t)
-      .sort((a, b) => new Date(a.kickoff).getTime() - new Date(b.kickoff).getTime());
-    return upcoming[0];
-  }, [fixtures]);
+  const next = useMemo(
+    () =>
+      resolveNextMatchForCoach({
+        coachClub: coachProfile.club,
+        leagueCompetitionName,
+        leagueMatches,
+        manualFixtures: fixtures,
+      }),
+    [fixtures, leagueMatches, leagueCompetitionName, coachProfile.club]
+  );
 
   if (!hydrated) {
     return <p className="text-sm text-zinc-500">Loading…</p>;
@@ -24,9 +28,12 @@ export function DashboardNextMatch() {
   if (!next) {
     return (
       <>
-        <p className="text-sm text-zinc-400">No upcoming fixture yet.</p>
+        <p className="text-sm text-zinc-400">
+          No upcoming fixture yet. Set your club name under Profile (to match league imports), refresh the league URL on
+          Calendar, or add a manual fixture.
+        </p>
         <Link href="/app/calendar" className="mt-6 inline-block text-sm font-medium text-accent hover:underline">
-          Add fixtures in Calendar
+          Calendar &amp; league
         </Link>
       </>
     );
@@ -36,6 +43,11 @@ export function DashboardNextMatch() {
     <>
       <p className="text-lg font-semibold text-white">{next.opponent}</p>
       <p className="mt-1 text-sm text-zinc-500">{next.competition}</p>
+      <div className="mt-2 flex flex-wrap gap-2">
+        {next.source === "league" && (
+          <Badge variant="muted">League sync</Badge>
+        )}
+      </div>
       <div className="mt-4 flex flex-wrap gap-2">
         <Badge variant="accent">{next.venue === "home" ? "Home" : "Away"}</Badge>
         <Badge variant="default">{formatKickoff(next.kickoff)}</Badge>

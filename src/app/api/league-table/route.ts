@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { parseStandingsFromHtml, isAllowedLeagueTableUrl } from "@/lib/league-table-parse";
+import { extractCompetitionLabelFromHtml, parseFpfMatchesFromHtml } from "@/lib/league-import-fpf";
 
 export const maxDuration = 30;
 
@@ -43,8 +44,10 @@ export async function POST(req: Request) {
 
     const html = await res.text();
     const rows = parseStandingsFromHtml(html);
+    const matches = parseFpfMatchesFromHtml(html, url);
+    const competitionName = extractCompetitionLabelFromHtml(html);
 
-    if (rows.length === 0) {
+    if (rows.length === 0 && matches.length === 0) {
       return NextResponse.json({
         ok: false,
         error:
@@ -55,6 +58,8 @@ export async function POST(req: Request) {
     return NextResponse.json({
       ok: true,
       rows,
+      matches,
+      competitionName: competitionName ?? undefined,
       fetchedAt: new Date().toISOString(),
     });
   } catch (e) {

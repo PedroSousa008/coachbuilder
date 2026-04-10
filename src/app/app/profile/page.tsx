@@ -1,10 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { mockCoach } from "@/data/mock";
+import { useMemo } from "react";
+import { useAppData } from "@/contexts/AppDataContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
+import { mockCoach } from "@/data/mock";
 
 function initialsFromName(full: string) {
   const parts = full.trim().split(/\s+/).filter(Boolean);
@@ -16,12 +16,9 @@ function initialsFromName(full: string) {
 }
 
 export default function ProfilePage() {
-  const [name, setName] = useState(mockCoach.name);
-  const [club, setClub] = useState(mockCoach.club);
-  const [role, setRole] = useState(mockCoach.role);
-  const [email, setEmail] = useState(mockCoach.email);
+  const { coachProfile, setCoachProfile } = useAppData();
 
-  const avatarLetters = useMemo(() => initialsFromName(name), [name]);
+  const avatarLetters = useMemo(() => initialsFromName(coachProfile.name), [coachProfile.name]);
 
   return (
     <div className="mx-auto max-w-3xl space-y-8">
@@ -31,10 +28,10 @@ export default function ProfilePage() {
         </div>
         <div>
           <h2 className="font-display text-2xl font-semibold text-white">
-            {name.trim() || "Your name"}
+            {coachProfile.name.trim() || "Your name"}
           </h2>
           <p className="text-sm text-zinc-500">
-            {club.trim() || "Your club"} · {role}
+            {coachProfile.club.trim() || "Your club"} · {coachProfile.role}
           </p>
           <div className="mt-3">
             <Badge variant={mockCoach.plan === "pro" ? "accent" : "default"}>
@@ -60,7 +57,10 @@ export default function ProfilePage() {
       <Card>
         <CardHeader>
           <CardTitle>Profile</CardTitle>
-          <p className="text-sm text-zinc-500">Editable fields — saves when you connect a backend.</p>
+          <p className="text-sm text-zinc-500">
+            Saved on this device. Your <span className="text-zinc-400">Club</span> name is matched (with fuzzy text
+            matching) against league imports so “next match” and calendar can follow your real team.
+          </p>
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
@@ -69,21 +69,25 @@ export default function ProfilePage() {
             </label>
             <input
               id="p-name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
+              value={coachProfile.name}
+              onChange={(e) => setCoachProfile({ name: e.target.value })}
               className="mt-1.5 h-11 w-full rounded-xl border border-surface-border bg-surface-raised px-4 text-sm text-white focus:border-accent/50 focus:outline-none focus:ring-2 focus:ring-accent/20"
             />
           </div>
           <div>
             <label className="text-xs font-medium text-zinc-500" htmlFor="p-club">
-              Club
+              Club (your team name)
             </label>
             <input
               id="p-club"
-              value={club}
-              onChange={(e) => setClub(e.target.value)}
+              value={coachProfile.club}
+              onChange={(e) => setCoachProfile({ club: e.target.value })}
+              placeholder="e.g. Ninense, Fafe, Moreirense"
               className="mt-1.5 h-11 w-full rounded-xl border border-surface-border bg-surface-raised px-4 text-sm text-white focus:border-accent/50 focus:outline-none focus:ring-2 focus:ring-accent/20"
             />
+            <p className="mt-1.5 text-xs text-zinc-600">
+              Does not need to match the official spelling exactly — we match against imported standings and fixtures.
+            </p>
           </div>
           <div>
             <label className="text-xs font-medium text-zinc-500" htmlFor="p-role">
@@ -91,8 +95,8 @@ export default function ProfilePage() {
             </label>
             <input
               id="p-role"
-              value={role}
-              onChange={(e) => setRole(e.target.value)}
+              value={coachProfile.role}
+              onChange={(e) => setCoachProfile({ role: e.target.value })}
               className="mt-1.5 h-11 w-full rounded-xl border border-surface-border bg-surface-raised px-4 text-sm text-white focus:border-accent/50 focus:outline-none focus:ring-2 focus:ring-accent/20"
             />
           </div>
@@ -103,14 +107,11 @@ export default function ProfilePage() {
             <input
               id="p-email"
               type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              value={coachProfile.email}
+              onChange={(e) => setCoachProfile({ email: e.target.value })}
               className="mt-1.5 h-11 w-full rounded-xl border border-surface-border bg-surface-raised px-4 text-sm text-white focus:border-accent/50 focus:outline-none focus:ring-2 focus:ring-accent/20"
             />
           </div>
-          <Button type="button" variant="secondary" disabled>
-            Save changes (demo)
-          </Button>
         </CardContent>
       </Card>
     </div>

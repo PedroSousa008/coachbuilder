@@ -151,3 +151,23 @@ export interface LeagueTableRow {
   points?: number;
   cells?: string[];
 }
+
+/** Imported from federation pages (e.g. FPF resultados) — past and future fixtures. */
+export interface LeagueImportedMatch {
+  id: string;
+  matchId?: string;
+  homeTeam: string;
+  awayTeam: string;
+  kickoff: string;
+  homeScore?: number;
+  awayScore?: number;
+  venue?: string;
+  sourceUrl?: string;
+}
+
+export interface CoachProfileState {
+  name: string;
+  club: string;
+  role: string;
+  email: string;
+}

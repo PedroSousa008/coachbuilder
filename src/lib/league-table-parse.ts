@@ -39,6 +39,11 @@ function parseFpfClassificationGrid($: ReturnType<typeof cheerio.load>): LeagueT
       [played, won, drawn, lost, goalsFor, goalsAgainst] = validNums.slice(0, 6);
     }
 
+    let goalDifference: number | undefined;
+    if (goalsFor !== undefined && goalsAgainst !== undefined) {
+      goalDifference = goalsFor - goalsAgainst;
+    }
+
     parsed.push({
       position,
       team: team.slice(0, 80),
@@ -48,6 +53,7 @@ function parseFpfClassificationGrid($: ReturnType<typeof cheerio.load>): LeagueT
       lost,
       goalsFor,
       goalsAgainst,
+      goalDifference,
       points,
       cells,
     });

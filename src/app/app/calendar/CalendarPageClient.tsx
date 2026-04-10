@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Calendar, RefreshCw, Table2, Trash2, Pencil } from "lucide-react";
-import type { MatchFixture } from "@/types";
+import type { LeagueImportedMatch, MatchFixture } from "@/types";
 import { useAppData } from "@/contexts/AppDataContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Input } from "@/components/ui/Input";
 import { FixtureFormModal } from "@/components/calendar/FixtureFormModal";
 import { formatKickoff } from "@/lib/format";
+import { teamNamesMatch } from "@/lib/team-match";
 
 function formatKickoffShort(iso: string) {
   const d = new Date(iso);
@@ -31,9 +32,12 @@ export function CalendarPageClient() {
     leagueTableUrl,
     setLeagueTableUrl,
     leagueTableRows,
+    leagueMatches,
+    leagueCompetitionName,
     leagueTableLastFetched,
     leagueTableFetchError,
     refreshLeagueTable,
+    coachProfile,
     hydrated,
   } = useAppData();
 
@@ -49,7 +53,7 @@ export function CalendarPageClient() {
   useEffect(() => {
     if (!hydrated || !leagueTableUrl.trim()) return;
     void refreshLeagueTable();
-  }, [hydrated, leagueTableUrl]);
+  }, [hydrated, leagueTableUrl, refreshLeagueTable]);
 
   useEffect(() => {
     if (!leagueTableUrl.trim()) return;
@@ -72,6 +76,23 @@ export function CalendarPageClient() {
     return { upcoming: u, past: p };
   }, [fixtures]);
 
+  const { leagueUpcoming, leaguePast } = useMemo(() => {
+    const cut = Date.now() - 3600000;
+    const u: LeagueImportedMatch[] = [];
+    const pa: LeagueImportedMatch[] = [];
+    for (const m of leagueMatches) {
+      const t = new Date(m.kickoff).getTime();
+      if (t >= cut) u.push(m);
+      else pa.push(m);
+    }
+    u.sort((a, b) => new Date(a.kickoff).getTime() - new Date(b.kickoff).getTime());
+    pa.sort((a, b) => new Date(b.kickoff).getTime() - new Date(a.kickoff).getTime());
+    return { leagueUpcoming: u, leaguePast: pa };
+  }, [leagueMatches]);
+
+  const showFullStats = leagueTableRows.some((r) => r.played != null);
+  const club = coachProfile.club.trim();
+
   const saveUrl = () => {
     setLeagueTableUrl(urlDraft.trim());
   };
@@ -90,7 +111,8 @@ export function CalendarPageClient() {
       <div>
         <h2 className="font-display text-xl font-semibold text-white">Calendar & matchweek</h2>
         <p className="mt-1 text-sm text-zinc-500">
-          Plan fixtures, then link your league’s public standings page — we’ll try to keep the table in sync.
+          Manual entries, imported league fixtures (FPF), and league table — your “next match” follows the club name in
+          Profile.
         </p>
       </div>
 
@@ -112,9 +134,9 @@ export function CalendarPageClient() {
           <div>
             <CardTitle className="flex items-center gap-2">
               <Calendar className="h-5 w-5 text-accent" strokeWidth={1.75} />
-              Next fixtures
+              Your fixtures (manual)
             </CardTitle>
-            <CardDescription>Home or away matches — same data powers your dashboard “Next match”.</CardDescription>
+            <CardDescription>Added by you — combined with league imports for the dashboard next match.</CardDescription>
           </div>
           <Button
             type="button"
@@ -128,7 +150,7 @@ export function CalendarPageClient() {
         </CardHeader>
         <CardContent className="space-y-8">
           {upcoming.length === 0 ? (
-            <p className="text-sm text-zinc-500">No upcoming fixtures. Add your next match above.</p>
+            <p className="text-sm text-zinc-500">No upcoming manual fixtures.</p>
           ) : (
             <ul className="space-y-3">
               {upcoming.map((f) => (
@@ -170,7 +192,7 @@ export function CalendarPageClient() {
 
           {past.length > 0 && (
             <div>
-              <p className="mb-2 text-xs font-medium uppercase tracking-wider text-zinc-600">Past</p>
+              <p className="mb-2 text-xs font-medium uppercase tracking-wider text-zinc-600">Past (manual)</p>
               <ul className="space-y-2 opacity-90">
                 {past.slice(0, 8).map((f) => (
                   <li key={f.id} className="flex justify-between gap-2 text-sm text-zinc-500">
@@ -185,6 +207,73 @@ export function CalendarPageClient() {
           )}
         </CardContent>
       </Card>
+
+      {leagueMatches.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>League schedule (imported)</CardTitle>
+            <CardDescription>
+              {leagueCompetitionName ?? "Competition"} — past and future games from the league page. Highlighted rows
+              match your Profile club name when fuzzy text matching succeeds.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {leagueUpcoming.length > 0 && (
+              <div>
+                <p className="mb-2 text-xs font-medium uppercase tracking-wider text-zinc-500">Upcoming</p>
+                <ul className="space-y-2">
+                  {leagueUpcoming.map((m) => {
+                    const mine = club && (teamNamesMatch(club, m.homeTeam) || teamNamesMatch(club, m.awayTeam));
+                    return (
+                      <li
+                        key={m.id}
+                        className={`rounded-xl border px-4 py-3 text-sm ${
+                          mine ? "border-accent/40 bg-accent/5" : "border-surface-border bg-surface-raised/30"
+                        }`}
+                      >
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <span className="text-white">
+                            <span className={mine && teamNamesMatch(club, m.homeTeam) ? "text-accent" : ""}>
+                              {m.homeTeam}
+                            </span>
+                            {" vs "}
+                            <span className={mine && teamNamesMatch(club, m.awayTeam) ? "text-accent" : ""}>
+                              {m.awayTeam}
+                            </span>
+                          </span>
+                          {mine && <Badge variant="accent">Your team</Badge>}
+                        </div>
+                        <p className="mt-1 text-xs text-zinc-500">{formatKickoffShort(m.kickoff)}</p>
+                        {m.venue && <p className="mt-0.5 text-xs text-zinc-600">{m.venue}</p>}
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
+            {leaguePast.length > 0 && (
+              <div>
+                <p className="mb-2 text-xs font-medium uppercase tracking-wider text-zinc-600">Past</p>
+                <ul className="space-y-2 opacity-95">
+                  {leaguePast.slice(0, 24).map((m) => {
+                    const finished = m.homeScore !== undefined && m.awayScore !== undefined;
+                    const mine = club && (teamNamesMatch(club, m.homeTeam) || teamNamesMatch(club, m.awayTeam));
+                    return (
+                      <li key={m.id} className="flex flex-wrap justify-between gap-2 text-sm text-zinc-500">
+                        <span>
+                          {m.homeTeam} {finished ? `${m.homeScore}–${m.awayScore}` : "—"} {m.awayTeam}
+                          {mine ? " · you" : ""}
+                        </span>
+                        <span className="shrink-0">{formatKickoff(m.kickoff)}</span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>
@@ -235,22 +324,58 @@ export function CalendarPageClient() {
           )}
           {leagueTableRows.length > 0 ? (
             <div className="overflow-x-auto rounded-xl border border-surface-border">
-              <table className="w-full min-w-[480px] text-left text-sm">
+              <table className="w-full min-w-[640px] text-left text-sm">
                 <thead>
                   <tr className="border-b border-surface-border bg-zinc-900/50 text-xs uppercase tracking-wider text-zinc-500">
-                    <th className="px-4 py-3 font-medium">#</th>
-                    <th className="px-4 py-3 font-medium">Team</th>
-                    <th className="px-4 py-3 font-medium text-right">Pts</th>
+                    <th className="px-3 py-3 font-medium">#</th>
+                    <th className="px-3 py-3 font-medium">Team</th>
+                    {showFullStats && (
+                      <>
+                        <th className="px-2 py-3 font-medium text-center" title="Jogos">
+                          J
+                        </th>
+                        <th className="px-2 py-3 font-medium text-center" title="Vitórias">
+                          V
+                        </th>
+                        <th className="px-2 py-3 font-medium text-center" title="Empates">
+                          E
+                        </th>
+                        <th className="px-2 py-3 font-medium text-center" title="Derrotas">
+                          D
+                        </th>
+                        <th className="px-2 py-3 font-medium text-center" title="Golos marcados">
+                          GM
+                        </th>
+                        <th className="px-2 py-3 font-medium text-center" title="Golos sofridos">
+                          GS
+                        </th>
+                        <th className="px-2 py-3 font-medium text-center" title="Diferença de golos">
+                          DG
+                        </th>
+                      </>
+                    )}
+                    <th className="px-3 py-3 font-medium text-right">Pts</th>
                   </tr>
                 </thead>
                 <tbody>
                   {leagueTableRows.map((row, i) => (
                     <tr key={`${row.team}-${i}`} className="border-b border-surface-border/60 last:border-0">
-                      <td className="px-4 py-2.5 text-zinc-400">{row.position}</td>
-                      <td className="px-4 py-2.5 font-medium text-white">{row.team}</td>
-                      <td className="px-4 py-2.5 text-right tabular-nums text-zinc-300">
-                        {row.points ?? "—"}
-                      </td>
+                      <td className="px-3 py-2.5 text-zinc-400">{row.position}</td>
+                      <td className="px-3 py-2.5 font-medium text-white">{row.team}</td>
+                      {showFullStats && (
+                        <>
+                          <td className="px-2 py-2.5 text-center tabular-nums text-zinc-400">{row.played ?? "—"}</td>
+                          <td className="px-2 py-2.5 text-center tabular-nums text-zinc-400">{row.won ?? "—"}</td>
+                          <td className="px-2 py-2.5 text-center tabular-nums text-zinc-400">{row.drawn ?? "—"}</td>
+                          <td className="px-2 py-2.5 text-center tabular-nums text-zinc-400">{row.lost ?? "—"}</td>
+                          <td className="px-2 py-2.5 text-center tabular-nums text-zinc-400">{row.goalsFor ?? "—"}</td>
+                          <td className="px-2 py-2.5 text-center tabular-nums text-zinc-400">{row.goalsAgainst ?? "—"}</td>
+                          <td className="px-2 py-2.5 text-center tabular-nums text-zinc-400">
+                            {row.goalDifference ?? "—"}
+                          </td>
+                        </>
+                      )}
+                      <td className="px-3 py-2.5 text-right tabular-nums text-zinc-300">{row.points ?? "—"}</td>
                     </tr>
                   ))}
                 </tbody>
