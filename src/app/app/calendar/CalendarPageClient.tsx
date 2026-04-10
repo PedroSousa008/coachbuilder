@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Calendar, RefreshCw, Table2, Trash2, Pencil } from "lucide-react";
+import { Calendar, ChevronDown, RefreshCw, Table2, Trash2, Pencil } from "lucide-react";
 import type { LeagueImportedMatch, MatchFixture } from "@/types";
 import { useAppData } from "@/contexts/AppDataContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
@@ -12,6 +12,7 @@ import { FixtureFormModal } from "@/components/calendar/FixtureFormModal";
 import { formatKickoff } from "@/lib/format";
 import { collectUniqueTeamNames, pickBestTeamMatch, userClubMatchesOfficialTeam } from "@/lib/team-match";
 import { inferCompetitionKind, type CompetitionKind } from "@/lib/competition-kind";
+import { dedupeMatches } from "@/lib/league-match-dedupe";
 
 function formatKickoffShort(iso: string) {
   const d = new Date(iso);
@@ -91,6 +92,8 @@ export function CalendarPageClient() {
   const [editing, setEditing] = useState<MatchFixture | null>(null);
   const [urlDraft, setUrlDraft] = useState("");
   const [refreshing, setRefreshing] = useState(false);
+  const [nextSectionOpen, setNextSectionOpen] = useState(true);
+  const [previousSectionOpen, setPreviousSectionOpen] = useState(true);
 
   useEffect(() => {
     setUrlDraft(leagueTableUrl);
@@ -109,9 +112,11 @@ export function CalendarPageClient() {
     return () => clearInterval(id);
   }, [leagueTableUrl, refreshLeagueTable]);
 
+  const leagueMatchesDeduped = useMemo(() => dedupeMatches(leagueMatches), [leagueMatches]);
+
   const candidates = useMemo(
-    () => collectUniqueTeamNames({ tableRows: leagueTableRows, matches: leagueMatches }),
-    [leagueTableRows, leagueMatches]
+    () => collectUniqueTeamNames({ tableRows: leagueTableRows, matches: leagueMatchesDeduped }),
+    [leagueTableRows, leagueMatchesDeduped]
   );
 
   const club = coachProfile.club.trim();
@@ -134,7 +139,7 @@ export function CalendarPageClient() {
     const cut = Date.now() - 3600000;
 
     if (club) {
-      for (const m of leagueMatches) {
+      for (const m of leagueMatchesDeduped) {
         const mine =
           userClubMatchesOfficialTeam(club, m.homeTeam, candidates) ||
           userClubMatchesOfficialTeam(club, m.awayTeam, candidates);
@@ -148,7 +153,7 @@ export function CalendarPageClient() {
         }
       }
     } else {
-      for (const m of leagueMatches) {
+      for (const m of leagueMatchesDeduped) {
         if (isImportedPlayed(m)) {
           prev.push({ kind: "imported-neutral", match: m, line: neutralResultLine(m) });
         } else {
@@ -175,7 +180,7 @@ export function CalendarPageClient() {
     });
 
     return { nextGameRows: next, previousGameRows: prev };
-  }, [leagueMatches, fixtures, club, candidates, pageScheduleKind]);
+  }, [leagueMatchesDeduped, fixtures, club, candidates, pageScheduleKind]);
 
   const showFullStats = leagueTableRows.some((r) => r.played != null);
 
@@ -248,12 +253,12 @@ export function CalendarPageClient() {
           </Button>
         </CardHeader>
         <CardContent className="space-y-10">
-          {!club && leagueMatches.length > 0 && (
+          {!club && leagueMatchesDeduped.length > 0 && (
             <p className="text-sm text-zinc-400">
               Showing every fixture from the league import. Add your club under Profile to filter to your team only.
             </p>
           )}
-          {!club && leagueMatches.length === 0 && (
+          {!club && leagueMatchesDeduped.length === 0 && (
             <p className="text-sm text-amber-200/90">
               Add your club in Profile to highlight your matches — or leave it blank to see all fixtures once the league
               URL is refreshed.
@@ -261,10 +266,25 @@ export function CalendarPageClient() {
           )}
 
           <div>
-            <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-zinc-400">Next games</p>
-            {nextGameRows.length === 0 ? (
+            <button
+              type="button"
+              onClick={() => setNextSectionOpen((o) => !o)}
+              className="mb-3 flex w-full items-center justify-between gap-2 rounded-lg py-1 text-left text-xs font-semibold uppercase tracking-wider text-zinc-400 hover:text-zinc-200"
+              aria-expanded={nextSectionOpen}
+            >
+              <span>
+                Next games
+                {nextGameRows.length > 0 ? ` (${nextGameRows.length})` : ""}
+              </span>
+              <ChevronDown
+                className={`h-4 w-4 shrink-0 transition-transform ${nextSectionOpen ? "rotate-0" : "-rotate-90"}`}
+                aria-hidden
+              />
+            </button>
+            {nextSectionOpen &&
+              (nextGameRows.length === 0 ? (
               <p className="text-sm text-zinc-500">
-                {leagueMatches.length === 0 && leagueTableUrl.trim()
+                {leagueMatchesDeduped.length === 0 && leagueTableUrl.trim()
                   ? "No fixtures imported yet — use Refresh now on the league table below."
                   : "No upcoming games yet."}
               </p>
@@ -357,14 +377,29 @@ export function CalendarPageClient() {
                   );
                 })}
               </ul>
-            )}
+            ))}
           </div>
 
           <div>
-            <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-zinc-400">Previous games</p>
-            {previousGameRows.length === 0 ? (
+            <button
+              type="button"
+              onClick={() => setPreviousSectionOpen((o) => !o)}
+              className="mb-3 flex w-full items-center justify-between gap-2 rounded-lg py-1 text-left text-xs font-semibold uppercase tracking-wider text-zinc-400 hover:text-zinc-200"
+              aria-expanded={previousSectionOpen}
+            >
+              <span>
+                Previous games
+                {previousGameRows.length > 0 ? ` (${previousGameRows.length})` : ""}
+              </span>
+              <ChevronDown
+                className={`h-4 w-4 shrink-0 transition-transform ${previousSectionOpen ? "rotate-0" : "-rotate-90"}`}
+                aria-hidden
+              />
+            </button>
+            {previousSectionOpen &&
+              (previousGameRows.length === 0 ? (
               <p className="text-sm text-zinc-500">
-                {leagueMatches.length === 0 && leagueTableUrl.trim()
+                {leagueMatchesDeduped.length === 0 && leagueTableUrl.trim()
                   ? "No finished games with a result in the import yet — use Refresh now on the league table."
                   : "No finished games with a result yet."}
               </p>
@@ -422,7 +457,7 @@ export function CalendarPageClient() {
                   );
                 })}
               </ul>
-            )}
+            ))}
           </div>
         </CardContent>
       </Card>

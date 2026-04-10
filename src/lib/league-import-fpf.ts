@@ -1,5 +1,8 @@
 import * as cheerio from "cheerio";
 import type { LeagueImportedMatch } from "@/types";
+import { dedupeMatches } from "@/lib/league-match-dedupe";
+
+export { dedupeMatches };
 
 const MONTHS_PT: Record<string, number> = {
   jan: 0,
@@ -68,19 +71,6 @@ export function extractFpfFixtureIdsFromHtml(html: string): string[] {
     ids.push(m[1]!);
   }
   return [...new Set(ids)];
-}
-
-export function dedupeMatches(matches: LeagueImportedMatch[]): LeagueImportedMatch[] {
-  const seen = new Set<string>();
-  const out: LeagueImportedMatch[] = [];
-  for (const m of matches) {
-    const key = m.matchId ? `id:${m.matchId}` : `${m.homeTeam}|${m.awayTeam}|${m.kickoff}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    out.push(m);
-  }
-  out.sort((a, b) => new Date(a.kickoff).getTime() - new Date(b.kickoff).getTime());
-  return out;
 }
 
 /**
