@@ -63,6 +63,7 @@ export function CalendarPageClient() {
     leagueTableFetchError,
     refreshLeagueTable,
     coachProfile,
+    hydrated,
   } = useAppData();
 
   const [fixtureModalOpen, setFixtureModalOpen] = useState(false);
