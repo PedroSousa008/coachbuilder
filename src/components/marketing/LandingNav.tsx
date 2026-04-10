@@ -23,13 +23,13 @@ export function LandingNav() {
         </nav>
         <div className="flex items-center gap-2">
           <Link
-            href="/app/messages"
+            href="/login"
             className="hidden rounded-xl px-3 py-2 text-sm text-zinc-400 hover:text-white sm:block"
           >
             Log in
           </Link>
           <Link
-            href="/app"
+            href="/signup"
             className="inline-flex h-9 items-center justify-center rounded-xl bg-accent px-4 text-sm font-medium text-zinc-950 transition-colors hover:bg-accent-muted"
           >
             Start free

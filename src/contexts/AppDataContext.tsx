@@ -28,18 +28,8 @@ import { tallyForTactic } from "@/lib/tactics-match-stats";
 import { mockCoach } from "@/data/mock";
 import { dedupeMatches } from "@/lib/league-match-dedupe";
 import { formatPlayerPositions } from "@/lib/player-positions";
-
-const LS_PLAYERS = "coachbuilder-players";
-const LS_CONVS = "coachbuilder-conversations";
-const LS_MSGS = "coachbuilder-messages";
-const LS_SESSIONS = "coachbuilder-sessions";
-const LS_TRAINING_PLAYERS = "coachbuilder-training-session-players";
-const LS_FIXTURES = "coachbuilder-fixtures";
-const LS_LEAGUE = "coachbuilder-league";
-const LS_COACH_PROFILE = "coachbuilder-coach-profile";
-const LS_TACTICS = "coachbuilder-tactics";
-const LS_TACTIC_MATCHES = "coachbuilder-tactic-matches";
-const LS_TACTIC_PLAYER_NOTES = "coachbuilder-tactic-player-notes";
+import { getAllUserDataKeys, migrateLegacyDataIfNeeded } from "@/lib/user-storage-keys";
+import { useAuth } from "@/contexts/AuthContext";
 
 function tacticPlayerNoteKey(tacticId: string, playerId: string) {
   return `${tacticId}::${playerId}`;
@@ -188,6 +178,9 @@ type AppDataContextValue = {
 const AppDataContext = createContext<AppDataContextValue | null>(null);
 
 export function AppDataProvider({ children }: { children: ReactNode }) {
+  const { user, authReady } = useAuth();
+  const ks = useMemo(() => (user?.id ? getAllUserDataKeys(user.id) : null), [user?.id]);
+
   const [hydrated, setHydrated] = useState(false);
   const [players, setPlayers] = useState<Player[]>([]);
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -207,71 +200,96 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [tacticPlayerNotes, setTacticPlayerNotesState] = useState<Record<string, TacticPlayerAnalysisNote>>({});
 
   useEffect(() => {
-    const loadedPlayers = loadJSON<Player[]>(LS_PLAYERS, []);
-    let loadedConvs = loadJSON<Conversation[]>(LS_CONVS, []);
+    if (!authReady) return;
+
+    if (!user?.id || !ks) {
+      setPlayers([]);
+      setConversations([]);
+      setMessagesByConv({});
+      setTrainingSessions([]);
+      setTrainingPlayerIdsBySession({});
+      setFixtures([]);
+      setLeagueTableUrlState("");
+      setLeagueTableRows([]);
+      setLeagueMatches([]);
+      setLeagueCompetitionName(null);
+      setLeagueTableLastFetched(null);
+      setLeagueTableFetchError(null);
+      setCoachProfileState(defaultCoachProfile());
+      setSavedTactics([]);
+      setTacticMatches([]);
+      setTacticPlayerNotesState({});
+      setHydrated(true);
+      return;
+    }
+
+    migrateLegacyDataIfNeeded(user.id);
+
+    const loadedPlayers = loadJSON<Player[]>(ks.players, []);
+    let loadedConvs = loadJSON<Conversation[]>(ks.conversations, []);
     if (!loadedConvs.some((c) => c.type === "group")) {
       loadedConvs = [defaultGroup(), ...loadedConvs];
     }
-    const loadedMsgs = loadJSON<Record<string, Message[]>>(LS_MSGS, {});
+    const loadedMsgs = loadJSON<Record<string, Message[]>>(ks.messages, {});
     if (!loadedMsgs[SQUAD_GROUP_ID]) {
       loadedMsgs[SQUAD_GROUP_ID] = [];
     }
     setPlayers(loadedPlayers);
     setConversations(loadedConvs);
     setMessagesByConv(loadedMsgs);
-    setTrainingSessions(loadJSON<TrainingSession[]>(LS_SESSIONS, []));
-    setTrainingPlayerIdsBySession(loadJSON<Record<string, string[]>>(LS_TRAINING_PLAYERS, {}));
-    setFixtures(loadJSON<MatchFixture[]>(LS_FIXTURES, []));
+    setTrainingSessions(loadJSON<TrainingSession[]>(ks.sessions, []));
+    setTrainingPlayerIdsBySession(loadJSON<Record<string, string[]>>(ks.trainingPlayers, {}));
+    setFixtures(loadJSON<MatchFixture[]>(ks.fixtures, []));
     setCoachProfileState({
       ...defaultCoachProfile(),
-      ...loadJSON<Partial<CoachProfileState>>(LS_COACH_PROFILE, {}),
+      ...loadJSON<Partial<CoachProfileState>>(ks.coachProfile, {}),
     });
-    const league = loadJSON<Partial<LeaguePersist>>(LS_LEAGUE, {});
+    const league = loadJSON<Partial<LeaguePersist>>(ks.league, {});
     setLeagueTableUrlState(league.url ?? "");
     setLeagueTableRows(league.rows ?? []);
     setLeagueMatches(dedupeMatches(league.matches ?? []));
     setLeagueCompetitionName(league.competitionName ?? null);
     setLeagueTableLastFetched(league.lastFetched ?? null);
     setLeagueTableFetchError(league.lastError ?? null);
-    setSavedTactics(loadJSON<Tactic[]>(LS_TACTICS, []));
-    setTacticMatches(loadJSON<TacticMatch[]>(LS_TACTIC_MATCHES, []));
-    setTacticPlayerNotesState(loadJSON<Record<string, TacticPlayerAnalysisNote>>(LS_TACTIC_PLAYER_NOTES, {}));
+    setSavedTactics(loadJSON<Tactic[]>(ks.tactics, []));
+    setTacticMatches(loadJSON<TacticMatch[]>(ks.tacticMatches, []));
+    setTacticPlayerNotesState(loadJSON<Record<string, TacticPlayerAnalysisNote>>(ks.tacticPlayerNotes, {}));
     setHydrated(true);
-  }, []);
+  }, [authReady, user?.id, ks]);
 
   useEffect(() => {
-    if (!hydrated) return;
-    saveJSON(LS_PLAYERS, players);
-  }, [players, hydrated]);
+    if (!hydrated || !ks) return;
+    saveJSON(ks.players, players);
+  }, [players, hydrated, ks]);
 
   useEffect(() => {
-    if (!hydrated) return;
-    saveJSON(LS_CONVS, conversations);
-  }, [conversations, hydrated]);
+    if (!hydrated || !ks) return;
+    saveJSON(ks.conversations, conversations);
+  }, [conversations, hydrated, ks]);
 
   useEffect(() => {
-    if (!hydrated) return;
-    saveJSON(LS_MSGS, messagesByConv);
-  }, [messagesByConv, hydrated]);
+    if (!hydrated || !ks) return;
+    saveJSON(ks.messages, messagesByConv);
+  }, [messagesByConv, hydrated, ks]);
 
   useEffect(() => {
-    if (!hydrated) return;
-    saveJSON(LS_SESSIONS, trainingSessions);
-  }, [trainingSessions, hydrated]);
+    if (!hydrated || !ks) return;
+    saveJSON(ks.sessions, trainingSessions);
+  }, [trainingSessions, hydrated, ks]);
 
   useEffect(() => {
-    if (!hydrated) return;
-    saveJSON(LS_TRAINING_PLAYERS, trainingPlayerIdsBySession);
-  }, [trainingPlayerIdsBySession, hydrated]);
+    if (!hydrated || !ks) return;
+    saveJSON(ks.trainingPlayers, trainingPlayerIdsBySession);
+  }, [trainingPlayerIdsBySession, hydrated, ks]);
 
   useEffect(() => {
-    if (!hydrated) return;
-    saveJSON(LS_FIXTURES, fixtures);
-  }, [fixtures, hydrated]);
+    if (!hydrated || !ks) return;
+    saveJSON(ks.fixtures, fixtures);
+  }, [fixtures, hydrated, ks]);
 
   useEffect(() => {
-    if (!hydrated) return;
-    saveJSON(LS_LEAGUE, {
+    if (!hydrated || !ks) return;
+    saveJSON(ks.league, {
       url: leagueTableUrl,
       rows: leagueTableRows,
       matches: leagueMatches,
@@ -281,6 +299,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     } satisfies LeaguePersist);
   }, [
     hydrated,
+    ks,
     leagueTableUrl,
     leagueTableRows,
     leagueMatches,
@@ -290,28 +309,28 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   ]);
 
   useEffect(() => {
-    if (!hydrated) return;
-    saveJSON(LS_COACH_PROFILE, coachProfile);
-  }, [coachProfile, hydrated]);
+    if (!hydrated || !ks) return;
+    saveJSON(ks.coachProfile, coachProfile);
+  }, [coachProfile, hydrated, ks]);
 
   useEffect(() => {
-    if (!hydrated) return;
-    saveJSON(LS_TACTICS, savedTactics);
-  }, [savedTactics, hydrated]);
+    if (!hydrated || !ks) return;
+    saveJSON(ks.tactics, savedTactics);
+  }, [savedTactics, hydrated, ks]);
 
   useEffect(() => {
-    if (!hydrated) return;
-    saveJSON(LS_TACTIC_MATCHES, tacticMatches);
-  }, [tacticMatches, hydrated]);
+    if (!hydrated || !ks) return;
+    saveJSON(ks.tacticMatches, tacticMatches);
+  }, [tacticMatches, hydrated, ks]);
 
   useEffect(() => {
-    if (!hydrated) return;
-    saveJSON(LS_TACTIC_PLAYER_NOTES, tacticPlayerNotes);
-  }, [tacticPlayerNotes, hydrated]);
+    if (!hydrated || !ks) return;
+    saveJSON(ks.tacticPlayerNotes, tacticPlayerNotes);
+  }, [tacticPlayerNotes, hydrated, ks]);
 
   /** Mantém `matchesUsed` / vitórias / empates / derrotas nas táticas alinhados com os jogos registados. */
   useEffect(() => {
-    if (!hydrated) return;
+    if (!hydrated || !ks) return;
     setSavedTactics((prev) =>
       prev.map((t) => {
         const tally = tallyForTactic(tacticMatches, t.id);

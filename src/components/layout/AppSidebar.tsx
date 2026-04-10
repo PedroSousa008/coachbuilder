@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard,
   GitBranch,
@@ -12,7 +12,9 @@ import {
   Users,
   UserCircle,
   Settings,
+  LogOut,
 } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 
 const nav = [
@@ -29,6 +31,8 @@ const nav = [
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+  const { user, logout } = useAuth();
 
   return (
     <aside className="fixed left-0 top-0 z-40 hidden h-screen w-64 flex-col border-r border-surface-border bg-[#0c1014]/95 backdrop-blur-xl lg:flex">
@@ -64,7 +68,24 @@ export function AppSidebar() {
         })}
       </nav>
       <div className="border-t border-surface-border p-4">
-        <p className="text-xs text-zinc-500">Pro unlocks tactics, training, video &amp; team tools.</p>
+        {user ? (
+          <p className="truncate text-[11px] text-zinc-400" title={user.email}>
+            {user.email}
+          </p>
+        ) : null}
+        <button
+          type="button"
+          onClick={() => {
+            logout();
+            router.replace("/login");
+            router.refresh();
+          }}
+          className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-surface-border py-2.5 text-xs font-medium text-zinc-400 transition-colors hover:border-zinc-600 hover:text-white"
+        >
+          <LogOut className="h-3.5 w-3.5" strokeWidth={2} />
+          Sair
+        </button>
+        <p className="mt-3 text-xs text-zinc-500">Pro unlocks tactics, training, video &amp; team tools.</p>
         <Link
           href="/app/settings"
           className="mt-2 inline-flex text-xs font-medium text-accent hover:underline"

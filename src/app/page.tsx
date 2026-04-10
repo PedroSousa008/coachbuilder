@@ -38,16 +38,16 @@ export default function LandingPage() {
             </p>
             <div className="mt-10 flex flex-wrap items-center gap-4">
               <Link
-                href="/app"
+                href="/signup"
                 className="inline-flex h-12 items-center justify-center rounded-xl bg-accent px-6 text-base font-semibold text-zinc-950 transition-colors hover:bg-accent-muted"
               >
                 Start free
               </Link>
               <Link
-                href="/app/tactics"
+                href="/login"
                 className="inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-zinc-600 px-6 text-base font-medium text-zinc-200 transition-colors hover:border-accent/40 hover:text-white"
               >
-                See demo
+                Log in
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </div>
@@ -150,10 +150,10 @@ export default function LandingPage() {
                   </li>
                 </ul>
                 <Link
-                  href="/app"
+                  href="/signup"
                   className="mt-10 inline-flex items-center gap-2 text-sm font-semibold text-accent hover:underline"
                 >
-                  Explore the workspace
+                  Create your account
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </div>
@@ -199,8 +199,8 @@ export default function LandingPage() {
                 price="€0"
                 description="Keep the squad connected."
                 features={["Team group chat", "Direct messages", "Basic notifications (soon)"]}
-                ctaHref="/app/messages"
-                ctaLabel="Open messages"
+                ctaHref="/signup"
+                ctaLabel="Sign up free"
               />
               <PricingCard
                 name="Coach Pro"
@@ -226,10 +226,12 @@ export default function LandingPage() {
             <div className="flex flex-col items-center justify-between gap-6 rounded-2xl border border-accent/20 bg-accent/5 px-8 py-10 sm:flex-row">
               <div>
                 <h3 className="font-display text-xl font-semibold text-white">Ready for your next matchweek?</h3>
-                <p className="mt-2 text-sm text-zinc-400">Jump into the demo workspace — no signup flow in this MVP.</p>
+                <p className="mt-2 text-sm text-zinc-400">
+                  Cria uma conta com email e palavra-passe — os teus dados ficam guardados neste dispositivo.
+                </p>
               </div>
               <Link
-                href="/app"
+                href="/signup"
                 className="inline-flex h-12 shrink-0 items-center justify-center rounded-xl bg-accent px-6 text-sm font-semibold text-zinc-950 transition-colors hover:bg-accent-muted"
               >
                 Enter CoachBuilder
