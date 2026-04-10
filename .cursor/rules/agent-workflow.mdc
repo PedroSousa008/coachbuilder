@@ -31,6 +31,17 @@ alwaysApply: true
 - **Pushing to `origin/main` is the deploy trigger** — there is no separate “push to Vercel” step when the Vercel project is imported from [github.com/PedroSousa008/coachbuilder](https://github.com/PedroSousa008/coachbuilder).
 - Only if Git integration is **not** used: deploy with Vercel CLI using a token already present in the environment (e.g. `VERCEL_TOKEN`), non-interactively. **Never** commit tokens or put them in the repo.
 
+## If Vercel shows no new deployment after a push
+
+Git pushes go to **GitHub** first. Vercel deploys only if the **Vercel project’s Git settings** match this repo and branch.
+
+1. **Confirm GitHub has the commit**: open [github.com/PedroSousa008/coachbuilder/commits/main](https://github.com/PedroSousa008/coachbuilder/commits/main) — the latest commit should match what was just pushed.
+2. In **Vercel → your project → Settings → Git**: **Connected Git Repository** must be `PedroSousa008/coachbuilder` (not another repo or fork). **Production Branch** must be `main` (or whatever you push to).
+3. **Root Directory** must be empty or `.` — this app lives at the repo root, not inside a parent folder.
+4. Open **Deployments**: if a deployment exists but is **Error**, open the build log (TypeScript/build failure). Fix the error, commit, push again.
+5. If the repo was renamed or Git was disconnected: **Reconnect** the GitHub integration or **Import** the project again from the correct repo.
+6. To force a new build: an empty commit + push can re-trigger the webhook: `git commit --allow-empty -m "chore: trigger Vercel"` && `git push origin main`.
+
 ## When the user asks for “deploy” or “ship it”
 
 1. Ensure the app builds if possible (`npm run build`) when dependencies are available.
