@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Trash2 } from "lucide-react";
 import type { Tactic } from "@/types";
 import { Badge } from "@/components/ui/Badge";
 import { cn } from "@/lib/utils";
@@ -7,11 +8,13 @@ export function TacticCard({
   tactic,
   active,
   onSelect,
+  onDelete,
   href,
 }: {
   tactic: Tactic;
   active?: boolean;
   onSelect?: () => void;
+  onDelete?: () => void;
   href?: string;
 }) {
   const denom = tactic.wins + tactic.losses;
@@ -20,8 +23,24 @@ export function TacticCard({
   const inner = (
     <>
       <div className="flex items-start justify-between gap-2">
-        <p className="line-clamp-2 font-medium text-zinc-100">{tactic.name}</p>
-        <Badge variant="accent">{tactic.formation}</Badge>
+        <p className="line-clamp-2 min-w-0 flex-1 font-medium text-zinc-100">{tactic.name}</p>
+        <div className="flex shrink-0 items-center gap-1">
+          <Badge variant="accent">{tactic.formation}</Badge>
+          {onDelete && !href && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete();
+              }}
+              className="rounded-lg p-1.5 text-zinc-500 transition-colors hover:bg-red-500/15 hover:text-red-400"
+              aria-label="Apagar formação"
+              title="Apagar"
+            >
+              <Trash2 className="h-3.5 w-3.5" strokeWidth={2} />
+            </button>
+          )}
+        </div>
       </div>
       <p className="mt-1 text-xs text-zinc-500">vs {tactic.opponent}</p>
       <div className="mt-3 flex gap-3 text-[11px] text-zinc-500">

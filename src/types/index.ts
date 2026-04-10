@@ -22,6 +22,8 @@ export interface PitchPlayer {
   y: number;
   /** Linked squad player from Team roster. */
   playerId?: string | null;
+  /** Snapshot of player name for chips and persisted tactics (synced from roster when possible). */
+  playerName?: string | null;
 }
 
 export interface Tactic {

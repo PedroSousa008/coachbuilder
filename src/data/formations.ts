@@ -12,6 +12,7 @@ function players(list: { label: string; x: number; y: number }[]): PitchPlayer[]
 }
 
 export const FORMATION_LAYOUTS: Record<FormationId, PitchPlayer[]> = {
+  /* x% from left: GK top. LB/LW on viewer’s left (low x), RB/RW on viewer’s right (high x). */
   "4-3-3": players([
     { label: "GK", x: 50, y: 6 },
     { label: "LB", x: 14, y: 26 },

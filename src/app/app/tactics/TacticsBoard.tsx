@@ -12,11 +12,16 @@ import { useAppData } from "@/contexts/AppDataContext";
 
 const DRAFT_ID = "draft";
 
+function newTacticId() {
+  return `tactic-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 9)}`;
+}
+
 function normalizePitchPlayers(ps: PitchPlayer[]): PitchPlayer[] {
   return ps.map((p) => ({
     ...p,
     formationLabel: p.formationLabel ?? p.label,
     playerId: p.playerId ?? null,
+    playerName: p.playerName ?? null,
   }));
 }
 
@@ -24,6 +29,7 @@ function clonePlayers(formation: FormationId, prefix: string): PitchPlayer[] {
   return FORMATION_LAYOUTS[formation].map((p, i) => ({
     ...p,
     id: `${prefix}-live-${i}`,
+    playerName: null,
   }));
 }
 
@@ -42,12 +48,10 @@ function buildDraftTactic(): Tactic {
   };
 }
 
-export function TacticsBoard({ initialTactics }: { initialTactics: Tactic[] }) {
-  const { players: roster } = useAppData();
+export function TacticsBoard() {
+  const { players: roster, savedTactics: tactics, upsertTactic, deleteTactic, hydrated } = useAppData();
   const draftTactic = useMemo(() => buildDraftTactic(), []);
-  const [tactics] = useState(initialTactics);
-  const initialSnapshot = initialTactics[0] ?? draftTactic;
-  const [activeId, setActiveId] = useState(() => initialTactics[0]?.id ?? DRAFT_ID);
+  const [activeId, setActiveId] = useState<string>(() => DRAFT_ID);
 
   const active = useMemo(() => {
     const saved = tactics.find((t) => t.id === activeId);
@@ -56,6 +60,7 @@ export function TacticsBoard({ initialTactics }: { initialTactics: Tactic[] }) {
     return tactics[0] ?? draftTactic;
   }, [tactics, activeId, draftTactic]);
 
+  const initialSnapshot = tactics[0] ?? draftTactic;
   const [name, setName] = useState(() => initialSnapshot.name);
   const [opponent, setOpponent] = useState(() => initialSnapshot.opponent);
   const [notes, setNotes] = useState(() => initialSnapshot.notes);
@@ -97,6 +102,7 @@ export function TacticsBoard({ initialTactics }: { initialTactics: Tactic[] }) {
               ...s,
               playerId: player.id,
               label: String(player.number),
+              playerName: player.name.trim(),
             }
           : s
       )
@@ -113,11 +119,43 @@ export function TacticsBoard({ initialTactics }: { initialTactics: Tactic[] }) {
               ...s,
               playerId: null,
               label: s.formationLabel,
+              playerName: null,
             }
           : s
       )
     );
     setPickerSlotId(null);
+  };
+
+  const allSlotsFilled = players.length > 0 && players.every((p) => p.playerId);
+
+  const handleSave = () => {
+    if (!allSlotsFilled) return;
+    const id = activeId === DRAFT_ID ? newTacticId() : active.id;
+    const tactic: Tactic = {
+      id,
+      name: name.trim() || "Formação",
+      formation,
+      opponent: opponent.trim(),
+      notes,
+      matchesUsed: active.matchesUsed,
+      wins: active.wins,
+      losses: active.losses,
+      players,
+      updatedAt: new Date().toISOString(),
+    };
+    upsertTactic(tactic);
+    setActiveId(id);
+    syncFromTactic(tactic);
+  };
+
+  const handleDeleteTactic = (id: string) => {
+    deleteTactic(id);
+    if (activeId === id) {
+      const fresh = buildDraftTactic();
+      setActiveId(DRAFT_ID);
+      syncFromTactic(fresh);
+    }
   };
 
   const denom = active.wins + active.losses;
@@ -140,7 +178,7 @@ export function TacticsBoard({ initialTactics }: { initialTactics: Tactic[] }) {
       />
 
       <div className="space-y-6">
-        {isDraft && tactics.length === 0 && (
+        {isDraft && tactics.length === 0 && hydrated && (
           <p className="rounded-xl border border-dashed border-surface-border bg-surface-raised/40 px-4 py-3 text-sm text-zinc-400">
             Tap a position on the pitch to link someone from your roster. Drag chips to fine-tune positions.
           </p>
@@ -172,7 +210,7 @@ export function TacticsBoard({ initialTactics }: { initialTactics: Tactic[] }) {
               />
             </div>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {(["4-3-3", "4-2-3-1", "3-5-2"] as FormationId[]).map((f) => (
               <Button
                 key={f}
@@ -184,11 +222,17 @@ export function TacticsBoard({ initialTactics }: { initialTactics: Tactic[] }) {
                 {f}
               </Button>
             ))}
+            {allSlotsFilled && (
+              <Button type="button" variant="primary" size="sm" onClick={handleSave} className="min-w-[5.5rem]">
+                Guardar
+              </Button>
+            )}
           </div>
         </div>
 
         <FootballPitch
           players={players}
+          roster={roster}
           onPlayersChange={setPlayers}
           onSlotTap={openPickerForSlot}
           className="max-h-[min(70vh,640px)]"
@@ -240,12 +284,18 @@ export function TacticsBoard({ initialTactics }: { initialTactics: Tactic[] }) {
           <p className="mb-2 text-xs font-medium uppercase tracking-wider text-zinc-500">Saved tactics</p>
           {tactics.length === 0 ? (
             <p className="rounded-xl border border-dashed border-surface-border px-3 py-6 text-center text-xs text-zinc-500">
-              No saved tactics yet.
+              No saved tactics yet. Fill every position and tap Guardar.
             </p>
           ) : (
             <div className="flex max-h-[min(50vh,420px)] flex-col gap-2 overflow-y-auto pr-1">
               {tactics.map((t) => (
-                <TacticCard key={t.id} tactic={t} active={t.id === active.id} onSelect={() => selectTactic(t)} />
+                <TacticCard
+                  key={t.id}
+                  tactic={t}
+                  active={t.id === active.id}
+                  onSelect={() => selectTactic(t)}
+                  onDelete={() => handleDeleteTactic(t.id)}
+                />
               ))}
             </div>
           )}

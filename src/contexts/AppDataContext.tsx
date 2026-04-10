@@ -19,6 +19,7 @@ import type {
   Player,
   Position,
   PreferredFoot,
+  Tactic,
   TrainingSession,
 } from "@/types";
 import { mockCoach } from "@/data/mock";
@@ -33,6 +34,7 @@ const LS_TRAINING_PLAYERS = "coachbuilder-training-session-players";
 const LS_FIXTURES = "coachbuilder-fixtures";
 const LS_LEAGUE = "coachbuilder-league";
 const LS_COACH_PROFILE = "coachbuilder-coach-profile";
+const LS_TACTICS = "coachbuilder-tactics";
 
 const defaultCoachProfile = (): CoachProfileState => ({
   name: "",
@@ -161,6 +163,10 @@ type AppDataContextValue = {
 
   coachProfile: CoachProfileState;
   setCoachProfile: (patch: Partial<CoachProfileState>) => void;
+
+  savedTactics: Tactic[];
+  upsertTactic: (tactic: Tactic) => void;
+  deleteTactic: (id: string) => void;
 };
 
 const AppDataContext = createContext<AppDataContextValue | null>(null);
@@ -180,6 +186,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [leagueTableLastFetched, setLeagueTableLastFetched] = useState<string | null>(null);
   const [leagueTableFetchError, setLeagueTableFetchError] = useState<string | null>(null);
   const [coachProfile, setCoachProfileState] = useState<CoachProfileState>(defaultCoachProfile);
+  const [savedTactics, setSavedTactics] = useState<Tactic[]>([]);
 
   useEffect(() => {
     const loadedPlayers = loadJSON<Player[]>(LS_PLAYERS, []);
@@ -208,6 +215,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setLeagueCompetitionName(league.competitionName ?? null);
     setLeagueTableLastFetched(league.lastFetched ?? null);
     setLeagueTableFetchError(league.lastError ?? null);
+    setSavedTactics(loadJSON<Tactic[]>(LS_TACTICS, []));
     setHydrated(true);
   }, []);
 
@@ -265,6 +273,27 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     if (!hydrated) return;
     saveJSON(LS_COACH_PROFILE, coachProfile);
   }, [coachProfile, hydrated]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    saveJSON(LS_TACTICS, savedTactics);
+  }, [savedTactics, hydrated]);
+
+  const upsertTactic = useCallback((tactic: Tactic) => {
+    setSavedTactics((prev) => {
+      const i = prev.findIndex((t) => t.id === tactic.id);
+      if (i >= 0) {
+        const next = [...prev];
+        next[i] = tactic;
+        return next;
+      }
+      return [...prev, tactic];
+    });
+  }, []);
+
+  const deleteTactic = useCallback((id: string) => {
+    setSavedTactics((prev) => prev.filter((t) => t.id !== id));
+  }, []);
 
   const addPlayer = useCallback((input: NewPlayerInput) => {
     const posList = input.positions?.length ? [...input.positions] : [input.position];
@@ -507,6 +536,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       refreshLeagueTable,
       coachProfile,
       setCoachProfile,
+      savedTactics,
+      upsertTactic,
+      deleteTactic,
     }),
     [
       hydrated,
@@ -537,6 +569,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       refreshLeagueTable,
       coachProfile,
       setCoachProfile,
+      savedTactics,
+      upsertTactic,
+      deleteTactic,
     ]
   );
 

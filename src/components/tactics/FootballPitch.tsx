@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import type { PitchPlayer } from "@/types";
+import type { PitchPlayer, Player } from "@/types";
 import { cn } from "@/lib/utils";
 
 type DragState = { id: string; offsetX: number; offsetY: number };
@@ -10,13 +10,22 @@ const TAP_THRESH_SQ = 100;
 
 type Pending = { id: string; sx: number; sy: number; offsetX: number; offsetY: number };
 
+function displayNameForSlot(p: PitchPlayer, roster: Player[] | undefined): string | null {
+  if (!p.playerId) return null;
+  const fromRoster = roster?.find((r) => r.id === p.playerId)?.name?.trim();
+  return fromRoster || p.playerName?.trim() || null;
+}
+
 export function FootballPitch({
   players,
+  roster,
   onPlayersChange,
   onSlotTap,
   className,
 }: {
   players: PitchPlayer[];
+  /** Used to show the latest player name under the number when linked to the squad. */
+  roster?: Player[];
   onPlayersChange?: (next: PitchPlayer[]) => void;
   onSlotTap?: (slot: PitchPlayer) => void;
   className?: string;
@@ -125,8 +134,9 @@ export function FootballPitch({
         {hint}
       </div>
 
-      {players.map((p) =>
-        interactive ? (
+      {players.map((p) => {
+        const sub = displayNameForSlot(p, roster);
+        return interactive ? (
           <button
             key={p.id}
             type="button"
@@ -137,25 +147,33 @@ export function FootballPitch({
             onPointerCancel={(e) => handlePointerUp(e, p)}
             style={{ left: `${p.x}%`, top: `${p.y}%` }}
             className={cn(
-              "absolute flex h-9 w-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 text-[10px] font-bold shadow-lg backdrop-blur-sm transition-shadow",
+              "absolute flex min-h-9 min-w-9 max-w-[4.75rem] -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center gap-0 rounded-full border-2 px-1 py-0.5 text-center shadow-lg backdrop-blur-sm transition-shadow",
               onPlayersChange ? "cursor-grab active:cursor-grabbing" : "cursor-pointer",
               p.playerId
                 ? "border-accent/50 bg-accent/20 text-white hover:border-accent hover:shadow-glow"
                 : "border-white/25 bg-zinc-900/90 text-white hover:border-accent/50 hover:shadow-glow"
             )}
           >
-            {p.label}
+            <span className="text-[10px] font-bold leading-none">{p.label}</span>
+            {sub ? (
+              <span className="line-clamp-2 w-full max-w-[4.5rem] break-words text-[7px] font-medium leading-tight text-white/90">
+                {sub}
+              </span>
+            ) : null}
           </button>
         ) : (
           <div
             key={p.id}
             style={{ left: `${p.x}%`, top: `${p.y}%` }}
-            className="absolute flex h-9 w-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white/25 bg-zinc-900/90 text-[10px] font-bold text-white shadow-lg backdrop-blur-sm"
+            className="absolute flex min-h-9 min-w-9 max-w-[4.75rem] -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center gap-0 rounded-full border-2 border-white/25 bg-zinc-900/90 px-1 py-0.5 text-center text-[10px] font-bold text-white shadow-lg backdrop-blur-sm"
           >
-            {p.label}
+            <span className="leading-none">{p.label}</span>
+            {sub ? (
+              <span className="line-clamp-2 max-w-[4.5rem] text-[7px] font-medium leading-tight text-white/85">{sub}</span>
+            ) : null}
           </div>
-        )
-      )}
+        );
+      })}
     </div>
   );
 }
