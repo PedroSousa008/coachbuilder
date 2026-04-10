@@ -65,7 +65,42 @@ export interface Tactic {
   matchesUsed: number;
   wins: number;
   losses: number;
+  /** Empates registados em jogos desta tática (sincronizado com `TacticMatch`). */
+  draws?: number;
   players: PitchPlayer[];
+  updatedAt: string;
+}
+
+/** Uma linha de estatísticas de um jogador num jogo jogado com uma dada tática. */
+export interface TacticMatchPlayerLine {
+  playerId: string;
+  goals: number;
+  assists: number;
+  yellowCards: number;
+  redCards: number;
+  minutesPlayed: number;
+}
+
+/** Jogo registado contra uma tática guardada (resultado + contribuições por jogador). */
+export interface TacticMatch {
+  id: string;
+  tacticId: string;
+  date: string;
+  opponent: string;
+  teamGoals: number;
+  opponentGoals: number;
+  outcome: "win" | "draw" | "loss";
+  playerStats: TacticMatchPlayerLine[];
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Notas de análise do treinador por jogador e por tática (chave composta no storage). */
+export interface TacticPlayerAnalysisNote {
+  tacticId: string;
+  playerId: string;
+  notes: string;
   updatedAt: string;
 }
 

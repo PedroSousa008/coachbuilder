@@ -20,8 +20,11 @@ import type {
   Position,
   PreferredFoot,
   Tactic,
+  TacticMatch,
+  TacticPlayerAnalysisNote,
   TrainingSession,
 } from "@/types";
+import { tallyForTactic } from "@/lib/tactics-match-stats";
 import { mockCoach } from "@/data/mock";
 import { dedupeMatches } from "@/lib/league-match-dedupe";
 import { formatPlayerPositions } from "@/lib/player-positions";
@@ -35,6 +38,12 @@ const LS_FIXTURES = "coachbuilder-fixtures";
 const LS_LEAGUE = "coachbuilder-league";
 const LS_COACH_PROFILE = "coachbuilder-coach-profile";
 const LS_TACTICS = "coachbuilder-tactics";
+const LS_TACTIC_MATCHES = "coachbuilder-tactic-matches";
+const LS_TACTIC_PLAYER_NOTES = "coachbuilder-tactic-player-notes";
+
+function tacticPlayerNoteKey(tacticId: string, playerId: string) {
+  return `${tacticId}::${playerId}`;
+}
 
 const defaultCoachProfile = (): CoachProfileState => ({
   name: "",
@@ -167,6 +176,13 @@ type AppDataContextValue = {
   savedTactics: Tactic[];
   upsertTactic: (tactic: Tactic) => void;
   deleteTactic: (id: string) => void;
+
+  tacticMatches: TacticMatch[];
+  upsertTacticMatch: (match: TacticMatch) => void;
+  removeTacticMatch: (matchId: string) => void;
+
+  tacticPlayerNotes: Record<string, TacticPlayerAnalysisNote>;
+  setTacticPlayerAnalysisNote: (tacticId: string, playerId: string, notes: string) => void;
 };
 
 const AppDataContext = createContext<AppDataContextValue | null>(null);
@@ -187,6 +203,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [leagueTableFetchError, setLeagueTableFetchError] = useState<string | null>(null);
   const [coachProfile, setCoachProfileState] = useState<CoachProfileState>(defaultCoachProfile);
   const [savedTactics, setSavedTactics] = useState<Tactic[]>([]);
+  const [tacticMatches, setTacticMatches] = useState<TacticMatch[]>([]);
+  const [tacticPlayerNotes, setTacticPlayerNotesState] = useState<Record<string, TacticPlayerAnalysisNote>>({});
 
   useEffect(() => {
     const loadedPlayers = loadJSON<Player[]>(LS_PLAYERS, []);
@@ -216,6 +234,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setLeagueTableLastFetched(league.lastFetched ?? null);
     setLeagueTableFetchError(league.lastError ?? null);
     setSavedTactics(loadJSON<Tactic[]>(LS_TACTICS, []));
+    setTacticMatches(loadJSON<TacticMatch[]>(LS_TACTIC_MATCHES, []));
+    setTacticPlayerNotesState(loadJSON<Record<string, TacticPlayerAnalysisNote>>(LS_TACTIC_PLAYER_NOTES, {}));
     setHydrated(true);
   }, []);
 
@@ -279,6 +299,33 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     saveJSON(LS_TACTICS, savedTactics);
   }, [savedTactics, hydrated]);
 
+  useEffect(() => {
+    if (!hydrated) return;
+    saveJSON(LS_TACTIC_MATCHES, tacticMatches);
+  }, [tacticMatches, hydrated]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    saveJSON(LS_TACTIC_PLAYER_NOTES, tacticPlayerNotes);
+  }, [tacticPlayerNotes, hydrated]);
+
+  /** Mantém `matchesUsed` / vitórias / empates / derrotas nas táticas alinhados com os jogos registados. */
+  useEffect(() => {
+    if (!hydrated) return;
+    setSavedTactics((prev) =>
+      prev.map((t) => {
+        const tally = tallyForTactic(tacticMatches, t.id);
+        return {
+          ...t,
+          matchesUsed: tally.matchesUsed,
+          wins: tally.wins,
+          losses: tally.losses,
+          draws: tally.draws,
+        };
+      })
+    );
+  }, [tacticMatches, hydrated]);
+
   const upsertTactic = useCallback((tactic: Tactic) => {
     setSavedTactics((prev) => {
       const i = prev.findIndex((t) => t.id === tactic.id);
@@ -293,6 +340,52 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
   const deleteTactic = useCallback((id: string) => {
     setSavedTactics((prev) => prev.filter((t) => t.id !== id));
+    setTacticMatches((prev) => prev.filter((m) => m.tacticId !== id));
+    setTacticPlayerNotesState((prev) => {
+      const prefix = `${id}::`;
+      const next = { ...prev };
+      for (const k of Object.keys(next)) {
+        if (k.startsWith(prefix)) delete next[k];
+      }
+      return next;
+    });
+  }, []);
+
+  const upsertTacticMatch = useCallback((match: TacticMatch) => {
+    setTacticMatches((prev) => {
+      const i = prev.findIndex((m) => m.id === match.id);
+      if (i >= 0) {
+        const next = [...prev];
+        next[i] = match;
+        return next;
+      }
+      return [...prev, match];
+    });
+  }, []);
+
+  const removeTacticMatch = useCallback((matchId: string) => {
+    setTacticMatches((prev) => prev.filter((m) => m.id !== matchId));
+  }, []);
+
+  const setTacticPlayerAnalysisNote = useCallback((tacticId: string, playerId: string, notes: string) => {
+    const key = tacticPlayerNoteKey(tacticId, playerId);
+    const trimmed = notes.trim();
+    setTacticPlayerNotesState((prev) => {
+      if (!trimmed) {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      }
+      return {
+        ...prev,
+        [key]: {
+          tacticId,
+          playerId,
+          notes: trimmed,
+          updatedAt: new Date().toISOString(),
+        },
+      };
+    });
   }, []);
 
   const addPlayer = useCallback((input: NewPlayerInput) => {
@@ -539,6 +632,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       savedTactics,
       upsertTactic,
       deleteTactic,
+      tacticMatches,
+      upsertTacticMatch,
+      removeTacticMatch,
+      tacticPlayerNotes,
+      setTacticPlayerAnalysisNote,
     }),
     [
       hydrated,
@@ -572,6 +670,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       savedTactics,
       upsertTactic,
       deleteTactic,
+      tacticMatches,
+      upsertTacticMatch,
+      removeTacticMatch,
+      tacticPlayerNotes,
+      setTacticPlayerAnalysisNote,
     ]
   );
 

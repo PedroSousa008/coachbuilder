@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import type { FormationId, PitchPlayer, Player, Tactic } from "@/types";
+import type { FormationId, PitchPlayer, Player, Tactic, TacticMatch } from "@/types";
 import {
   FORMATION_LAYOUTS,
   formationDisplayLabel,
@@ -15,6 +15,9 @@ import { Button } from "@/components/ui/Button";
 import { PlayerPickerModal } from "@/components/players/PlayerPickerModal";
 import { useAppData } from "@/contexts/AppDataContext";
 import { playerEligibleForTacticsSlot } from "@/lib/tactics-slot-positions";
+import { lastMatchesSorted, tallyForTactic, winRatePercent } from "@/lib/tactics-match-stats";
+import { PlayerTacticInsightModal } from "@/components/tactics/PlayerTacticInsightModal";
+import { TacticMatchEditorModal } from "@/components/tactics/TacticMatchEditorModal";
 
 const DRAFT_ID = "draft";
 
@@ -58,8 +61,23 @@ function buildDraftTactic(): Tactic {
   };
 }
 
+function noteKey(tacticId: string, playerId: string) {
+  return `${tacticId}::${playerId}`;
+}
+
 export function TacticsBoard() {
-  const { players: roster, savedTactics: tactics, upsertTactic, deleteTactic, hydrated } = useAppData();
+  const {
+    players: roster,
+    savedTactics: tactics,
+    upsertTactic,
+    deleteTactic,
+    hydrated,
+    tacticMatches,
+    upsertTacticMatch,
+    removeTacticMatch,
+    tacticPlayerNotes,
+    setTacticPlayerAnalysisNote,
+  } = useAppData();
   const draftTactic = useMemo(() => buildDraftTactic(), []);
   const [activeId, setActiveId] = useState<string>(() => DRAFT_ID);
 
@@ -80,6 +98,10 @@ export function TacticsBoard() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerSlotId, setPickerSlotId] = useState<string | null>(null);
   const [moreFormationsOpen, setMoreFormationsOpen] = useState(false);
+  const [insightOpen, setInsightOpen] = useState(false);
+  const [insightSlot, setInsightSlot] = useState<PitchPlayer | null>(null);
+  const [matchEditorOpen, setMatchEditorOpen] = useState(false);
+  const [editingMatch, setEditingMatch] = useState<TacticMatch | null>(null);
 
   const syncFromTactic = useCallback((t: Tactic) => {
     setName(t.name);
@@ -105,6 +127,15 @@ export function TacticsBoard() {
   const openPickerForSlot = (slot: PitchPlayer) => {
     setPickerSlotId(slot.id);
     setPickerOpen(true);
+  };
+
+  const handleSlotTap = (slot: PitchPlayer) => {
+    if (slot.playerId) {
+      setInsightSlot(slot);
+      setInsightOpen(true);
+      return;
+    }
+    openPickerForSlot(slot);
   };
 
   const pickerSlot = useMemo(
@@ -175,15 +206,17 @@ export function TacticsBoard() {
   const handleSave = () => {
     if (!allSlotsFilled) return;
     const id = activeId === DRAFT_ID ? newTacticId() : active.id;
+    const tally = tallyForTactic(tacticMatches, id);
     const tactic: Tactic = {
       id,
       name: name.trim() || "Formação",
       formation: safeFormationId(formation),
       opponent: opponent.trim(),
       notes,
-      matchesUsed: active.matchesUsed,
-      wins: active.wins,
-      losses: active.losses,
+      matchesUsed: tally.matchesUsed,
+      wins: tally.wins,
+      losses: tally.losses,
+      draws: tally.draws,
       players,
       updatedAt: new Date().toISOString(),
     };
@@ -201,9 +234,26 @@ export function TacticsBoard() {
     }
   };
 
-  const denom = active.wins + active.losses;
-  const winRate = denom > 0 ? Math.round((active.wins / denom) * 100) : 0;
+  const record = useMemo(() => tallyForTactic(tacticMatches, active.id), [tacticMatches, active.id]);
+  const winRate = winRatePercent(record.wins, record.matchesUsed);
   const isDraft = active.id === DRAFT_ID;
+
+  const matchesForActive = useMemo(
+    () => lastMatchesSorted(tacticMatches.filter((m) => m.tacticId === active.id)),
+    [tacticMatches, active.id]
+  );
+
+  const lineupPlayerIds = useMemo(
+    () => players.map((s) => s.playerId).filter(Boolean) as string[],
+    [players]
+  );
+
+  const insightPlayer = insightSlot?.playerId ? roster.find((p) => p.id === insightSlot.playerId) ?? null : null;
+  const insightTacticId = !isDraft ? active.id : null;
+  const insightNotesInitial =
+    insightTacticId && insightSlot?.playerId
+      ? (tacticPlayerNotes[noteKey(insightTacticId, insightSlot.playerId)]?.notes ?? "")
+      : "";
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 lg:grid lg:grid-cols-[minmax(0,1fr)_280px] lg:gap-8 lg:space-y-0">
@@ -219,6 +269,46 @@ export function TacticsBoard() {
         onClear={pickerSlotId ? clearSlot : undefined}
         emptyHint={pickerEmptyHint}
       />
+
+      <PlayerTacticInsightModal
+        open={insightOpen}
+        slot={insightSlot}
+        player={insightPlayer}
+        tacticId={insightTacticId}
+        tacticMatches={tacticMatches}
+        initialAnalysisNotes={insightNotesInitial}
+        onClose={() => {
+          setInsightOpen(false);
+          setInsightSlot(null);
+        }}
+        onSaveAnalysis={(text) => {
+          if (insightTacticId && insightSlot?.playerId) {
+            setTacticPlayerAnalysisNote(insightTacticId, insightSlot.playerId, text);
+          }
+        }}
+        onChangePlayer={() => {
+          const s = insightSlot;
+          setInsightOpen(false);
+          setInsightSlot(null);
+          if (s) openPickerForSlot(s);
+        }}
+      />
+
+      {!isDraft ? (
+        <TacticMatchEditorModal
+          open={matchEditorOpen}
+          tacticId={active.id}
+          roster={roster}
+          suggestedPlayerIds={lineupPlayerIds}
+          existing={editingMatch}
+          onClose={() => {
+            setMatchEditorOpen(false);
+            setEditingMatch(null);
+          }}
+          onSave={upsertTacticMatch}
+          onDelete={removeTacticMatch}
+        />
+      ) : null}
 
       <div className="space-y-6">
         {isDraft && tactics.length === 0 && hydrated && (
@@ -338,9 +428,68 @@ export function TacticsBoard() {
           players={players}
           roster={roster}
           onPlayersChange={setPlayers}
-          onSlotTap={openPickerForSlot}
+          onSlotTap={handleSlotTap}
           className="max-h-[min(70vh,640px)]"
         />
+
+        {!isDraft ? (
+          <Card>
+            <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-2">
+              <div>
+                <CardTitle>Registo de jogos</CardTitle>
+                <p className="mt-1 text-xs text-zinc-500">
+                  Resultados, marcadores e assistências — atualizam estatísticas em toda a app.
+                </p>
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                onClick={() => {
+                  setEditingMatch(null);
+                  setMatchEditorOpen(true);
+                }}
+              >
+                + Jogo
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {matchesForActive.length === 0 ? (
+                <p className="text-sm text-zinc-500">Ainda não há jogos registados para esta tática.</p>
+              ) : (
+                <ul className="max-h-48 space-y-2 overflow-y-auto pr-1">
+                  {matchesForActive.map((m) => (
+                    <li key={m.id}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingMatch(m);
+                          setMatchEditorOpen(true);
+                        }}
+                        className="flex w-full items-center justify-between gap-2 rounded-xl border border-surface-border bg-surface-raised/40 px-3 py-2 text-left text-sm transition-colors hover:border-zinc-600"
+                      >
+                        <span className="text-zinc-200">
+                          {new Date(m.date).toLocaleDateString(undefined, {
+                            day: "numeric",
+                            month: "short",
+                            year: "numeric",
+                          })}{" "}
+                          · {m.opponent}
+                        </span>
+                        <span className="shrink-0 font-semibold text-white">
+                          {m.teamGoals}–{m.opponentGoals}
+                          <span className="ml-2 text-xs font-normal text-zinc-500">
+                            {m.outcome === "win" ? "V" : m.outcome === "loss" ? "D" : "E"}
+                          </span>
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </CardContent>
+          </Card>
+        ) : null}
 
         <Card>
           <CardHeader>
@@ -362,24 +511,32 @@ export function TacticsBoard() {
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Performance</CardTitle>
-            <p className="text-xs text-zinc-500">Log match results to see wins and win rate here.</p>
+            <p className="text-xs text-zinc-500">
+              {isDraft
+                ? "Guarda a equipa para registar jogos e ver vitórias e % aqui."
+                : "Baseado nos jogos registados para esta tática."}
+            </p>
           </CardHeader>
           <CardContent className="grid grid-cols-2 gap-3">
             <div className="rounded-xl bg-zinc-900/60 p-3 text-center">
-              <p className="text-[10px] uppercase text-zinc-500">Matches</p>
-              <p className="mt-1 text-lg font-semibold text-white">{active.matchesUsed}</p>
+              <p className="text-[10px] uppercase text-zinc-500">Jogos</p>
+              <p className="mt-1 text-lg font-semibold text-white">{record.matchesUsed}</p>
             </div>
             <div className="rounded-xl bg-zinc-900/60 p-3 text-center">
-              <p className="text-[10px] uppercase text-zinc-500">Win rate</p>
+              <p className="text-[10px] uppercase text-zinc-500">% vitórias</p>
               <p className="mt-1 text-lg font-semibold text-accent">{winRate}%</p>
             </div>
             <div className="rounded-xl bg-zinc-900/60 p-3 text-center">
-              <p className="text-[10px] uppercase text-zinc-500">Wins</p>
-              <p className="mt-1 text-lg font-semibold text-accent">{active.wins}</p>
+              <p className="text-[10px] uppercase text-zinc-500">Vitórias</p>
+              <p className="mt-1 text-lg font-semibold text-accent">{record.wins}</p>
             </div>
             <div className="rounded-xl bg-zinc-900/60 p-3 text-center">
-              <p className="text-[10px] uppercase text-zinc-500">Losses</p>
-              <p className="mt-1 text-lg font-semibold text-red-400/90">{active.losses}</p>
+              <p className="text-[10px] uppercase text-zinc-500">Empates</p>
+              <p className="mt-1 text-lg font-semibold text-zinc-300">{record.draws}</p>
+            </div>
+            <div className="col-span-2 rounded-xl bg-zinc-900/60 p-3 text-center">
+              <p className="text-[10px] uppercase text-zinc-500">Derrotas</p>
+              <p className="mt-1 text-lg font-semibold text-red-400/90">{record.losses}</p>
             </div>
           </CardContent>
         </Card>

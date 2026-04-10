@@ -18,8 +18,9 @@ export function TacticCard({
   onDelete?: () => void;
   href?: string;
 }) {
-  const denom = tactic.wins + tactic.losses;
-  const winRate = denom > 0 ? Math.round((tactic.wins / denom) * 100) : 0;
+  const played = tactic.matchesUsed;
+  const winRate = played > 0 ? Math.round((tactic.wins / played) * 100) : 0;
+  const draws = tactic.draws ?? 0;
 
   const inner = (
     <>
@@ -44,10 +45,14 @@ export function TacticCard({
         </div>
       </div>
       <p className="mt-1 text-xs text-zinc-500">vs {tactic.opponent}</p>
-      <div className="mt-3 flex gap-3 text-[11px] text-zinc-500">
-        <span>{tactic.matchesUsed} matches</span>
+      <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-zinc-500">
+        <span>{tactic.matchesUsed} jogos</span>
         <span className="text-zinc-600">·</span>
-        <span className="text-accent/90">{winRate}% W</span>
+        <span>
+          {tactic.wins}V {draws}E {tactic.losses}D
+        </span>
+        <span className="text-zinc-600">·</span>
+        <span className="text-accent/90">{winRate}% vitórias</span>
       </div>
     </>
   );

@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { mockCoach } from "@/data/mock";
 import type { CoachProfileState } from "@/types";
+import { computeCoachPerformance, tacticLabel } from "@/lib/tactics-match-stats";
 
 function initialsFromName(full: string) {
   const parts = full.trim().split(/\s+/).filter(Boolean);
@@ -18,7 +19,13 @@ function initialsFromName(full: string) {
 }
 
 export default function ProfilePage() {
-  const { coachProfile, setCoachProfile, hydrated } = useAppData();
+  const { coachProfile, setCoachProfile, hydrated, savedTactics, tacticMatches, trainingSessions, players } =
+    useAppData();
+
+  const coachPerf = useMemo(
+    () => computeCoachPerformance(savedTactics, tacticMatches, players),
+    [savedTactics, tacticMatches, players]
+  );
   const [draft, setDraft] = useState<CoachProfileState>(coachProfile);
   const [saveHint, setSaveHint] = useState<string | null>(null);
 
@@ -55,9 +62,9 @@ export default function ProfilePage() {
 
       <div className="grid gap-4 sm:grid-cols-3">
         {[
-          { label: "Tactics created", value: mockCoach.tacticsCreated },
-          { label: "Sessions planned", value: mockCoach.sessionsPlanned },
-          { label: "Matches analyzed", value: mockCoach.matchesAnalyzed },
+          { label: "Táticas guardadas", value: savedTactics.length },
+          { label: "Sessões planeadas", value: trainingSessions.length },
+          { label: "Jogos registados", value: tacticMatches.length },
         ].map((s) => (
           <div key={s.label} className="rounded-2xl border border-surface-border bg-surface-raised/50 p-4 text-center">
             <p className="font-display text-2xl font-semibold text-white">{s.value}</p>
@@ -65,6 +72,68 @@ export default function ProfilePage() {
           </div>
         ))}
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Desempenho do treinador</CardTitle>
+          <p className="text-sm text-zinc-500">
+            Agregado de todos os jogos registados nas táticas. Atualiza automaticamente quando adicionas ou editas
+            resultados.
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <PerfCell label="Vitórias" value={coachPerf.wins} accent />
+            <PerfCell label="Empates" value={coachPerf.draws} />
+            <PerfCell label="Derrotas" value={coachPerf.losses} danger />
+            <PerfCell label="% vitórias" value={`${coachPerf.winRate}%`} accent />
+          </div>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <PerfCell label="Golos marcados" value={coachPerf.goalsFor} />
+            <PerfCell label="Golos sofridos" value={coachPerf.goalsAgainst} />
+            <PerfCell label="Diferença" value={coachPerf.goalDiff >= 0 ? `+${coachPerf.goalDiff}` : coachPerf.goalDiff} />
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <PerfCell label="Jogos sem sofrer" value={coachPerf.cleanSheets} />
+            <div className="rounded-xl border border-surface-border bg-zinc-900/40 p-4">
+              <p className="text-[10px] uppercase tracking-wider text-zinc-500">Forma (últimos 5)</p>
+              <p className="mt-2 font-medium text-white">
+                {coachPerf.formLast5.length ? coachPerf.formLast5.join(" · ") : "—"}
+              </p>
+            </div>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="rounded-xl border border-surface-border bg-zinc-900/40 p-4">
+              <p className="text-[10px] uppercase tracking-wider text-zinc-500">Tática mais utilizada</p>
+              <p className="mt-2 text-sm font-medium leading-snug text-zinc-200">
+                {coachPerf.mostUsedTactic ? tacticLabel(coachPerf.mostUsedTactic.tactic) : "—"}
+              </p>
+              {coachPerf.mostUsedTactic ? (
+                <p className="mt-1 text-xs text-zinc-500">{coachPerf.mostUsedTactic.matches} jogos</p>
+              ) : null}
+            </div>
+            <div className="rounded-xl border border-surface-border bg-zinc-900/40 p-4">
+              <p className="text-[10px] uppercase tracking-wider text-zinc-500">Melhor taxa de vitória (mín. 1 jogo)</p>
+              <p className="mt-2 text-sm font-medium leading-snug text-zinc-200">
+                {coachPerf.bestTacticByWinRate ? tacticLabel(coachPerf.bestTacticByWinRate.tactic) : "—"}
+              </p>
+              {coachPerf.bestTacticByWinRate ? (
+                <p className="mt-1 text-xs text-zinc-500">
+                  {coachPerf.bestTacticByWinRate.winRate}% · {coachPerf.bestTacticByWinRate.matches} jogos
+                </p>
+              ) : null}
+            </div>
+          </div>
+          <div className="rounded-xl border border-surface-border bg-zinc-900/40 p-4">
+            <p className="text-[10px] uppercase tracking-wider text-zinc-500">Melhor marcador (soma em todas as táticas)</p>
+            <p className="mt-2 text-sm font-medium text-white">
+              {coachPerf.topScorer
+                ? `${coachPerf.topScorer.player.name} — ${coachPerf.topScorer.goals} golos`
+                : "Ainda sem golos registados"}
+            </p>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
@@ -135,6 +204,31 @@ export default function ProfilePage() {
           </div>
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+function PerfCell({
+  label,
+  value,
+  accent,
+  danger,
+}: {
+  label: string;
+  value: string | number;
+  accent?: boolean;
+  danger?: boolean;
+}) {
+  return (
+    <div className="rounded-xl border border-surface-border bg-zinc-900/40 p-4 text-center">
+      <p className="text-[10px] uppercase tracking-wider text-zinc-500">{label}</p>
+      <p
+        className={`mt-2 font-display text-xl font-semibold tabular-nums ${
+          danger ? "text-red-400/90" : accent ? "text-accent" : "text-white"
+        }`}
+      >
+        {value}
+      </p>
     </div>
   );
 }

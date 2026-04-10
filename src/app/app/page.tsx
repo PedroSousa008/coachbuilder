@@ -1,71 +1,89 @@
+"use client";
+
 import Link from "next/link";
 import { GitBranch, CalendarDays, MessageSquare, Target, TrendingUp } from "lucide-react";
+import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { StatCard } from "@/components/dashboard/StatCard";
-import { mockCoach, mockTeamStats, mockTactics, mockUpcomingSession } from "@/data/mock";
+import { mockCoach } from "@/data/mock";
 import { DashboardInboxPreview } from "@/components/dashboard/DashboardInboxPreview";
 import { DashboardNextMatch } from "@/components/dashboard/DashboardNextMatch";
 import { formatRelativeDay } from "@/lib/format";
+import { useAppData } from "@/contexts/AppDataContext";
+import { computeCoachPerformance, tallyForTactic, winRatePercent } from "@/lib/tactics-match-stats";
 
 export default function DashboardPage() {
-  const featuredTactic = mockTactics[0];
-  const denom = featuredTactic ? featuredTactic.wins + featuredTactic.losses : 0;
-  const tacticWinRate = featuredTactic && denom > 0 ? Math.round((featuredTactic.wins / denom) * 100) : 0;
+  const { coachProfile, savedTactics, tacticMatches, trainingSessions, players } = useAppData();
+
+  const coachPerf = useMemo(
+    () => computeCoachPerformance(savedTactics, tacticMatches, players),
+    [savedTactics, tacticMatches, players]
+  );
+
+  const featuredTactic = coachPerf.mostUsedTactic?.tactic ?? savedTactics[0];
+  const featuredTally = featuredTactic ? tallyForTactic(tacticMatches, featuredTactic.id) : null;
+  const tacticWinRate = featuredTally ? winRatePercent(featuredTally.wins, featuredTally.matchesUsed) : 0;
+
   const welcomeLine =
-    mockCoach.name.trim().length > 0
-      ? `Welcome back, ${mockCoach.name.trim().split(/\s+/)[0]}`
+    coachProfile.name.trim().length > 0
+      ? `Welcome back, ${coachProfile.name.trim().split(/\s+/)[0]}`
       : "Welcome to CoachBuilder";
+
+  const upcomingSession = useMemo(() => {
+    if (trainingSessions.length === 0) return null;
+    const future = trainingSessions
+      .filter((s) => new Date(s.date).getTime() >= Date.now() - 86400000)
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    return future[0] ?? trainingSessions[0] ?? null;
+  }, [trainingSessions]);
+
+  const formStr = coachPerf.formLast5.length > 0 ? coachPerf.formLast5.join(" · ") : "—";
+  const formHint =
+    coachPerf.matchesLogged > 0
+      ? `${coachPerf.goalsFor} marcados · ${coachPerf.goalsAgainst} sofridos · SG ${coachPerf.cleanSheets}`
+      : "Regista jogos nas Táticas para ver forma e golos";
 
   return (
     <div className="mx-auto max-w-6xl space-y-8">
       <div>
         <h2 className="font-display text-2xl font-semibold text-white">{welcomeLine}</h2>
         <p className="mt-1 text-sm text-zinc-500">
-          {mockCoach.club.trim() || "Your club"} · {mockCoach.role}
+          {coachProfile.club.trim() || "Your club"} · {coachProfile.role || mockCoach.role}
         </p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Tactics saved" value={mockCoach.tacticsCreated} icon={GitBranch} />
-        <StatCard label="Sessions planned" value={mockCoach.sessionsPlanned} icon={CalendarDays} />
-        <StatCard label="Matches tagged" value={mockCoach.matchesAnalyzed} icon={Target} />
-        <StatCard
-          label="Form (last 5)"
-          value={mockTeamStats.formLast5.length > 0 ? mockTeamStats.formLast5.join(" · ") : "—"}
-          hint={
-            mockTeamStats.formLast5.length > 0
-              ? `${mockTeamStats.goalsFor} GF · ${mockTeamStats.goalsAgainst} GA`
-              : "Log results to see form"
-          }
-          icon={TrendingUp}
-        />
+        <StatCard label="Tactics saved" value={savedTactics.length} icon={GitBranch} />
+        <StatCard label="Sessions planned" value={trainingSessions.length} icon={CalendarDays} />
+        <StatCard label="Matches logged" value={tacticMatches.length} icon={Target} />
+        <StatCard label="Form (last 5)" value={formStr} hint={formHint} icon={TrendingUp} />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
         <Card className="lg:col-span-2" hover>
           <CardHeader>
             <CardTitle>Upcoming training</CardTitle>
-            {mockUpcomingSession ? (
-              <p className="text-sm text-zinc-500">{formatRelativeDay(mockUpcomingSession.date)}</p>
+            {upcomingSession ? (
+              <p className="text-sm text-zinc-500">{formatRelativeDay(upcomingSession.date)}</p>
             ) : (
               <p className="text-sm text-zinc-500">Nothing scheduled</p>
             )}
           </CardHeader>
           <CardContent className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            {mockUpcomingSession ? (
+            {upcomingSession ? (
               <>
                 <div>
-                  <p className="font-medium text-white">{mockUpcomingSession.title}</p>
+                  <p className="font-medium text-white">{upcomingSession.title}</p>
                   <div className="mt-2 flex flex-wrap gap-2">
-                    {mockUpcomingSession.categories.map((c) => (
+                    {upcomingSession.categories.map((c) => (
                       <Badge key={c} variant="muted">
                         {c}
                       </Badge>
                     ))}
                   </div>
                   <p className="mt-3 text-xs text-zinc-500">
-                    {mockUpcomingSession.durationMin} minutes · {mockUpcomingSession.intensity} intensity
+                    {upcomingSession.durationMin} minutes · {upcomingSession.intensity} intensity
                   </p>
                 </div>
                 <Link
@@ -124,28 +142,36 @@ export default function DashboardPage() {
             )}
           </CardHeader>
           <CardContent>
-            {featuredTactic ? (
+            {featuredTactic && featuredTally ? (
               <>
                 <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
                   <div className="rounded-xl bg-zinc-900/50 p-3 text-center">
-                    <p className="text-xs text-zinc-500">Used</p>
-                    <p className="mt-1 font-display text-xl font-semibold text-white">{featuredTactic.matchesUsed}</p>
+                    <p className="text-xs text-zinc-500">Jogos</p>
+                    <p className="mt-1 font-display text-xl font-semibold text-white">{featuredTally.matchesUsed}</p>
                   </div>
                   <div className="rounded-xl bg-zinc-900/50 p-3 text-center">
-                    <p className="text-xs text-zinc-500">Wins</p>
-                    <p className="mt-1 font-display text-xl font-semibold text-accent">{featuredTactic.wins}</p>
+                    <p className="text-xs text-zinc-500">Vitórias</p>
+                    <p className="mt-1 font-display text-xl font-semibold text-accent">{featuredTally.wins}</p>
                   </div>
                   <div className="rounded-xl bg-zinc-900/50 p-3 text-center">
-                    <p className="text-xs text-zinc-500">Losses</p>
-                    <p className="mt-1 font-display text-xl font-semibold text-red-400/90">{featuredTactic.losses}</p>
+                    <p className="text-xs text-zinc-500">Derrotas</p>
+                    <p className="mt-1 font-display text-xl font-semibold text-red-400/90">{featuredTally.losses}</p>
                   </div>
                   <div className="rounded-xl bg-accent/10 p-3 text-center">
-                    <p className="text-xs text-zinc-500">Win rate</p>
+                    <p className="text-xs text-zinc-500">% vitórias</p>
                     <p className="mt-1 font-display text-xl font-semibold text-accent">{tacticWinRate}%</p>
                   </div>
                 </div>
+                {coachPerf.topScorer ? (
+                  <p className="mt-4 text-xs text-zinc-500">
+                    Melhor marcador:{" "}
+                    <span className="text-zinc-300">
+                      {coachPerf.topScorer.player.name} ({coachPerf.topScorer.goals} golos)
+                    </span>
+                  </p>
+                ) : null}
                 <Link href="/app/tactics" className="mt-6 inline-block text-sm font-medium text-accent hover:underline">
-                  Edit tactic board
+                  Abrir táticas
                 </Link>
               </>
             ) : (
