@@ -6,9 +6,15 @@ import { Badge } from "@/components/ui/Badge";
 import { useAppData } from "@/contexts/AppDataContext";
 import { formatKickoff } from "@/lib/format";
 import { resolveNextMatchForCoach } from "@/lib/next-match";
+import { collectUniqueTeamNames } from "@/lib/team-match";
 
 export function DashboardNextMatch() {
-  const { fixtures, leagueMatches, leagueCompetitionName, coachProfile, hydrated } = useAppData();
+  const { fixtures, leagueMatches, leagueCompetitionName, coachProfile, leagueTableRows, hydrated } = useAppData();
+
+  const teamCandidateNames = useMemo(
+    () => collectUniqueTeamNames({ tableRows: leagueTableRows, matches: leagueMatches }),
+    [leagueTableRows, leagueMatches]
+  );
 
   const next = useMemo(
     () =>
@@ -17,8 +23,9 @@ export function DashboardNextMatch() {
         leagueCompetitionName,
         leagueMatches,
         manualFixtures: fixtures,
+        teamCandidateNames,
       }),
-    [fixtures, leagueMatches, leagueCompetitionName, coachProfile.club]
+    [fixtures, leagueMatches, leagueCompetitionName, coachProfile.club, teamCandidateNames]
   );
 
   if (!hydrated) {

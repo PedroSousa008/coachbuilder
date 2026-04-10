@@ -3,6 +3,22 @@
  * maps to official league names ("Ad Ninense", "Ad Fafe") without calling an external LLM.
  */
 
+/** Common Portuguese club prefixes — stripped to compare the “core” name (e.g. Ninense vs Dumiense). */
+const CLUB_PREFIX_TOKENS = new Set([
+  "ad",
+  "fc",
+  "sc",
+  "gd",
+  "cd",
+  "cf",
+  "ccd",
+  "ac",
+  "uf",
+  "sad",
+  "v",
+  "g",
+]);
+
 export function normalizeTeamLabel(s: string): string {
   return s
     .normalize("NFD")
@@ -15,6 +31,14 @@ export function normalizeTeamLabel(s: string): string {
 
 function compactAlphaNum(s: string): string {
   return normalizeTeamLabel(s).replace(/\s+/g, "");
+}
+
+/** “Ad Ninense” → “ninense”; “Dumiense” → “dumiense” */
+export function coreClubName(s: string): string {
+  const n = normalizeTeamLabel(s);
+  const parts = n.split(" ").filter((p) => p.length > 0);
+  const rest = parts.filter((p) => !CLUB_PREFIX_TOKENS.has(p));
+  return rest.join(" ") || n;
 }
 
 /** Levenshtein distance (small strings only). */
@@ -38,6 +62,21 @@ function levenshtein(a: string, b: string): number {
   return dp[n]!;
 }
 
+export function collectUniqueTeamNames(args: {
+  tableRows: { team: string }[];
+  matches: { homeTeam: string; awayTeam: string }[];
+}): string[] {
+  const s = new Set<string>();
+  for (const r of args.tableRows) {
+    if (r.team.trim()) s.add(r.team.trim());
+  }
+  for (const m of args.matches) {
+    if (m.homeTeam.trim()) s.add(m.homeTeam.trim());
+    if (m.awayTeam.trim()) s.add(m.awayTeam.trim());
+  }
+  return [...s];
+}
+
 /**
  * Returns 0–1 similarity. Higher = more likely the same club.
  */
@@ -46,6 +85,14 @@ export function teamNameSimilarity(userInput: string, officialName: string): num
   const o = normalizeTeamLabel(officialName);
   if (!u.length || !o.length) return 0;
   if (u === o) return 1;
+
+  const uc = coreClubName(userInput);
+  const oc = coreClubName(officialName);
+  if (uc.length >= 4 && oc.length >= 4) {
+    const distCore = levenshtein(uc, oc);
+    const rCore = 1 - distCore / Math.max(uc.length, oc.length);
+    if (rCore >= 0.55) return Math.max(rCore, 0.8);
+  }
 
   const cu = compactAlphaNum(userInput);
   const co = compactAlphaNum(officialName);
@@ -89,6 +136,28 @@ export function pickBestTeamMatch(
     const score = teamNameSimilarity(userInput, c);
     if (!best || score > best.score) best = { name: c, score };
   }
-  if (best && best.score >= 0.55) return best;
+  if (best && best.score >= 0.42) return best;
   return null;
+}
+
+/**
+ * Resolves the coach’s spelling (e.g. “Dumiense”) against all names on the page, then checks if `officialTeam`
+ * is that club — fixes typos vs the wrong fuzzy target.
+ */
+export function userClubMatchesOfficialTeam(
+  userInput: string,
+  officialTeam: string,
+  allTeamNames: string[]
+): boolean {
+  const u = userInput.trim();
+  if (!u.length) return false;
+  const uniq = [...new Set(allTeamNames.map((x) => x.trim()).filter(Boolean))];
+  if (uniq.length === 0) return teamNamesMatch(u, officialTeam);
+
+  const best = pickBestTeamMatch(u, uniq);
+  if (best) {
+    if (normalizeTeamLabel(best.name) === normalizeTeamLabel(officialTeam)) return true;
+    if (teamNameSimilarity(best.name, officialTeam) >= 0.9) return true;
+  }
+  return teamNamesMatch(u, officialTeam);
 }

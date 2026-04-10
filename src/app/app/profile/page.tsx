@@ -1,10 +1,12 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAppData } from "@/contexts/AppDataContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
 import { mockCoach } from "@/data/mock";
+import type { CoachProfileState } from "@/types";
 
 function initialsFromName(full: string) {
   const parts = full.trim().split(/\s+/).filter(Boolean);
@@ -16,9 +18,21 @@ function initialsFromName(full: string) {
 }
 
 export default function ProfilePage() {
-  const { coachProfile, setCoachProfile } = useAppData();
+  const { coachProfile, setCoachProfile, hydrated } = useAppData();
+  const [draft, setDraft] = useState<CoachProfileState>(coachProfile);
+  const [saveHint, setSaveHint] = useState<string | null>(null);
 
-  const avatarLetters = useMemo(() => initialsFromName(coachProfile.name), [coachProfile.name]);
+  useEffect(() => {
+    if (hydrated) setDraft(coachProfile);
+  }, [hydrated, coachProfile]);
+
+  const avatarLetters = useMemo(() => initialsFromName(draft.name), [draft.name]);
+
+  const handleSave = () => {
+    setCoachProfile(draft);
+    setSaveHint("Saved on this device");
+    window.setTimeout(() => setSaveHint(null), 2800);
+  };
 
   return (
     <div className="mx-auto max-w-3xl space-y-8">
@@ -27,11 +41,9 @@ export default function ProfilePage() {
           {avatarLetters}
         </div>
         <div>
-          <h2 className="font-display text-2xl font-semibold text-white">
-            {coachProfile.name.trim() || "Your name"}
-          </h2>
+          <h2 className="font-display text-2xl font-semibold text-white">{draft.name.trim() || "Your name"}</h2>
           <p className="text-sm text-zinc-500">
-            {coachProfile.club.trim() || "Your club"} · {coachProfile.role}
+            {draft.club.trim() || "Your club"} · {draft.role}
           </p>
           <div className="mt-3">
             <Badge variant={mockCoach.plan === "pro" ? "accent" : "default"}>
@@ -58,8 +70,9 @@ export default function ProfilePage() {
         <CardHeader>
           <CardTitle>Profile</CardTitle>
           <p className="text-sm text-zinc-500">
-            Saved on this device. Your <span className="text-zinc-400">Club</span> name is matched (with fuzzy text
-            matching) against league imports so “next match” and calendar can follow your real team.
+            Edit your details, then press <span className="text-zinc-400">Save</span> to store them on this device. Your
+            club name is matched against imported standings and fixtures (including small typos like “Dumiense” → “Ad
+            Ninense”).
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -69,8 +82,8 @@ export default function ProfilePage() {
             </label>
             <input
               id="p-name"
-              value={coachProfile.name}
-              onChange={(e) => setCoachProfile({ name: e.target.value })}
+              value={draft.name}
+              onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
               className="mt-1.5 h-11 w-full rounded-xl border border-surface-border bg-surface-raised px-4 text-sm text-white focus:border-accent/50 focus:outline-none focus:ring-2 focus:ring-accent/20"
             />
           </div>
@@ -80,13 +93,14 @@ export default function ProfilePage() {
             </label>
             <input
               id="p-club"
-              value={coachProfile.club}
-              onChange={(e) => setCoachProfile({ club: e.target.value })}
-              placeholder="e.g. Ninense, Fafe, Moreirense"
+              value={draft.club}
+              onChange={(e) => setDraft((d) => ({ ...d, club: e.target.value }))}
+              placeholder="e.g. Dumiense, Fafe, Moreirense"
               className="mt-1.5 h-11 w-full rounded-xl border border-surface-border bg-surface-raised px-4 text-sm text-white focus:border-accent/50 focus:outline-none focus:ring-2 focus:ring-accent/20"
             />
             <p className="mt-1.5 text-xs text-zinc-600">
-              Does not need to match the official spelling exactly — we match against imported standings and fixtures.
+              We resolve this against every team name on your league page so highlights and “next match” follow the right
+              club.
             </p>
           </div>
           <div>
@@ -95,8 +109,8 @@ export default function ProfilePage() {
             </label>
             <input
               id="p-role"
-              value={coachProfile.role}
-              onChange={(e) => setCoachProfile({ role: e.target.value })}
+              value={draft.role}
+              onChange={(e) => setDraft((d) => ({ ...d, role: e.target.value }))}
               className="mt-1.5 h-11 w-full rounded-xl border border-surface-border bg-surface-raised px-4 text-sm text-white focus:border-accent/50 focus:outline-none focus:ring-2 focus:ring-accent/20"
             />
           </div>
@@ -107,10 +121,17 @@ export default function ProfilePage() {
             <input
               id="p-email"
               type="email"
-              value={coachProfile.email}
-              onChange={(e) => setCoachProfile({ email: e.target.value })}
+              value={draft.email}
+              onChange={(e) => setDraft((d) => ({ ...d, email: e.target.value }))}
               className="mt-1.5 h-11 w-full rounded-xl border border-surface-border bg-surface-raised px-4 text-sm text-white focus:border-accent/50 focus:outline-none focus:ring-2 focus:ring-accent/20"
             />
+          </div>
+
+          <div className="flex flex-col gap-3 border-t border-surface-border pt-6 sm:flex-row sm:items-center sm:justify-between">
+            <Button type="button" className="sm:min-w-[140px]" onClick={handleSave}>
+              Save
+            </Button>
+            {saveHint && <p className="text-sm text-accent">{saveHint}</p>}
           </div>
         </CardContent>
       </Card>

@@ -1,5 +1,5 @@
 import type { LeagueImportedMatch, MatchFixture } from "@/types";
-import { teamNamesMatch } from "@/lib/team-match";
+import { userClubMatchesOfficialTeam } from "@/lib/team-match";
 
 export type ResolvedNextMatch = {
   opponent: string;
@@ -11,17 +11,19 @@ export type ResolvedNextMatch = {
 
 /**
  * Earliest upcoming match for the coach: merges manual calendar entries (always for your squad)
- * with league imports where **Club** in Profile fuzzy-matches a participant team.
+ * with league imports where **Club** in Profile matches a participant (via standings + fixtures name list).
  */
 export function resolveNextMatchForCoach(args: {
   coachClub: string;
   leagueCompetitionName: string | null;
   leagueMatches: LeagueImportedMatch[];
   manualFixtures: MatchFixture[];
+  teamCandidateNames: string[];
 }): ResolvedNextMatch | null {
   const cutoff = Date.now() - 3600000;
   const club = args.coachClub.trim();
   const comp = (args.leagueCompetitionName ?? "").trim() || "Competition";
+  const names = args.teamCandidateNames;
 
   type Cand = ResolvedNextMatch & { t: number };
 
@@ -44,8 +46,8 @@ export function resolveNextMatchForCoach(args: {
     for (const m of args.leagueMatches) {
       const t = new Date(m.kickoff).getTime();
       if (t < cutoff) continue;
-      const homeHit = teamNamesMatch(club, m.homeTeam);
-      const awayHit = teamNamesMatch(club, m.awayTeam);
+      const homeHit = userClubMatchesOfficialTeam(club, m.homeTeam, names);
+      const awayHit = userClubMatchesOfficialTeam(club, m.awayTeam, names);
       if (!homeHit && !awayHit) continue;
       const venue: "home" | "away" = homeHit ? "home" : "away";
       const opponent = homeHit ? m.awayTeam : m.homeTeam;

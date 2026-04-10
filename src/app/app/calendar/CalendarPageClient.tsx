@@ -10,7 +10,8 @@ import { Badge } from "@/components/ui/Badge";
 import { Input } from "@/components/ui/Input";
 import { FixtureFormModal } from "@/components/calendar/FixtureFormModal";
 import { formatKickoff } from "@/lib/format";
-import { teamNamesMatch } from "@/lib/team-match";
+import { collectUniqueTeamNames, pickBestTeamMatch, userClubMatchesOfficialTeam } from "@/lib/team-match";
+import { inferCompetitionKind, type CompetitionKind } from "@/lib/competition-kind";
 
 function formatKickoffShort(iso: string) {
   const d = new Date(iso);
@@ -22,6 +23,30 @@ function formatKickoffShort(iso: string) {
     minute: "2-digit",
   });
 }
+
+function outcomeForMyTeam(
+  m: LeagueImportedMatch,
+  club: string,
+  candidates: string[]
+): { opponent: string; short: string; outcome: "W" | "D" | "L" } | null {
+  if (m.homeScore === undefined || m.awayScore === undefined) return null;
+  const homeHit = userClubMatchesOfficialTeam(club, m.homeTeam, candidates);
+  const awayHit = userClubMatchesOfficialTeam(club, m.awayTeam, candidates);
+  if (!homeHit && !awayHit) return null;
+  const gf = homeHit ? m.homeScore : m.awayScore;
+  const ga = homeHit ? m.awayScore : m.homeScore;
+  const opp = homeHit ? m.awayTeam : m.homeTeam;
+  let outcome: "W" | "D" | "L";
+  if (gf > ga) outcome = "W";
+  else if (gf < ga) outcome = "L";
+  else outcome = "D";
+  const short = `${outcome} ${gf}–${ga} vs ${opp}`;
+  return { opponent: opp, short, outcome };
+}
+
+type UnifiedUpcoming =
+  | { kind: "manual"; fixture: MatchFixture }
+  | { kind: "imported"; match: LeagueImportedMatch; scheduleKind: CompetitionKind };
 
 export function CalendarPageClient() {
   const {
@@ -38,7 +63,6 @@ export function CalendarPageClient() {
     leagueTableFetchError,
     refreshLeagueTable,
     coachProfile,
-    hydrated,
   } = useAppData();
 
   const [fixtureModalOpen, setFixtureModalOpen] = useState(false);
@@ -90,8 +114,57 @@ export function CalendarPageClient() {
     return { leagueUpcoming: u, leaguePast: pa };
   }, [leagueMatches]);
 
-  const showFullStats = leagueTableRows.some((r) => r.played != null);
+  const candidates = useMemo(
+    () => collectUniqueTeamNames({ tableRows: leagueTableRows, matches: leagueMatches }),
+    [leagueTableRows, leagueMatches]
+  );
+
   const club = coachProfile.club.trim();
+
+  const resolvedClub = useMemo(() => {
+    if (!club || candidates.length === 0) return null;
+    return pickBestTeamMatch(club, candidates);
+  }, [club, candidates]);
+
+  const pageScheduleKind = useMemo(
+    () => inferCompetitionKind(leagueCompetitionName ?? ""),
+    [leagueCompetitionName]
+  );
+
+  const unifiedUpcoming = useMemo((): UnifiedUpcoming[] => {
+    const rows: UnifiedUpcoming[] = [];
+    const sk = pageScheduleKind;
+    if (club) {
+      for (const m of leagueUpcoming) {
+        const mine =
+          userClubMatchesOfficialTeam(club, m.homeTeam, candidates) ||
+          userClubMatchesOfficialTeam(club, m.awayTeam, candidates);
+        if (mine) rows.push({ kind: "imported", match: m, scheduleKind: sk });
+      }
+    }
+    for (const f of upcoming) {
+      rows.push({ kind: "manual", fixture: f });
+    }
+    rows.sort((a, b) => {
+      const ta = a.kind === "manual" ? new Date(a.fixture.kickoff).getTime() : new Date(a.match.kickoff).getTime();
+      const tb = b.kind === "manual" ? new Date(b.fixture.kickoff).getTime() : new Date(b.match.kickoff).getTime();
+      return ta - tb;
+    });
+    return rows;
+  }, [leagueUpcoming, upcoming, club, candidates, pageScheduleKind]);
+
+  const myPreviousGames = useMemo(() => {
+    if (!club) return [];
+    const rows: { match: LeagueImportedMatch; line: string; outcome: "W" | "D" | "L" }[] = [];
+    for (const m of leaguePast) {
+      const o = outcomeForMyTeam(m, club, candidates);
+      if (o) rows.push({ match: m, line: o.short, outcome: o.outcome });
+    }
+    rows.sort((a, b) => new Date(b.match.kickoff).getTime() - new Date(a.match.kickoff).getTime());
+    return rows;
+  }, [leaguePast, club, candidates]);
+
+  const showFullStats = leagueTableRows.some((r) => r.played != null);
 
   const saveUrl = () => {
     setLeagueTableUrl(urlDraft.trim());
@@ -106,14 +179,25 @@ export function CalendarPageClient() {
     }
   };
 
+  const badgeForScheduleKind = (k: CompetitionKind) => {
+    if (k === "league") return { label: "League table", variant: "default" as const };
+    if (k === "tournament") return { label: "Cup / knockout", variant: "accent" as const };
+    return { label: "Schedule", variant: "muted" as const };
+  };
+
   return (
     <div className="mx-auto max-w-6xl space-y-10">
       <div>
         <h2 className="font-display text-xl font-semibold text-white">Calendar & matchweek</h2>
         <p className="mt-1 text-sm text-zinc-500">
-          Manual entries, imported league fixtures (FPF), and league table — your “next match” follows the club name in
-          Profile.
+          Your club in Profile is matched to names on the league page. Upcoming imports are listed under Your fixtures;
+          finished games with results appear under Previous games.
         </p>
+        {resolvedClub && (
+          <p className="mt-2 text-xs text-accent">
+            Resolved club: <span className="font-medium text-white">{resolvedClub.name}</span> (from your spelling)
+          </p>
+        )}
       </div>
 
       <FixtureFormModal
@@ -134,9 +218,12 @@ export function CalendarPageClient() {
           <div>
             <CardTitle className="flex items-center gap-2">
               <Calendar className="h-5 w-5 text-accent" strokeWidth={1.75} />
-              Your fixtures (manual)
+              Your fixtures
             </CardTitle>
-            <CardDescription>Added by you — combined with league imports for the dashboard next match.</CardDescription>
+            <CardDescription>
+              Manual entries plus upcoming games for your club pulled from the league page. Schedule type (league vs
+              cup-style) is inferred from the competition title when possible.
+            </CardDescription>
           </div>
           <Button
             type="button"
@@ -149,44 +236,78 @@ export function CalendarPageClient() {
           </Button>
         </CardHeader>
         <CardContent className="space-y-8">
-          {upcoming.length === 0 ? (
-            <p className="text-sm text-zinc-500">No upcoming manual fixtures.</p>
+          {!club && (
+            <p className="text-sm text-amber-200/90">
+              Set your club name in Profile and save — then refresh the league URL so we can attach the right team.
+            </p>
+          )}
+
+          {unifiedUpcoming.length === 0 ? (
+            <p className="text-sm text-zinc-500">No upcoming fixtures yet (manual or imported for your club).</p>
           ) : (
             <ul className="space-y-3">
-              {upcoming.map((f) => (
-                <li
-                  key={f.id}
-                  className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-surface-border bg-surface-raised/40 px-4 py-3"
-                >
-                  <div>
-                    <p className="font-medium text-white">vs {f.opponent}</p>
-                    <p className="text-xs text-zinc-500">{f.competition}</p>
-                    <p className="mt-1 text-xs text-zinc-400">{formatKickoffShort(f.kickoff)}</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="accent">{f.venue === "home" ? "Home" : "Away"}</Badge>
-                    <button
-                      type="button"
-                      className="rounded-lg p-2 text-zinc-500 hover:bg-white/5 hover:text-white"
-                      aria-label="Edit fixture"
-                      onClick={() => {
-                        setEditing(f);
-                        setFixtureModalOpen(true);
-                      }}
+              {unifiedUpcoming.map((row) => {
+                if (row.kind === "manual") {
+                  const f = row.fixture;
+                  return (
+                    <li
+                      key={f.id}
+                      className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-surface-border bg-surface-raised/40 px-4 py-3"
                     >
-                      <Pencil className="h-4 w-4" />
-                    </button>
-                    <button
-                      type="button"
-                      className="rounded-lg p-2 text-zinc-500 hover:bg-red-500/10 hover:text-red-400"
-                      aria-label="Remove fixture"
-                      onClick={() => removeFixture(f.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                </li>
-              ))}
+                      <div>
+                        <p className="font-medium text-white">vs {f.opponent}</p>
+                        <p className="text-xs text-zinc-500">{f.competition}</p>
+                        <p className="mt-1 text-xs text-zinc-400">{formatKickoffShort(f.kickoff)}</p>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge variant="muted">Manual</Badge>
+                        <Badge variant="accent">{f.venue === "home" ? "Home" : "Away"}</Badge>
+                        <button
+                          type="button"
+                          className="rounded-lg p-2 text-zinc-500 hover:bg-white/5 hover:text-white"
+                          aria-label="Edit fixture"
+                          onClick={() => {
+                            setEditing(f);
+                            setFixtureModalOpen(true);
+                          }}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          className="rounded-lg p-2 text-zinc-500 hover:bg-red-500/10 hover:text-red-400"
+                          aria-label="Remove fixture"
+                          onClick={() => removeFixture(f.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </li>
+                  );
+                }
+                const m = row.match;
+                const homeHit = userClubMatchesOfficialTeam(club, m.homeTeam, candidates);
+                const venue = homeHit ? "home" : "away";
+                const opp = homeHit ? m.awayTeam : m.homeTeam;
+                const b = badgeForScheduleKind(row.scheduleKind);
+                return (
+                  <li
+                    key={`imp-${m.id}`}
+                    className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-accent/25 bg-accent/5 px-4 py-3"
+                  >
+                    <div>
+                      <p className="font-medium text-white">vs {opp}</p>
+                      <p className="text-xs text-zinc-500">{leagueCompetitionName ?? "Competition"}</p>
+                      <p className="mt-1 text-xs text-zinc-400">{formatKickoffShort(m.kickoff)}</p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge variant={b.variant}>{b.label}</Badge>
+                      <Badge variant="accent">{venue === "home" ? "Home" : "Away"}</Badge>
+                      <Badge variant="default">Imported</Badge>
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
           )}
 
@@ -211,65 +332,42 @@ export function CalendarPageClient() {
       {leagueMatches.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>League schedule (imported)</CardTitle>
+            <CardTitle>Previous games</CardTitle>
             <CardDescription>
-              {leagueCompetitionName ?? "Competition"} — past and future games from the league page. Highlighted rows
-              match your Profile club name when fuzzy text matching succeeds.
+              Every finished game on the import that involves your club (Profile), with the result from your team’s
+              perspective. Refresh the league URL after match days to update.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-6">
-            {leagueUpcoming.length > 0 && (
-              <div>
-                <p className="mb-2 text-xs font-medium uppercase tracking-wider text-zinc-500">Upcoming</p>
-                <ul className="space-y-2">
-                  {leagueUpcoming.map((m) => {
-                    const mine = club && (teamNamesMatch(club, m.homeTeam) || teamNamesMatch(club, m.awayTeam));
-                    return (
-                      <li
-                        key={m.id}
-                        className={`rounded-xl border px-4 py-3 text-sm ${
-                          mine ? "border-accent/40 bg-accent/5" : "border-surface-border bg-surface-raised/30"
-                        }`}
+          <CardContent>
+            {!club ? (
+              <p className="text-sm text-zinc-500">Add and save your club in Profile to filter these games.</p>
+            ) : myPreviousGames.length === 0 ? (
+              <p className="text-sm text-zinc-500">No past results for your club in this import yet.</p>
+            ) : (
+              <ul className="space-y-2">
+                {myPreviousGames.map(({ match: m, line, outcome }) => (
+                  <li
+                    key={m.id}
+                    className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-surface-border bg-surface-raised/30 px-4 py-3 text-sm"
+                  >
+                    <div>
+                      <span
+                        className={
+                          outcome === "W"
+                            ? "text-accent"
+                            : outcome === "D"
+                              ? "text-zinc-300"
+                              : "text-red-400/90"
+                        }
                       >
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <span className="text-white">
-                            <span className={mine && teamNamesMatch(club, m.homeTeam) ? "text-accent" : ""}>
-                              {m.homeTeam}
-                            </span>
-                            {" vs "}
-                            <span className={mine && teamNamesMatch(club, m.awayTeam) ? "text-accent" : ""}>
-                              {m.awayTeam}
-                            </span>
-                          </span>
-                          {mine && <Badge variant="accent">Your team</Badge>}
-                        </div>
-                        <p className="mt-1 text-xs text-zinc-500">{formatKickoffShort(m.kickoff)}</p>
-                        {m.venue && <p className="mt-0.5 text-xs text-zinc-600">{m.venue}</p>}
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            )}
-            {leaguePast.length > 0 && (
-              <div>
-                <p className="mb-2 text-xs font-medium uppercase tracking-wider text-zinc-600">Past</p>
-                <ul className="space-y-2 opacity-95">
-                  {leaguePast.slice(0, 24).map((m) => {
-                    const finished = m.homeScore !== undefined && m.awayScore !== undefined;
-                    const mine = club && (teamNamesMatch(club, m.homeTeam) || teamNamesMatch(club, m.awayTeam));
-                    return (
-                      <li key={m.id} className="flex flex-wrap justify-between gap-2 text-sm text-zinc-500">
-                        <span>
-                          {m.homeTeam} {finished ? `${m.homeScore}–${m.awayScore}` : "—"} {m.awayTeam}
-                          {mine ? " · you" : ""}
-                        </span>
-                        <span className="shrink-0">{formatKickoff(m.kickoff)}</span>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
+                        {line}
+                      </span>
+                      <p className="mt-1 text-xs text-zinc-500">{formatKickoff(m.kickoff)}</p>
+                    </div>
+                    <Badge variant="muted">{badgeForScheduleKind(pageScheduleKind).label}</Badge>
+                  </li>
+                ))}
+              </ul>
             )}
           </CardContent>
         </Card>
