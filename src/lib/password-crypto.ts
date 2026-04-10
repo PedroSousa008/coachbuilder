@@ -17,6 +17,11 @@ function hexToBytes(hex: string): Uint8Array {
   return new Uint8Array(pairs.map((b) => parseInt(b, 16)));
 }
 
+/** `Pbkdf2Params.salt` typed as `BufferSource`; cópia estável para o checker do TS. */
+function saltAsArrayBuffer(bytes: Uint8Array): ArrayBuffer {
+  return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+}
+
 export async function hashPassword(password: string): Promise<{ salt: string; hash: string }> {
   const salt = crypto.getRandomValues(new Uint8Array(SALT_BYTES));
   const enc = new TextEncoder();
@@ -24,7 +29,7 @@ export async function hashPassword(password: string): Promise<{ salt: string; ha
   const hashBuffer = await crypto.subtle.deriveBits(
     {
       name: "PBKDF2",
-      salt,
+      salt: saltAsArrayBuffer(salt),
       iterations: ITERATIONS,
       hash: "SHA-256",
     },
@@ -42,7 +47,7 @@ export async function verifyPassword(password: string, saltHex: string, expected
     const hashBuffer = await crypto.subtle.deriveBits(
       {
         name: "PBKDF2",
-        salt,
+        salt: saltAsArrayBuffer(salt),
         iterations: ITERATIONS,
         hash: "SHA-256",
       },
