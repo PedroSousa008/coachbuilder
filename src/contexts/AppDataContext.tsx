@@ -28,7 +28,11 @@ import { tallyForTactic } from "@/lib/tactics-match-stats";
 import { mockCoach } from "@/data/mock";
 import { dedupeMatches } from "@/lib/league-match-dedupe";
 import { formatPlayerPositions } from "@/lib/player-positions";
-import { getAllUserDataKeys, migrateLegacyDataIfNeeded } from "@/lib/user-storage-keys";
+import {
+  getAllUserDataKeys,
+  mergeLegacyTacticsIfUserEmpty,
+  migrateLegacyDataIfNeeded,
+} from "@/lib/user-storage-keys";
 import { safeLoadJSON, safeSaveJSON } from "@/lib/coachbuilder-persist";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -217,6 +221,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     }
 
     migrateLegacyDataIfNeeded(user.id);
+    mergeLegacyTacticsIfUserEmpty(user.id);
 
     const loadedPlayers = loadJSON<Player[]>(ks.players, []);
     let loadedConvs = loadJSON<Conversation[]>(ks.conversations, []);

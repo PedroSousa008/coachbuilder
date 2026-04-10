@@ -104,11 +104,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
     const users = loadUsers();
-    const found = users.find((u) => u.id === session.userId && u.email === session.email);
+    let found = users.find((u) => u.id === session.userId && u.email === session.email);
+    if (!found) {
+      found = users.find((u) => u.id === session.userId);
+    }
     if (!found) {
       saveSession(null);
       setUser(null);
     } else {
+      if (found.email !== session.email) {
+        saveSession({ userId: found.id, email: found.email });
+      }
       setUser({ id: found.id, email: found.email });
     }
     setAuthReady(true);

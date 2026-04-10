@@ -1,6 +1,26 @@
-/** Chaves por utilizador + migração de dados antigos (sem prefixo de conta). */
+/**
+ * Chaves por utilizador + migração a partir do formato antigo (sem prefixo de conta).
+ *
+ * Regras: nunca depender de uma flag global que impeça outro utilizador ou uma 2.ª
+ * tentativa de importação; só marcar por utilizador após tentativa.
+ */
 
 export const MIGRATION_FLAG_KEY = "coachbuilder-migrated-legacy-v1";
+
+/** Por utilizador: evita reimportar em loop quando já há dados reais copiados. */
+function perUserImportDoneKey(userId: string) {
+  return `coachbuilder-data-import-v1-${userId}`;
+}
+
+/** Permite voltar a correr a importação legada (ex.: após atualização) sem apagar dados já preenchidos. */
+export function clearPerUserImportFlag(userId: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.removeItem(perUserImportDoneKey(userId));
+  } catch {
+    /* ignore */
+  }
+}
 
 export type UserDataKeyId =
   | "players"
@@ -49,25 +69,83 @@ export function getAllUserDataKeys(userId: string): Record<UserDataKeyId, string
   };
 }
 
-/** Copia dados legados (primeira conta neste dispositivo) para o espaço do utilizador. */
+function storageLooksEmpty(raw: string | null): boolean {
+  if (raw == null) return true;
+  const t = raw.trim();
+  if (t === "" || t === "[]" || t === "{}") return true;
+  try {
+    const v = JSON.parse(t) as unknown;
+    if (Array.isArray(v)) return v.length === 0;
+    if (v && typeof v === "object") return Object.keys(v as object).length === 0;
+  } catch {
+    return false;
+  }
+  return false;
+}
+
+function legacyHasContent(raw: string | null): boolean {
+  return !storageLooksEmpty(raw);
+}
+
+/**
+ * Copia chaves legadas para o espaço do utilizador quando o destino está vazio
+ * mas a origem tem dados (inclui `[]` guardado por engano no destino).
+ * Não usa flag global — só `coachbuilder-data-import-v1-{userId}` após primeira tentativa.
+ */
 export function migrateLegacyDataIfNeeded(userId: string): void {
   if (typeof window === "undefined") return;
   try {
-    if (localStorage.getItem(MIGRATION_FLAG_KEY) === "1") return;
-    const hasLegacy = localStorage.getItem(LEGACY_MAP.players) != null;
-    if (!hasLegacy) {
-      localStorage.setItem(MIGRATION_FLAG_KEY, "1");
+    const doneKey = perUserImportDoneKey(userId);
+    if (localStorage.getItem(doneKey) === "1") return;
+
+    const keys = getAllUserDataKeys(userId);
+    const anyLegacy = (Object.keys(LEGACY_MAP) as UserDataKeyId[]).some((id) =>
+      legacyHasContent(localStorage.getItem(LEGACY_MAP[id]))
+    );
+
+    if (!anyLegacy) {
+      localStorage.setItem(doneKey, "1");
       return;
     }
-    const keys = getAllUserDataKeys(userId);
+
+    let copiedSomething = false;
     (Object.keys(LEGACY_MAP) as UserDataKeyId[]).forEach((id) => {
-      const legacy = LEGACY_MAP[id];
-      const raw = localStorage.getItem(legacy);
-      if (raw !== null && localStorage.getItem(keys[id]) === null) {
-        localStorage.setItem(keys[id], raw);
-      }
+      const legacyKey = LEGACY_MAP[id];
+      const legacyRaw = localStorage.getItem(legacyKey);
+      if (!legacyHasContent(legacyRaw) || legacyRaw === null) return;
+
+      const userKey = keys[id];
+      const userRaw = localStorage.getItem(userKey);
+      if (!storageLooksEmpty(userRaw)) return;
+
+      localStorage.setItem(userKey, legacyRaw);
+      copiedSomething = true;
     });
-    localStorage.setItem(MIGRATION_FLAG_KEY, "1");
+
+    localStorage.setItem(doneKey, "1");
+
+    // Flag antiga: mantemos por compatibilidade com código que a leia, mas já não bloqueia migração.
+    if (copiedSomething && localStorage.getItem(MIGRATION_FLAG_KEY) !== "1") {
+      localStorage.setItem(MIGRATION_FLAG_KEY, "1");
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
+/**
+ * Se o utilizador já tem dados na conta mas ainda existem chaves legadas com conteúdo,
+ * opcionalmente funde táticas/jogos em falta (não sobrescreve arrays/objetos não vazios no destino).
+ * Chamada única quando import-v1 já está "1" mas tactics no user vazio e legacy cheio.
+ */
+export function mergeLegacyTacticsIfUserEmpty(userId: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    const keys = getAllUserDataKeys(userId);
+    const userTactics = localStorage.getItem(keys.tactics);
+    const legTactics = localStorage.getItem(LEGACY_MAP.tactics);
+    if (!storageLooksEmpty(userTactics) || !legacyHasContent(legTactics) || legTactics === null) return;
+    localStorage.setItem(keys.tactics, legTactics);
   } catch {
     /* ignore */
   }

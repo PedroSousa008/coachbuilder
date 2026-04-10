@@ -2,6 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { useAuth } from "@/contexts/AuthContext";
+import { clearPerUserImportFlag } from "@/lib/user-storage-keys";
 
 export function DataPersistenceNotice() {
   const { user } = useAuth();
@@ -24,9 +25,25 @@ export function DataPersistenceNotice() {
           do site, mudares de navegador sem os dados, ou usares outro dispositivo (cada browser tem a sua cópia local).
         </p>
         {user ? (
-          <p className="rounded-xl border border-surface-border bg-surface-raised/30 px-3 py-2 text-xs text-zinc-500">
-            Sessão atual: <span className="text-zinc-300">{user.email}</span>
-          </p>
+          <div className="space-y-2 rounded-xl border border-surface-border bg-surface-raised/30 px-3 py-2 text-xs text-zinc-500">
+            <p>
+              Sessão atual: <span className="text-zinc-300">{user.email}</span>
+            </p>
+            <p className="text-zinc-600">
+              Se após uma atualização os dados desta conta parecerem vazios mas tinhas conteúdo neste navegador, podes
+              tentar reimportar a partir das cópias antigas (só preenche campos que estejam vazios).
+            </p>
+            <button
+              type="button"
+              className="rounded-lg border border-surface-border bg-surface-raised px-2 py-1.5 text-left text-zinc-300 transition hover:border-zinc-600 hover:text-white"
+              onClick={() => {
+                clearPerUserImportFlag(user.id);
+                window.location.reload();
+              }}
+            >
+              Tentar recuperar dados de versão anterior
+            </button>
+          </div>
         ) : null}
       </CardContent>
     </Card>
