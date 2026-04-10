@@ -46,7 +46,10 @@ function LoginForm() {
           </span>
         </Link>
         <h1 className="mt-6 font-display text-2xl font-semibold text-white">Entrar</h1>
-        <p className="mt-2 text-sm text-zinc-500">Usa o email e a palavra-passe da tua conta.</p>
+        <p className="mt-2 text-sm text-zinc-500">
+          Usa o email e a palavra-passe que definiste ao criar a conta. Neste navegador a sessão mantém-se guardada: nas
+          próximas visitas podes entrar automaticamente enquanto não saíres.
+        </p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4 rounded-2xl border border-surface-border bg-surface-raised/40 p-6">

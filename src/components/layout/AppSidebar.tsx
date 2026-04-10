@@ -15,6 +15,7 @@ import {
   LogOut,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useAppData } from "@/contexts/AppDataContext";
 import { cn } from "@/lib/utils";
 
 const nav = [
@@ -33,6 +34,11 @@ export function AppSidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { user, logout } = useAuth();
+  const { coachProfile } = useAppData();
+
+  const displayName =
+    coachProfile.name.trim() || user?.name.trim() || user?.email || "";
+  const showEmailUnderName = Boolean(user?.email && displayName !== user.email);
 
   return (
     <aside className="fixed left-0 top-0 z-40 hidden h-screen w-64 flex-col border-r border-surface-border bg-[#0c1014]/95 backdrop-blur-xl lg:flex">
@@ -69,9 +75,16 @@ export function AppSidebar() {
       </nav>
       <div className="border-t border-surface-border p-4">
         {user ? (
-          <p className="truncate text-[11px] text-zinc-400" title={user.email}>
-            {user.email}
-          </p>
+          <div className="min-w-0">
+            <p className="truncate text-xs font-medium text-zinc-200" title={displayName}>
+              {displayName}
+            </p>
+            {showEmailUnderName ? (
+              <p className="truncate text-[11px] text-zinc-500" title={user.email}>
+                {user.email}
+              </p>
+            ) : null}
+          </div>
         ) : null}
         <button
           type="button"

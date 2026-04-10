@@ -10,18 +10,13 @@ import {
   type ReactNode,
 } from "react";
 import { hashPassword, verifyPassword } from "@/lib/password-crypto";
+import { loadUsers, saveUsers } from "@/lib/auth-local-storage";
 import { AUTH_STORAGE_KEYS, runCoachbuilderStorageMigrations } from "@/lib/coachbuilder-persist";
+import { userDataKey } from "@/lib/user-storage-keys";
+import type { AuthUser, CoachingRoleId, SignUpCredentials } from "@/types/auth";
+import { coachingRoleProfileLabel, isCoachingRoleId } from "@/types/auth";
 
-export type AuthUser = {
-  id: string;
-  email: string;
-};
-
-type StoredUser = AuthUser & {
-  passwordHash: string;
-  salt: string;
-  createdAt: string;
-};
+export type { AuthUser };
 
 type SessionPayload = {
   userId: string;
@@ -33,29 +28,12 @@ type AuthResult = { ok: true } | { ok: false; error: string };
 type AuthContextValue = {
   user: AuthUser | null;
   authReady: boolean;
-  signUp: (email: string, password: string) => Promise<AuthResult>;
+  signUp: (input: SignUpCredentials) => Promise<AuthResult>;
   login: (email: string, password: string) => Promise<AuthResult>;
   logout: () => void;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
-
-function loadUsers(): StoredUser[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = localStorage.getItem(AUTH_STORAGE_KEYS.users);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw) as unknown;
-    return Array.isArray(parsed) ? (parsed as StoredUser[]) : [];
-  } catch {
-    return [];
-  }
-}
-
-function saveUsers(users: StoredUser[]) {
-  if (typeof window === "undefined") return;
-  localStorage.setItem(AUTH_STORAGE_KEYS.users, JSON.stringify(users));
-}
 
 function loadSession(): SessionPayload | null {
   if (typeof window === "undefined") return null;
@@ -91,6 +69,49 @@ function newUserId() {
   return `usr-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
+function toAuthUser(u: {
+  id: string;
+  email: string;
+  name: string;
+  coachingRole: CoachingRoleId;
+}): AuthUser {
+  return {
+    id: u.id,
+    email: u.email,
+    name: u.name,
+    coachingRole: u.coachingRole,
+  };
+}
+
+/** Preenche o perfil de treinador na chave da conta (persistente neste navegador). */
+function seedCoachProfileForNewAccount(
+  userId: string,
+  name: string,
+  coachingRole: CoachingRoleId,
+  email: string
+) {
+  const key = userDataKey(userId, "coachProfile");
+  const raw = localStorage.getItem(key);
+  if (raw) {
+    try {
+      const o = JSON.parse(raw) as Partial<{ name: string }>;
+      if (o?.name != null && String(o.name).trim() !== "") return;
+    } catch {
+      return;
+    }
+  }
+
+  localStorage.setItem(
+    key,
+    JSON.stringify({
+      name: name.trim(),
+      club: "",
+      role: coachingRoleProfileLabel(coachingRole),
+      email,
+    })
+  );
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [authReady, setAuthReady] = useState(false);
@@ -115,32 +136,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (found.email !== session.email) {
         saveSession({ userId: found.id, email: found.email });
       }
-      setUser({ id: found.id, email: found.email });
+      setUser(toAuthUser(found));
     }
     setAuthReady(true);
   }, []);
 
-  const signUp = useCallback(async (email: string, password: string): Promise<AuthResult> => {
-    const norm = normalizeEmail(email);
+  const signUp = useCallback(async (input: SignUpCredentials): Promise<AuthResult> => {
+    const name = input.name.trim();
+    if (name.length < 1 || name.length > 120) {
+      return { ok: false, error: "Indica o teu nome (até 120 caracteres)." };
+    }
+    if (!isCoachingRoleId(input.coachingRole)) {
+      return { ok: false, error: "Escolhe uma função válida." };
+    }
+    const norm = normalizeEmail(input.email);
     if (!isValidEmail(norm)) return { ok: false, error: "Introduz um email válido." };
-    if (password.length < 8) return { ok: false, error: "A palavra-passe deve ter pelo menos 8 caracteres." };
+    if (input.password.length < 8) {
+      return { ok: false, error: "A palavra-passe deve ter pelo menos 8 caracteres." };
+    }
 
     const users = loadUsers();
     if (users.some((u) => u.email === norm)) {
       return { ok: false, error: "Já existe uma conta com este email." };
     }
 
-    const { salt, hash } = await hashPassword(password);
-    const record: StoredUser = {
+    const { salt, hash } = await hashPassword(input.password);
+    const record = {
       id: newUserId(),
       email: norm,
+      name,
+      coachingRole: input.coachingRole,
       passwordHash: hash,
       salt,
       createdAt: new Date().toISOString(),
+      emailVerified: true,
     };
     saveUsers([...users, record]);
+    seedCoachProfileForNewAccount(record.id, name, input.coachingRole, norm);
     saveSession({ userId: record.id, email: record.email });
-    setUser({ id: record.id, email: record.email });
+    setUser(toAuthUser(record));
     return { ok: true };
   }, []);
 
@@ -156,7 +190,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!ok) return { ok: false, error: "Email ou palavra-passe incorretos." };
 
     saveSession({ userId: found.id, email: found.email });
-    setUser({ id: found.id, email: found.email });
+    setUser(toAuthUser(found));
     return { ok: true };
   }, []);
 
