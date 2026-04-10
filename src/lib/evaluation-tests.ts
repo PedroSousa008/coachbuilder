@@ -21,7 +21,7 @@ export const EVALUATION_TESTS: readonly {
     label: "Sprint 20 metros",
     valuePlaceholder: "ex.: 3,45",
     hint: "Tempo em segundos (menor = melhor).",
-    protocolMedia: { kind: "image", src: "/evaluation/sprint20m.svg" },
+    protocolMedia: { kind: "image", src: "/evaluation/sprint.png" },
     protocolNote:
       "Usa sempre a mesma distância (20 m) e superfície plana e seca. Partida de pé, sem passo de arranque antes da linha; cronómetro manual ou laser na altura do tronco, parado na linha de chegada. Faz 2 tentativas com recuperação completa e regista o melhor tempo. Evita vento forte ou piso irregular — isso distorce a comparação com a tabela.",
   },
@@ -30,7 +30,7 @@ export const EVALUATION_TESTS: readonly {
     label: "Dribbling Slalom",
     valuePlaceholder: "ex.: 8,2",
     hint: "Tempo total em segundos (menor = melhor).",
-    protocolMedia: { kind: "image", src: "/evaluation/dribbling-slalom.svg" },
+    protocolMedia: { kind: "image", src: "/evaluation/dribbling-slalom.png" },
     protocolNote:
       "Coloca os cones à distância de 20 metros. O tempo começa no 1.º toque na bola e termina ao passar a última linha/cone, sem cortar nem desviar o percurso. Mantém a bola próxima dos pés; regista o melhor de 2 tentativas após aquecimento semelhante.",
   },
@@ -39,7 +39,7 @@ export const EVALUATION_TESTS: readonly {
     label: "Yo-Yo Endurance",
     valuePlaceholder: "ex.: 17.1",
     hint: "Nível / distância conforme protocolo (maior = melhor).",
-    protocolMedia: { kind: "image", src: "/evaluation/yoyo-endurance.svg" },
+    protocolMedia: { kind: "image", src: "/evaluation/yoyo-endurance.png" },
     protocolNote:
       "Segue o protocolo oficial (IR ou Endurance) com marcas no chão e sinal sonoro fiável. O jogador deve atingir a linha a tempo em cada repetição; regista o nível final ou a distância total conforme o teste que usas — sempre o mesmo protocolo entre avaliações para comparar evolução.",
   },
@@ -48,7 +48,7 @@ export const EVALUATION_TESTS: readonly {
     label: "Vertical Jump",
     valuePlaceholder: "ex.: 52",
     hint: "Altura em cm (maior = melhor).",
-    protocolMedia: { kind: "image", src: "/evaluation/vertical-jump.svg" },
+    protocolMedia: { kind: "image", src: "/evaluation/vertical-jump.png" },
     protocolNote:
       "Parede lisa com escala ou sensor; salto a partir de pé parado (sem passo de corrida), braços livres ou protocolo fixo que repitas sempre. Faz várias tentativas (ex.: 3) e regista a melhor ou a média — desde que sejas consistente entre jogadores e datas.",
   },
@@ -57,7 +57,7 @@ export const EVALUATION_TESTS: readonly {
     label: "Short Passing Accuracy",
     valuePlaceholder: "ex.: 8/10",
     hint: "Acertos (podes usar fração ou %).",
-    protocolMedia: { kind: "image", src: "/evaluation/short-passing.svg" },
+    protocolMedia: { kind: "image", src: "/evaluation/short-passing.png" },
     protocolNote:
       "Define distância fixa até ao alvo (ex.: gaiola ou cone), número de passes (ex.: 10) e superfície. Conta só passes que cumprem o critério (ex.: parar dentro da zona); regista acertos/total ou % — o importante é o mesmo critério para todos.",
   },
@@ -66,7 +66,7 @@ export const EVALUATION_TESTS: readonly {
     label: "Reaction Test",
     valuePlaceholder: "ex.: 0,28",
     hint: "Tempo de reação em segundos (menor = melhor).",
-    protocolMedia: { kind: "image", src: "/evaluation/reaction-test.svg" },
+    protocolMedia: { kind: "image", src: "/evaluation/reaction-test.png" },
     protocolNote:
       "O jogador posiciona-se no centro do círculo, rodeado por 5 cones de cores diferentes (vermelho, branco, cinzento, laranja e amarelo), colocados à mesma distância. Ao comando aleatório do treinador, que diz uma cor, o jogador deve reagir o mais rápido possível e tocar com a mão no cone correspondente. O tempo conta desde o estímulo verbal até ao toque no cone. Tentativas em que o jogador se antecipa ao comando não contam. Realizam-se várias repetições e regista-se a média ou mediana dos tempos, mantendo sempre a mesma disposição dos cones, distâncias e protocolo entre avaliações.",
   },
