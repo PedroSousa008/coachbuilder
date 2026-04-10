@@ -1,0 +1,66 @@
+import { NextResponse } from "next/server";
+import { parseStandingsFromHtml, isAllowedLeagueTableUrl } from "@/lib/league-table-parse";
+
+export const maxDuration = 30;
+
+export async function POST(req: Request) {
+  try {
+    const body = await req.json();
+    const url = typeof body?.url === "string" ? body.url.trim() : "";
+    if (!url || !isAllowedLeagueTableUrl(url)) {
+      return NextResponse.json({ ok: false, error: "Enter a valid http(s) URL." }, { status: 400 });
+    }
+
+    const res = await fetch(url, {
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (compatible; CoachBuilder/1.0; +https://coachbuilder.app) AppleWebKit/537.36",
+        Accept: "text/html,application/xhtml+xml",
+      },
+      redirect: "follow",
+      cache: "no-store",
+    });
+
+    if (!res.ok) {
+      return NextResponse.json(
+        { ok: false, error: `Could not load page (HTTP ${res.status}).` },
+        { status: 502 }
+      );
+    }
+
+    const contentType = res.headers.get("content-type") ?? "";
+    if (!contentType.includes("text/html") && !contentType.includes("application/xhtml")) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error:
+            "The URL did not return HTML. Try the public standings page for your league, or paste a page that contains a table.",
+        },
+        { status: 400 }
+      );
+    }
+
+    const html = await res.text();
+    const rows = parseStandingsFromHtml(html);
+
+    if (rows.length === 0) {
+      return NextResponse.json({
+        ok: false,
+        error:
+          "No table was found on this page, or it uses a format we can’t parse yet. Try another standings URL or a simpler HTML table page.",
+      });
+    }
+
+    return NextResponse.json({
+      ok: true,
+      rows,
+      fetchedAt: new Date().toISOString(),
+    });
+  } catch (e) {
+    console.error("league-table route", e);
+    return NextResponse.json(
+      { ok: false, error: "Failed to fetch or parse the page. Check the URL and try again." },
+      { status: 500 }
+    );
+  }
+}

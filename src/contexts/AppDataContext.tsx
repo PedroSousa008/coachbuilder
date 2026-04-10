@@ -9,7 +9,15 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import type { Conversation, Message, Player, Position, TrainingSession } from "@/types";
+import type {
+  Conversation,
+  LeagueTableRow,
+  MatchFixture,
+  Message,
+  Player,
+  Position,
+  TrainingSession,
+} from "@/types";
 import { mockCoach } from "@/data/mock";
 
 const LS_PLAYERS = "coachbuilder-players";
@@ -17,6 +25,8 @@ const LS_CONVS = "coachbuilder-conversations";
 const LS_MSGS = "coachbuilder-messages";
 const LS_SESSIONS = "coachbuilder-sessions";
 const LS_TRAINING_PLAYERS = "coachbuilder-training-session-players";
+const LS_FIXTURES = "coachbuilder-fixtures";
+const LS_LEAGUE = "coachbuilder-league";
 
 /** Stable id for the default squad group chat (localStorage + UI). */
 export const SQUAD_GROUP_ID = "conv-squad";
@@ -82,6 +92,21 @@ export type NewSessionInput = {
   description: string;
 };
 
+export type NewFixtureInput = {
+  opponent: string;
+  competition: string;
+  kickoff: string;
+  venue: MatchFixture["venue"];
+  notes?: string;
+};
+
+type LeaguePersist = {
+  url: string;
+  rows: LeagueTableRow[];
+  lastFetched: string | null;
+  lastError: string | null;
+};
+
 type AppDataContextValue = {
   hydrated: boolean;
   players: Player[];
@@ -99,6 +124,18 @@ type AppDataContextValue = {
   addTrainingSession: (input: NewSessionInput) => TrainingSession;
   trainingPlayerIdsBySession: Record<string, string[]>;
   setTrainingSessionPlayerIds: (sessionId: string, playerIds: string[]) => void;
+
+  fixtures: MatchFixture[];
+  addFixture: (input: NewFixtureInput) => MatchFixture;
+  updateFixture: (id: string, patch: Partial<NewFixtureInput>) => void;
+  removeFixture: (id: string) => void;
+
+  leagueTableUrl: string;
+  setLeagueTableUrl: (url: string) => void;
+  leagueTableRows: LeagueTableRow[];
+  leagueTableLastFetched: string | null;
+  leagueTableFetchError: string | null;
+  refreshLeagueTable: () => Promise<void>;
 };
 
 const AppDataContext = createContext<AppDataContextValue | null>(null);
@@ -110,6 +147,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [messagesByConv, setMessagesByConv] = useState<Record<string, Message[]>>({});
   const [trainingSessions, setTrainingSessions] = useState<TrainingSession[]>([]);
   const [trainingPlayerIdsBySession, setTrainingPlayerIdsBySession] = useState<Record<string, string[]>>({});
+  const [fixtures, setFixtures] = useState<MatchFixture[]>([]);
+  const [leagueTableUrl, setLeagueTableUrlState] = useState("");
+  const [leagueTableRows, setLeagueTableRows] = useState<LeagueTableRow[]>([]);
+  const [leagueTableLastFetched, setLeagueTableLastFetched] = useState<string | null>(null);
+  const [leagueTableFetchError, setLeagueTableFetchError] = useState<string | null>(null);
 
   useEffect(() => {
     const loadedPlayers = loadJSON<Player[]>(LS_PLAYERS, []);
@@ -126,6 +168,17 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setMessagesByConv(loadedMsgs);
     setTrainingSessions(loadJSON<TrainingSession[]>(LS_SESSIONS, []));
     setTrainingPlayerIdsBySession(loadJSON<Record<string, string[]>>(LS_TRAINING_PLAYERS, {}));
+    setFixtures(loadJSON<MatchFixture[]>(LS_FIXTURES, []));
+    const league = loadJSON<LeaguePersist>(LS_LEAGUE, {
+      url: "",
+      rows: [],
+      lastFetched: null,
+      lastError: null,
+    });
+    setLeagueTableUrlState(league.url);
+    setLeagueTableRows(league.rows);
+    setLeagueTableLastFetched(league.lastFetched);
+    setLeagueTableFetchError(league.lastError);
     setHydrated(true);
   }, []);
 
@@ -153,6 +206,21 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     if (!hydrated) return;
     saveJSON(LS_TRAINING_PLAYERS, trainingPlayerIdsBySession);
   }, [trainingPlayerIdsBySession, hydrated]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    saveJSON(LS_FIXTURES, fixtures);
+  }, [fixtures, hydrated]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    saveJSON(LS_LEAGUE, {
+      url: leagueTableUrl,
+      rows: leagueTableRows,
+      lastFetched: leagueTableLastFetched,
+      lastError: leagueTableFetchError,
+    } satisfies LeaguePersist);
+  }, [hydrated, leagueTableUrl, leagueTableRows, leagueTableLastFetched, leagueTableFetchError]);
 
   const addPlayer = useCallback((input: NewPlayerInput) => {
     const p: Player = {
@@ -285,6 +353,73 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setTrainingPlayerIdsBySession((prev) => ({ ...prev, [sessionId]: playerIds }));
   }, []);
 
+  const addFixture = useCallback((input: NewFixtureInput) => {
+    const f: MatchFixture = {
+      id: uid("fx"),
+      opponent: input.opponent.trim(),
+      competition: input.competition.trim(),
+      kickoff: input.kickoff,
+      venue: input.venue,
+      notes: input.notes?.trim() || undefined,
+    };
+    setFixtures((prev) =>
+      [...prev, f].sort((a, b) => new Date(a.kickoff).getTime() - new Date(b.kickoff).getTime())
+    );
+    return f;
+  }, []);
+
+  const updateFixture = useCallback((id: string, patch: Partial<NewFixtureInput>) => {
+    setFixtures((prev) =>
+      prev
+        .map((x) =>
+          x.id === id
+            ? {
+                ...x,
+                ...patch,
+                opponent: patch.opponent !== undefined ? patch.opponent.trim() : x.opponent,
+                competition: patch.competition !== undefined ? patch.competition.trim() : x.competition,
+                notes: patch.notes !== undefined ? patch.notes.trim() || undefined : x.notes,
+              }
+            : x
+        )
+        .sort((a, b) => new Date(a.kickoff).getTime() - new Date(b.kickoff).getTime())
+    );
+  }, []);
+
+  const removeFixture = useCallback((id: string) => {
+    setFixtures((prev) => prev.filter((x) => x.id !== id));
+  }, []);
+
+  const setLeagueTableUrl = useCallback((url: string) => {
+    setLeagueTableUrlState(url);
+  }, []);
+
+  const refreshLeagueTable = useCallback(async () => {
+    const u = leagueTableUrl.trim();
+    if (!u) {
+      setLeagueTableFetchError("Paste a standings page URL first.");
+      return;
+    }
+    setLeagueTableFetchError(null);
+    try {
+      const res = await fetch("/api/league-table", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: u }),
+      });
+      const data = await res.json();
+      if (!data.ok) {
+        setLeagueTableFetchError(typeof data.error === "string" ? data.error : "Could not update table.");
+        return;
+      }
+      setLeagueTableRows(data.rows);
+      setLeagueTableLastFetched(data.fetchedAt ?? new Date().toISOString());
+      setLeagueTableFetchError(null);
+    } catch {
+      setLeagueTableFetchError("Network error — try again.");
+    }
+  }, [leagueTableUrl]);
+
   const value = useMemo<AppDataContextValue>(
     () => ({
       hydrated,
@@ -301,6 +436,16 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       addTrainingSession,
       trainingPlayerIdsBySession,
       setTrainingSessionPlayerIds,
+      fixtures,
+      addFixture,
+      updateFixture,
+      removeFixture,
+      leagueTableUrl,
+      setLeagueTableUrl,
+      leagueTableRows,
+      leagueTableLastFetched,
+      leagueTableFetchError,
+      refreshLeagueTable,
     }),
     [
       hydrated,
@@ -317,6 +462,16 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       addTrainingSession,
       trainingPlayerIdsBySession,
       setTrainingSessionPlayerIds,
+      fixtures,
+      addFixture,
+      updateFixture,
+      removeFixture,
+      leagueTableUrl,
+      setLeagueTableUrl,
+      leagueTableRows,
+      leagueTableLastFetched,
+      leagueTableFetchError,
+      refreshLeagueTable,
     ]
   );
 

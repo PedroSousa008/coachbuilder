@@ -11,6 +11,7 @@ const titles: Record<string, string> = {
   "/app/messages": "Messages",
   "/app/video": "Video Analysis",
   "/app/team": "Team",
+  "/app/calendar": "Calendar",
   "/app/profile": "Profile",
   "/app/settings": "Settings",
 };

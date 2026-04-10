@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { GitBranch, CalendarDays, MessageSquare, Target, TrendingUp } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
-import { StatCard } from "@/components/dashboard/StatCard";
 import { Badge } from "@/components/ui/Badge";
-import { mockCoach, mockNextMatch, mockTeamStats, mockTactics, mockUpcomingSession } from "@/data/mock";
+import { StatCard } from "@/components/dashboard/StatCard";
+import { mockCoach, mockTeamStats, mockTactics, mockUpcomingSession } from "@/data/mock";
 import { DashboardInboxPreview } from "@/components/dashboard/DashboardInboxPreview";
-import { formatKickoff, formatRelativeDay } from "@/lib/format";
+import { DashboardNextMatch } from "@/components/dashboard/DashboardNextMatch";
+import { formatRelativeDay } from "@/lib/format";
 
 export default function DashboardPage() {
   const featuredTactic = mockTactics[0];
@@ -95,26 +96,7 @@ export default function DashboardPage() {
             <CardTitle>Next match</CardTitle>
           </CardHeader>
           <CardContent>
-            {mockNextMatch ? (
-              <>
-                <p className="text-lg font-semibold text-white">{mockNextMatch.opponent}</p>
-                <p className="mt-1 text-sm text-zinc-500">{mockNextMatch.competition}</p>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <Badge variant="accent">{mockNextMatch.venue === "home" ? "Home" : "Away"}</Badge>
-                  <Badge variant="default">{formatKickoff(mockNextMatch.kickoff)}</Badge>
-                </div>
-                <Link href="/app/tactics" className="mt-6 inline-block text-sm font-medium text-accent hover:underline">
-                  Open match tactics
-                </Link>
-              </>
-            ) : (
-              <>
-                <p className="text-sm text-zinc-400">No upcoming fixture yet.</p>
-                <Link href="/app/tactics" className="mt-6 inline-block text-sm font-medium text-accent hover:underline">
-                  Prepare a tactic anyway
-                </Link>
-              </>
-            )}
+            <DashboardNextMatch />
           </CardContent>
         </Card>
       </div>

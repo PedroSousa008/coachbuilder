@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   GitBranch,
   CalendarDays,
+  Calendar,
   MessageSquare,
   Video,
   Users,
@@ -21,6 +22,7 @@ const nav = [
   { href: "/app/messages", label: "Messages", icon: MessageSquare },
   { href: "/app/video", label: "Video Analysis", icon: Video },
   { href: "/app/team", label: "Team", icon: Users },
+  { href: "/app/calendar", label: "Calendar", icon: Calendar },
   { href: "/app/profile", label: "Profile", icon: UserCircle },
   { href: "/app/settings", label: "Settings", icon: Settings },
 ];

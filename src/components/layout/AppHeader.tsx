@@ -13,6 +13,7 @@ const mobileLinks = [
   { href: "/app/messages", label: "Messages" },
   { href: "/app/video", label: "Video" },
   { href: "/app/team", label: "Team" },
+  { href: "/app/calendar", label: "Calendar" },
   { href: "/app/profile", label: "Profile" },
   { href: "/app/settings", label: "Settings" },
 ];

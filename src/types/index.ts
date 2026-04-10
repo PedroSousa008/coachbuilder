@@ -126,3 +126,28 @@ export interface NextMatch {
   kickoff: string;
   venue: "home" | "away";
 }
+
+/** Upcoming / past match in the calendar (stored locally until backend sync). */
+export interface MatchFixture {
+  id: string;
+  opponent: string;
+  competition: string;
+  kickoff: string;
+  venue: "home" | "away";
+  notes?: string;
+}
+
+/** Parsed league standing row (best-effort from an external HTML table). */
+export interface LeagueTableRow {
+  position: number;
+  team: string;
+  played?: number;
+  won?: number;
+  drawn?: number;
+  lost?: number;
+  goalsFor?: number;
+  goalsAgainst?: number;
+  goalDifference?: number;
+  points?: number;
+  cells?: string[];
+}
