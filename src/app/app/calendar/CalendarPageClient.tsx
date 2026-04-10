@@ -13,6 +13,7 @@ import { formatKickoff } from "@/lib/format";
 import { collectUniqueTeamNames, pickBestTeamMatch, userClubMatchesOfficialTeam } from "@/lib/team-match";
 import { inferCompetitionKind, type CompetitionKind } from "@/lib/competition-kind";
 import { useScheduleNow } from "@/hooks/useScheduleNow";
+import { isKickoffStillUpcomingLisbon } from "@/lib/lisbon-date";
 
 function formatKickoffShort(iso: string) {
   const d = new Date(iso);
@@ -68,11 +69,6 @@ function neutralResultLine(m: LeagueImportedMatch): string {
 
 function isImportedPlayed(m: LeagueImportedMatch): boolean {
   return m.homeScore !== undefined && m.awayScore !== undefined;
-}
-
-/** Still to play (kick-off strictly after “now”). */
-function isKickoffStillUpcoming(iso: string, nowMs: number): boolean {
-  return new Date(iso).getTime() > nowMs;
 }
 
 export function CalendarPageClient() {
@@ -152,7 +148,7 @@ export function CalendarPageClient() {
           userClubMatchesOfficialTeam(club, m.awayTeam, candidates);
         if (!mine) continue;
 
-        if (isKickoffStillUpcoming(m.kickoff, nowMs)) {
+        if (isKickoffStillUpcomingLisbon(m.kickoff, nowMs)) {
           next.push({ kind: "imported", match: m, scheduleKind: sk });
           continue;
         }
@@ -163,7 +159,7 @@ export function CalendarPageClient() {
       }
     } else {
       for (const m of leagueMatches) {
-        if (isKickoffStillUpcoming(m.kickoff, nowMs)) {
+        if (isKickoffStillUpcomingLisbon(m.kickoff, nowMs)) {
           next.push({ kind: "imported", match: m, scheduleKind: sk });
         } else if (isImportedPlayed(m)) {
           prev.push({ kind: "imported-neutral", match: m, line: neutralResultLine(m) });
@@ -172,18 +168,34 @@ export function CalendarPageClient() {
     }
 
     for (const f of fixtures) {
-      if (isKickoffStillUpcoming(f.kickoff, nowMs)) next.push({ kind: "manual", fixture: f });
+      if (isKickoffStillUpcomingLisbon(f.kickoff, nowMs)) next.push({ kind: "manual", fixture: f });
       else prev.push({ kind: "manual", fixture: f });
     }
 
     next.sort((a, b) => {
+      const ra = a.kind === "imported" ? (a.match.fpfRound ?? 9999) : 99999;
+      const rb = b.kind === "imported" ? (b.match.fpfRound ?? 9999) : 99999;
       const ta = a.kind === "manual" ? new Date(a.fixture.kickoff).getTime() : new Date(a.match.kickoff).getTime();
       const tb = b.kind === "manual" ? new Date(b.fixture.kickoff).getTime() : new Date(b.match.kickoff).getTime();
+      if (ra !== rb) return ra - rb;
       return ta - tb;
     });
     prev.sort((a, b) => {
+      const ra =
+        a.kind === "manual"
+          ? -1
+          : a.kind === "imported" || a.kind === "imported-neutral"
+            ? (a.match.fpfRound ?? -1)
+            : -1;
+      const rb =
+        b.kind === "manual"
+          ? -1
+          : b.kind === "imported" || b.kind === "imported-neutral"
+            ? (b.match.fpfRound ?? -1)
+            : -1;
       const ta = a.kind === "manual" ? new Date(a.fixture.kickoff).getTime() : new Date(a.match.kickoff).getTime();
       const tb = b.kind === "manual" ? new Date(b.fixture.kickoff).getTime() : new Date(b.match.kickoff).getTime();
+      if (ra !== rb) return rb - ra;
       return tb - ta;
     });
 
@@ -216,11 +228,11 @@ export function CalendarPageClient() {
       <div>
         <h2 className="font-display text-xl font-semibold text-white">Calendar & matchweek</h2>
         <p className="mt-1 text-sm text-zinc-500">
-          <span className="font-semibold text-zinc-300">Próximos:</span> todos os jogos da tua equipa que ainda não foram
-          disputados (kick-off depois de agora), até ao último jogo da competição neste link.{" "}
-          <span className="font-semibold text-zinc-300">Anteriores:</span> só jogos já realizados com marcador na
-          importação. A lista reorganiza ao minuto quando passa a hora; usa Refresh na tabela para novos resultados na
-          FPF.
+          <span className="font-semibold text-zinc-300">Próximos:</span> todos os jogos em falta da tua equipa, ordenados
+          por <span className="text-zinc-400">jornada</span> (crescente) até ao fim do campeonato.{" "}
+          <span className="font-semibold text-zinc-300">Anteriores:</span> jogos já disputados com resultado, da
+          jornada mais recente para a primeira. A lista atualiza ao minuto; usa Refresh na tabela para novos marcadores
+          na FPF.
         </p>
         {resolvedClub && (
           <p className="mt-2 text-xs text-accent">
@@ -355,6 +367,9 @@ export function CalendarPageClient() {
                             {m.homeTeam} <span className="text-zinc-500">vs</span> {m.awayTeam}
                           </p>
                           <p className="text-xs text-zinc-400">{leagueCompetitionName ?? "Competition"}</p>
+                          {m.fpfRound != null && (
+                            <p className="mt-0.5 text-xs text-zinc-500">Jornada {m.fpfRound}</p>
+                          )}
                           <p className="mt-1 text-xs text-zinc-500">{formatKickoffShort(m.kickoff)}</p>
                         </div>
                         <div className="flex flex-wrap items-center gap-2">
@@ -375,6 +390,9 @@ export function CalendarPageClient() {
                       <div>
                         <p className="font-medium">vs {opp}</p>
                         <p className="text-xs text-zinc-400">{leagueCompetitionName ?? "Competition"}</p>
+                        {m.fpfRound != null && (
+                          <p className="mt-0.5 text-xs text-zinc-500">Jornada {m.fpfRound}</p>
+                        )}
                         <p className="mt-1 text-xs text-zinc-500">{formatKickoffShort(m.kickoff)}</p>
                       </div>
                       <div className="flex flex-wrap items-center gap-2">
@@ -439,6 +457,9 @@ export function CalendarPageClient() {
                         className="rounded-xl border border-zinc-600 bg-zinc-900/70 px-4 py-3 text-sm text-zinc-100 shadow-sm"
                       >
                         <p className="font-semibold">{line}</p>
+                        {m.fpfRound != null && (
+                          <p className="mt-1 text-xs text-zinc-500">Jornada {m.fpfRound}</p>
+                        )}
                         <p className="mt-1 text-xs text-zinc-500">{formatKickoff(m.kickoff)}</p>
                         <div className="mt-2">
                           <Badge variant="muted" className="bg-black/20">
@@ -458,6 +479,9 @@ export function CalendarPageClient() {
                   return (
                     <li key={`prev-imp-${m.id}`} className={`rounded-xl px-4 py-3 text-sm shadow-sm ${boxClass}`}>
                       <p className="font-semibold">{line}</p>
+                      {m.fpfRound != null && (
+                        <p className="mt-1 text-xs opacity-90">Jornada {m.fpfRound}</p>
+                      )}
                       <p className="mt-1 text-xs opacity-90">{formatKickoff(m.kickoff)}</p>
                       <div className="mt-2">
                         <Badge variant="muted" className="bg-black/20">

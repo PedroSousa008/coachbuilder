@@ -163,6 +163,10 @@ export interface LeagueImportedMatch {
   awayScore?: number;
   venue?: string;
   sourceUrl?: string;
+  /** Jornada number from FPF competition tabs (1…N) when available. */
+  fpfRound?: number;
+  /** FPF fixture fragment id from `GetClassificationAndMatchesByFixture?fixtureId=`. */
+  fpfFixtureId?: string;
 }
 
 export interface CoachProfileState {

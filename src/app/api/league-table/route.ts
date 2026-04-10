@@ -3,6 +3,7 @@ import { parseStandingsFromHtml, isAllowedLeagueTableUrl } from "@/lib/league-ta
 import {
   dedupeMatches,
   extractCompetitionLabelFromHtml,
+  extractFpfFixtureRoundMapFromHtml,
   fetchFpfMatchesFromFixtureRounds,
   parseFpfMatchesFromHtml,
 } from "@/lib/league-import-fpf";
@@ -50,7 +51,8 @@ export async function POST(req: Request) {
 
     const html = await res.text();
     const rows = parseStandingsFromHtml(html);
-    let matches = parseFpfMatchesFromHtml(html, url);
+    const roundMap = extractFpfFixtureRoundMapFromHtml(html);
+    let matches = parseFpfMatchesFromHtml(html, url, roundMap);
     try {
       const host = new URL(url).hostname.toLowerCase();
       if (host.includes("resultados.fpf.pt")) {

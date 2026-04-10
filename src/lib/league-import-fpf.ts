@@ -73,10 +73,27 @@ export function extractFpfFixtureIdsFromHtml(html: string): string[] {
   return [...new Set(ids)];
 }
 
+/** fixtureId → jornada label (1…34) from the numbered tabs on the competition page. */
+export function extractFpfFixtureRoundMapFromHtml(html: string): Map<string, number> {
+  const map = new Map<string, number>();
+  const re = /GetClassificationAndMatchesByFixture\?fixtureId=(\d+)"[^>]*>\s*(\d+)\s*<\/a>/gi;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(html)) !== null) {
+    map.set(m[1]!, parseInt(m[2]!, 10));
+  }
+  return map;
+}
+
+export function extractFpfFixtureIdFromUrl(pageUrl: string): string | undefined {
+  return pageUrl.match(/[?&]fixtureId=(\d+)/i)?.[1];
+}
+
+type FpfMatchMeta = { fpfRound?: number; fpfFixtureId?: string };
+
 /**
  * Matches listed without `a.game-link` (common on “current round” AJAX fragments).
  */
-function parseFpfBareGamesFromHtml(html: string, pageUrl: string): LeagueImportedMatch[] {
+function parseFpfBareGamesFromHtml(html: string, pageUrl: string, meta?: FpfMatchMeta): LeagueImportedMatch[] {
   const $ = cheerio.load(html);
   const { start: y1, end: y2 } = extractSeasonYearsFromHtml(html);
   let origin: string;
@@ -136,6 +153,8 @@ function parseFpfBareGamesFromHtml(html: string, pageUrl: string): LeagueImporte
         awayScore,
         venue,
         sourceUrl: pageUrl,
+        ...(meta?.fpfRound != null ? { fpfRound: meta.fpfRound } : {}),
+        ...(meta?.fpfFixtureId ? { fpfFixtureId: meta.fpfFixtureId } : {}),
       });
     });
 
@@ -149,7 +168,7 @@ function compactId(s: string): string {
     .slice(0, 32);
 }
 
-function parseFpfGameLinksFromHtml(html: string, pageUrl: string): LeagueImportedMatch[] {
+function parseFpfGameLinksFromHtml(html: string, pageUrl: string, meta?: FpfMatchMeta): LeagueImportedMatch[] {
   const $ = cheerio.load(html);
   const { start: y1, end: y2 } = extractSeasonYearsFromHtml(html);
   let origin: string;
@@ -200,6 +219,8 @@ function parseFpfGameLinksFromHtml(html: string, pageUrl: string): LeagueImporte
       awayScore,
       venue,
       sourceUrl: absUrl,
+      ...(meta?.fpfRound != null ? { fpfRound: meta.fpfRound } : {}),
+      ...(meta?.fpfFixtureId ? { fpfFixtureId: meta.fpfFixtureId } : {}),
     });
   });
 
@@ -208,10 +229,21 @@ function parseFpfGameLinksFromHtml(html: string, pageUrl: string): LeagueImporte
 
 /**
  * Parse one FPF HTML document: `a.game-link` blocks + bare `#matches > div.game` rows.
+ * Pass `roundMap` from the main competition page so each fragment gets the correct jornada number.
  */
-export function parseFpfMatchesFromHtml(html: string, pageUrl: string): LeagueImportedMatch[] {
-  const a = parseFpfGameLinksFromHtml(html, pageUrl);
-  const b = parseFpfBareGamesFromHtml(html, pageUrl);
+export function parseFpfMatchesFromHtml(
+  html: string,
+  pageUrl: string,
+  roundMap?: Map<string, number>
+): LeagueImportedMatch[] {
+  const fid = extractFpfFixtureIdFromUrl(pageUrl);
+  const round = fid && roundMap ? roundMap.get(fid) : undefined;
+  const meta: FpfMatchMeta = {
+    ...(round != null ? { fpfRound: round } : {}),
+    ...(fid ? { fpfFixtureId: fid } : {}),
+  };
+  const a = parseFpfGameLinksFromHtml(html, pageUrl, meta);
+  const b = parseFpfBareGamesFromHtml(html, pageUrl, meta);
   return dedupeMatches([...a, ...b]);
 }
 
@@ -241,6 +273,8 @@ export async function fetchFpfMatchesFromFixtureRounds(
   const ids = extractFpfFixtureIdsFromHtml(mainHtml);
   if (ids.length === 0) return [];
 
+  const roundMap = extractFpfFixtureRoundMapFromHtml(mainHtml);
+
   let origin: string;
   try {
     origin = new URL(competitionPageUrl).origin;
@@ -263,7 +297,7 @@ export async function fetchFpfMatchesFromFixtureRounds(
           });
           if (!r.ok) return [];
           const h = await r.text();
-          return parseFpfMatchesFromHtml(h, u);
+          return parseFpfMatchesFromHtml(h, u, roundMap);
         } catch {
           return [];
         }
