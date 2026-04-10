@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
+import { Search, X } from "lucide-react";
 import type {
   EvaluationTestId,
   Player,
@@ -16,12 +18,10 @@ import { QUALITY_GROUPS, mergeQualities } from "@/lib/player-qualities";
 import { buildPlayerInsights } from "@/lib/player-insights";
 import { PlayerInsightsBox } from "@/components/team/PlayerInsightsBox";
 import { Badge } from "@/components/ui/Badge";
-import { Search } from "lucide-react";
 import {
   computeAiOverallProvisional,
   EVALUATION_TESTS,
   EVALUATION_TEST_IDS,
-  inferProtocolMediaKind,
 } from "@/lib/evaluation-tests";
 
 const POSITIONS: Position[] = [
@@ -70,6 +70,18 @@ export function PlayerDetailModal({
   const [evaluationDraft, setEvaluationDraft] = useState<Record<EvaluationTestId, string>>(emptyEvaluationDraft);
   const [evaluationHelpOpenId, setEvaluationHelpOpenId] = useState<EvaluationTestId | null>(null);
   const [evaluationMediaOpenId, setEvaluationMediaOpenId] = useState<EvaluationTestId | null>(null);
+  const [mediaPortalMounted, setMediaPortalMounted] = useState(false);
+
+  useEffect(() => setMediaPortalMounted(true), []);
+
+  useEffect(() => {
+    if (!evaluationMediaOpenId) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setEvaluationMediaOpenId(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [evaluationMediaOpenId]);
 
   useEffect(() => {
     if (!player) return;
@@ -101,6 +113,21 @@ export function PlayerDetailModal({
     }
   }, [tab]);
 
+  const mediaOpenTest = useMemo(
+    () =>
+      evaluationMediaOpenId
+        ? (EVALUATION_TESTS.find((t) => t.id === evaluationMediaOpenId) ?? null)
+        : null,
+    [evaluationMediaOpenId]
+  );
+
+  useEffect(() => {
+    if (!open) {
+      setEvaluationHelpOpenId(null);
+      setEvaluationMediaOpenId(null);
+    }
+  }, [open]);
+
   const insights = useMemo(() => {
     if (!player) return null;
     const hRaw = heightCm.trim() ? parseInt(heightCm, 10) : NaN;
@@ -118,7 +145,59 @@ export function PlayerDetailModal({
     });
   }, [player, heightCm, weightKg, selectedPos, qualitiesDraft]);
 
-  if (!open || !player) return null;
+  const mediaOverlay =
+    mediaPortalMounted && mediaOpenTest && typeof document !== "undefined"
+      ? createPortal(
+          <div
+            className="fixed inset-0 z-[200] flex items-center justify-center bg-black/85 p-3 sm:p-6"
+            role="dialog"
+            aria-modal
+            aria-labelledby="eval-protocol-media-title"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setEvaluationMediaOpenId(null);
+            }}
+          >
+            <div
+              className="flex max-h-[min(92vh,680px)] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-surface-border bg-[#0f1419] shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between gap-3 border-b border-surface-border px-4 py-3">
+                <h4 id="eval-protocol-media-title" className="min-w-0 text-sm font-semibold text-white">
+                  {mediaOpenTest.label}
+                </h4>
+                <button
+                  type="button"
+                  onClick={() => setEvaluationMediaOpenId(null)}
+                  className="inline-flex shrink-0 items-center justify-center rounded-lg p-2 text-zinc-400 transition-colors hover:bg-white/5 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+                  aria-label="Fechar demonstração"
+                >
+                  <X className="h-4 w-4" strokeWidth={2} />
+                </button>
+              </div>
+              <div className="min-h-0 flex-1 overflow-y-auto p-3 sm:p-4">
+                {mediaOpenTest.protocolMedia.kind === "video" ? (
+                  <video
+                    controls
+                    playsInline
+                    className="mx-auto max-h-[min(70vh,520px)] w-full rounded-lg bg-black object-contain"
+                    src={mediaOpenTest.protocolMedia.src}
+                  />
+                ) : (
+                  // eslint-disable-next-line @next/next/no-img-element -- protocol media from /public or CDN
+                  <img
+                    src={mediaOpenTest.protocolMedia.src}
+                    alt={`Demonstração do protocolo: ${mediaOpenTest.label}`}
+                    className="mx-auto max-h-[min(70vh,520px)] w-full rounded-lg object-contain"
+                  />
+                )}
+              </div>
+            </div>
+          </div>,
+          document.body
+        )
+      : null;
+
+  if (!open || !player) return <>{mediaOverlay}</>;
 
   const togglePos = (p: Position) => {
     setSelectedPos((prev) => {
@@ -168,13 +247,14 @@ export function PlayerDetailModal({
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/75 p-4 sm:items-center"
-      role="dialog"
-      aria-modal
-      aria-labelledby="player-detail-title"
-      onClick={onClose}
-    >
+    <>
+      <div
+        className="fixed inset-0 z-50 flex items-end justify-center bg-black/75 p-4 sm:items-center"
+        role="dialog"
+        aria-modal
+        aria-labelledby="player-detail-title"
+        onClick={onClose}
+      >
       <div
         className="flex max-h-[min(92vh,720px)] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-surface-border bg-[#0f1419] shadow-2xl sm:max-h-[min(90vh,800px)]"
         onClick={(e) => e.stopPropagation()}
@@ -425,84 +505,51 @@ export function PlayerDetailModal({
                       const raw = evaluationDraft[t.id] ?? "";
                       const ageNum = Math.min(45, Math.max(14, parseInt(age, 10) || 17));
                       const ai = raw.trim() ? computeAiOverallProvisional(t.id, raw, ageNum) : null;
-                      const mediaUrl = t.protocolMediaUrl?.trim() ?? "";
-                      const mediaKindResolved = mediaUrl
-                        ? t.protocolMediaKind ?? inferProtocolMediaKind(mediaUrl)
-                        : null;
                       return (
                         <tr key={t.id} className="border-b border-surface-border/60 last:border-0">
                           <td className="px-3 py-3 align-top">
-                            <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
+                            <div className="flex items-center gap-1">
                               <span className="font-medium leading-snug text-zinc-200">{t.label}</span>
-                              <div className="flex items-center gap-1">
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setEvaluationHelpOpenId((open) => (open === t.id ? null : t.id));
-                                    setEvaluationMediaOpenId(null);
-                                  }}
-                                  className={cn(
-                                    "inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border text-[10px] font-bold leading-none transition-colors",
-                                    "border-zinc-500/80 text-zinc-400 hover:border-accent/80 hover:text-accent",
-                                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40",
-                                    evaluationHelpOpenId === t.id &&
-                                      "border-accent/80 bg-accent/10 text-accent"
-                                  )}
-                                  aria-label={`Como registar o teste: ${t.label}`}
-                                  aria-expanded={evaluationHelpOpenId === t.id}
-                                >
-                                  !
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setEvaluationMediaOpenId((open) => (open === t.id ? null : t.id));
-                                    setEvaluationHelpOpenId(null);
-                                  }}
-                                  className={cn(
-                                    "inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border transition-colors",
-                                    "border-zinc-500/80 text-zinc-400 hover:border-accent/80 hover:text-accent",
-                                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40",
-                                    evaluationMediaOpenId === t.id &&
-                                      "border-accent/80 bg-accent/10 text-accent"
-                                  )}
-                                  aria-label={`Ver demonstração em imagem ou vídeo: ${t.label}`}
-                                  aria-expanded={evaluationMediaOpenId === t.id}
-                                >
-                                  <Search className="h-2.5 w-2.5" strokeWidth={2.5} aria-hidden />
-                                </button>
-                              </div>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setEvaluationHelpOpenId((open) => (open === t.id ? null : t.id))
+                                }
+                                className={cn(
+                                  "inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border text-[10px] font-bold leading-none transition-colors",
+                                  "border-zinc-500/80 text-zinc-400 hover:border-accent/80 hover:text-accent",
+                                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40",
+                                  evaluationHelpOpenId === t.id &&
+                                    "border-accent/80 bg-accent/10 text-accent"
+                                )}
+                                aria-label={`Como registar o teste: ${t.label}`}
+                                aria-expanded={evaluationHelpOpenId === t.id}
+                              >
+                                !
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setEvaluationMediaOpenId((open) => (open === t.id ? null : t.id))
+                                }
+                                className={cn(
+                                  "inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border transition-colors",
+                                  "border-zinc-500/80 text-zinc-400 hover:border-accent/80 hover:text-accent",
+                                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40",
+                                  evaluationMediaOpenId === t.id &&
+                                    "border-accent/80 bg-accent/10 text-accent"
+                                )}
+                                aria-label={`Ver demonstração: ${t.label}`}
+                                aria-expanded={evaluationMediaOpenId === t.id}
+                              >
+                                <Search className="h-2.5 w-2.5" strokeWidth={2.5} aria-hidden />
+                              </button>
                             </div>
                             <p className="mt-0.5 text-xs text-zinc-600">{t.hint}</p>
                             {evaluationHelpOpenId === t.id && (
                               <p className="mt-2 rounded-lg border border-surface-border bg-zinc-900/85 p-2.5 text-xs leading-relaxed text-zinc-400">
                                 {t.protocolNote}
                               </p>
-                            )}
-                            {evaluationMediaOpenId === t.id && (
-                              <div className="mt-2 overflow-hidden rounded-lg border border-surface-border bg-zinc-950/80">
-                                {mediaUrl && mediaKindResolved ? (
-                                  mediaKindResolved === "video" ? (
-                                    <video
-                                      src={mediaUrl}
-                                      controls
-                                      playsInline
-                                      className="max-h-52 w-full max-w-md object-contain"
-                                      preload="metadata"
-                                    />
-                                  ) : (
-                                    <img
-                                      src={mediaUrl}
-                                      alt={`Demonstração: ${t.label}`}
-                                      className="max-h-52 w-full max-w-md object-contain"
-                                    />
-                                  )
-                                ) : (
-                                  <p className="p-2.5 text-xs leading-relaxed text-zinc-500">
-                                    Ainda não há imagem ou vídeo de demonstração para este teste.
-                                  </p>
-                                )}
-                              </div>
                             )}
                           </td>
                           <td className="px-3 py-3 align-top">
@@ -555,5 +602,7 @@ export function PlayerDetailModal({
         </div>
       </div>
     </div>
+      {mediaOverlay}
+    </>
   );
 }

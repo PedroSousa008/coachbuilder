@@ -1,11 +1,9 @@
 import type { EvaluationTestId } from "@/types";
 
-/** URL pública (ex.: `/evaluation/sprint20m.jpg`) ou absoluta; vídeo: mp4, webm, mov. */
-export function inferProtocolMediaKind(url: string): "image" | "video" {
-  const path = url.split("?")[0]!.toLowerCase();
-  if (/\.(mp4|webm|mov|m4v|ogg)$/.test(path)) return "video";
-  return "image";
-}
+/** Imagem ou vídeo de demonstração do protocolo (ficheiros em `/public/evaluation/` ou URL absoluta). */
+export type ProtocolMedia =
+  | { readonly kind: "image"; readonly src: string }
+  | { readonly kind: "video"; readonly src: string };
 
 /** Metadados dos testes (rótulos PT + unidade esperada para o treinador). */
 export const EVALUATION_TESTS: readonly {
@@ -15,16 +13,15 @@ export const EVALUATION_TESTS: readonly {
   readonly hint: string;
   /** Como executar o teste para resultados comparáveis e precisos (mostrado ao treinador). */
   readonly protocolNote: string;
-  /** Imagem ou vídeo de demonstração (opcional). Coloca ficheiros em `public/evaluation/` e usa `/evaluation/nome.ext`. */
-  readonly protocolMediaUrl?: string;
-  /** Se não definires, infere-se pela extensão do URL. */
-  readonly protocolMediaKind?: "image" | "video";
+  /** Demonstração visual (substitui `src` por `.jpg`, `.webp`, `.mp4`, etc., na pasta `public/evaluation/`). */
+  readonly protocolMedia: ProtocolMedia;
 }[] = [
   {
     id: "sprint20m",
     label: "Sprint 20 metros",
     valuePlaceholder: "ex.: 3,45",
     hint: "Tempo em segundos (menor = melhor).",
+    protocolMedia: { kind: "image", src: "/evaluation/sprint20m.svg" },
     protocolNote:
       "Usa sempre a mesma distância (20 m) e superfície plana e seca. Partida de pé, sem passo de arranque antes da linha; cronómetro manual ou laser na altura do tronco, parado na linha de chegada. Faz 2 tentativas com recuperação completa e regista o melhor tempo. Evita vento forte ou piso irregular — isso distorce a comparação com a tabela.",
   },
@@ -33,6 +30,7 @@ export const EVALUATION_TESTS: readonly {
     label: "Dribbling Slalom",
     valuePlaceholder: "ex.: 8,2",
     hint: "Tempo total em segundos (menor = melhor).",
+    protocolMedia: { kind: "image", src: "/evaluation/dribbling-slalom.svg" },
     protocolNote:
       "Coloca os cones à distância e alinhamento que a equipa usa sempre (anota essa configuração). O tempo começa no 1.º toque na bola e termina ao passar a última linha/cone, sem cortar nem desviar o percurso. Mantém a bola próxima dos pés; regista o melhor de 2 tentativas após aquecimento semelhante.",
   },
@@ -41,6 +39,7 @@ export const EVALUATION_TESTS: readonly {
     label: "Yo-Yo Endurance",
     valuePlaceholder: "ex.: 17.1",
     hint: "Nível / distância conforme protocolo (maior = melhor).",
+    protocolMedia: { kind: "image", src: "/evaluation/yoyo-endurance.svg" },
     protocolNote:
       "Segue o protocolo oficial (IR ou Endurance) com marcas no chão e sinal sonoro fiável. O jogador deve atingir a linha a tempo em cada repetição; regista o nível final ou a distância total conforme o teste que usas — sempre o mesmo protocolo entre avaliações para comparar evolução.",
   },
@@ -49,6 +48,7 @@ export const EVALUATION_TESTS: readonly {
     label: "Vertical Jump",
     valuePlaceholder: "ex.: 52",
     hint: "Altura em cm (maior = melhor).",
+    protocolMedia: { kind: "image", src: "/evaluation/vertical-jump.svg" },
     protocolNote:
       "Parede lisa com escala ou sensor; salto a partir de pé parado (sem passo de corrida), braços livres ou protocolo fixo que repitas sempre. Faz várias tentativas (ex.: 3) e regista a melhor ou a média — desde que sejas consistente entre jogadores e datas.",
   },
@@ -57,6 +57,7 @@ export const EVALUATION_TESTS: readonly {
     label: "Short Passing Accuracy",
     valuePlaceholder: "ex.: 8/10",
     hint: "Acertos (podes usar fração ou %).",
+    protocolMedia: { kind: "image", src: "/evaluation/short-passing.svg" },
     protocolNote:
       "Define distância fixa até ao alvo (ex.: gaiola ou cone), número de passes (ex.: 10) e superfície. Conta só passes que cumprem o critério (ex.: parar dentro da zona); regista acertos/total ou % — o importante é o mesmo critério para todos.",
   },
@@ -65,6 +66,7 @@ export const EVALUATION_TESTS: readonly {
     label: "Reaction Test",
     valuePlaceholder: "ex.: 0,28",
     hint: "Tempo de reação em segundos (menor = melhor).",
+    protocolMedia: { kind: "image", src: "/evaluation/reaction-test.svg" },
     protocolNote:
       "Estímulo visual ou sonoro aleatório; o jogador reage com um toque ou botão sem “saltar a vez”. Descarta tentativas em que antecipou o sinal; faz várias repetições e regista a média ou a mediana conforme o teu protocolo, sempre igual entre avaliações.",
   },
@@ -73,6 +75,7 @@ export const EVALUATION_TESTS: readonly {
     label: "Strength Test",
     valuePlaceholder: "ex.: 5",
     hint: "Repetições ou carga (maior = melhor).",
+    protocolMedia: { kind: "image", src: "/evaluation/strength-test.svg" },
     protocolNote:
       "Escolhe um exercício claro (ex.: prancha, agachamento, supino) e regista o mesmo tipo de métrica: repetições máximas com técnica correta, ou carga a X reps. Amplitude e cadência devem ser as mesmas entre avaliações; não compares resultados de exercícios diferentes.",
   },
