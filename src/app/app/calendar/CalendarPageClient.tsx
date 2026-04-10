@@ -132,9 +132,8 @@ export function CalendarPageClient() {
   );
 
   /**
-   * Next: all remaining fixtures for the team (kick-off after now) until the end of the competition import.
-   * Previous: only finished matches with a result on the page (jogos já disputados com marcador).
-   * Lists recompute every minute (and when you return to the tab) so games move after kick-off without refresh.
+   * Imported rows: **result on the page first** — if FPF has scores, the match is always Previous, even when
+   * the parsed kick-off is wrong. Only fixtures **without** a result use date (Lisbon) for Next vs Previous.
    */
   const { nextGameRows, previousGameRows } = useMemo(() => {
     const next: NextRow[] = [];
@@ -148,21 +147,46 @@ export function CalendarPageClient() {
           userClubMatchesOfficialTeam(club, m.awayTeam, candidates);
         if (!mine) continue;
 
+        if (isImportedPlayed(m)) {
+          const o = outcomeForMyTeam(m, club, candidates);
+          if (o) prev.push({ kind: "imported", match: m, outcome: o.outcome, line: o.short });
+          else {
+            const homeHit = userClubMatchesOfficialTeam(club, m.homeTeam, candidates);
+            const opp = homeHit ? m.awayTeam : m.homeTeam;
+            prev.push({
+              kind: "imported-neutral",
+              match: m,
+              line: `vs ${opp} · ${neutralResultLine(m)}`,
+            });
+          }
+          continue;
+        }
         if (isKickoffStillUpcomingLisbon(m.kickoff, nowMs)) {
           next.push({ kind: "imported", match: m, scheduleKind: sk });
           continue;
         }
-        if (isImportedPlayed(m)) {
-          const o = outcomeForMyTeam(m, club, candidates);
-          if (o) prev.push({ kind: "imported", match: m, outcome: o.outcome, line: o.short });
-        }
+        const homeHit = userClubMatchesOfficialTeam(club, m.homeTeam, candidates);
+        const opp = homeHit ? m.awayTeam : m.homeTeam;
+        prev.push({
+          kind: "imported-neutral",
+          match: m,
+          line: `vs ${opp} · jogado (sem resultado na importação)`,
+        });
       }
     } else {
       for (const m of leagueMatches) {
+        if (isImportedPlayed(m)) {
+          prev.push({ kind: "imported-neutral", match: m, line: neutralResultLine(m) });
+          continue;
+        }
         if (isKickoffStillUpcomingLisbon(m.kickoff, nowMs)) {
           next.push({ kind: "imported", match: m, scheduleKind: sk });
-        } else if (isImportedPlayed(m)) {
-          prev.push({ kind: "imported-neutral", match: m, line: neutralResultLine(m) });
+        } else {
+          prev.push({
+            kind: "imported-neutral",
+            match: m,
+            line: `${neutralResultLine(m)} · jogado (sem resultado na importação)`,
+          });
         }
       }
     }

@@ -10,6 +10,7 @@ export function calendarDayLisbon(isoOrMs: string | number): string {
  */
 export function isKickoffStillUpcomingLisbon(iso: string, nowMs: number): boolean {
   const t = new Date(iso).getTime();
+  if (!Number.isFinite(t)) return false;
   if (t <= nowMs) return false;
   return calendarDayLisbon(iso) >= calendarDayLisbon(nowMs);
 }

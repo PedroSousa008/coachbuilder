@@ -47,6 +47,7 @@ export function resolveNextMatchForCoach(args: {
 
   if (club.length > 0) {
     for (const m of args.leagueMatches) {
+      if (m.homeScore !== undefined && m.awayScore !== undefined) continue;
       if (!isKickoffStillUpcomingLisbon(m.kickoff, nowMs)) continue;
       const t = new Date(m.kickoff).getTime();
       const homeHit = userClubMatchesOfficialTeam(club, m.homeTeam, names);
