@@ -12,6 +12,7 @@ import { FixtureFormModal } from "@/components/calendar/FixtureFormModal";
 import { formatKickoff } from "@/lib/format";
 import { collectUniqueTeamNames, pickBestTeamMatch, userClubMatchesOfficialTeam } from "@/lib/team-match";
 import { inferCompetitionKind, type CompetitionKind } from "@/lib/competition-kind";
+import { useScheduleNow } from "@/hooks/useScheduleNow";
 
 function formatKickoffShort(iso: string) {
   const d = new Date(iso);
@@ -69,7 +70,7 @@ function isImportedPlayed(m: LeagueImportedMatch): boolean {
   return m.homeScore !== undefined && m.awayScore !== undefined;
 }
 
-/** Future fixture vs already played — by calendar kick-off, not by whether the HTML has a score yet. */
+/** Still to play (kick-off strictly after “now”). */
 function isKickoffStillUpcoming(iso: string, nowMs: number): boolean {
   return new Date(iso).getTime() > nowMs;
 }
@@ -98,6 +99,7 @@ export function CalendarPageClient() {
   const [refreshing, setRefreshing] = useState(false);
   const [nextSectionOpen, setNextSectionOpen] = useState(true);
   const [previousSectionOpen, setPreviousSectionOpen] = useState(true);
+  const nowMs = useScheduleNow();
 
   useEffect(() => {
     setUrlDraft(leagueTableUrl);
@@ -134,14 +136,14 @@ export function CalendarPageClient() {
   );
 
   /**
-   * Imports are scoped to the competition URL (this season on that page).
-   * Next = kick-off still in the future; Previous = kick-off already passed (with result when the page has it).
+   * Next: all remaining fixtures for the team (kick-off after now) until the end of the competition import.
+   * Previous: only finished matches with a result on the page (jogos já disputados com marcador).
+   * Lists recompute every minute (and when you return to the tab) so games move after kick-off without refresh.
    */
   const { nextGameRows, previousGameRows } = useMemo(() => {
     const next: NextRow[] = [];
     const prev: PrevRow[] = [];
     const sk = pageScheduleKind;
-    const nowMs = Date.now();
 
     if (club) {
       for (const m of leagueMatches) {
@@ -157,14 +159,6 @@ export function CalendarPageClient() {
         if (isImportedPlayed(m)) {
           const o = outcomeForMyTeam(m, club, candidates);
           if (o) prev.push({ kind: "imported", match: m, outcome: o.outcome, line: o.short });
-        } else {
-          const homeHit = userClubMatchesOfficialTeam(club, m.homeTeam, candidates);
-          const opp = homeHit ? m.awayTeam : m.homeTeam;
-          prev.push({
-            kind: "imported-neutral",
-            match: m,
-            line: `vs ${opp} · jogado (sem resultado na importação)`,
-          });
         }
       }
     } else {
@@ -173,12 +167,6 @@ export function CalendarPageClient() {
           next.push({ kind: "imported", match: m, scheduleKind: sk });
         } else if (isImportedPlayed(m)) {
           prev.push({ kind: "imported-neutral", match: m, line: neutralResultLine(m) });
-        } else {
-          prev.push({
-            kind: "imported-neutral",
-            match: m,
-            line: `${neutralResultLine(m)} · jogado (sem resultado na importação)`,
-          });
         }
       }
     }
@@ -200,7 +188,7 @@ export function CalendarPageClient() {
     });
 
     return { nextGameRows: next, previousGameRows: prev };
-  }, [leagueMatches, fixtures, club, candidates, pageScheduleKind]);
+  }, [leagueMatches, fixtures, club, candidates, pageScheduleKind, nowMs]);
 
   const showFullStats = leagueTableRows.some((r) => r.played != null);
 
@@ -228,9 +216,11 @@ export function CalendarPageClient() {
       <div>
         <h2 className="font-display text-xl font-semibold text-white">Calendar & matchweek</h2>
         <p className="mt-1 text-sm text-zinc-500">
-          Próximos jogos: agendados para depois de agora. Jogos anteriores: já disputados (com resultado quando a FPF
-          mostra o marcador). A lista cobre a competição do link — atualiza a página da liga para trazer todas as
-          jornadas.
+          <span className="font-semibold text-zinc-300">Próximos:</span> todos os jogos da tua equipa que ainda não foram
+          disputados (kick-off depois de agora), até ao último jogo da competição neste link.{" "}
+          <span className="font-semibold text-zinc-300">Anteriores:</span> só jogos já realizados com marcador na
+          importação. A lista reorganiza ao minuto quando passa a hora; usa Refresh na tabela para novos resultados na
+          FPF.
         </p>
         {resolvedClub && (
           <p className="mt-2 text-xs text-accent">
@@ -260,8 +250,7 @@ export function CalendarPageClient() {
               Your fixtures
             </CardTitle>
             <CardDescription>
-              Próximos (cartões pretos) e jogos já realizados (verde / branco / vermelho quando há resultado para a tua
-              equipa).
+              Próximos: por disputar. Anteriores: concluídos com marcador (V/E/D a cores para a tua equipa).
             </CardDescription>
           </div>
           <Button

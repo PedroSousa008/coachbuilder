@@ -19,8 +19,10 @@ export function resolveNextMatchForCoach(args: {
   leagueMatches: LeagueImportedMatch[];
   manualFixtures: MatchFixture[];
   teamCandidateNames: string[];
+  /** From `useScheduleNow()` so “next match” updates as kick-offs pass without reloading. */
+  nowMs?: number;
 }): ResolvedNextMatch | null {
-  const nowMs = Date.now();
+  const nowMs = args.nowMs ?? Date.now();
   const club = args.coachClub.trim();
   const comp = (args.leagueCompetitionName ?? "").trim() || "Competition";
   const names = args.teamCandidateNames;

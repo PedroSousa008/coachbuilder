@@ -4,12 +4,14 @@ import Link from "next/link";
 import { useMemo } from "react";
 import { Badge } from "@/components/ui/Badge";
 import { useAppData } from "@/contexts/AppDataContext";
+import { useScheduleNow } from "@/hooks/useScheduleNow";
 import { formatKickoff } from "@/lib/format";
 import { resolveNextMatchForCoach } from "@/lib/next-match";
 import { collectUniqueTeamNames } from "@/lib/team-match";
 
 export function DashboardNextMatch() {
   const { fixtures, leagueMatches, leagueCompetitionName, coachProfile, leagueTableRows, hydrated } = useAppData();
+  const nowMs = useScheduleNow();
 
   const teamCandidateNames = useMemo(
     () => collectUniqueTeamNames({ tableRows: leagueTableRows, matches: leagueMatches }),
@@ -24,8 +26,9 @@ export function DashboardNextMatch() {
         leagueMatches,
         manualFixtures: fixtures,
         teamCandidateNames,
+        nowMs,
       }),
-    [fixtures, leagueMatches, leagueCompetitionName, coachProfile.club, teamCandidateNames]
+    [fixtures, leagueMatches, leagueCompetitionName, coachProfile.club, teamCandidateNames, nowMs]
   );
 
   if (!hydrated) {
