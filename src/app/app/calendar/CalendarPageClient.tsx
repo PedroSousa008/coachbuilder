@@ -69,6 +69,11 @@ function isImportedPlayed(m: LeagueImportedMatch): boolean {
   return m.homeScore !== undefined && m.awayScore !== undefined;
 }
 
+/** Future fixture vs already played — by calendar kick-off, not by whether the HTML has a score yet. */
+function isKickoffStillUpcoming(iso: string, nowMs: number): boolean {
+  return new Date(iso).getTime() > nowMs;
+}
+
 export function CalendarPageClient() {
   const {
     fixtures,
@@ -128,12 +133,15 @@ export function CalendarPageClient() {
     [leagueCompetitionName]
   );
 
-  /** Imported rows: filtered to the coach’s club when set; otherwise the whole competition schedule. */
+  /**
+   * Imports are scoped to the competition URL (this season on that page).
+   * Next = kick-off still in the future; Previous = kick-off already passed (with result when the page has it).
+   */
   const { nextGameRows, previousGameRows } = useMemo(() => {
     const next: NextRow[] = [];
     const prev: PrevRow[] = [];
     const sk = pageScheduleKind;
-    const cut = Date.now() - 3600000;
+    const nowMs = Date.now();
 
     if (club) {
       for (const m of leagueMatches) {
@@ -142,26 +150,41 @@ export function CalendarPageClient() {
           userClubMatchesOfficialTeam(club, m.awayTeam, candidates);
         if (!mine) continue;
 
+        if (isKickoffStillUpcoming(m.kickoff, nowMs)) {
+          next.push({ kind: "imported", match: m, scheduleKind: sk });
+          continue;
+        }
         if (isImportedPlayed(m)) {
           const o = outcomeForMyTeam(m, club, candidates);
           if (o) prev.push({ kind: "imported", match: m, outcome: o.outcome, line: o.short });
         } else {
-          next.push({ kind: "imported", match: m, scheduleKind: sk });
+          const homeHit = userClubMatchesOfficialTeam(club, m.homeTeam, candidates);
+          const opp = homeHit ? m.awayTeam : m.homeTeam;
+          prev.push({
+            kind: "imported-neutral",
+            match: m,
+            line: `vs ${opp} · jogado (sem resultado na importação)`,
+          });
         }
       }
     } else {
       for (const m of leagueMatches) {
-        if (isImportedPlayed(m)) {
+        if (isKickoffStillUpcoming(m.kickoff, nowMs)) {
+          next.push({ kind: "imported", match: m, scheduleKind: sk });
+        } else if (isImportedPlayed(m)) {
           prev.push({ kind: "imported-neutral", match: m, line: neutralResultLine(m) });
         } else {
-          next.push({ kind: "imported", match: m, scheduleKind: sk });
+          prev.push({
+            kind: "imported-neutral",
+            match: m,
+            line: `${neutralResultLine(m)} · jogado (sem resultado na importação)`,
+          });
         }
       }
     }
 
     for (const f of fixtures) {
-      const t = new Date(f.kickoff).getTime();
-      if (t >= cut) next.push({ kind: "manual", fixture: f });
+      if (isKickoffStillUpcoming(f.kickoff, nowMs)) next.push({ kind: "manual", fixture: f });
       else prev.push({ kind: "manual", fixture: f });
     }
 
@@ -205,8 +228,9 @@ export function CalendarPageClient() {
       <div>
         <h2 className="font-display text-xl font-semibold text-white">Calendar & matchweek</h2>
         <p className="mt-1 text-sm text-zinc-500">
-          Next games are fixtures still to play (no result yet). Previous games are finished matches with the score —
-          wins, draws, and losses are colour-coded.
+          Próximos jogos: agendados para depois de agora. Jogos anteriores: já disputados (com resultado quando a FPF
+          mostra o marcador). A lista cobre a competição do link — atualiza a página da liga para trazer todas as
+          jornadas.
         </p>
         {resolvedClub && (
           <p className="mt-2 text-xs text-accent">
@@ -236,7 +260,8 @@ export function CalendarPageClient() {
               Your fixtures
             </CardTitle>
             <CardDescription>
-              Two lists: games still to come (black cards) and games already played with result (green / white / red).
+              Próximos (cartões pretos) e jogos já realizados (verde / branco / vermelho quando há resultado para a tua
+              equipa).
             </CardDescription>
           </div>
           <Button

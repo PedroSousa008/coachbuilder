@@ -20,7 +20,7 @@ export function resolveNextMatchForCoach(args: {
   manualFixtures: MatchFixture[];
   teamCandidateNames: string[];
 }): ResolvedNextMatch | null {
-  const cutoff = Date.now() - 3600000;
+  const nowMs = Date.now();
   const club = args.coachClub.trim();
   const comp = (args.leagueCompetitionName ?? "").trim() || "Competition";
   const names = args.teamCandidateNames;
@@ -31,7 +31,7 @@ export function resolveNextMatchForCoach(args: {
 
   for (const f of args.manualFixtures) {
     const t = new Date(f.kickoff).getTime();
-    if (t < cutoff) continue;
+    if (t <= nowMs) continue;
     cands.push({
       opponent: f.opponent,
       competition: f.competition,
@@ -45,7 +45,7 @@ export function resolveNextMatchForCoach(args: {
   if (club.length > 0) {
     for (const m of args.leagueMatches) {
       const t = new Date(m.kickoff).getTime();
-      if (t < cutoff) continue;
+      if (t <= nowMs) continue;
       const homeHit = userClubMatchesOfficialTeam(club, m.homeTeam, names);
       const awayHit = userClubMatchesOfficialTeam(club, m.awayTeam, names);
       if (!homeHit && !awayHit) continue;
