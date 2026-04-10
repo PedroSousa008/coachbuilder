@@ -1,8 +1,13 @@
 import { NextResponse } from "next/server";
 import { parseStandingsFromHtml, isAllowedLeagueTableUrl } from "@/lib/league-table-parse";
-import { extractCompetitionLabelFromHtml, parseFpfMatchesFromHtml } from "@/lib/league-import-fpf";
+import {
+  dedupeMatches,
+  extractCompetitionLabelFromHtml,
+  fetchFpfMatchesFromFixtureRounds,
+  parseFpfMatchesFromHtml,
+} from "@/lib/league-import-fpf";
 
-export const maxDuration = 30;
+export const maxDuration = 60;
 
 export async function POST(req: Request) {
   try {
@@ -44,7 +49,16 @@ export async function POST(req: Request) {
 
     const html = await res.text();
     const rows = parseStandingsFromHtml(html);
-    const matches = parseFpfMatchesFromHtml(html, url);
+    let matches = parseFpfMatchesFromHtml(html, url);
+    try {
+      const host = new URL(url).hostname.toLowerCase();
+      if (host.includes("resultados.fpf.pt")) {
+        const extra = await fetchFpfMatchesFromFixtureRounds(html, url, fetch);
+        matches = dedupeMatches([...matches, ...extra]);
+      }
+    } catch (e) {
+      console.error("league-table FPF fixture rounds", e);
+    }
     const competitionName = extractCompetitionLabelFromHtml(html);
 
     if (rows.length === 0 && matches.length === 0) {
