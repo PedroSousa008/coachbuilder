@@ -193,9 +193,9 @@ export function CalendarPageClient() {
             League table
           </CardTitle>
           <CardDescription>
-            Paste the public URL of your league standings page (HTML with a table). We fetch it on this server
-            and parse the largest table — many sites work; some use heavy JavaScript and won’t work until we add a
-            dedicated integration.
+            Paste the public URL of your league standings page. We fetch it on this server and parse HTML tables or
+            known layouts (e.g. FPF resultados.fpf.pt classificações). Heavy JavaScript-only pages may not work until we
+            add a dedicated integration.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">

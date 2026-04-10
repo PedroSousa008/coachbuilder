@@ -14,8 +14,9 @@ export async function POST(req: Request) {
     const res = await fetch(url, {
       headers: {
         "User-Agent":
-          "Mozilla/5.0 (compatible; CoachBuilder/1.0; +https://coachbuilder.app) AppleWebKit/537.36",
-        Accept: "text/html,application/xhtml+xml",
+          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "pt-PT,pt;q=0.9,en-GB;q=0.8,en;q=0.7",
       },
       redirect: "follow",
       cache: "no-store",

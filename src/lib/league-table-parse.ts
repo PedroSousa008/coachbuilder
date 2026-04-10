@@ -2,6 +2,75 @@ import type { LeagueTableRow } from "@/types";
 import * as cheerio from "cheerio";
 
 /**
+ * FPF resultados.fpf.pt — standings use `div.game.classification` (no <table>).
+ * Pages often contain several mini-tables (Série 1, Série 2…); we return the largest block.
+ */
+function parseFpfClassificationGrid($: ReturnType<typeof cheerio.load>): LeagueTableRow[] {
+  const parsed: LeagueTableRow[] = [];
+
+  $("div.game.classification").each((_, el) => {
+    const cells: string[] = [];
+    $(el)
+      .children("div")
+      .each((__, child) => {
+        cells.push($(child).text().trim().replace(/\s+/g, " "));
+      });
+    if (cells.length < 4) return;
+
+    const posRaw = cells[0].replace(/[^\d]/g, "");
+    const position = posRaw ? parseInt(posRaw, 10) : NaN;
+    const team = cells[1] ?? "";
+    if (!team || team.length < 2 || !Number.isFinite(position)) return;
+
+    const nums = cells.slice(2).map((c) => {
+      const m = c.match(/^-?\d+$/);
+      return m ? parseInt(m[0], 10) : NaN;
+    });
+    const validNums = nums.filter((n) => !isNaN(n));
+    const points = validNums.length >= 1 ? validNums[validNums.length - 1] : undefined;
+
+    let played: number | undefined;
+    let won: number | undefined;
+    let drawn: number | undefined;
+    let lost: number | undefined;
+    let goalsFor: number | undefined;
+    let goalsAgainst: number | undefined;
+    if (validNums.length >= 7) {
+      [played, won, drawn, lost, goalsFor, goalsAgainst] = validNums.slice(0, 6);
+    }
+
+    parsed.push({
+      position,
+      team: team.slice(0, 80),
+      played,
+      won,
+      drawn,
+      lost,
+      goalsFor,
+      goalsAgainst,
+      points,
+      cells,
+    });
+  });
+
+  if (parsed.length === 0) return [];
+
+  const groups: LeagueTableRow[][] = [];
+  let current: LeagueTableRow[] = [];
+  for (const row of parsed) {
+    if (row.position === 1 && current.length > 0) {
+      groups.push(current);
+      current = [];
+    }
+    current.push(row);
+  }
+  if (current.length) groups.push(current);
+
+  groups.sort((a, b) => b.length - a.length);
+  return groups[0]!.slice(0, 30);
+}
+
+/**
  * Extract the largest HTML table and map rows to standings (best-effort).
  * Many league sites use different markup; we surface raw cells when unsure.
  */
@@ -27,7 +96,11 @@ export function parseStandingsFromHtml(html: string): LeagueTableRow[] {
     }
   });
 
-  if (best.rows.length === 0) return [];
+  if (best.rows.length === 0) {
+    const fromFpf = parseFpfClassificationGrid($);
+    if (fromFpf.length > 0) return fromFpf;
+    return [];
+  }
 
   let start = 0;
   const headerJoin = best.rows[0].join(" ").toLowerCase();
@@ -69,6 +142,11 @@ export function parseStandingsFromHtml(html: string): LeagueTableRow[] {
         cells,
       });
     }
+  }
+
+  if (out.length === 0) {
+    const fromFpf = parseFpfClassificationGrid($);
+    if (fromFpf.length > 0) return fromFpf;
   }
 
   return out.slice(0, 30);
