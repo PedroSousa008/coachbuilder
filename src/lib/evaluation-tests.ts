@@ -1,5 +1,12 @@
 import type { EvaluationTestId } from "@/types";
 
+/** URL pública (ex.: `/evaluation/sprint20m.jpg`) ou absoluta; vídeo: mp4, webm, mov. */
+export function inferProtocolMediaKind(url: string): "image" | "video" {
+  const path = url.split("?")[0]!.toLowerCase();
+  if (/\.(mp4|webm|mov|m4v|ogg)$/.test(path)) return "video";
+  return "image";
+}
+
 /** Metadados dos testes (rótulos PT + unidade esperada para o treinador). */
 export const EVALUATION_TESTS: readonly {
   readonly id: EvaluationTestId;
@@ -8,6 +15,10 @@ export const EVALUATION_TESTS: readonly {
   readonly hint: string;
   /** Como executar o teste para resultados comparáveis e precisos (mostrado ao treinador). */
   readonly protocolNote: string;
+  /** Imagem ou vídeo de demonstração (opcional). Coloca ficheiros em `public/evaluation/` e usa `/evaluation/nome.ext`. */
+  readonly protocolMediaUrl?: string;
+  /** Se não definires, infere-se pela extensão do URL. */
+  readonly protocolMediaKind?: "image" | "video";
 }[] = [
   {
     id: "sprint20m",

@@ -16,10 +16,12 @@ import { QUALITY_GROUPS, mergeQualities } from "@/lib/player-qualities";
 import { buildPlayerInsights } from "@/lib/player-insights";
 import { PlayerInsightsBox } from "@/components/team/PlayerInsightsBox";
 import { Badge } from "@/components/ui/Badge";
+import { Search } from "lucide-react";
 import {
   computeAiOverallProvisional,
   EVALUATION_TESTS,
   EVALUATION_TEST_IDS,
+  inferProtocolMediaKind,
 } from "@/lib/evaluation-tests";
 
 const POSITIONS: Position[] = [
@@ -67,6 +69,7 @@ export function PlayerDetailModal({
   const [qualitiesDraft, setQualitiesDraft] = useState<PlayerQualities>(() => mergeQualities());
   const [evaluationDraft, setEvaluationDraft] = useState<Record<EvaluationTestId, string>>(emptyEvaluationDraft);
   const [evaluationHelpOpenId, setEvaluationHelpOpenId] = useState<EvaluationTestId | null>(null);
+  const [evaluationMediaOpenId, setEvaluationMediaOpenId] = useState<EvaluationTestId | null>(null);
 
   useEffect(() => {
     if (!player) return;
@@ -88,10 +91,14 @@ export function PlayerDetailModal({
     setEvaluationDraft(ev);
     setTab("dados");
     setEvaluationHelpOpenId(null);
+    setEvaluationMediaOpenId(null);
   }, [player]);
 
   useEffect(() => {
-    if (tab !== "avaliacao") setEvaluationHelpOpenId(null);
+    if (tab !== "avaliacao") {
+      setEvaluationHelpOpenId(null);
+      setEvaluationMediaOpenId(null);
+    }
   }, [tab]);
 
   const insights = useMemo(() => {
@@ -418,34 +425,84 @@ export function PlayerDetailModal({
                       const raw = evaluationDraft[t.id] ?? "";
                       const ageNum = Math.min(45, Math.max(14, parseInt(age, 10) || 17));
                       const ai = raw.trim() ? computeAiOverallProvisional(t.id, raw, ageNum) : null;
+                      const mediaUrl = t.protocolMediaUrl?.trim() ?? "";
+                      const mediaKindResolved = mediaUrl
+                        ? t.protocolMediaKind ?? inferProtocolMediaKind(mediaUrl)
+                        : null;
                       return (
                         <tr key={t.id} className="border-b border-surface-border/60 last:border-0">
                           <td className="px-3 py-3 align-top">
-                            <div className="flex items-center gap-1.5">
+                            <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
                               <span className="font-medium leading-snug text-zinc-200">{t.label}</span>
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setEvaluationHelpOpenId((open) => (open === t.id ? null : t.id))
-                                }
-                                className={cn(
-                                  "inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border text-[10px] font-bold leading-none transition-colors",
-                                  "border-zinc-500/80 text-zinc-400 hover:border-accent/80 hover:text-accent",
-                                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40",
-                                  evaluationHelpOpenId === t.id &&
-                                    "border-accent/80 bg-accent/10 text-accent"
-                                )}
-                                aria-label={`Como registar o teste: ${t.label}`}
-                                aria-expanded={evaluationHelpOpenId === t.id}
-                              >
-                                !
-                              </button>
+                              <div className="flex items-center gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setEvaluationHelpOpenId((open) => (open === t.id ? null : t.id));
+                                    setEvaluationMediaOpenId(null);
+                                  }}
+                                  className={cn(
+                                    "inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border text-[10px] font-bold leading-none transition-colors",
+                                    "border-zinc-500/80 text-zinc-400 hover:border-accent/80 hover:text-accent",
+                                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40",
+                                    evaluationHelpOpenId === t.id &&
+                                      "border-accent/80 bg-accent/10 text-accent"
+                                  )}
+                                  aria-label={`Como registar o teste: ${t.label}`}
+                                  aria-expanded={evaluationHelpOpenId === t.id}
+                                >
+                                  !
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setEvaluationMediaOpenId((open) => (open === t.id ? null : t.id));
+                                    setEvaluationHelpOpenId(null);
+                                  }}
+                                  className={cn(
+                                    "inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border transition-colors",
+                                    "border-zinc-500/80 text-zinc-400 hover:border-accent/80 hover:text-accent",
+                                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40",
+                                    evaluationMediaOpenId === t.id &&
+                                      "border-accent/80 bg-accent/10 text-accent"
+                                  )}
+                                  aria-label={`Ver demonstração em imagem ou vídeo: ${t.label}`}
+                                  aria-expanded={evaluationMediaOpenId === t.id}
+                                >
+                                  <Search className="h-2.5 w-2.5" strokeWidth={2.5} aria-hidden />
+                                </button>
+                              </div>
                             </div>
                             <p className="mt-0.5 text-xs text-zinc-600">{t.hint}</p>
                             {evaluationHelpOpenId === t.id && (
                               <p className="mt-2 rounded-lg border border-surface-border bg-zinc-900/85 p-2.5 text-xs leading-relaxed text-zinc-400">
                                 {t.protocolNote}
                               </p>
+                            )}
+                            {evaluationMediaOpenId === t.id && (
+                              <div className="mt-2 overflow-hidden rounded-lg border border-surface-border bg-zinc-950/80">
+                                {mediaUrl && mediaKindResolved ? (
+                                  mediaKindResolved === "video" ? (
+                                    <video
+                                      src={mediaUrl}
+                                      controls
+                                      playsInline
+                                      className="max-h-52 w-full max-w-md object-contain"
+                                      preload="metadata"
+                                    />
+                                  ) : (
+                                    <img
+                                      src={mediaUrl}
+                                      alt={`Demonstração: ${t.label}`}
+                                      className="max-h-52 w-full max-w-md object-contain"
+                                    />
+                                  )
+                                ) : (
+                                  <p className="p-2.5 text-xs leading-relaxed text-zinc-500">
+                                    Ainda não há imagem ou vídeo de demonstração para este teste.
+                                  </p>
+                                )}
+                              </div>
                             )}
                           </td>
                           <td className="px-3 py-3 align-top">
