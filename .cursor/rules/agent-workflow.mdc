@@ -8,12 +8,12 @@ alwaysApply: true
 ## Default: always ship to Vercel (via Git)
 
 - **Unless the user explicitly says not to push** (e.g. “local only”, “don’t commit yet”), finish every substantive coding task by **committing and pushing** to `origin` on the branch Vercel watches. That push is what triggers **automatic Vercel deployment** — no separate “deploy to Vercel” button is required when Git integration is connected.
-- Work in the **git root** for this app: `coachbuilder/` (not the parent `CoachBrain/` folder unless that is the connected repo).
+- Work in the **git root** for this app: the workspace folder **`CoachBrain`** is the same repo as [github.com/PedroSousa008/coachbuilder](https://github.com/PedroSousa008/coachbuilder) — Next.js lives at the **repo root** (`package.json`, `src/`), not in a nested `coachbuilder/` subfolder.
 
 ## Terminal and tooling
 
 - **Do not** ask the user to run commands in their terminal. **You** run shell commands (`npm`, `git`, etc.) in the environment.
-- Prefer **absolute paths** under the project when running commands, e.g. `/Users/pedrocastrosousa/Desktop/Sousa/CoachBrain/coachbuilder` (or the workspace root for this repo).
+- Prefer **absolute paths** under the project when running commands, e.g. `/Users/pedrocastrosousa/Desktop/Sousa/CoachBrain`.
 
 ## Git and delivery
 
