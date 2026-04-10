@@ -78,8 +78,7 @@ export type EvaluationTestId =
   | "yoyoEndurance"
   | "verticalJump"
   | "shortPassingAccuracy"
-  | "reactionTest"
-  | "strengthTest";
+  | "reactionTest";
 
 /** Resultado de um teste físico/técnico (valor inserido + AI 0–100 quando calculável). */
 export type EvaluationTestEntry = {

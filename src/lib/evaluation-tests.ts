@@ -32,7 +32,7 @@ export const EVALUATION_TESTS: readonly {
     hint: "Tempo total em segundos (menor = melhor).",
     protocolMedia: { kind: "image", src: "/evaluation/dribbling-slalom.svg" },
     protocolNote:
-      "Coloca os cones à distância e alinhamento que a equipa usa sempre (anota essa configuração). O tempo começa no 1.º toque na bola e termina ao passar a última linha/cone, sem cortar nem desviar o percurso. Mantém a bola próxima dos pés; regista o melhor de 2 tentativas após aquecimento semelhante.",
+      "Coloca os cones à distância de 20 metros. O tempo começa no 1.º toque na bola e termina ao passar a última linha/cone, sem cortar nem desviar o percurso. Mantém a bola próxima dos pés; regista o melhor de 2 tentativas após aquecimento semelhante.",
   },
   {
     id: "yoyoEndurance",
@@ -68,16 +68,7 @@ export const EVALUATION_TESTS: readonly {
     hint: "Tempo de reação em segundos (menor = melhor).",
     protocolMedia: { kind: "image", src: "/evaluation/reaction-test.svg" },
     protocolNote:
-      "Estímulo visual ou sonoro aleatório; o jogador reage com um toque ou botão sem “saltar a vez”. Descarta tentativas em que antecipou o sinal; faz várias repetições e regista a média ou a mediana conforme o teu protocolo, sempre igual entre avaliações.",
-  },
-  {
-    id: "strengthTest",
-    label: "Strength Test",
-    valuePlaceholder: "ex.: 5",
-    hint: "Repetições ou carga (maior = melhor).",
-    protocolMedia: { kind: "image", src: "/evaluation/strength-test.svg" },
-    protocolNote:
-      "Escolhe um exercício claro (ex.: prancha, agachamento, supino) e regista o mesmo tipo de métrica: repetições máximas com técnica correta, ou carga a X reps. Amplitude e cadência devem ser as mesmas entre avaliações; não compares resultados de exercícios diferentes.",
+      "O jogador posiciona-se no centro do círculo, rodeado por 5 cones de cores diferentes (vermelho, branco, cinzento, laranja e amarelo), colocados à mesma distância. Ao comando aleatório do treinador, que diz uma cor, o jogador deve reagir o mais rápido possível e tocar com a mão no cone correspondente. O tempo conta desde o estímulo verbal até ao toque no cone. Tentativas em que o jogador se antecipa ao comando não contam. Realizam-se várias repetições e regista-se a média ou mediana dos tempos, mantendo sempre a mesma disposição dos cones, distâncias e protocolo entre avaliações.",
   },
 ] as const;
 
@@ -207,12 +198,6 @@ export function computeAiOverallProvisional(
       const sec = v;
       if (sec < 0.12 || sec > 0.9) return null;
       const score = 100 - ((sec - 0.18) / (0.55 - 0.18)) * 90;
-      return clamp01to100(score * ageAdj);
-    }
-    case "strengthTest": {
-      const reps = v;
-      if (reps < 0 || reps > 80) return null;
-      const score = (reps / 40) * 100;
       return clamp01to100(score * ageAdj);
     }
     default:
