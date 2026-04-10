@@ -151,6 +151,7 @@ export function userClubMatchesOfficialTeam(
 ): boolean {
   const u = userInput.trim();
   if (!u.length) return false;
+  if (normalizeTeamLabel(u) === normalizeTeamLabel(officialTeam)) return true;
   const uniq = [...new Set(allTeamNames.map((x) => x.trim()).filter(Boolean))];
   if (uniq.length === 0) return teamNamesMatch(u, officialTeam);
 

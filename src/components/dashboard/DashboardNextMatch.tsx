@@ -7,7 +7,7 @@ import { useAppData } from "@/contexts/AppDataContext";
 import { useScheduleNow } from "@/hooks/useScheduleNow";
 import { formatKickoff } from "@/lib/format";
 import { resolveNextMatchForCoach } from "@/lib/next-match";
-import { collectUniqueTeamNames } from "@/lib/team-match";
+import { collectUniqueTeamNames, pickBestTeamMatch } from "@/lib/team-match";
 
 export function DashboardNextMatch() {
   const { fixtures, leagueMatches, leagueCompetitionName, coachProfile, leagueTableRows, hydrated } = useAppData();
@@ -18,17 +18,24 @@ export function DashboardNextMatch() {
     [leagueTableRows, leagueMatches]
   );
 
+  const canonicalClub = useMemo(() => {
+    const c = coachProfile.club.trim();
+    if (!c || teamCandidateNames.length === 0) return null;
+    return pickBestTeamMatch(c, teamCandidateNames);
+  }, [coachProfile.club, teamCandidateNames]);
+
   const next = useMemo(
     () =>
       resolveNextMatchForCoach({
         coachClub: coachProfile.club,
+        coachClubCanonical: canonicalClub?.name ?? null,
         leagueCompetitionName,
         leagueMatches,
         manualFixtures: fixtures,
         teamCandidateNames,
         nowMs,
       }),
-    [fixtures, leagueMatches, leagueCompetitionName, coachProfile.club, teamCandidateNames, nowMs]
+    [fixtures, leagueMatches, leagueCompetitionName, coachProfile.club, canonicalClub?.name, teamCandidateNames, nowMs]
   );
 
   if (!hydrated) {

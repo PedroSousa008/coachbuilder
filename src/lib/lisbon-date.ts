@@ -66,21 +66,17 @@ export function wallClockLisbonToUtcIso(
 
   const target = { y: year, m: month1, d: day, h: hour, mi: minute };
 
-  const anchor = Date.UTC(year, month1 - 1, day, 12, 0, 0);
-  let lo = anchor - 3 * 24 * 60 * 60 * 1000;
-  let hi = anchor + 3 * 24 * 60 * 60 * 1000;
-
-  for (let iter = 0; iter < 64; iter++) {
-    const mid = Math.floor((lo + hi) / 2);
-    const w = readWall(mid);
-    const c = cmp(w, target);
-    if (c === 0) return new Date(mid).toISOString();
-    if (c < 0) lo = mid + 1;
-    else hi = mid - 1;
-    if (lo > hi) break;
+  // Linear scan: binary search can fail when local wall time is not monotonic in UTC (DST).
+  const dayStart = Date.UTC(year, month1 - 1, day, 0, 0, 0);
+  const lo = dayStart - 5 * 24 * 60 * 60 * 1000;
+  const hi = dayStart + 6 * 24 * 60 * 60 * 1000;
+  for (let ms = lo; ms <= hi; ms += 60 * 1000) {
+    const w = readWall(ms);
+    if (cmp(w, target) === 0) return new Date(ms).toISOString();
   }
 
-  return null;
+  // Fallback: do not drop the fixture — approximate as that calendar day at the given hour in UTC (FPF times are usually close).
+  return new Date(Date.UTC(year, month1 - 1, day, hour, minute, 0)).toISOString();
 }
 
 /**

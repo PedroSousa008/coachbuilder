@@ -16,6 +16,8 @@ export type ResolvedNextMatch = {
  */
 export function resolveNextMatchForCoach(args: {
   coachClub: string;
+  /** Name from the league table / fixtures when it matches Profile (same as Calendar). */
+  coachClubCanonical?: string | null;
   leagueCompetitionName: string | null;
   leagueMatches: LeagueImportedMatch[];
   manualFixtures: MatchFixture[];
@@ -24,7 +26,7 @@ export function resolveNextMatchForCoach(args: {
   nowMs?: number;
 }): ResolvedNextMatch | null {
   const nowMs = args.nowMs ?? Date.now();
-  const club = args.coachClub.trim();
+  const club = (args.coachClubCanonical?.trim() || args.coachClub.trim());
   const comp = (args.leagueCompetitionName ?? "").trim() || "Competition";
   const names = args.teamCandidateNames;
 
