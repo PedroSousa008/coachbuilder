@@ -3,8 +3,10 @@
 import { useMemo, useState } from "react";
 import type { Player, Position } from "@/types";
 import { PlayerCard } from "@/components/team/PlayerCard";
+import { AddPlayerModal } from "@/components/players/AddPlayerModal";
 import { Input } from "@/components/ui/Input";
-import { mockPlayers } from "@/data/mock";
+import { Button } from "@/components/ui/Button";
+import { useAppData } from "@/contexts/AppDataContext";
 
 const positions: (Position | "all")[] = [
   "all",
@@ -12,6 +14,7 @@ const positions: (Position | "all")[] = [
   "CB",
   "LB",
   "RB",
+  "CDM",
   "CM",
   "CAM",
   "LW",
@@ -20,27 +23,39 @@ const positions: (Position | "all")[] = [
 ];
 
 export default function TeamPage() {
+  const { players, addPlayer, removePlayer } = useAppData();
   const [q, setQ] = useState("");
   const [pos, setPos] = useState<Position | "all">("all");
   const [detail, setDetail] = useState<Player | null>(null);
+  const [addOpen, setAddOpen] = useState(false);
 
   const filtered = useMemo(() => {
-    return mockPlayers.filter((p) => {
+    return players.filter((p) => {
       const matchQ =
         q.trim() === "" || p.name.toLowerCase().includes(q.toLowerCase()) || String(p.number).includes(q);
       const matchP = pos === "all" || p.position === pos;
       return matchQ && matchP;
     });
-  }, [q, pos]);
+  }, [players, q, pos]);
 
   return (
     <div className="mx-auto max-w-6xl space-y-8">
+      <AddPlayerModal open={addOpen} onClose={() => setAddOpen(false)} onSave={(input) => addPlayer(input)} />
+
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h2 className="font-display text-lg font-semibold text-white">Squad roster</h2>
-          <p className="text-sm text-zinc-500">Availability and form signals for matchday decisions.</p>
+          <p className="text-sm text-zinc-500">
+            {players.length} player{players.length !== 1 ? "s" : ""} · same list everywhere you pick names (tactics,
+            training, messages).
+          </p>
         </div>
-        <Input placeholder="Search players…" value={q} onChange={(e) => setQ(e.target.value)} className="sm:max-w-xs" />
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <Input placeholder="Search players…" value={q} onChange={(e) => setQ(e.target.value)} className="sm:w-56" />
+          <Button type="button" onClick={() => setAddOpen(true)}>
+            Add player
+          </Button>
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-2">
@@ -58,7 +73,15 @@ export default function TeamPage() {
         ))}
       </div>
 
-      {filtered.length === 0 ? (
+      {players.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-surface-border p-12 text-center">
+          <p className="text-zinc-400">No players yet.</p>
+          <p className="mt-2 text-sm text-zinc-500">Add your squad — they’ll be available on tactics, training, and chat.</p>
+          <Button type="button" className="mt-6" onClick={() => setAddOpen(true)}>
+            Add your first player
+          </Button>
+        </div>
+      ) : filtered.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-surface-border p-12 text-center text-zinc-500">
           No players match your filters.
         </div>
@@ -86,15 +109,24 @@ export default function TeamPage() {
               #{detail.number} · {detail.position} · {detail.age} years
             </p>
             <p className="mt-4 text-sm text-zinc-400">
-              Full bio, load management, and clip links will live here. Close to return to the roster.
+              Full bio, load management, and clip links will live here when your backend is connected.
             </p>
-            <button
-              type="button"
-              onClick={() => setDetail(null)}
-              className="mt-6 h-10 w-full rounded-xl bg-accent text-sm font-semibold text-zinc-950 hover:bg-accent-muted"
-            >
-              Close
-            </button>
+            <div className="mt-6 flex gap-3">
+              <Button type="button" variant="secondary" className="flex-1" onClick={() => setDetail(null)}>
+                Close
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="flex-1 border-red-500/40 text-red-400 hover:bg-red-500/10"
+                onClick={() => {
+                  removePlayer(detail.id);
+                  setDetail(null);
+                }}
+              >
+                Remove from roster
+              </Button>
+            </div>
           </div>
         </div>
       )}

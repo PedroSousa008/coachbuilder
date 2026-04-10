@@ -4,8 +4,10 @@ function players(list: { label: string; x: number; y: number }[]): PitchPlayer[]
   return list.map((p, i) => ({
     id: `p-${i}`,
     label: p.label,
+    formationLabel: p.label,
     x: p.x,
     y: p.y,
+    playerId: null,
   }));
 }
 

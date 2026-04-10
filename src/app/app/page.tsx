@@ -3,23 +3,14 @@ import { GitBranch, CalendarDays, MessageSquare, Target, TrendingUp } from "luci
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { Badge } from "@/components/ui/Badge";
-import {
-  mockCoach,
-  mockNextMatch,
-  mockTeamStats,
-  mockTactics,
-  mockConversations,
-  mockMessages,
-  mockUpcomingSession,
-} from "@/data/mock";
+import { mockCoach, mockNextMatch, mockTeamStats, mockTactics, mockUpcomingSession } from "@/data/mock";
+import { DashboardInboxPreview } from "@/components/dashboard/DashboardInboxPreview";
 import { formatKickoff, formatRelativeDay } from "@/lib/format";
 
 export default function DashboardPage() {
   const featuredTactic = mockTactics[0];
   const denom = featuredTactic ? featuredTactic.wins + featuredTactic.losses : 0;
   const tacticWinRate = featuredTactic && denom > 0 ? Math.round((featuredTactic.wins / denom) * 100) : 0;
-  const firstGroup = mockConversations.find((c) => c.type === "group");
-  const groupPreview = firstGroup ? (mockMessages[firstGroup.id]?.slice(-2).reverse() ?? []) : [];
   const welcomeLine =
     mockCoach.name.trim().length > 0
       ? `Welcome back, ${mockCoach.name.trim().split(/\s+/)[0]}`
@@ -136,22 +127,8 @@ export default function DashboardPage() {
               Open inbox
             </Link>
           </CardHeader>
-          <CardContent className="space-y-4">
-            {groupPreview.length === 0 ? (
-              <p className="text-sm text-zinc-500">No messages yet. Start the squad chat when your team is connected.</p>
-            ) : (
-              groupPreview.map((m) => (
-                <div key={m.id} className="rounded-xl border border-surface-border/80 bg-surface-raised/30 p-3">
-                  <p className="text-xs font-medium text-accent">{m.authorName}</p>
-                  <p className="mt-1 text-sm text-zinc-300">{m.body}</p>
-                </div>
-              ))
-            )}
-            {firstGroup && (
-              <p className="text-xs text-zinc-600">
-                {firstGroup.title}: {firstGroup.lastMessagePreview}
-              </p>
-            )}
+          <CardContent>
+            <DashboardInboxPreview />
           </CardContent>
         </Card>
 

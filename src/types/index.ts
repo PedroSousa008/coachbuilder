@@ -14,9 +14,14 @@ export type FormationId = "4-3-3" | "4-2-3-1" | "3-5-2";
 
 export interface PitchPlayer {
   id: string;
+  /** Display on the chip (e.g. shirt number or role). */
   label: string;
+  /** Role from formation template; used when clearing a roster assignment. */
+  formationLabel: string;
   x: number;
   y: number;
+  /** Linked squad player from Team roster. */
+  playerId?: string | null;
 }
 
 export interface Tactic {

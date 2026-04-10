@@ -1,14 +1,24 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import type { FormationId, PitchPlayer, Tactic } from "@/types";
+import type { FormationId, PitchPlayer, Player, Tactic } from "@/types";
 import { FORMATION_LAYOUTS } from "@/data/formations";
 import { FootballPitch } from "@/components/tactics/FootballPitch";
 import { TacticCard } from "@/components/tactics/TacticCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { PlayerPickerModal } from "@/components/players/PlayerPickerModal";
+import { useAppData } from "@/contexts/AppDataContext";
 
 const DRAFT_ID = "draft";
+
+function normalizePitchPlayers(ps: PitchPlayer[]): PitchPlayer[] {
+  return ps.map((p) => ({
+    ...p,
+    formationLabel: p.formationLabel ?? p.label,
+    playerId: p.playerId ?? null,
+  }));
+}
 
 function clonePlayers(formation: FormationId, prefix: string): PitchPlayer[] {
   return FORMATION_LAYOUTS[formation].map((p, i) => ({
@@ -33,6 +43,7 @@ function buildDraftTactic(): Tactic {
 }
 
 export function TacticsBoard({ initialTactics }: { initialTactics: Tactic[] }) {
+  const { players: roster } = useAppData();
   const draftTactic = useMemo(() => buildDraftTactic(), []);
   const [tactics] = useState(initialTactics);
   const initialSnapshot = initialTactics[0] ?? draftTactic;
@@ -49,14 +60,17 @@ export function TacticsBoard({ initialTactics }: { initialTactics: Tactic[] }) {
   const [opponent, setOpponent] = useState(() => initialSnapshot.opponent);
   const [notes, setNotes] = useState(() => initialSnapshot.notes);
   const [formation, setFormation] = useState<FormationId>(() => initialSnapshot.formation);
-  const [players, setPlayers] = useState<PitchPlayer[]>(() => initialSnapshot.players);
+  const [players, setPlayers] = useState<PitchPlayer[]>(() => normalizePitchPlayers(initialSnapshot.players));
+
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerSlotId, setPickerSlotId] = useState<string | null>(null);
 
   const syncFromTactic = useCallback((t: Tactic) => {
     setName(t.name);
     setOpponent(t.opponent);
     setNotes(t.notes);
     setFormation(t.formation);
-    setPlayers(t.players);
+    setPlayers(normalizePitchPlayers(t.players));
   }, []);
 
   const selectTactic = (t: Tactic) => {
@@ -69,17 +83,66 @@ export function TacticsBoard({ initialTactics }: { initialTactics: Tactic[] }) {
     setPlayers(clonePlayers(f, active.id));
   };
 
+  const openPickerForSlot = (slot: PitchPlayer) => {
+    setPickerSlotId(slot.id);
+    setPickerOpen(true);
+  };
+
+  const assignPlayerToSlot = (player: Player) => {
+    if (!pickerSlotId) return;
+    setPlayers((prev) =>
+      prev.map((s) =>
+        s.id === pickerSlotId
+          ? {
+              ...s,
+              playerId: player.id,
+              label: String(player.number),
+            }
+          : s
+      )
+    );
+    setPickerSlotId(null);
+  };
+
+  const clearSlot = () => {
+    if (!pickerSlotId) return;
+    setPlayers((prev) =>
+      prev.map((s) =>
+        s.id === pickerSlotId
+          ? {
+              ...s,
+              playerId: null,
+              label: s.formationLabel,
+            }
+          : s
+      )
+    );
+    setPickerSlotId(null);
+  };
+
   const denom = active.wins + active.losses;
   const winRate = denom > 0 ? Math.round((active.wins / denom) * 100) : 0;
   const isDraft = active.id === DRAFT_ID;
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 lg:grid lg:grid-cols-[minmax(0,1fr)_280px] lg:gap-8 lg:space-y-0">
+      <PlayerPickerModal
+        open={pickerOpen}
+        title="Assign player to position"
+        players={roster}
+        onClose={() => {
+          setPickerOpen(false);
+          setPickerSlotId(null);
+        }}
+        onSelect={assignPlayerToSlot}
+        onClear={pickerSlotId ? clearSlot : undefined}
+        emptyHint="Add players from Team → Add player, then return here."
+      />
+
       <div className="space-y-6">
         {isDraft && tactics.length === 0 && (
           <p className="rounded-xl border border-dashed border-surface-border bg-surface-raised/40 px-4 py-3 text-sm text-zinc-400">
-            You don&apos;t have any saved tactics yet. Shape your formation below, then save will connect when your
-            backend is ready.
+            Tap a position on the pitch to link someone from your roster. Drag chips to fine-tune positions.
           </p>
         )}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -124,7 +187,12 @@ export function TacticsBoard({ initialTactics }: { initialTactics: Tactic[] }) {
           </div>
         </div>
 
-        <FootballPitch players={players} onPlayersChange={setPlayers} className="max-h-[min(70vh,640px)]" />
+        <FootballPitch
+          players={players}
+          onPlayersChange={setPlayers}
+          onSlotTap={openPickerForSlot}
+          className="max-h-[min(70vh,640px)]"
+        />
 
         <Card>
           <CardHeader>
