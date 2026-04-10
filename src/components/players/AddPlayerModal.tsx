@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { Player, Position } from "@/types";
+import type { Player, Position, PreferredFoot } from "@/types";
 import type { NewPlayerInput } from "@/contexts/AppDataContext";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -31,10 +31,23 @@ export function AddPlayerModal({
 }) {
   const [name, setName] = useState("");
   const [number, setNumber] = useState("10");
-  const [position, setPosition] = useState<Position>("CM");
+  const [selectedPos, setSelectedPos] = useState<Position[]>(["CM"]);
   const [age, setAge] = useState("17");
+  const [heightCm, setHeightCm] = useState("");
+  const [weightKg, setWeightKg] = useState("");
+  const [preferredFoot, setPreferredFoot] = useState<PreferredFoot | "">("");
   const [availability, setAvailability] = useState<Player["availability"]>("available");
   const [performance, setPerformance] = useState<Player["performance"]>("steady");
+
+  const togglePos = (p: Position) => {
+    setSelectedPos((prev) => {
+      if (prev.includes(p)) {
+        if (prev.length <= 1) return prev;
+        return prev.filter((x) => x !== p);
+      }
+      return [...prev, p];
+    });
+  };
 
   if (!open) return null;
 
@@ -43,18 +56,28 @@ export function AddPlayerModal({
     if (!n) return;
     const num = Math.min(99, Math.max(1, parseInt(number, 10) || 1));
     const a = Math.min(45, Math.max(14, parseInt(age, 10) || 17));
+    const posList = selectedPos.length ? selectedPos : ["CM"];
+    const h = heightCm.trim() ? Math.min(220, Math.max(120, parseInt(heightCm, 10) || 170)) : undefined;
+    const w = weightKg.trim() ? Math.min(150, Math.max(35, parseInt(weightKg, 10) || 70)) : undefined;
     onSave({
       name: n,
       number: num,
-      position,
+      position: posList[0]!,
+      positions: posList.length > 1 ? posList : undefined,
       age: a,
+      heightCm: h,
+      weightKg: w,
+      preferredFoot: preferredFoot || undefined,
       availability,
       performance,
     });
     setName("");
     setNumber("10");
-    setPosition("CM");
+    setSelectedPos(["CM"]);
     setAge("17");
+    setHeightCm("");
+    setWeightKg("");
+    setPreferredFoot("");
     setAvailability("available");
     setPerformance("steady");
     onClose();
@@ -110,17 +133,62 @@ export function AddPlayerModal({
               />
             </div>
           </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-medium text-zinc-500" htmlFor="np-h">
+                Altura (cm)
+              </label>
+              <Input
+                id="np-h"
+                type="number"
+                min={120}
+                max={220}
+                placeholder="—"
+                value={heightCm}
+                onChange={(e) => setHeightCm(e.target.value)}
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-zinc-500" htmlFor="np-w">
+                Peso (kg)
+              </label>
+              <Input
+                id="np-w"
+                type="number"
+                min={35}
+                max={150}
+                placeholder="—"
+                value={weightKg}
+                onChange={(e) => setWeightKg(e.target.value)}
+                className="mt-1"
+              />
+            </div>
+          </div>
           <div>
-            <label className="text-xs font-medium text-zinc-500">Position</label>
+            <label className="text-xs font-medium text-zinc-500">Pé preferido</label>
+            <select
+              value={preferredFoot}
+              onChange={(e) => setPreferredFoot(e.target.value as PreferredFoot | "")}
+              className="mt-1.5 h-11 w-full rounded-xl border border-surface-border bg-surface-raised px-3 text-sm text-white"
+            >
+              <option value="">—</option>
+              <option value="right">Direito</option>
+              <option value="left">Esquerdo</option>
+              <option value="both">Ambos</option>
+            </select>
+          </div>
+          <div>
+            <label className="text-xs font-medium text-zinc-500">Posição (várias)</label>
             <div className="mt-2 flex flex-wrap gap-1.5">
               {POSITIONS.map((p) => (
                 <button
                   key={p}
                   type="button"
-                  onClick={() => setPosition(p)}
+                  onClick={() => togglePos(p)}
                   className={cn(
                     "rounded-lg px-2.5 py-1 text-xs font-medium",
-                    position === p ? "bg-accent/15 text-accent" : "bg-surface-raised text-zinc-400"
+                    selectedPos.includes(p) ? "bg-accent/15 text-accent" : "bg-surface-raised text-zinc-400"
                   )}
                 >
                   {p}
@@ -136,9 +204,9 @@ export function AddPlayerModal({
                 onChange={(e) => setAvailability(e.target.value as Player["availability"])}
                 className="mt-1.5 h-11 w-full rounded-xl border border-surface-border bg-surface-raised px-3 text-sm text-white"
               >
-                <option value="available">Available</option>
-                <option value="doubt">Doubt</option>
-                <option value="out">Out</option>
+                <option value="available">Disponível</option>
+                <option value="doubt">Dúvida</option>
+                <option value="out">Indisponível</option>
               </select>
             </div>
             <div>
@@ -148,9 +216,9 @@ export function AddPlayerModal({
                 onChange={(e) => setPerformance(e.target.value as Player["performance"])}
                 className="mt-1.5 h-11 w-full rounded-xl border border-surface-border bg-surface-raised px-3 text-sm text-white"
               >
-                <option value="up">Rising</option>
-                <option value="steady">Steady</option>
-                <option value="down">Down</option>
+                <option value="up">Em alta</option>
+                <option value="steady">Estável</option>
+                <option value="down">Em baixa</option>
               </select>
             </div>
           </div>

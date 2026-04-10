@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type { Player } from "@/types";
+import { formatPlayerPositions } from "@/lib/player-positions";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -31,7 +32,7 @@ export function PlayerPickerModal({
     return players.filter(
       (p) =>
         p.name.toLowerCase().includes(t) ||
-        p.position.toLowerCase().includes(t) ||
+        formatPlayerPositions(p).toLowerCase().includes(t) ||
         String(p.number).includes(t)
     );
   }, [players, q]);
@@ -81,8 +82,8 @@ export function PlayerPickerModal({
                     </span>
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-medium text-white">{p.name}</p>
-                      <Badge variant="muted" className="mt-0.5">
-                        {p.position}
+                      <Badge variant="muted" className="mt-0.5 max-w-full truncate">
+                        {formatPlayerPositions(p)}
                       </Badge>
                     </div>
                   </button>

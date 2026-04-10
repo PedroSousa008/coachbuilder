@@ -37,15 +37,58 @@ export interface Tactic {
   updatedAt: string;
 }
 
+export type PreferredFoot = "left" | "right" | "both";
+
+export type QualityStatId =
+  | "acceleration"
+  | "sprintSpeed"
+  | "attackingPosition"
+  | "finishing"
+  | "shotPower"
+  | "longShots"
+  | "volleys"
+  | "penalties"
+  | "vision"
+  | "crossing"
+  | "freeKickAccuracy"
+  | "shortPass"
+  | "longPass"
+  | "curve"
+  | "agility"
+  | "balance"
+  | "reactions"
+  | "ballControl"
+  | "dribbling"
+  | "composure"
+  | "interceptions"
+  | "headingAccuracy"
+  | "defensiveAwareness"
+  | "standTackle"
+  | "slideTackle"
+  | "jumping"
+  | "stamina"
+  | "strength"
+  | "aggression";
+
+export type PlayerQualities = Record<QualityStatId, number>;
+
 export interface Player {
   id: string;
   name: string;
+  /** Primary position (legacy + tactics); first entry of `positions` when set. */
   position: Position;
+  /** Optional extra positions (multi-role). */
+  positions?: Position[];
   age: number;
+  heightCm?: number;
+  weightKg?: number;
+  preferredFoot?: PreferredFoot;
   availability: "available" | "doubt" | "out";
   performance: "up" | "steady" | "down";
   number: number;
   photoUrl?: string;
+  /** FIFA-style attributes 0–100; merged with defaults when missing. */
+  qualities?: Partial<PlayerQualities>;
 }
 
 export interface TrainingSession {

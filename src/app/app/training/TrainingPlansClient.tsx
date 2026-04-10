@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/Badge";
 import { AddTrainingSessionModal } from "@/components/training/AddTrainingSessionModal";
 import { useAppData } from "@/contexts/AppDataContext";
 import { cn } from "@/lib/utils";
+import { formatPlayerPositions } from "@/lib/player-positions";
 
 const categories = [
   "Possession",
@@ -172,7 +173,7 @@ export function TrainingPlansClient() {
                               <span className="text-sm font-medium text-white">
                                 #{p.number} {p.name}
                               </span>
-                              <span className="text-xs text-zinc-500">{p.position}</span>
+                              <span className="text-xs text-zinc-500">{formatPlayerPositions(p)}</span>
                             </label>
                           </li>
                         );

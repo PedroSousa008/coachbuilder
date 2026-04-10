@@ -1,6 +1,7 @@
 import type { Player } from "@/types";
 import { Badge } from "@/components/ui/Badge";
 import { cn } from "@/lib/utils";
+import { formatPlayerPositions } from "@/lib/player-positions";
 
 const availabilityLabel = {
   available: "Available",
@@ -28,7 +29,7 @@ export function PlayerCard({ player, onOpen }: { player: Player; onOpen?: () => 
         <div className="min-w-0 flex-1">
           <p className="truncate font-medium text-white">{player.name}</p>
           <div className="mt-1 flex flex-wrap items-center gap-2">
-            <Badge>{player.position}</Badge>
+            <Badge className="max-w-full truncate">{formatPlayerPositions(player)}</Badge>
             <span className="text-xs text-zinc-500">{player.age} yrs</span>
           </div>
         </div>

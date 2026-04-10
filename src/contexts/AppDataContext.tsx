@@ -18,10 +18,12 @@ import type {
   Message,
   Player,
   Position,
+  PreferredFoot,
   TrainingSession,
 } from "@/types";
 import { mockCoach } from "@/data/mock";
 import { dedupeMatches } from "@/lib/league-match-dedupe";
+import { formatPlayerPositions } from "@/lib/player-positions";
 
 const LS_PLAYERS = "coachbuilder-players";
 const LS_CONVS = "coachbuilder-conversations";
@@ -89,7 +91,12 @@ export type NewPlayerInput = {
   name: string;
   number: number;
   position: Position;
+  /** Multi-position; defaults to `[position]` when omitted. */
+  positions?: Position[];
   age: number;
+  heightCm?: number;
+  weightKg?: number;
+  preferredFoot?: PreferredFoot;
   availability: Player["availability"];
   performance: Player["performance"];
 };
@@ -260,12 +267,17 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   }, [coachProfile, hydrated]);
 
   const addPlayer = useCallback((input: NewPlayerInput) => {
+    const posList = input.positions?.length ? [...input.positions] : [input.position];
     const p: Player = {
       id: uid("pl"),
       name: input.name.trim(),
       number: input.number,
-      position: input.position,
+      position: posList[0]!,
+      positions: posList.length > 1 ? posList : undefined,
       age: input.age,
+      heightCm: input.heightCm,
+      weightKg: input.weightKg,
+      preferredFoot: input.preferredFoot,
       availability: input.availability,
       performance: input.performance,
     };
@@ -302,7 +314,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         id,
         type: "dm",
         title: player.name,
-        subtitle: `${player.position} · #${player.number}`,
+        subtitle: `${formatPlayerPositions(player)} · #${player.number}`,
         avatarInitials: initials(player.name),
         lastMessagePreview: "No messages yet",
         lastMessageAt: new Date().toISOString(),
