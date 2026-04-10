@@ -10,10 +10,19 @@ const TAP_THRESH_SQ = 100;
 
 type Pending = { id: string; sx: number; sy: number; offsetX: number; offsetY: number };
 
+function clampStoredX(x: number): number {
+  return Math.min(96, Math.max(4, x));
+}
+
 function displayNameForSlot(p: PitchPlayer, roster: Player[] | undefined): string | null {
   if (!p.playerId) return null;
   const fromRoster = roster?.find((r) => r.id === p.playerId)?.name?.trim();
   return fromRoster || p.playerName?.trim() || null;
+}
+
+/** Stored pitch x is “team” space; screen places left% from CSS left. View: GK → ST, team’s left flank = screen right → mirror. */
+function screenLeftFromStoredX(storedX: number): number {
+  return 100 - storedX;
 }
 
 export function FootballPitch({
@@ -38,10 +47,11 @@ export function FootballPitch({
     const el = pitchRef.current;
     if (!el) return { x: 50, y: 50 };
     const r = el.getBoundingClientRect();
-    const x = ((clientX - r.left) / r.width) * 100;
+    const xScreen = ((clientX - r.left) / r.width) * 100;
     const y = ((clientY - r.top) / r.height) * 100;
+    const xStored = clampStoredX(100 - xScreen);
     return {
-      x: Math.min(96, Math.max(4, x)),
+      x: xStored,
       y: Math.min(94, Math.max(6, y)),
     };
   }, []);
@@ -56,7 +66,7 @@ export function FootballPitch({
     const el = pitchRef.current;
     if (el && onPlayersChange) {
       const r = el.getBoundingClientRect();
-      const cx = r.left + (player.x / 100) * r.width;
+      const cx = r.left + (screenLeftFromStoredX(player.x) / 100) * r.width;
       const cy = r.top + (player.y / 100) * r.height;
       offsetX = e.clientX - cx;
       offsetY = e.clientY - cy;
@@ -145,7 +155,7 @@ export function FootballPitch({
             onPointerMove={handlePointerMove}
             onPointerUp={(e) => handlePointerUp(e, p)}
             onPointerCancel={(e) => handlePointerUp(e, p)}
-            style={{ left: `${p.x}%`, top: `${p.y}%` }}
+            style={{ left: `${screenLeftFromStoredX(p.x)}%`, top: `${p.y}%` }}
             className={cn(
               "absolute flex min-h-9 min-w-9 max-w-[4.75rem] -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center gap-0 rounded-full border-2 px-1 py-0.5 text-center shadow-lg backdrop-blur-sm transition-shadow",
               onPlayersChange ? "cursor-grab active:cursor-grabbing" : "cursor-pointer",
@@ -164,7 +174,7 @@ export function FootballPitch({
         ) : (
           <div
             key={p.id}
-            style={{ left: `${p.x}%`, top: `${p.y}%` }}
+            style={{ left: `${screenLeftFromStoredX(p.x)}%`, top: `${p.y}%` }}
             className="absolute flex min-h-9 min-w-9 max-w-[4.75rem] -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center gap-0 rounded-full border-2 border-white/25 bg-zinc-900/90 px-1 py-0.5 text-center text-[10px] font-bold text-white shadow-lg backdrop-blur-sm"
           >
             <span className="leading-none">{p.label}</span>
