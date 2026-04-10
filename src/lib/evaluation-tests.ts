@@ -93,8 +93,16 @@ export const SPRINT_20M_BY_AGE: Record<number, SprintNormRow> = {
   23: { p10: 2.97, p25: 3.03, p50: 3.15, p75: 3.29, p90: 3.41 },
 };
 
-/** Escala 0–100 nos nós P (P10 elite … P90 fraco); interpolação linear no tempo entre nós. */
-const SPRINT_SCORE_AT = { p10: 100, p25: 95, p50: 87, p75: 40, p90: 10 } as const;
+/**
+ * Escala 0–100 (interpolação linear no tempo; menor tempo = melhor):
+ * abaixo de P10 → 100 | P10–P25: 95→90 | P25–P50: 90→75 | P50–P75: 75→40 | P75–P90: 40→10 | acima de P90: 10→0
+ */
+function sprintScoreAboveP90(t: number, p75: number, p90: number): number {
+  const span = Math.max(p90 - p75, 0.05);
+  const tEnd = p90 + span;
+  if (t >= tEnd) return 0;
+  return lerpScore(t, p90, tEnd, 10, 0);
+}
 
 function clampAgeToSprintRow(age: number): number {
   const a = Math.round(age);
@@ -109,7 +117,7 @@ function lerpScore(t: number, t0: number, t1: number, s0: number, s1: number): n
 
 /**
  * Sprint 20 m: tempo em segundos + idade → overall 0–100 (tabela P10–P90 por idade).
- * Tempos mais baixos = melhor. Fora [p10,p90] faz clip (≤p10 → 100, ≥p90 → 10).
+ * Tempos mais baixos = melhor. Ver comentário acima para a escala por segmentos.
  */
 export function computeSprint20mScore(timeSec: number, age: number): number | null {
   if (!Number.isFinite(timeSec) || timeSec <= 0) return null;
@@ -118,12 +126,12 @@ export function computeSprint20mScore(timeSec: number, age: number): number | nu
   if (!row) return null;
   const { p10, p25, p50, p75, p90 } = row;
 
-  if (timeSec <= p10) return 100;
-  if (timeSec >= p90) return 10;
-  if (timeSec <= p25) return Math.round(lerpScore(timeSec, p10, p25, SPRINT_SCORE_AT.p10, SPRINT_SCORE_AT.p25));
-  if (timeSec <= p50) return Math.round(lerpScore(timeSec, p25, p50, SPRINT_SCORE_AT.p25, SPRINT_SCORE_AT.p50));
-  if (timeSec <= p75) return Math.round(lerpScore(timeSec, p50, p75, SPRINT_SCORE_AT.p50, SPRINT_SCORE_AT.p75));
-  return Math.round(lerpScore(timeSec, p75, p90, SPRINT_SCORE_AT.p75, SPRINT_SCORE_AT.p90));
+  if (timeSec < p10) return 100;
+  if (timeSec <= p25) return Math.round(lerpScore(timeSec, p10, p25, 95, 90));
+  if (timeSec <= p50) return Math.round(lerpScore(timeSec, p25, p50, 90, 75));
+  if (timeSec <= p75) return Math.round(lerpScore(timeSec, p50, p75, 75, 40));
+  if (timeSec <= p90) return Math.round(lerpScore(timeSec, p75, p90, 40, 10));
+  return Math.round(sprintScoreAboveP90(timeSec, p75, p90));
 }
 
 /**
