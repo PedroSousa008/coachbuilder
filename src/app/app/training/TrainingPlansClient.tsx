@@ -17,7 +17,7 @@ const categories = [
 
 function weekLabel(iso: string) {
   const d = new Date(iso);
-  return d.toLocaleDateString("en-GB", { week: "long", day: "numeric", month: "short" });
+  return d.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "short" });
 }
 
 export function TrainingPlansClient({ sessions }: { sessions: TrainingSession[] }) {
