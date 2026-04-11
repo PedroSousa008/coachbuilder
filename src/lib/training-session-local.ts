@@ -104,7 +104,7 @@ function fwdNames(players: Player[]): string {
 type MainDrillDef = {
   themes: TrainingThemeId[];
   title: string;
-  describe: (players: Player[], minutes: number) => Omit<AiTrainingBlock, "durationMin" | "phase">;
+  describe: (players: Player[], minutes: number) => Omit<AiTrainingBlock, "durationMin" | "phase" | "title">;
 };
 
 const MAIN_DRILLS: MainDrillDef[] = [
@@ -259,6 +259,7 @@ export function buildLocalFullTrainingSession(params: {
     const mins = parts2[i] ?? Math.floor(mainTotal / nMain);
     const body = def.describe(players, mins);
     recalc.push({
+      title: def.title,
       ...body,
       durationMin: mins,
       phase: "main",
