@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import type { TrainingSession } from "@/types";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import type { AiFullTrainingSession, AiSingleDrill, AiTrainingPhase } from "@/lib/training-ai-types";
 import { SessionCard } from "@/components/training/SessionCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -10,18 +10,19 @@ import { AddTrainingSessionModal } from "@/components/training/AddTrainingSessio
 import { useAppData } from "@/contexts/AppDataContext";
 import { cn } from "@/lib/utils";
 import { formatPlayerPositions } from "@/lib/player-positions";
+import {
+  buildFullSessionDocumentHtml,
+  buildSingleDrillDocumentHtml,
+  openPrintableHtml,
+} from "@/lib/training-print-html";
+import type { TrainingSession } from "@/types";
 
-const categories = [
-  "Possession",
-  "Finishing",
-  "Defensive shape",
-  "Pressing",
-  "Recovery",
-] as const;
+const DURATIONS = [30, 60, 90, 120] as const;
 
-function weekLabel(iso: string) {
-  const d = new Date(iso);
-  return d.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "short" });
+function phaseLabel(p: AiTrainingPhase): string {
+  if (p === "warmup") return "Aquecimento";
+  if (p === "cooldown") return "Alongamento / volta à calma";
+  return "Principal";
 }
 
 export function TrainingPlansClient() {
@@ -33,11 +34,164 @@ export function TrainingPlansClient() {
     setTrainingSessionPlayerIds,
   } = useAppData();
 
+  const [labTab, setLabTab] = useState<"full" | "drill">("full");
+  const [durationMin, setDurationMin] = useState<(typeof DURATIONS)[number]>(60);
+  const [objective, setObjective] = useState("");
+  const [drillBrief, setDrillBrief] = useState("");
+
+  const [selectedAiIds, setSelectedAiIds] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    setSelectedAiIds((prev) => {
+      const valid = new Set(players.map((p) => p.id));
+      const next = new Set<string>();
+      if (prev.size === 0) {
+        players.forEach((p) => next.add(p.id));
+        return next;
+      }
+      for (const id of prev) if (valid.has(id)) next.add(id);
+      for (const p of players) if (!prev.has(p.id)) next.add(p.id);
+      return next;
+    });
+  }, [players]);
+
+  const selectedPlayers = useMemo(
+    () => players.filter((p) => selectedAiIds.has(p.id)),
+    [players, selectedAiIds]
+  );
+  const selectedCount = selectedPlayers.length;
+
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const toggleAiPlayer = (id: string) => {
+    setSelectedAiIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        if (next.size <= 1) return next;
+        next.delete(id);
+      } else next.add(id);
+      return next;
+    });
+  };
+
+  const [fullLoading, setFullLoading] = useState(false);
+  const [drillLoading, setDrillLoading] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const [fullPlan, setFullPlan] = useState<AiFullTrainingSession | null>(null);
+  const [fullMeta, setFullMeta] = useState<{ durationMin: number; playerCount: number } | null>(null);
+  const [singleDrill, setSingleDrill] = useState<AiSingleDrill | null>(null);
+
+  const runFullAi = async () => {
+    setErr(null);
+    setFullLoading(true);
+    setFullPlan(null);
+    setFullMeta(null);
+    try {
+      const payload = {
+        durationMin,
+        objective,
+        players: selectedPlayers.map((p) => ({
+          name: p.name,
+          number: p.number,
+          positions: formatPlayerPositions(p),
+        })),
+      };
+      const res = await fetch("/api/training/ai-full-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const j = (await res.json()) as {
+        ok?: boolean;
+        error?: string;
+        plan?: AiFullTrainingSession;
+        meta?: { durationMin: number; playerCount: number };
+      };
+      if (!res.ok || !j.ok || !j.plan) {
+        setErr(j.error || "Não foi possível gerar o treino.");
+        return;
+      }
+      setFullPlan(j.plan);
+      setFullMeta(j.meta ?? { durationMin, playerCount: selectedCount });
+    } catch {
+      setErr("Erro de rede.");
+    } finally {
+      setFullLoading(false);
+    }
+  };
+
+  const runDrillAi = async () => {
+    setErr(null);
+    setDrillLoading(true);
+    setSingleDrill(null);
+    try {
+      const res = await fetch("/api/training/ai-single-drill", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          brief: drillBrief,
+          players: selectedPlayers.map((p) => ({ name: p.name, number: p.number })),
+        }),
+      });
+      const j = (await res.json()) as { ok?: boolean; error?: string; drill?: AiSingleDrill };
+      if (!res.ok || !j.ok || !j.drill) {
+        setErr(j.error || "Não foi possível gerar o exercício.");
+        return;
+      }
+      setSingleDrill(j.drill);
+    } catch {
+      setErr("Erro de rede.");
+    } finally {
+      setDrillLoading(false);
+    }
+  };
+
+  const printFull = useCallback(() => {
+    if (!fullPlan || !fullMeta) return;
+    const playerLines = selectedPlayers.map((p) => `#${p.number} ${p.name} — ${formatPlayerPositions(p)}`);
+    const html = buildFullSessionDocumentHtml({
+      plan: fullPlan,
+      durationMin: fullMeta.durationMin,
+      playerLines,
+      generatedAt: new Date().toLocaleString("pt-PT"),
+    });
+    openPrintableHtml(html);
+  }, [fullPlan, fullMeta, selectedPlayers]);
+
+  const printDrill = useCallback(() => {
+    if (!singleDrill) return;
+    const html = buildSingleDrillDocumentHtml({
+      drill: singleDrill,
+      generatedAt: new Date().toLocaleString("pt-PT"),
+    });
+    openPrintableHtml(html);
+  }, [singleDrill]);
+
+  const saveFullAsSession = () => {
+    if (!fullPlan || !fullMeta) return;
+    const desc = [
+      fullPlan.summary,
+      "",
+      ...fullPlan.blocks.map(
+        (b) =>
+          `### ${b.title} (${b.durationMin} min, ${phaseLabel(b.phase)})\n${b.description}\n\n${b.coachingPoints}`
+      ),
+      "",
+      fullPlan.closingNotes,
+    ].join("\n");
+    addTrainingSession({
+      title: fullPlan.sessionTitle.slice(0, 80),
+      date: new Date().toISOString(),
+      durationMin: fullMeta.durationMin,
+      intensity: "medium",
+      categories: ["Possession", "Recovery"],
+      description: desc.slice(0, 12000),
+    });
+  };
+
+  /* ——— legado: lista manual ——— */
   const sorted = useMemo(
     () => [...trainingSessions].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
     [trainingSessions]
   );
-
   const [selectedId, setSelectedId] = useState("");
   const [sessionModalOpen, setSessionModalOpen] = useState(false);
 
@@ -50,9 +204,7 @@ export function TrainingPlansClient() {
       (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
     );
     const firstId = order[0]!.id;
-    if (!selectedId || !order.some((s) => s.id === selectedId)) {
-      setSelectedId(firstId);
-    }
+    if (!selectedId || !order.some((s) => s.id === selectedId)) setSelectedId(firstId);
   }, [trainingSessions, selectedId]);
 
   const selected = sorted.find((s) => s.id === selectedId) ?? sorted[0];
@@ -67,7 +219,7 @@ export function TrainingPlansClient() {
   };
 
   return (
-    <div className="mx-auto max-w-6xl space-y-8">
+    <div className="mx-auto max-w-6xl space-y-10 pb-16 print:hidden">
       <AddTrainingSessionModal
         open={sessionModalOpen}
         onClose={() => setSessionModalOpen(false)}
@@ -77,124 +229,362 @@ export function TrainingPlansClient() {
         }}
       />
 
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h2 className="font-display text-lg font-semibold text-white">Weekly micro-cycle</h2>
-          <p className="text-sm text-zinc-500">
-            {sorted.length > 0 ? weekLabel(sorted[0].date) : "No sessions this week yet"}
+          <h2 className="font-display text-xl font-semibold text-white">Planos de treino</h2>
+          <p className="mt-1 max-w-2xl text-sm text-zinc-500">
+            Gera sessões completas (30–120 min) ou um exercício isolado com IA. Define o plantel, o objetivo e imprime
+            para PDF pelo browser. Imagens de campo: por agora sugerimos descrições textuais para desenhares no quadro.
           </p>
         </div>
-        <Button type="button" variant="primary" onClick={() => setSessionModalOpen(true)}>
-          New training session
-        </Button>
-      </div>
+        <button
+          type="button"
+          onClick={() => setPickerOpen((o) => !o)}
+          className="shrink-0 rounded-2xl border border-sky-500/40 bg-sky-500/10 px-4 py-3 text-left transition hover:bg-sky-500/15"
+        >
+          <p className="text-xs font-medium uppercase tracking-wide text-sky-300/90">Plantel na sessão</p>
+          <p className="mt-0.5 font-display text-2xl font-semibold text-white">{selectedCount}</p>
+          <p className="text-xs text-zinc-500">Clica para incluir ou retirar jogadores</p>
+        </button>
+      </header>
 
-      <div className="flex flex-wrap gap-2">
-        {categories.map((c) => (
-          <Badge key={c} variant="muted" className="cursor-default px-3 py-1 text-xs">
-            {c}
-          </Badge>
-        ))}
-      </div>
-
-      <div className="grid gap-8 lg:grid-cols-5">
-        <div className="space-y-3 lg:col-span-2">
-          <p className="text-xs font-medium uppercase tracking-wider text-zinc-500">Sessions</p>
-          {sorted.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-surface-border px-4 py-10 text-center text-sm text-zinc-500">
-              No sessions planned yet. Tap <span className="font-medium text-zinc-400">New training session</span> to
-              create one.
-            </div>
-          ) : (
-            sorted.map((s) => (
-              <SessionCard
-                key={s.id}
-                session={s}
-                selected={s.id === selected?.id}
-                onClick={() => setSelectedId(s.id)}
-              />
-            ))
-          )}
-        </div>
-        <Card className="lg:col-span-3">
-          <CardHeader>
-            <CardTitle>{selected?.title ?? "Session details"}</CardTitle>
-            {selected && (
-              <p className="text-sm text-zinc-500">
-                {new Date(selected.date).toLocaleString("en-GB", {
-                  weekday: "long",
-                  day: "numeric",
-                  month: "short",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}{" "}
-                · {selected.durationMin} min ·{" "}
-                <span className="capitalize text-zinc-400">{selected.intensity} intensity</span>
-              </p>
-            )}
+      {pickerOpen ? (
+        <Card className="border-sky-500/20">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Quem entra no plano IA</CardTitle>
+            <p className="text-xs text-zinc-500">
+              Sincronizado com a tua equipa (Team). A IA usa nomes, números e posições para personalizar o treino.
+            </p>
           </CardHeader>
-          <CardContent className="space-y-6">
-            {selected ? (
-              <>
-                <div className="flex flex-wrap gap-2">
-                  {selected.categories.map((c) => (
-                    <Badge key={c} variant="accent">
-                      {c}
-                    </Badge>
-                  ))}
-                </div>
-                <p className="text-sm leading-relaxed text-zinc-300">{selected.description}</p>
-
-                <div>
-                  <p className="text-xs font-medium uppercase tracking-wider text-zinc-500">Players in focus</p>
-                  <p className="mt-1 text-xs text-zinc-600">
-                    Tick who this session targets — same roster as Team. Search them elsewhere by name or number.
-                  </p>
-                  {players.length === 0 ? (
-                    <p className="mt-3 text-sm text-zinc-500">Add players under Team to attach them here.</p>
-                  ) : (
-                    <ul className="mt-3 max-h-48 space-y-2 overflow-y-auto rounded-xl border border-surface-border bg-surface-raised/30 p-2">
-                      {players.map((p) => {
-                        const on = selectedPlayerIds.includes(p.id);
-                        return (
-                          <li key={p.id}>
-                            <label
-                              className={cn(
-                                "flex cursor-pointer items-center gap-3 rounded-lg px-2 py-2 transition-colors",
-                                on ? "bg-accent/10" : "hover:bg-white/5"
-                              )}
-                            >
-                              <input
-                                type="checkbox"
-                                checked={on}
-                                onChange={() => togglePlayerForSession(p.id)}
-                                className="h-4 w-4 rounded border-zinc-600"
-                              />
-                              <span className="text-sm font-medium text-white">
-                                #{p.number} {p.name}
-                              </span>
-                              <span className="text-xs text-zinc-500">{formatPlayerPositions(p)}</span>
-                            </label>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  )}
-                </div>
-
-                <div className="rounded-xl border border-dashed border-surface-border bg-surface-raised/30 p-4 text-sm text-zinc-500">
-                  Drill library and progressive blocks will attach here — structure is ready for nested drills per
-                  session.
-                </div>
-              </>
+          <CardContent>
+            {players.length === 0 ? (
+              <p className="text-sm text-zinc-500">Adiciona jogadores em Equipa primeiro.</p>
             ) : (
-              <p className="text-sm text-zinc-500">
-                Create your first session to plan the week — duration, intensity, and drill focus will appear here.
-              </p>
+              <ul className="max-h-64 space-y-1 overflow-y-auto sm:max-h-80">
+                {players.map((p) => {
+                  const on = selectedAiIds.has(p.id);
+                  return (
+                    <li key={p.id}>
+                      <label
+                        className={cn(
+                          "flex cursor-pointer items-center gap-3 rounded-xl px-3 py-2 transition-colors",
+                          on ? "bg-sky-500/10" : "hover:bg-white/5"
+                        )}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={on}
+                          onChange={() => toggleAiPlayer(p.id)}
+                          className="h-4 w-4 rounded border-zinc-600"
+                        />
+                        <span className="text-sm font-medium text-white">
+                          #{p.number} {p.name}
+                        </span>
+                        <span className="text-xs text-zinc-500">{formatPlayerPositions(p)}</span>
+                      </label>
+                    </li>
+                  );
+                })}
+              </ul>
             )}
           </CardContent>
         </Card>
+      ) : null}
+
+      <div className="flex flex-wrap gap-2 border-b border-surface-border pb-1">
+        <button
+          type="button"
+          onClick={() => setLabTab("full")}
+          className={cn(
+            "-mb-px border-b-2 px-4 py-2 text-sm font-medium transition-colors",
+            labTab === "full" ? "border-accent text-white" : "border-transparent text-zinc-500 hover:text-zinc-300"
+          )}
+        >
+          Sessão completa (IA)
+        </button>
+        <button
+          type="button"
+          onClick={() => setLabTab("drill")}
+          className={cn(
+            "-mb-px border-b-2 px-4 py-2 text-sm font-medium transition-colors",
+            labTab === "drill" ? "border-accent text-white" : "border-transparent text-zinc-500 hover:text-zinc-300"
+          )}
+        >
+          Exercício isolado (IA)
+        </button>
       </div>
+
+      {err ? (
+        <p className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">{err}</p>
+      ) : null}
+
+      {labTab === "full" ? (
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Objetivo de hoje</CardTitle>
+              <p className="text-sm text-zinc-500">
+                Ex.: treino com foco na posse e transições rápidas para o último terço; ou pressão alta nos primeiros
+                20 min.
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <p className="mb-2 text-xs font-medium uppercase tracking-wide text-zinc-500">Duração total</p>
+                <div className="flex flex-wrap gap-2">
+                  {DURATIONS.map((d) => (
+                    <button
+                      key={d}
+                      type="button"
+                      onClick={() => setDurationMin(d)}
+                      className={cn(
+                        "rounded-xl px-4 py-2 text-sm font-medium transition-colors",
+                        durationMin === d
+                          ? "bg-accent/20 text-accent"
+                          : "bg-surface-raised text-zinc-400 hover:text-zinc-200"
+                      )}
+                    >
+                      {d} min
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label htmlFor="train-objective" className="text-xs font-medium text-zinc-500">
+                  Descrição do treinador
+                </label>
+                <textarea
+                  id="train-objective"
+                  value={objective}
+                  onChange={(e) => setObjective(e.target.value)}
+                  rows={4}
+                  placeholder="O que queres trabalhar hoje?"
+                  className="mt-2 w-full resize-y rounded-xl border border-surface-border bg-[#0c1014] px-3 py-2 text-sm text-zinc-200 placeholder:text-zinc-600 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+                />
+              </div>
+              <Button
+                type="button"
+                onClick={() => void runFullAi()}
+                disabled={fullLoading || selectedCount === 0 || objective.trim().length < 8}
+                className="w-full sm:w-auto"
+              >
+                {fullLoading ? "A gerar…" : "AI Full Training Session"}
+              </Button>
+              {selectedCount === 0 ? (
+                <p className="text-xs text-amber-200/90">Selecciona pelo menos um jogador no plantel acima.</p>
+              ) : null}
+            </CardContent>
+          </Card>
+
+          {fullPlan && fullMeta ? (
+            <Card className="border-emerald-500/20">
+              <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <CardTitle>{fullPlan.sessionTitle}</CardTitle>
+                  <p className="mt-1 text-sm text-zinc-500">
+                    {fullMeta.durationMin} min · {fullMeta.playerCount} jogadores · blocos com tempos e justificações
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button type="button" variant="secondary" className="text-xs" onClick={printFull}>
+                    Imprimir / PDF
+                  </Button>
+                  <Button type="button" variant="secondary" className="text-xs" onClick={saveFullAsSession}>
+                    Guardar no plano manual
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <p className="text-sm leading-relaxed text-zinc-300">{fullPlan.summary}</p>
+                <div className="space-y-4">
+                  {fullPlan.blocks.map((b, i) => (
+                    <div
+                      key={`${b.title}-${i}`}
+                      className="rounded-xl border border-surface-border bg-surface-raised/20 p-4"
+                    >
+                      <div className="flex flex-wrap items-baseline justify-between gap-2">
+                        <h3 className="font-medium text-white">
+                          {i + 1}. {b.title}
+                        </h3>
+                        <Badge variant="muted">
+                          {phaseLabel(b.phase)} · {b.durationMin} min
+                        </Badge>
+                      </div>
+                      <p className="mt-2 text-sm text-zinc-300">{b.description}</p>
+                      <p className="mt-2 text-sm text-zinc-500">
+                        <span className="font-medium text-zinc-400">Porquê / como:</span> {b.coachingPoints}
+                      </p>
+                      {b.setup ? (
+                        <p className="mt-2 text-xs text-zinc-500">
+                          <span className="text-zinc-400">Organização:</span> {b.setup}
+                        </p>
+                      ) : null}
+                      {b.groupSplit ? (
+                        <p className="mt-2 rounded-lg bg-amber-500/10 px-3 py-2 text-xs text-amber-100/90">
+                          <span className="font-medium">Grupos:</span> {b.groupSplit}
+                        </p>
+                      ) : null}
+                      {b.diagramHint ? (
+                        <p className="mt-2 rounded-lg bg-zinc-800/80 px-3 py-2 font-mono text-xs text-zinc-400">
+                          Diagrama sugerido: {b.diagramHint}
+                        </p>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+                <p className="text-sm text-zinc-400">{fullPlan.closingNotes}</p>
+              </CardContent>
+            </Card>
+          ) : null}
+        </div>
+      ) : (
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Um exercício sob medida</CardTitle>
+              <p className="text-sm text-zinc-500">
+                Já tens o resto da sessão? Pede só um exercício (rondo, transição, finalização em velocidade, etc.). O
+                plantel seleccionado entra no contexto.
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <textarea
+                value={drillBrief}
+                onChange={(e) => setDrillBrief(e.target.value)}
+                rows={4}
+                placeholder="Ex.: rondo 6v2+2 com saídas de 2 toques para dois mini-golos laterais"
+                className="w-full resize-y rounded-xl border border-surface-border bg-[#0c1014] px-3 py-2 text-sm text-zinc-200 placeholder:text-zinc-600 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+              />
+              <Button
+                type="button"
+                onClick={() => void runDrillAi()}
+                disabled={drillLoading || drillBrief.trim().length < 10}
+              >
+                {drillLoading ? "A gerar…" : "Gerar exercício (IA)"}
+              </Button>
+            </CardContent>
+          </Card>
+
+          {singleDrill ? (
+            <Card>
+              <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <CardTitle>{singleDrill.title}</CardTitle>
+                  <p className="text-sm text-zinc-500">{singleDrill.durationMin} min</p>
+                </div>
+                <Button type="button" variant="secondary" className="text-xs" onClick={printDrill}>
+                  Imprimir / PDF
+                </Button>
+              </CardHeader>
+              <CardContent className="space-y-3 text-sm text-zinc-300">
+                <p>
+                  <span className="text-zinc-500">Objetivo:</span> {singleDrill.objective}
+                </p>
+                <p>{singleDrill.description}</p>
+                {singleDrill.progression ? (
+                  <p className="text-zinc-400">
+                    <span className="text-zinc-500">Progressão:</span> {singleDrill.progression}
+                  </p>
+                ) : null}
+                {singleDrill.coachingCues ? (
+                  <p className="text-zinc-400">
+                    <span className="text-zinc-500">Cues:</span> {singleDrill.coachingCues}
+                  </p>
+                ) : null}
+                {singleDrill.variations ? (
+                  <p className="text-zinc-400">
+                    <span className="text-zinc-500">Variações:</span> {singleDrill.variations}
+                  </p>
+                ) : null}
+                {singleDrill.diagramHint ? (
+                  <p className="rounded-lg bg-zinc-800/80 p-3 font-mono text-xs text-zinc-400">
+                    {singleDrill.diagramHint}
+                  </p>
+                ) : null}
+              </CardContent>
+            </Card>
+          ) : null}
+        </div>
+      )}
+
+      <details className="rounded-2xl border border-surface-border bg-surface-raised/10 p-4">
+        <summary className="cursor-pointer text-sm font-medium text-zinc-300">
+          Sessões manuais (legado) — {sorted.length} guardadas
+        </summary>
+        <div className="mt-6 grid gap-8 lg:grid-cols-5">
+          <div className="space-y-3 lg:col-span-2">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-xs font-medium uppercase tracking-wider text-zinc-500">Lista</p>
+              <Button type="button" variant="secondary" className="text-xs" onClick={() => setSessionModalOpen(true)}>
+                Nova sessão manual
+              </Button>
+            </div>
+            {sorted.length === 0 ? (
+              <p className="text-sm text-zinc-500">Nenhuma sessão manual.</p>
+            ) : (
+              sorted.map((s: TrainingSession) => (
+                <SessionCard
+                  key={s.id}
+                  session={s}
+                  selected={s.id === selected?.id}
+                  onClick={() => setSelectedId(s.id)}
+                />
+              ))
+            )}
+          </div>
+          <Card className="lg:col-span-3">
+            <CardHeader>
+              <CardTitle>{selected?.title ?? "Detalhe"}</CardTitle>
+              {selected && (
+                <p className="text-sm text-zinc-500">
+                  {new Date(selected.date).toLocaleString("pt-PT", {
+                    weekday: "long",
+                    day: "numeric",
+                    month: "short",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}{" "}
+                  · {selected.durationMin} min
+                </p>
+              )}
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {selected ? (
+                <>
+                  <p className="text-sm text-zinc-300">{selected.description}</p>
+                  <div>
+                    <p className="text-xs font-medium uppercase tracking-wider text-zinc-500">Jogadores em foco</p>
+                    {players.length === 0 ? (
+                      <p className="mt-2 text-sm text-zinc-500">Sem jogadores na equipa.</p>
+                    ) : (
+                      <ul className="mt-2 max-h-40 space-y-1 overflow-y-auto rounded-xl border border-surface-border p-2">
+                        {players.map((p) => {
+                          const on = selectedPlayerIds.includes(p.id);
+                          return (
+                            <li key={p.id}>
+                              <label className="flex cursor-pointer items-center gap-2 px-2 py-1 text-sm">
+                                <input
+                                  type="checkbox"
+                                  checked={on}
+                                  onChange={() => togglePlayerForSession(p.id)}
+                                  className="h-4 w-4 rounded"
+                                />
+                                #{p.number} {p.name}
+                              </label>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <p className="text-sm text-zinc-500">Cria uma sessão manual ou usa a IA em cima.</p>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </details>
     </div>
   );
 }
