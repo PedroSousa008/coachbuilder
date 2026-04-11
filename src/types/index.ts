@@ -188,6 +188,57 @@ export interface TrainingSession {
   description: string;
 }
 
+/** Categoria para filtrar a biblioteca pessoal de exercícios (dados só da conta do treinador). */
+export type SavedExerciseCategory =
+  | "warmup"
+  | "possession"
+  | "pressing"
+  | "finishing"
+  | "defensive"
+  | "transition"
+  | "physical"
+  | "mixed";
+
+/** Exercício guardado pelo treinador — notas privadas por conta (localStorage + workspace cloud). */
+export interface SavedTrainingExercise {
+  id: string;
+  title: string;
+  category: SavedExerciseCategory;
+  /** Notas pessoais; visíveis só para este utilizador. */
+  coachNotes: string;
+  createdAt: string;
+  updatedAt: string;
+  durationMin: number;
+  description: string;
+  coachingPoints: string;
+  setup?: string;
+  groupSplit?: string;
+  diagramHint?: string;
+  videoUrl?: string;
+  progression?: string;
+  variations?: string;
+  /** Preenchido quando o save veio do modo exercício isolado. */
+  objective?: string;
+  /** Fase do bloco quando guardado a partir de uma sessão completa. */
+  sourcePhase?: "warmup" | "main" | "cooldown";
+}
+
+export type NewSavedTrainingExerciseInput = {
+  title: string;
+  category: SavedExerciseCategory;
+  durationMin: number;
+  description: string;
+  coachingPoints: string;
+  setup?: string;
+  groupSplit?: string;
+  diagramHint?: string;
+  videoUrl?: string;
+  progression?: string;
+  variations?: string;
+  objective?: string;
+  sourcePhase?: "warmup" | "main" | "cooldown";
+};
+
 export type DrillCategory =
   | "Possession"
   | "Finishing"

@@ -6,6 +6,7 @@ import type {
   MatchFixture,
   Message,
   Player,
+  SavedTrainingExercise,
   Tactic,
   TacticMatch,
   TacticPlayerAnalysisNote,
@@ -40,6 +41,7 @@ export type WorkspaceSnapshotV1 = {
   tactics: Tactic[];
   tacticMatches: TacticMatch[];
   tacticPlayerNotes: Record<string, TacticPlayerAnalysisNote>;
+  savedTrainingExercises: SavedTrainingExercise[];
 };
 
 export function emptyWorkspaceSnapshot(): WorkspaceSnapshotV1 {
@@ -63,6 +65,7 @@ export function emptyWorkspaceSnapshot(): WorkspaceSnapshotV1 {
     tactics: [],
     tacticMatches: [],
     tacticPlayerNotes: {},
+    savedTrainingExercises: [],
   };
 }
 
@@ -78,6 +81,7 @@ export function snapshotHasMeaningfulData(s: WorkspaceSnapshotV1 | null | undefi
   if (s.league.matches.length > 0 || s.league.rows.length > 0) return true;
   if (s.coachProfile.name.trim() !== "" || s.coachProfile.club.trim() !== "") return true;
   if (Object.keys(s.tacticPlayerNotes).length > 0) return true;
+  if (s.savedTrainingExercises.length > 0) return true;
   return false;
 }
 
@@ -96,6 +100,7 @@ export function writeWorkspaceSnapshotToLocalStorage(userId: string, s: Workspac
   safeSaveJSON(ks.tactics, s.tactics);
   safeSaveJSON(ks.tacticMatches, s.tacticMatches);
   safeSaveJSON(ks.tacticPlayerNotes, s.tacticPlayerNotes);
+  safeSaveJSON(ks.savedTrainingExercises, s.savedTrainingExercises);
 }
 
 export function collectWorkspaceFromLocalStorage(userId: string): WorkspaceSnapshotV1 {
@@ -128,6 +133,7 @@ export function collectWorkspaceFromLocalStorage(userId: string): WorkspaceSnaps
     tactics: safeLoadJSON<Tactic[]>(ks.tactics, []),
     tacticMatches: safeLoadJSON<TacticMatch[]>(ks.tacticMatches, []),
     tacticPlayerNotes: safeLoadJSON<Record<string, TacticPlayerAnalysisNote>>(ks.tacticPlayerNotes, {}),
+    savedTrainingExercises: safeLoadJSON<SavedTrainingExercise[]>(ks.savedTrainingExercises, []),
   };
 }
 
@@ -169,5 +175,8 @@ export function parseWorkspacePayload(raw: unknown): WorkspaceSnapshotV1 | null 
       o.tacticPlayerNotes && typeof o.tacticPlayerNotes === "object"
         ? (o.tacticPlayerNotes as Record<string, TacticPlayerAnalysisNote>)
         : e.tacticPlayerNotes,
+    savedTrainingExercises: Array.isArray(o.savedTrainingExercises)
+      ? (o.savedTrainingExercises as SavedTrainingExercise[])
+      : e.savedTrainingExercises,
   };
 }

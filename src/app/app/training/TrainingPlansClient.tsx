@@ -1,7 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { AiFullTrainingSession, AiSingleDrill, AiTrainingPhase } from "@/lib/training-ai-types";
+import type {
+  AiFullTrainingSession,
+  AiSingleDrill,
+  AiTrainingBlock,
+  AiTrainingPhase,
+} from "@/lib/training-ai-types";
 import { SessionCard } from "@/components/training/SessionCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -16,8 +21,13 @@ import {
   openPrintableHtml,
 } from "@/lib/training-print-html";
 import { TrainingVideoEmbed } from "@/components/training/TrainingVideoEmbed";
+import { SaveExerciseModal } from "@/components/training/SaveExerciseModal";
 import { buildLocalFullTrainingSession, buildLocalSingleDrill } from "@/lib/training-session-local";
-import type { TrainingSession } from "@/types";
+import {
+  SAVED_EXERCISE_CATEGORIES,
+  SAVED_EXERCISE_CATEGORY_LABELS,
+} from "@/lib/saved-exercise-categories";
+import type { NewSavedTrainingExerciseInput, SavedExerciseCategory, TrainingSession } from "@/types";
 
 const DURATIONS = [30, 60, 90, 120] as const;
 
@@ -27,6 +37,13 @@ function phaseLabel(p: AiTrainingPhase): string {
   return "Principal";
 }
 
+function suggestCategoryFromPhase(phase: AiTrainingPhase): SavedExerciseCategory {
+  if (phase === "warmup" || phase === "cooldown") return "warmup";
+  return "mixed";
+}
+
+type SaveExercisePayload = Omit<NewSavedTrainingExerciseInput, "category">;
+
 export function TrainingPlansClient() {
   const {
     trainingSessions,
@@ -34,9 +51,13 @@ export function TrainingPlansClient() {
     players,
     trainingPlayerIdsBySession,
     setTrainingSessionPlayerIds,
+    savedTrainingExercises,
+    addSavedTrainingExercise,
+    updateSavedTrainingExercise,
+    removeSavedTrainingExercise,
   } = useAppData();
 
-  const [labTab, setLabTab] = useState<"full" | "drill">("full");
+  const [labTab, setLabTab] = useState<"full" | "drill" | "library">("full");
   const [durationMin, setDurationMin] = useState<(typeof DURATIONS)[number]>(60);
   const [objective, setObjective] = useState("");
   const [drillBrief, setDrillBrief] = useState("");
@@ -80,6 +101,62 @@ export function TrainingPlansClient() {
   const [fullPlan, setFullPlan] = useState<AiFullTrainingSession | null>(null);
   const [fullMeta, setFullMeta] = useState<{ durationMin: number; playerCount: number } | null>(null);
   const [singleDrill, setSingleDrill] = useState<AiSingleDrill | null>(null);
+
+  const [saveModal, setSaveModal] = useState<{
+    defaultCategory: SavedExerciseCategory;
+    payload: SaveExercisePayload;
+  } | null>(null);
+  const [libraryFilter, setLibraryFilter] = useState<"all" | SavedExerciseCategory>("all");
+
+  const filteredSaved = useMemo(() => {
+    const list = [...savedTrainingExercises].sort(
+      (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+    );
+    if (libraryFilter === "all") return list;
+    return list.filter((x) => x.category === libraryFilter);
+  }, [savedTrainingExercises, libraryFilter]);
+
+  const openSaveFromBlock = (b: AiTrainingBlock) => {
+    setSaveModal({
+      defaultCategory: suggestCategoryFromPhase(b.phase),
+      payload: {
+        title: b.title,
+        durationMin: b.durationMin,
+        description: b.description,
+        coachingPoints: b.coachingPoints,
+        setup: b.setup,
+        groupSplit: b.groupSplit,
+        diagramHint: b.diagramHint,
+        videoUrl: b.videoUrl,
+        sourcePhase: b.phase,
+      },
+    });
+  };
+
+  const openSaveFromDrill = () => {
+    if (!singleDrill) return;
+    setSaveModal({
+      defaultCategory: "mixed",
+      payload: {
+        title: singleDrill.title,
+        durationMin: singleDrill.durationMin,
+        description: singleDrill.description,
+        coachingPoints: singleDrill.coachingCues ?? "",
+        diagramHint: singleDrill.diagramHint,
+        videoUrl: singleDrill.videoUrl,
+        progression: singleDrill.progression,
+        variations: singleDrill.variations,
+        objective: singleDrill.objective,
+      },
+    });
+  };
+
+  const confirmSaveExercise = (category: SavedExerciseCategory) => {
+    if (!saveModal) return;
+    addSavedTrainingExercise({ ...saveModal.payload, category });
+    setSaveModal(null);
+    setLabTab("library");
+  };
 
   const runFullLocal = () => {
     setErr(null);
@@ -287,13 +364,179 @@ export function TrainingPlansClient() {
         >
           Exercício isolado
         </button>
+        <button
+          type="button"
+          onClick={() => setLabTab("library")}
+          className={cn(
+            "-mb-px border-b-2 px-4 py-2 text-sm font-medium transition-colors",
+            labTab === "library" ? "border-accent text-white" : "border-transparent text-zinc-500 hover:text-zinc-300"
+          )}
+        >
+          Meus exercícios ({savedTrainingExercises.length})
+        </button>
       </div>
 
       {err ? (
         <p className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">{err}</p>
       ) : null}
 
-      {labTab === "full" ? (
+      <SaveExerciseModal
+        open={saveModal !== null}
+        exerciseTitle={saveModal?.payload.title ?? ""}
+        defaultCategory={saveModal?.defaultCategory ?? "mixed"}
+        onClose={() => setSaveModal(null)}
+        onConfirm={confirmSaveExercise}
+      />
+
+      {labTab === "library" ? (
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Biblioteca pessoal</CardTitle>
+              <p className="text-sm text-zinc-500">
+                Exercícios que guardaste a partir do gerador. As notas são só tuas (conta + sincronização cloud).
+                Filtra por tipo para organizares.
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => setLibraryFilter("all")}
+                  className={cn(
+                    "rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
+                    libraryFilter === "all"
+                      ? "bg-accent/25 text-accent"
+                      : "bg-surface-raised text-zinc-400 hover:text-zinc-200"
+                  )}
+                >
+                  Todos
+                </button>
+                {SAVED_EXERCISE_CATEGORIES.map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => setLibraryFilter(c)}
+                    className={cn(
+                      "rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
+                      libraryFilter === c
+                        ? "bg-accent/25 text-accent"
+                        : "bg-surface-raised text-zinc-400 hover:text-zinc-200"
+                    )}
+                  >
+                    {SAVED_EXERCISE_CATEGORY_LABELS[c]}
+                  </button>
+                ))}
+              </div>
+              {filteredSaved.length === 0 ? (
+                <p className="text-sm text-zinc-500">
+                  {savedTrainingExercises.length === 0
+                    ? "Ainda não guardaste nenhum exercício. Gera um plano ou um exercício isolado e clica em «Guardar exercício»."
+                    : "Nenhum exercício neste filtro."}
+                </p>
+              ) : (
+                <ul className="space-y-4">
+                  {filteredSaved.map((ex) => (
+                    <li
+                      key={ex.id}
+                      className="rounded-2xl border border-surface-border bg-surface-raised/20 p-4"
+                    >
+                      <div className="flex flex-wrap items-start justify-between gap-2">
+                        <div>
+                          <h3 className="font-medium text-white">{ex.title}</h3>
+                          <p className="mt-1 text-xs text-zinc-500">
+                            {ex.durationMin} min
+                            {ex.sourcePhase ? ` · ${phaseLabel(ex.sourcePhase)}` : ""}
+                            {" · "}
+                            {new Date(ex.updatedAt).toLocaleDateString("pt-PT")}
+                          </p>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <label className="sr-only" htmlFor={`cat-${ex.id}`}>
+                            Tipo
+                          </label>
+                          <select
+                            id={`cat-${ex.id}`}
+                            value={ex.category}
+                            onChange={(e) =>
+                              updateSavedTrainingExercise(ex.id, {
+                                category: e.target.value as SavedExerciseCategory,
+                              })
+                            }
+                            className="rounded-lg border border-surface-border bg-[#0c1014] px-2 py-1.5 text-xs text-zinc-200"
+                          >
+                            {SAVED_EXERCISE_CATEGORIES.map((c) => (
+                              <option key={c} value={c}>
+                                {SAVED_EXERCISE_CATEGORY_LABELS[c]}
+                              </option>
+                            ))}
+                          </select>
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            className="text-xs text-red-300 hover:bg-red-500/10"
+                            onClick={() => removeSavedTrainingExercise(ex.id)}
+                          >
+                            Apagar
+                          </Button>
+                        </div>
+                      </div>
+                      <p className="mt-3 text-sm text-zinc-300">{ex.description}</p>
+                      <p className="mt-2 text-sm text-zinc-500">
+                        <span className="font-medium text-zinc-400">Porquê / como:</span> {ex.coachingPoints}
+                      </p>
+                      {ex.objective ? (
+                        <p className="mt-2 text-xs text-zinc-500">
+                          <span className="text-zinc-400">Pedido original:</span> {ex.objective}
+                        </p>
+                      ) : null}
+                      {ex.setup ? (
+                        <p className="mt-2 text-xs text-zinc-500">
+                          <span className="text-zinc-400">Organização:</span> {ex.setup}
+                        </p>
+                      ) : null}
+                      {ex.groupSplit ? (
+                        <p className="mt-2 rounded-lg bg-amber-500/10 px-3 py-2 text-xs text-amber-100/90">
+                          <span className="font-medium">Grupos:</span> {ex.groupSplit}
+                        </p>
+                      ) : null}
+                      {ex.progression ? (
+                        <p className="mt-2 text-xs text-zinc-500">
+                          <span className="text-zinc-400">Progressão:</span> {ex.progression}
+                        </p>
+                      ) : null}
+                      {ex.variations ? (
+                        <p className="mt-2 text-xs text-zinc-500">
+                          <span className="text-zinc-400">Variações:</span> {ex.variations}
+                        </p>
+                      ) : null}
+                      {ex.videoUrl ? <TrainingVideoEmbed videoUrl={ex.videoUrl} title={ex.title} /> : null}
+                      {ex.diagramHint ? (
+                        <p className="mt-2 rounded-lg bg-zinc-800/80 px-3 py-2 font-mono text-xs text-zinc-400">
+                          {ex.diagramHint}
+                        </p>
+                      ) : null}
+                      <div className="mt-4">
+                        <label className="text-xs font-medium text-zinc-400" htmlFor={`notes-${ex.id}`}>
+                          As minhas notas (só eu vejo)
+                        </label>
+                        <textarea
+                          id={`notes-${ex.id}`}
+                          value={ex.coachNotes}
+                          onChange={(e) => updateSavedTrainingExercise(ex.id, { coachNotes: e.target.value })}
+                          rows={3}
+                          placeholder="Ex.: ajustes para o escalão sub-15, material extra, o que correu bem ou mal…"
+                          className="mt-2 w-full resize-y rounded-xl border border-surface-border bg-[#0c1014] px-3 py-2 text-sm text-zinc-200 placeholder:text-zinc-600 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+                        />
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      ) : labTab === "full" ? (
         <div className="space-y-6">
           <Card>
             <CardHeader>
@@ -405,6 +648,16 @@ export function TrainingPlansClient() {
                           Diagrama sugerido: {b.diagramHint}
                         </p>
                       ) : null}
+                      <div className="mt-3 flex justify-end">
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          className="text-xs"
+                          onClick={() => openSaveFromBlock(b)}
+                        >
+                          Guardar exercício
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -448,9 +701,14 @@ export function TrainingPlansClient() {
                   <CardTitle>{singleDrill.title}</CardTitle>
                   <p className="text-sm text-zinc-500">{singleDrill.durationMin} min</p>
                 </div>
-                <Button type="button" variant="secondary" className="text-xs" onClick={printDrill}>
-                  Imprimir / PDF
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                  <Button type="button" variant="secondary" className="text-xs" onClick={openSaveFromDrill}>
+                    Guardar exercício
+                  </Button>
+                  <Button type="button" variant="secondary" className="text-xs" onClick={printDrill}>
+                    Imprimir / PDF
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent className="space-y-3 text-sm text-zinc-300">
                 <p>

@@ -12,6 +12,12 @@ import type { AiFullTrainingSession, AiSingleDrill, AiTrainingBlock } from "@/li
  */
 export const OFFENSIVE_BETWEEN_LINES_VIDEO_URL = "/videos/training/offensive-between-lines.mp4";
 
+/**
+ * Vídeo do exercício "Passing Activation".
+ * Coloca o ficheiro em `public/videos/training/passing-activation.mp4` ou substitui por um link YouTube.
+ */
+export const PASSING_ACTIVATION_VIDEO_URL = "/videos/training/passing-activation.mp4";
+
 export type TrainingThemeId =
   | "possession"
   | "transition"
@@ -42,6 +48,19 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
     "desde tras",
     "build from back",
     "start from defense",
+    "ativação",
+    "ativacao",
+    "activation",
+    "passing activation",
+    "movimento",
+    "movimentos",
+    "poste",
+    "postes",
+    "passe e movimento",
+    "posse rápida",
+    "posse rapida",
+    "warm up",
+    "warmup",
   ],
   transition: [
     "transição",
@@ -89,7 +108,19 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
   ],
   defensive: ["defens", "linha", "compacto", "bloco", "baixo", "equilíbrio", "equilibrio", "transição defensiva"],
   wide: ["largo", "flanco", "extremo", "lateral", "cruzamento", "largura"],
-  physical: ["físico", "fisico", "resistência", "resistencia", "intensidade", "sprint", "velocidade", "força", "forca"],
+  physical: [
+    "físico",
+    "fisico",
+    "resistência",
+    "resistencia",
+    "intensidade",
+    "sprint",
+    "velocidade",
+    "força",
+    "forca",
+    "aquecimento",
+    "aquecer",
+  ],
   balanced: [],
 };
 
@@ -123,6 +154,18 @@ type MainDrillDef = {
 };
 
 const MAIN_DRILLS: MainDrillDef[] = [
+  {
+    themes: ["possession", "physical", "balanced"],
+    title: "Passing Activation",
+    describe: (_pl, m) => ({
+      description: `Colocam-se 6 postes formando uma estrutura, com 5 jogadores posicionados (um poste fica sempre livre). O jogador em posse passa a bola a um colega e, de imediato, desloca-se para o poste livre. O exercício continua em sequência, mantendo sempre um poste vazio. O objectivo é garantir passe e movimento constante, com boa qualidade técnica, timing e ocupação de espaço. (${m} min)`,
+      coachingPoints:
+        "Passe firme e jogável; arranque ao poste livre no instante após soltar a bola; cabeça levantada para antecipar o próximo espaço livre; ritmo alto sem sacrificar precisão.",
+      setup: "6 postes ou cones + bolas ao pé; área compacta (ex. ~12×10 m ou hexágono proporcional ao grupo).",
+      diagramHint: "Seis marcas; cinco jogadores; após cada passe, corrida ao único poste livre; sequência contínua.",
+      videoUrl: PASSING_ACTIVATION_VIDEO_URL,
+    }),
+  },
   {
     themes: ["possession", "balanced"],
     title: "Rondo com pressão condicionada",
@@ -344,6 +387,7 @@ export function buildLocalFullTrainingSession(params: {
 }
 
 const SINGLE_DRILL_TITLE_20_MIN = "Offensive Between Lines";
+const SINGLE_DRILL_TITLE_8_MIN = "Passing Activation";
 
 export function buildLocalSingleDrill(brief: string, players: Player[]): AiSingleDrill {
   const themes = detectTrainingThemes(brief);
@@ -351,9 +395,16 @@ export function buildLocalSingleDrill(brief: string, players: Player[]): AiSingl
   const defs = pickMainDrills(themes, 1, seed);
   const def = defs[0]!;
   const mins =
-    def.title === SINGLE_DRILL_TITLE_20_MIN ? 20 : brief.length > 80 ? 18 : 14;
+    def.title === SINGLE_DRILL_TITLE_20_MIN
+      ? 20
+      : def.title === SINGLE_DRILL_TITLE_8_MIN
+        ? 8
+        : brief.length > 80
+          ? 18
+          : 14;
   const body = def.describe(players, mins);
   const isBetweenLines = def.title === SINGLE_DRILL_TITLE_20_MIN;
+  const isPassingActivation = def.title === SINGLE_DRILL_TITLE_8_MIN;
 
   return {
     title: def.title,
@@ -363,11 +414,15 @@ export function buildLocalSingleDrill(brief: string, players: Player[]): AiSingl
     ...(body.videoUrl ? { videoUrl: body.videoUrl } : {}),
     progression: isBetweenLines
       ? "Aperta o meio-campo (menos espaço entre linhas) ou exige 2 toques máx. depois do passe interior; aumenta largura para forçar mais metros percorridos após a rotação."
-      : "Aumenta espaço (mais difícil defender) ou reduz toques permitidos no rondo. Alterna pé fraco em passes fixos.",
+      : isPassingActivation
+        ? "Aperta distâncias entre postes para exigir passes mais curtos e reacção mais rápida; ou fixa 2 toques máx.; ou alterna o pé obrigatório em cada série."
+        : "Aumenta espaço (mais difícil defender) ou reduz toques permitidos no rondo. Alterna pé fraco em passes fixos.",
     coachingCues: body.coachingPoints,
     variations: isBetweenLines
       ? "Terceira equipa de 8 a rodar; ou zona obrigatória de 'pé em campo' nos médios; ou golo vale duplo se vier de passe rasteiro entre linhas."
-      : "Reduz jogadores no meio; ou acrescenta neutro exterior; ou pontua por X passes seguidos.",
+      : isPassingActivation
+        ? "Dois coletes com passes obrigatórios entre cores; ou inverte o sentido da rotação a cada minuto; ou acrescenta um jogador 'defensor' a tapar uma linha de passe por 30 s."
+        : "Reduz jogadores no meio; ou acrescenta neutro exterior; ou pontua por X passes seguidos.",
     diagramHint: body.diagramHint,
   };
 }

@@ -22,6 +22,8 @@ import type {
   Tactic,
   TacticMatch,
   TacticPlayerAnalysisNote,
+  NewSavedTrainingExerciseInput,
+  SavedTrainingExercise,
   TrainingSession,
 } from "@/types";
 import { tallyForTactic } from "@/lib/tactics-match-stats";
@@ -150,6 +152,14 @@ type AppDataContextValue = {
   trainingPlayerIdsBySession: Record<string, string[]>;
   setTrainingSessionPlayerIds: (sessionId: string, playerIds: string[]) => void;
 
+  savedTrainingExercises: SavedTrainingExercise[];
+  addSavedTrainingExercise: (input: NewSavedTrainingExerciseInput) => SavedTrainingExercise;
+  updateSavedTrainingExercise: (
+    id: string,
+    patch: Partial<Pick<SavedTrainingExercise, "category" | "coachNotes">>
+  ) => void;
+  removeSavedTrainingExercise: (id: string) => void;
+
   fixtures: MatchFixture[];
   addFixture: (input: NewFixtureInput) => MatchFixture;
   updateFixture: (id: string, patch: Partial<NewFixtureInput>) => void;
@@ -202,6 +212,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [savedTactics, setSavedTactics] = useState<Tactic[]>([]);
   const [tacticMatches, setTacticMatches] = useState<TacticMatch[]>([]);
   const [tacticPlayerNotes, setTacticPlayerNotesState] = useState<Record<string, TacticPlayerAnalysisNote>>({});
+  const [savedTrainingExercises, setSavedTrainingExercises] = useState<SavedTrainingExercise[]>([]);
 
   const [cloudRemoteReady, setCloudRemoteReady] = useState(() => !isCloudSyncEnabledClient());
 
@@ -237,6 +248,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       setSavedTactics([]);
       setTacticMatches([]);
       setTacticPlayerNotesState({});
+      setSavedTrainingExercises([]);
       setHydrated(true);
       return;
     }
@@ -273,6 +285,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setSavedTactics(loadJSON<Tactic[]>(ks.tactics, []));
     setTacticMatches(loadJSON<TacticMatch[]>(ks.tacticMatches, []));
     setTacticPlayerNotesState(loadJSON<Record<string, TacticPlayerAnalysisNote>>(ks.tacticPlayerNotes, {}));
+    setSavedTrainingExercises(loadJSON<SavedTrainingExercise[]>(ks.savedTrainingExercises, []));
     setHydrated(true);
   }, [authReady, user?.id, ks]);
 
@@ -312,6 +325,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           setSavedTactics(s.tactics);
           setTacticMatches(s.tacticMatches);
           setTacticPlayerNotesState(s.tacticPlayerNotes);
+          setSavedTrainingExercises(s.savedTrainingExercises ?? []);
           writeWorkspaceSnapshotToLocalStorage(user.id, {
             ...s,
             conversations: loadedConvs,
@@ -320,6 +334,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
               ...s.league,
               matches: leagueMatchesDeduped,
             },
+            savedTrainingExercises: s.savedTrainingExercises ?? [],
           });
         } else {
           const local = collectWorkspaceFromLocalStorage(user.id);
@@ -363,6 +378,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       tactics: savedTactics,
       tacticMatches,
       tacticPlayerNotes,
+      savedTrainingExercises,
     };
     const t = window.setTimeout(() => {
       void fetch("/api/cloud/workspace", {
@@ -393,6 +409,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     savedTactics,
     tacticMatches,
     tacticPlayerNotes,
+    savedTrainingExercises,
   ]);
 
   useEffect(() => {
@@ -465,6 +482,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     if (!hydrated || !ks) return;
     saveJSON(ks.tacticPlayerNotes, tacticPlayerNotes);
   }, [tacticPlayerNotes, hydrated, ks]);
+
+  useEffect(() => {
+    if (!hydrated || !ks) return;
+    saveJSON(ks.savedTrainingExercises, savedTrainingExercises);
+  }, [savedTrainingExercises, hydrated, ks]);
 
   /** Mantém `matchesUsed` / vitórias / empates / derrotas nas táticas alinhados com os jogos registados. */
   useEffect(() => {
@@ -681,6 +703,52 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setTrainingPlayerIdsBySession((prev) => ({ ...prev, [sessionId]: playerIds }));
   }, []);
 
+  const addSavedTrainingExercise = useCallback((input: NewSavedTrainingExerciseInput) => {
+    const now = new Date().toISOString();
+    const row: SavedTrainingExercise = {
+      id: uid("svtex"),
+      title: input.title.trim(),
+      category: input.category,
+      coachNotes: "",
+      createdAt: now,
+      updatedAt: now,
+      durationMin: input.durationMin,
+      description: input.description,
+      coachingPoints: input.coachingPoints,
+      setup: input.setup,
+      groupSplit: input.groupSplit,
+      diagramHint: input.diagramHint,
+      videoUrl: input.videoUrl,
+      progression: input.progression,
+      variations: input.variations,
+      objective: input.objective,
+      sourcePhase: input.sourcePhase,
+    };
+    setSavedTrainingExercises((prev) => [row, ...prev]);
+    return row;
+  }, []);
+
+  const updateSavedTrainingExercise = useCallback(
+    (id: string, patch: Partial<Pick<SavedTrainingExercise, "category" | "coachNotes">>) => {
+      setSavedTrainingExercises((prev) =>
+        prev.map((x) => {
+          if (x.id !== id) return x;
+          return {
+            ...x,
+            ...(patch.coachNotes !== undefined ? { coachNotes: patch.coachNotes } : {}),
+            ...(patch.category !== undefined ? { category: patch.category } : {}),
+            updatedAt: new Date().toISOString(),
+          };
+        })
+      );
+    },
+    []
+  );
+
+  const removeSavedTrainingExercise = useCallback((id: string) => {
+    setSavedTrainingExercises((prev) => prev.filter((x) => x.id !== id));
+  }, []);
+
   const addFixture = useCallback((input: NewFixtureInput) => {
     const f: MatchFixture = {
       id: uid("fx"),
@@ -772,6 +840,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       addTrainingSession,
       trainingPlayerIdsBySession,
       setTrainingSessionPlayerIds,
+      savedTrainingExercises,
+      addSavedTrainingExercise,
+      updateSavedTrainingExercise,
+      removeSavedTrainingExercise,
       fixtures,
       addFixture,
       updateFixture,
@@ -810,6 +882,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       addTrainingSession,
       trainingPlayerIdsBySession,
       setTrainingSessionPlayerIds,
+      savedTrainingExercises,
+      addSavedTrainingExercise,
+      updateSavedTrainingExercise,
+      removeSavedTrainingExercise,
       fixtures,
       addFixture,
       updateFixture,
