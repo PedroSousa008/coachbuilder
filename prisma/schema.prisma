@@ -21,6 +21,8 @@ model User {
   subscriptionPlan     String    @default("free")
   subscriptionRenewsAt DateTime?
   lastSeenAt    DateTime?
+  /// Último path da app reportado pelo cliente (heartbeat), ex. /app/calendar
+  lastRoute     String?
   loginCount    Int       @default(0)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
