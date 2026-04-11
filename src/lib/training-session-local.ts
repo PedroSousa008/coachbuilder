@@ -456,13 +456,15 @@ export function buildLocalSingleDrill(brief: string, players: Player[]): AiSingl
           ? "Encolhe o hexágono para forçar primeiro toque ainda mais limpo; ou acrescenta um defensor ligeiro no centro por 45 s; ou exige só combinações com o pé não dominante."
           : "Aumenta espaço (mais difícil defender) ou reduz toques permitidos no rondo. Alterna pé fraco em passes fixos.",
     coachingCues: body.coachingPoints,
-    variations: isBetweenLines
-      ? "Terceira equipa de 8 a rodar; ou zona obrigatória de 'pé em campo' nos médios; ou golo vale duplo se vier de passe rasteiro entre linhas."
-      : isPassingActivation
-        ? "Dois coletes com passes obrigatórios entre cores; ou inverte o sentido da rotação a cada minuto; ou acrescenta um jogador 'defensor' a tapar uma linha de passe por 30 s."
-        : isDualPassing
-          ? "Rotação do jogador central a cada minuto; ou dois jogadores no miolo a alternar apoios; ou sentido horário fixo na periferia com inversão ao apito."
-          : "Reduz jogadores no meio; ou acrescenta neutro exterior; ou pontua por X passes seguidos.",
+    ...(isDualPassing
+      ? {}
+      : {
+          variations: isBetweenLines
+            ? "Terceira equipa de 8 a rodar; ou zona obrigatória de 'pé em campo' nos médios; ou golo vale duplo se vier de passe rasteiro entre linhas."
+            : isPassingActivation
+              ? "Dois coletes com passes obrigatórios entre cores; ou inverte o sentido da rotação a cada minuto; ou acrescenta um jogador 'defensor' a tapar uma linha de passe por 30 s."
+              : "Reduz jogadores no meio; ou acrescenta neutro exterior; ou pontua por X passes seguidos.",
+        }),
     diagramHint: body.diagramHint,
   };
 }
