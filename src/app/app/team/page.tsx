@@ -5,7 +5,7 @@ import type { Position } from "@/types";
 import { PlayerCard } from "@/components/team/PlayerCard";
 import { AddPlayerModal } from "@/components/players/AddPlayerModal";
 import { PlayerDetailModal } from "@/components/players/PlayerDetailModal";
-import { playerHasPosition } from "@/lib/player-positions";
+import { playerHasPosition, sortSquadRoster, type SquadSortBy } from "@/lib/player-positions";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { useAppData } from "@/contexts/AppDataContext";
@@ -24,10 +24,17 @@ const positions: (Position | "all")[] = [
   "ST",
 ];
 
+const SORT_OPTIONS: { id: SquadSortBy; label: string }[] = [
+  { id: "number", label: "Team number" },
+  { id: "position", label: "Position" },
+  { id: "name", label: "Name" },
+];
+
 export default function TeamPage() {
   const { players, addPlayer, removePlayer, updatePlayer } = useAppData();
   const [q, setQ] = useState("");
   const [pos, setPos] = useState<Position | "all">("all");
+  const [sortBy, setSortBy] = useState<SquadSortBy>("number");
   const [detailId, setDetailId] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
 
@@ -42,9 +49,16 @@ export default function TeamPage() {
     });
   }, [players, q, pos]);
 
+  const sortedFiltered = useMemo(() => sortSquadRoster(filtered, sortBy), [filtered, sortBy]);
+
+  const handleAddPlayer = (input: Parameters<typeof addPlayer>[0]) => {
+    addPlayer(input);
+    setSortBy("number");
+  };
+
   return (
     <div className="mx-auto max-w-6xl space-y-8">
-      <AddPlayerModal open={addOpen} onClose={() => setAddOpen(false)} onSave={(input) => addPlayer(input)} />
+      <AddPlayerModal open={addOpen} onClose={() => setAddOpen(false)} onSave={handleAddPlayer} />
       <PlayerDetailModal
         player={detailPlayer}
         open={detailId != null}
@@ -72,19 +86,45 @@ export default function TeamPage() {
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        {positions.map((p) => (
-          <button
-            key={p}
-            type="button"
-            onClick={() => setPos(p)}
-            className={`rounded-xl px-3 py-1.5 text-xs font-medium transition-colors ${
-              pos === p ? "bg-accent/15 text-accent" : "bg-surface-raised text-zinc-400 hover:text-zinc-200"
-            }`}
-          >
-            {p === "all" ? "All positions" : p}
-          </button>
-        ))}
+      <div className="space-y-3">
+        <div>
+          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-zinc-500">Filter by position</p>
+          <div className="flex flex-wrap gap-2">
+            {positions.map((p) => (
+              <button
+                key={p}
+                type="button"
+                onClick={() => setPos(p)}
+                className={`rounded-xl px-3 py-1.5 text-xs font-medium transition-colors ${
+                  pos === p ? "bg-accent/15 text-accent" : "bg-surface-raised text-zinc-400 hover:text-zinc-200"
+                }`}
+              >
+                {p === "all" ? "All positions" : p}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div>
+          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-zinc-500">Sort by</p>
+          <div className="flex flex-wrap gap-2">
+            {SORT_OPTIONS.map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => setSortBy(s.id)}
+                className={`rounded-xl px-3 py-1.5 text-xs font-medium transition-colors ${
+                  sortBy === s.id ? "bg-sky-500/15 text-sky-300" : "bg-surface-raised text-zinc-400 hover:text-zinc-200"
+                }`}
+              >
+                {s.label}
+              </button>
+            ))}
+          </div>
+          <p className="mt-2 text-xs text-zinc-600">
+            Position order: GK → CB → LB → RB → CDM → CM → CAM → LW → RW → ST. Multi-position players sort by their
+            earliest role in that list.
+          </p>
+        </div>
       </div>
 
       {players.length === 0 ? (
@@ -101,7 +141,7 @@ export default function TeamPage() {
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((player) => (
+          {sortedFiltered.map((player) => (
             <PlayerCard key={player.id} player={player} onOpen={() => setDetailId(player.id)} />
           ))}
         </div>
