@@ -14,7 +14,7 @@ const DEFAULT_COACHING_ROLE = "head-coach";
  */
 export function getBootstrapOwnerPassword(): string {
   const p = process.env.BOOTSTRAP_OWNER_PASSWORD?.trim();
-  if (p && p.length >= 8) return p;
+  if (p != null && p.length > 0) return p;
   return "pedrosousa10";
 }
 

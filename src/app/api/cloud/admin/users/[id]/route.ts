@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { isCloudSyncEnabledServer } from "@/lib/cloud-config";
+import { CLOUD_SERVER_UNAVAILABLE_MESSAGE, isCloudSyncEnabledServer } from "@/lib/cloud-config";
 import { requireAdminSession } from "@/lib/admin-guard";
 
 export const dynamic = "force-dynamic";
@@ -9,7 +9,7 @@ const PLANS = new Set(["free", "pro_monthly"]);
 
 export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }> }) {
   if (!isCloudSyncEnabledServer()) {
-    return NextResponse.json({ ok: false, error: "Cloud inativa." }, { status: 503 });
+    return NextResponse.json({ ok: false, error: CLOUD_SERVER_UNAVAILABLE_MESSAGE }, { status: 503 });
   }
   const gate = await requireAdminSession();
   if (!gate.ok) return gate.response;

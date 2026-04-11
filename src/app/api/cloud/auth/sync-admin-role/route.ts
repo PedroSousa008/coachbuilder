@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { isCloudSyncEnabledServer } from "@/lib/cloud-config";
+import { CLOUD_SERVER_UNAVAILABLE_MESSAGE, isCloudSyncEnabledServer } from "@/lib/cloud-config";
 import { readSessionFromCookies } from "@/lib/cloud-session";
 import { isOwnerAdminEmail } from "@/lib/admin-owner";
 import { toCloudUserPublic } from "@/lib/cloud-user-public";
@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 export async function POST() {
   if (!isCloudSyncEnabledServer()) {
-    return NextResponse.json({ ok: false, error: "Cloud inativa." }, { status: 503 });
+    return NextResponse.json({ ok: false, error: CLOUD_SERVER_UNAVAILABLE_MESSAGE }, { status: 503 });
   }
   try {
     const claims = await readSessionFromCookies();

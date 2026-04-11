@@ -16,3 +16,7 @@ export function shouldUseCloudClientApis(user: { id: string } | null | undefined
 export function isCloudSyncEnabledServer(): boolean {
   return Boolean(process.env.DATABASE_URL?.trim() && process.env.SESSION_SECRET?.trim());
 }
+
+/** Mensagem quando DATABASE_URL ou SESSION_SECRET faltam no deploy (ex.: Vercel). */
+export const CLOUD_SERVER_UNAVAILABLE_MESSAGE =
+  "Cloud inativa: falta DATABASE_URL ou SESSION_SECRET no servidor. Na Vercel → Environment Variables (Production), define-as (e NEXT_PUBLIC_ENABLE_CLOUD_SYNC=true) e faz Redeploy. Se usas Vercel Postgres, copia a connection string para DATABASE_URL.";
