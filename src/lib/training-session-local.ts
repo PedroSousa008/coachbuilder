@@ -72,6 +72,12 @@ export const CROSS_AND_STRIKE_VIDEO_URL = "/videos/training/cross-and-strike.mp4
  */
 export const FOUR_FINISHING_DRILLS_VIDEO_URL = "/videos/training/4-finishing-drills.mp4";
 
+/**
+ * Vídeo do exercício "Rondo 9v3".
+ * Coloca o ficheiro em `public/videos/training/rondo-9v3.mp4` ou substitui por um link YouTube.
+ */
+export const RONDO_9V3_VIDEO_URL = "/videos/training/rondo-9v3.mp4";
+
 export type TrainingThemeId =
   | "possession"
   | "transition"
@@ -135,6 +141,16 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
     "9v9+2",
     "neutros nas linhas",
     "extremos fixos",
+    "rondo 9v3",
+    "9v3",
+    "vantagem numérica no rondo",
+    "vantagem numerica no rondo",
+    "10 passes",
+    "dez passes",
+    "meiinho",
+    "futebol curto",
+    "ligar com o centro",
+    "jogador no centro",
   ],
   transition: [
     "transição",
@@ -197,6 +213,13 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
     "mudanca de cenario",
     "ataque nas costas",
     "profundidade ofensiva",
+    "rondo 9v3",
+    "transição após roubo",
+    "transicao apos roubo",
+    "reação à perda",
+    "reacao a perda",
+    "três balizas",
+    "tres balizas",
   ],
   pressing: [
     "pressão",
@@ -211,6 +234,15 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
     "pressão ao portador",
     "pressao ao portador",
     "back four shifting",
+    "rondo 9v3",
+    "pressão no rondo",
+    "pressao no rondo",
+    "pressão rápida",
+    "pressao rapida",
+    "forte recuperação",
+    "forte recuperacao",
+    "recuperação na perda",
+    "recuperacao na perda",
   ],
   finishing: [
     "finaliza",
@@ -367,6 +399,10 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
     "circuito de finalizacao",
     "ritmo de finalização",
     "ritmo de finalizacao",
+    "rondo 9v3",
+    "aquecimento com rondo",
+    "rondo com pressão",
+    "rondo com pressao",
   ],
   balanced: [],
 };
@@ -611,6 +647,26 @@ const MAIN_DRILLS: MainDrillDef[] = [
       videoUrl: FOUR_FINISHING_DRILLS_VIDEO_URL,
     }),
   },
+  {
+    themes: ["possession", "pressing", "transition"],
+    title: "Rondo 9v3",
+    describe: (pl, m) => ({
+      description: `Joga-se um rondo em vantagem numérica de 9v3. A equipa com 9 jogadores tem como objectivo manter a posse e realizar 10 passes consecutivos, somando 1 ponto se conseguir. Se a equipa de 3 recuperar a bola, deve atacar de imediato uma das 3 mini-balizas (ou portas com cones); se marcar, também soma 1 ponto. Objectivo extra: sempre que a equipa em posse liga com o jogador no centro (meiinho), ganha +2 pontos. O foco está na circulação rápida, tomada de decisão, reacção à perda e eficácia na transição ofensiva dos 3 após recuperação. (${m} min)`,
+      coachingPoints:
+        "Com bola: triângulos curtos, corpo aberto, voz para pedir linha de passe; procurar o meiinho sem forçar — o +2 só vale com passe limpo ao centro. Sem bola: os 3 pressionam em cunha e, ao roubar, primeiro olhar à frente para a baliza mais livre.",
+      setup:
+        "Rectângulo ~28×22 m (ajusta ao espaço); 3 mini-balizas ou portas pequenas nos vértices ou linha de fundo; 1 jogador de campo fixo no centro (meiinho); coletes; bolas extra.",
+      groupSplit:
+        pl.length >= 14
+          ? "Dois grupos 9+3 a alternar em campo; meiinho a rodar a cada 4 min."
+          : pl.length >= 12
+            ? "Um único bloco 9v3+1 centro; sobras a servir e a repor bolas."
+            : "Reduz para 7v2+1 centro ou espaço menor; mesma lógica de pontos com 8 passes se precisares.",
+      diagramHint:
+        "Rectângulo; 9 no perímetro + 1 meiinho no meio; 3 coletes a pressionar; 3 alvos de golo; setas de passe rápido ao centro (+2); setas de contra-ataque aos 3 após recuperação.",
+      videoUrl: RONDO_9V3_VIDEO_URL,
+    }),
+  },
 ];
 
 function scoreDrill(themes: TrainingThemeId[], def: MainDrillDef): number {
@@ -759,12 +815,14 @@ const SINGLE_DRILL_10_MIN_TITLES = new Set<string>([
   "4 Finishing Drills",
 ]);
 const SINGLE_DRILL_8_MIN_TITLES = new Set<string>(["Passing Activation", "Dual Passing"]);
+const SINGLE_DRILL_5_MIN_TITLES = new Set<string>(["Rondo 9v3"]);
 
 function singleDrillDurationForTitle(title: string, briefLength: number): number {
   if (SINGLE_DRILL_20_MIN_TITLES.has(title)) return 20;
   if (SINGLE_DRILL_18_MIN_TITLES.has(title)) return 18;
   if (SINGLE_DRILL_10_MIN_TITLES.has(title)) return 10;
   if (SINGLE_DRILL_8_MIN_TITLES.has(title)) return 8;
+  if (SINGLE_DRILL_5_MIN_TITLES.has(title)) return 5;
   return briefLength > 80 ? 18 : 14;
 }
 
@@ -780,6 +838,7 @@ function singleDrillProgressionVariationsForTitle(title: string): {
   const isFourFinishingDrills = title === "4 Finishing Drills";
   const isDoubleFinishing = title === "Double Finishing Drill";
   const is9v9Plus2Game = title === "9v9 + 2 Game";
+  const isRondo9v3 = title === "Rondo 9v3";
   const isPassingActivation = title === "Passing Activation";
   const isDualPassing = title === "Dual Passing";
 
@@ -799,11 +858,13 @@ function singleDrillProgressionVariationsForTitle(title: string): {
                 ? "Aumenta a exigência no primeiro remate (vértice mais fechado); ou obriga cruzamento só com o pé interior; ou acrescenta defensor na área com contacto leve."
                 : is9v9Plus2Game
                   ? "Encosta o campo para forçar decisões mais rápidas no extremo; ou permite 3 toques no extremo em fase inicial; ou golo vale duplo se a jogada tiver mudança de corredor antes do cruzamento."
-                  : isPassingActivation
-                    ? "Aperta distâncias entre postes para exigir passes mais curtos e reacção mais rápida; ou fixa 2 toques máx.; ou alterna o pé obrigatório em cada série."
-                    : isDualPassing
-                      ? "Encolhe o hexágono para forçar primeiro toque ainda mais limpo; ou acrescenta um defensor ligeiro no centro por 45 s; ou exige só combinações com o pé não dominante."
-                      : "Aumenta espaço (mais difícil defender) ou reduz toques permitidos no rondo. Alterna pé fraco em passes fixos.";
+                  : isRondo9v3
+                    ? "Sobe a meta a 12 passes por ponto; ou os 3 têm no máximo 4 toques para marcar após recuperação; ou meiinho só pode tocar com 1 toque."
+                    : isPassingActivation
+                      ? "Aperta distâncias entre postes para exigir passes mais curtos e reacção mais rápida; ou fixa 2 toques máx.; ou alterna o pé obrigatório em cada série."
+                      : isDualPassing
+                        ? "Encolhe o hexágono para forçar primeiro toque ainda mais limpo; ou acrescenta um defensor ligeiro no centro por 45 s; ou exige só combinações com o pé não dominante."
+                        : "Aumenta espaço (mais difícil defender) ou reduz toques permitidos no rondo. Alterna pé fraco em passes fixos.";
 
   if (isDualPassing) return { progression };
 
@@ -823,9 +884,11 @@ function singleDrillProgressionVariationsForTitle(title: string): {
                 ? "Segunda bola viva após o primeiro remate para forçar reacção; ou defensores a saírem na linha em 2 toques; ou contagem de golos só com assistência de lateral."
                 : is9v9Plus2Game
                   ? "Extremos a trocar de lado ao intervalo; ou um extremo neutro que só pode dar largura à equipa em posse; ou limite de 5 passes antes de obrigar jogo ao extremo."
-                  : isPassingActivation
-                    ? "Dois coletes com passes obrigatórios entre cores; ou inverte o sentido da rotação a cada minuto; ou acrescenta um jogador 'defensor' a tapar uma linha de passe por 30 s."
-                    : "Reduz jogadores no meio; ou acrescenta neutro exterior; ou pontua por X passes seguidos.";
+                  : isRondo9v3
+                    ? "Golo dos 3 após recuperação vale duplo se vier em ≤3 toques; ou só uma baliza 'viva' de cada vez; ou equipa de 9 perde 1 ponto se o meiinho perder a bola."
+                    : isPassingActivation
+                      ? "Dois coletes com passes obrigatórios entre cores; ou inverte o sentido da rotação a cada minuto; ou acrescenta um jogador 'defensor' a tapar uma linha de passe por 30 s."
+                      : "Reduz jogadores no meio; ou acrescenta neutro exterior; ou pontua por X passes seguidos.";
 
   return { progression, variations };
 }
