@@ -1,3 +1,4 @@
+import "@/lib/ensure-database-url";
 import { PrismaClient } from "@prisma/client";
 
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient | undefined };
