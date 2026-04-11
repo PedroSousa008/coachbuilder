@@ -14,11 +14,21 @@ export async function GET() {
 
   try {
     const now = Date.now();
+    const twoMin = new Date(now - 2 * 60 * 1000);
     const fiveMin = new Date(now - 5 * 60 * 1000);
     const oneHour = new Date(now - 60 * 60 * 1000);
     const oneDay = new Date(now - 24 * 60 * 60 * 1000);
+    const sevenDays = new Date(now - 7 * 24 * 60 * 60 * 1000);
+    const nowDate = new Date(now);
 
-    const onlineApprox = await prisma.user.count({
+    const startOfTodayUtc = new Date(Date.UTC(nowDate.getUTCFullYear(), nowDate.getUTCMonth(), nowDate.getUTCDate()));
+
+    /** Online “agora”: última atividade ≤ 2 min (heartbeat ~90s). */
+    const usersOnlineNow = await prisma.user.count({
+      where: { lastSeenAt: { gte: twoMin } },
+    });
+
+    const onlineApprox5Min = await prisma.user.count({
       where: { lastSeenAt: { gte: fiveMin } },
     });
 
@@ -32,16 +42,40 @@ export async function GET() {
       distinct: ["userId"],
       select: { userId: true },
     });
+    const activeLast7dRows = await prisma.appEvent.findMany({
+      where: { createdAt: { gte: sevenDays }, userId: { not: null } },
+      distinct: ["userId"],
+      select: { userId: true },
+    });
+
+    const distinctActiveLastHour = activeLastHourRows.filter((r) => r.userId).length;
+    const distinctActiveLast24h = activeLastDayRows.filter((r) => r.userId).length;
+    const distinctActiveLast7d = activeLast7dRows.filter((r) => r.userId).length;
 
     const totalRegisteredUsers = await prisma.user.count();
     const totalNonAdminUsers = await prisma.user.count({ where: { role: { not: "admin" } } });
     const adminUsers = await prisma.user.count({ where: { role: "admin" } });
 
-    const proMonthlyUsers = await prisma.user.count({
+    const proMonthlyUsersAll = await prisma.user.count({
       where: { subscriptionPlan: "pro_monthly", role: { not: "admin" } },
     });
+
+    /** Pro “ativo”: sem data de fim ou renovação ainda no futuro. */
+    const coachesWithActivePro = await prisma.user.count({
+      where: {
+        role: { not: "admin" },
+        subscriptionPlan: "pro_monthly",
+        OR: [{ subscriptionRenewsAt: null }, { subscriptionRenewsAt: { gte: nowDate } }],
+      },
+    });
+
     const freePlanUsers = await prisma.user.count({
       where: { subscriptionPlan: "free", role: { not: "admin" } },
+    });
+
+    /** Novos registos hoje (UTC), pela data de criação do utilizador. */
+    const signupsToday = await prisma.user.count({
+      where: { createdAt: { gte: startOfTodayUtc } },
     });
 
     const totalLoginEvents = await prisma.appEvent.count({ where: { type: "login" } });
@@ -56,17 +90,38 @@ export async function GET() {
       where: { type: { in: ["signup", "cloud_migrate"] } },
     });
 
+    const proPriceEur = Math.max(
+      0,
+      Number.parseFloat(process.env.ADMIN_PRO_MONTHLY_PRICE_EUR?.trim() || "5") || 5
+    );
+    const estimatedMonthlyRevenueEur = Math.round(coachesWithActivePro * proPriceEur * 100) / 100;
+
+    const generatedAt = nowDate.toISOString();
+
     return NextResponse.json({
       ok: true,
       stats: {
-        onlineApprox,
-        distinctActiveLastHour: activeLastHourRows.filter((r) => r.userId).length,
-        distinctActiveLast24h: activeLastDayRows.filter((r) => r.userId).length,
+        generatedAt,
+        usersOnlineNow,
+        onlineApprox5Min,
+        distinctActiveLastHour,
+        distinctActiveLast24h,
+        distinctActiveLast7d,
+        signupsToday,
         totalRegisteredUsers,
-        totalNonAdminUsers,
+        totalCoachesRegistered: totalNonAdminUsers,
         adminUsers,
-        proMonthlyUsers,
+        coachesWithActivePro,
+        proMonthlyUsersAll,
         freePlanUsers,
+        estimatedMonthlyRevenueEur,
+        proPriceEur,
+        /** Sem modelo de cancelamento na BD até integrares billing. */
+        cancellationsRecentCount: 0,
+        cancellationsTracked: false,
+        /** Placeholder para trial futuro. */
+        activeTrialsCount: 0,
+        trialsSupported: false,
         totalLoginEvents,
         loginsLast24h,
         loginsLastHour,
