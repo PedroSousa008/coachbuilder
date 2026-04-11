@@ -18,6 +18,12 @@ export const OFFENSIVE_BETWEEN_LINES_VIDEO_URL = "/videos/training/offensive-bet
  */
 export const PASSING_ACTIVATION_VIDEO_URL = "/videos/training/passing-activation.mp4";
 
+/**
+ * Vídeo do exercício "Dual Passing".
+ * Coloca o ficheiro em `public/videos/training/dual-passing.mp4` ou substitui por um link YouTube.
+ */
+export const DUAL_PASSING_VIDEO_URL = "/videos/training/dual-passing.mp4";
+
 export type TrainingThemeId =
   | "possession"
   | "transition"
@@ -61,6 +67,21 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
     "posse rapida",
     "warm up",
     "warmup",
+    "futsal",
+    "futebol rápido",
+    "futebol rapido",
+    "orientação",
+    "orientacao",
+    "orientação para a bola",
+    "primeiro toque",
+    "timing",
+    "dual passing",
+    "passe duplo",
+    "combinação",
+    "combinacao",
+    "passe de apoio",
+    "hexágono",
+    "hexagono",
   ],
   transition: [
     "transição",
@@ -120,6 +141,8 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
     "forca",
     "aquecimento",
     "aquecer",
+    "movimentação",
+    "movimentacao",
   ],
   balanced: [],
 };
@@ -164,6 +187,18 @@ const MAIN_DRILLS: MainDrillDef[] = [
       setup: "6 postes ou cones + bolas ao pé; área compacta (ex. ~12×10 m ou hexágono proporcional ao grupo).",
       diagramHint: "Seis marcas; cinco jogadores; após cada passe, corrida ao único poste livre; sequência contínua.",
       videoUrl: PASSING_ACTIVATION_VIDEO_URL,
+    }),
+  },
+  {
+    themes: ["possession", "physical", "balanced"],
+    title: "Dual Passing",
+    describe: (_pl, m) => ({
+      description: `Organizam-se 6 jogadores nos vértices de um hexágono e 1 jogador atrás do que começa com a bola (7 jogadores no total). A bola circula pelos jogadores exteriores enquanto, em simultâneo, se realizam combinações com o jogador do centro (passe de apoio / devolução). O foco está no timing dos movimentos, orientação corporal para jogar rápido e tomada de decisão, garantindo fluidez e precisão em todas as ações. (${m} min)`,
+      coachingPoints:
+        "Corpo aberto antes da bola chegar; primeiro toque na direcção da combinação seguinte; sincronizar entrada do centro com o passe periférico; ritmo de futebol reduzido sem perder qualidade.",
+      setup: "Hexágono proporcional ao grupo (ex. 10–14 m por lado); 7 jogadores; bolas extra para manter fluidez.",
+      diagramHint: "Seis nos vértices; um no centro (apoio/devolução); circulação no anel + combinações interiores; um jogador atrás do ponto de primeira saída.",
+      videoUrl: DUAL_PASSING_VIDEO_URL,
     }),
   },
   {
@@ -387,7 +422,7 @@ export function buildLocalFullTrainingSession(params: {
 }
 
 const SINGLE_DRILL_TITLE_20_MIN = "Offensive Between Lines";
-const SINGLE_DRILL_TITLE_8_MIN = "Passing Activation";
+const SINGLE_DRILL_8_MIN_TITLES = new Set<string>(["Passing Activation", "Dual Passing"]);
 
 export function buildLocalSingleDrill(brief: string, players: Player[]): AiSingleDrill {
   const themes = detectTrainingThemes(brief);
@@ -397,14 +432,15 @@ export function buildLocalSingleDrill(brief: string, players: Player[]): AiSingl
   const mins =
     def.title === SINGLE_DRILL_TITLE_20_MIN
       ? 20
-      : def.title === SINGLE_DRILL_TITLE_8_MIN
+      : SINGLE_DRILL_8_MIN_TITLES.has(def.title)
         ? 8
         : brief.length > 80
           ? 18
           : 14;
   const body = def.describe(players, mins);
   const isBetweenLines = def.title === SINGLE_DRILL_TITLE_20_MIN;
-  const isPassingActivation = def.title === SINGLE_DRILL_TITLE_8_MIN;
+  const isPassingActivation = def.title === "Passing Activation";
+  const isDualPassing = def.title === "Dual Passing";
 
   return {
     title: def.title,
@@ -416,13 +452,17 @@ export function buildLocalSingleDrill(brief: string, players: Player[]): AiSingl
       ? "Aperta o meio-campo (menos espaço entre linhas) ou exige 2 toques máx. depois do passe interior; aumenta largura para forçar mais metros percorridos após a rotação."
       : isPassingActivation
         ? "Aperta distâncias entre postes para exigir passes mais curtos e reacção mais rápida; ou fixa 2 toques máx.; ou alterna o pé obrigatório em cada série."
-        : "Aumenta espaço (mais difícil defender) ou reduz toques permitidos no rondo. Alterna pé fraco em passes fixos.",
+        : isDualPassing
+          ? "Encolhe o hexágono para forçar primeiro toque ainda mais limpo; ou acrescenta um defensor ligeiro no centro por 45 s; ou exige só combinações com o pé não dominante."
+          : "Aumenta espaço (mais difícil defender) ou reduz toques permitidos no rondo. Alterna pé fraco em passes fixos.",
     coachingCues: body.coachingPoints,
     variations: isBetweenLines
       ? "Terceira equipa de 8 a rodar; ou zona obrigatória de 'pé em campo' nos médios; ou golo vale duplo se vier de passe rasteiro entre linhas."
       : isPassingActivation
         ? "Dois coletes com passes obrigatórios entre cores; ou inverte o sentido da rotação a cada minuto; ou acrescenta um jogador 'defensor' a tapar uma linha de passe por 30 s."
-        : "Reduz jogadores no meio; ou acrescenta neutro exterior; ou pontua por X passes seguidos.",
+        : isDualPassing
+          ? "Rotação do jogador central a cada minuto; ou dois jogadores no miolo a alternar apoios; ou sentido horário fixo na periferia com inversão ao apito."
+          : "Reduz jogadores no meio; ou acrescenta neutro exterior; ou pontua por X passes seguidos.",
     diagramHint: body.diagramHint,
   };
 }
