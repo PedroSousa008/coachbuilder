@@ -9,31 +9,27 @@ export type CloudUserPublic = AuthUser & {
 export function toCloudUserPublic(u: {
   id: string;
   email: string;
-  name: string;
-  coachingRole: string;
-  role: string;
-  subscriptionPlan: string | null;
+  name?: string | null;
+  coachingRole?: string | null;
+  role?: string | null;
+  subscriptionPlan?: string | null;
 }): CloudUserPublic {
+  const cr = typeof u.coachingRole === "string" ? u.coachingRole : "head-coach";
+  const r = typeof u.role === "string" ? u.role : "user";
   return {
     id: u.id,
     email: u.email,
-    name: u.name,
-    coachingRole: isCoachingRoleId(u.coachingRole) ? u.coachingRole : "head-coach",
-    role: u.role === "admin" ? "admin" : "user",
-    subscriptionPlan: u.subscriptionPlan || "free",
+    name: typeof u.name === "string" ? u.name : "",
+    coachingRole: isCoachingRoleId(cr) ? cr : "head-coach",
+    role: r === "admin" ? "admin" : "user",
+    subscriptionPlan: (typeof u.subscriptionPlan === "string" && u.subscriptionPlan) || "free",
   };
 }
 
 export function parseCloudUserFromApi(raw: unknown): CloudUserPublic | null {
   if (!raw || typeof raw !== "object") return null;
   const o = raw as Record<string, unknown>;
-  if (
-    typeof o.id !== "string" ||
-    typeof o.email !== "string" ||
-    typeof o.name !== "string" ||
-    typeof o.coachingRole !== "string" ||
-    typeof o.role !== "string"
-  ) {
+  if (typeof o.id !== "string" || typeof o.email !== "string") {
     return null;
   }
   const sp = o.subscriptionPlan;
@@ -41,9 +37,9 @@ export function parseCloudUserFromApi(raw: unknown): CloudUserPublic | null {
   return toCloudUserPublic({
     id: o.id,
     email: o.email,
-    name: o.name,
-    coachingRole: o.coachingRole,
-    role: o.role,
-    subscriptionPlan: subscriptionPlan,
+    name: typeof o.name === "string" ? o.name : "",
+    coachingRole: typeof o.coachingRole === "string" ? o.coachingRole : "head-coach",
+    role: typeof o.role === "string" ? o.role : "user",
+    subscriptionPlan,
   });
 }

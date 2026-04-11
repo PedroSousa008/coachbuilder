@@ -5,7 +5,7 @@ import { isCloudSyncEnabledServer } from "@/lib/cloud-config";
 import { createSessionToken, setSessionCookie } from "@/lib/cloud-session";
 import { isCoachingRoleId } from "@/types/auth";
 import { isOwnerAdminEmail } from "@/lib/admin-owner";
-import { recordAccountCreated } from "@/lib/server-analytics";
+import { recordAccountCreatedSafe } from "@/lib/server-analytics";
 import { toCloudUserPublic } from "@/lib/cloud-user-public";
 import {
   emptyWorkspaceSnapshot,
@@ -83,7 +83,7 @@ export async function POST(req: Request) {
       },
     });
 
-    await recordAccountCreated(user.id, norm, "cloud_migrate");
+    await recordAccountCreatedSafe(user.id, norm, "cloud_migrate");
 
     const token = await createSessionToken(user.id, user.email);
     await setSessionCookie(token);
