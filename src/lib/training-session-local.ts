@@ -24,6 +24,12 @@ export const PASSING_ACTIVATION_VIDEO_URL = "/videos/training/passing-activation
  */
 export const DUAL_PASSING_VIDEO_URL = "/videos/training/dual-passing.mp4";
 
+/**
+ * Vídeo do exercício "9v9 + 2 Game".
+ * Coloca o ficheiro em `public/videos/training/9v9+2.mp4` ou substitui por um link YouTube.
+ */
+export const NINE_V_NINE_PLUS_TWO_VIDEO_URL = "/videos/training/9v9+2.mp4";
+
 export type TrainingThemeId =
   | "possession"
   | "transition"
@@ -82,6 +88,11 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
     "passe de apoio",
     "hexágono",
     "hexagono",
+    "campo reduzido",
+    "9v9",
+    "9v9+2",
+    "neutros nas linhas",
+    "extremos fixos",
   ],
   transition: [
     "transição",
@@ -126,9 +137,31 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
     "ataques a baliza",
     "quick finish",
     "attack goal",
+    "ataque organizado",
+    "aparecer na área",
+    "aparecer na area",
+    "cruzamentos",
+    "finalização na área",
+    "finalizacao na area",
+    "9v9 game",
+    "9v9 + 2",
   ],
   defensive: ["defens", "linha", "compacto", "bloco", "baixo", "equilíbrio", "equilibrio", "transição defensiva"],
-  wide: ["largo", "flanco", "extremo", "lateral", "cruzamento", "largura"],
+  wide: [
+    "largo",
+    "flanco",
+    "extremo",
+    "lateral",
+    "cruzamento",
+    "largura",
+    "extremos abertos",
+    "mudança de corredor",
+    "mudanca de corredor",
+    "corredor",
+    "utilização da largura",
+    "utilizacao da largura",
+    "9v9 + 2 game",
+  ],
   physical: [
     "físico",
     "fisico",
@@ -287,6 +320,20 @@ const MAIN_DRILLS: MainDrillDef[] = [
       videoUrl: OFFENSIVE_BETWEEN_LINES_VIDEO_URL,
     }),
   },
+  {
+    themes: ["wide", "finishing", "possession"],
+    title: "9v9 + 2 Game",
+    describe: (_pl, m) => ({
+      description: `Joga-se 9v9 em campo reduzido, com 2 extremos fixos nas linhas laterais a dar largura. As equipas devem circular a bola e procurar mudanças rápidas de corredor para explorar os extremos. Sempre que a bola entra no extremo, este tem no máximo 2 toques e é obrigatório cruzar para a área para finalização. O foco está na utilização da largura, rapidez na circulação e eficácia no momento de cruzamento e finalização. (${m} min)`,
+      coachingPoints:
+        "Extremo a receber com corpo aberto para a área; cruzamento decidido após 1.º ou 2.º toque; mínimo três jogadores a atacar a área (primeiro poste, penalty, segundo poste); circulação no meio para deslocar bloco adversário antes do último passe largo.",
+      setup: "Campo estreito e longo (ex. 55×40 m ou proporcional); 2 coletes ou cores para extremos fixos; balizas regulamentares ou reduzidas; bolas ao redor.",
+      groupSplit:
+        "Dois jogadores fixos nas linhas laterais (um por banda ou a alternar por períodos); restantes em 9v9 com liberdade tática; GR em cada baliza ou rotação.",
+      diagramHint: "Rectângulo; extremos fixos nas laterais; setas de circulação central → mudança de corredor → cruzamento → remates na área.",
+      videoUrl: NINE_V_NINE_PLUS_TWO_VIDEO_URL,
+    }),
+  },
 ];
 
 function scoreDrill(themes: TrainingThemeId[], def: MainDrillDef): number {
@@ -421,7 +468,7 @@ export function buildLocalFullTrainingSession(params: {
   };
 }
 
-const SINGLE_DRILL_TITLE_20_MIN = "Offensive Between Lines";
+const SINGLE_DRILL_20_MIN_TITLES = new Set<string>(["Offensive Between Lines", "9v9 + 2 Game"]);
 const SINGLE_DRILL_8_MIN_TITLES = new Set<string>(["Passing Activation", "Dual Passing"]);
 
 export function buildLocalSingleDrill(brief: string, players: Player[]): AiSingleDrill {
@@ -429,16 +476,16 @@ export function buildLocalSingleDrill(brief: string, players: Player[]): AiSingl
   const seed = hashSeed(brief, 0);
   const defs = pickMainDrills(themes, 1, seed);
   const def = defs[0]!;
-  const mins =
-    def.title === SINGLE_DRILL_TITLE_20_MIN
-      ? 20
-      : SINGLE_DRILL_8_MIN_TITLES.has(def.title)
-        ? 8
-        : brief.length > 80
-          ? 18
-          : 14;
+  const mins = SINGLE_DRILL_20_MIN_TITLES.has(def.title)
+    ? 20
+    : SINGLE_DRILL_8_MIN_TITLES.has(def.title)
+      ? 8
+      : brief.length > 80
+        ? 18
+        : 14;
   const body = def.describe(players, mins);
-  const isBetweenLines = def.title === SINGLE_DRILL_TITLE_20_MIN;
+  const isBetweenLines = def.title === "Offensive Between Lines";
+  const is9v9Plus2Game = def.title === "9v9 + 2 Game";
   const isPassingActivation = def.title === "Passing Activation";
   const isDualPassing = def.title === "Dual Passing";
 
@@ -450,20 +497,24 @@ export function buildLocalSingleDrill(brief: string, players: Player[]): AiSingl
     ...(body.videoUrl ? { videoUrl: body.videoUrl } : {}),
     progression: isBetweenLines
       ? "Aperta o meio-campo (menos espaço entre linhas) ou exige 2 toques máx. depois do passe interior; aumenta largura para forçar mais metros percorridos após a rotação."
-      : isPassingActivation
-        ? "Aperta distâncias entre postes para exigir passes mais curtos e reacção mais rápida; ou fixa 2 toques máx.; ou alterna o pé obrigatório em cada série."
-        : isDualPassing
-          ? "Encolhe o hexágono para forçar primeiro toque ainda mais limpo; ou acrescenta um defensor ligeiro no centro por 45 s; ou exige só combinações com o pé não dominante."
-          : "Aumenta espaço (mais difícil defender) ou reduz toques permitidos no rondo. Alterna pé fraco em passes fixos.",
+      : is9v9Plus2Game
+        ? "Encosta o campo para forçar decisões mais rápidas no extremo; ou permite 3 toques no extremo em fase inicial; ou golo vale duplo se a jogada tiver mudança de corredor antes do cruzamento."
+        : isPassingActivation
+          ? "Aperta distâncias entre postes para exigir passes mais curtos e reacção mais rápida; ou fixa 2 toques máx.; ou alterna o pé obrigatório em cada série."
+          : isDualPassing
+            ? "Encolhe o hexágono para forçar primeiro toque ainda mais limpo; ou acrescenta um defensor ligeiro no centro por 45 s; ou exige só combinações com o pé não dominante."
+            : "Aumenta espaço (mais difícil defender) ou reduz toques permitidos no rondo. Alterna pé fraco em passes fixos.",
     coachingCues: body.coachingPoints,
     ...(isDualPassing
       ? {}
       : {
           variations: isBetweenLines
             ? "Terceira equipa de 8 a rodar; ou zona obrigatória de 'pé em campo' nos médios; ou golo vale duplo se vier de passe rasteiro entre linhas."
-            : isPassingActivation
-              ? "Dois coletes com passes obrigatórios entre cores; ou inverte o sentido da rotação a cada minuto; ou acrescenta um jogador 'defensor' a tapar uma linha de passe por 30 s."
-              : "Reduz jogadores no meio; ou acrescenta neutro exterior; ou pontua por X passes seguidos.",
+            : is9v9Plus2Game
+              ? "Extremos a trocar de lado ao intervalo; ou um extremo neutro que só pode dar largura à equipa em posse; ou limite de 5 passes antes de obrigar jogo ao extremo."
+              : isPassingActivation
+                ? "Dois coletes com passes obrigatórios entre cores; ou inverte o sentido da rotação a cada minuto; ou acrescenta um jogador 'defensor' a tapar uma linha de passe por 30 s."
+                : "Reduz jogadores no meio; ou acrescenta neutro exterior; ou pontua por X passes seguidos.",
         }),
     diagramHint: body.diagramHint,
   };
