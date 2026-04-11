@@ -14,6 +14,7 @@ const titles: Record<string, string> = {
   "/app/calendar": "Calendar",
   "/app/profile": "Profile",
   "/app/settings": "Settings",
+  "/app/admin": "Admin",
 };
 
 export function AppShell({ children }: { children: React.ReactNode }) {

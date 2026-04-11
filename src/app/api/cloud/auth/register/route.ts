@@ -1,17 +1,20 @@
 import { NextResponse } from "next/server";
-
-export const dynamic = "force-dynamic";
 import { prisma } from "@/lib/prisma";
 import { hashPasswordNode } from "@/lib/password-node";
 import { isCloudSyncEnabledServer } from "@/lib/cloud-config";
 import { createSessionToken, setSessionCookie } from "@/lib/cloud-session";
 import { isCoachingRoleId } from "@/types/auth";
+import { isOwnerAdminEmail } from "@/lib/admin-owner";
+import { recordAccountCreated } from "@/lib/server-analytics";
+import { toCloudUserPublic } from "@/lib/cloud-user-public";
 import {
   emptyWorkspaceSnapshot,
   parseWorkspacePayload,
   snapshotHasMeaningfulData,
   type WorkspaceSnapshotV1,
 } from "@/lib/workspace-snapshot";
+
+export const dynamic = "force-dynamic";
 
 function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
@@ -73,23 +76,26 @@ export async function POST(req: Request) {
         coachingRole,
         passwordHash: hash,
         salt,
+        role: isOwnerAdminEmail(norm) ? "admin" : "user",
         workspace: {
           create: { payload: workspacePayload as object },
         },
       },
     });
 
+    await recordAccountCreated(user.id, norm, "signup");
+
     const token = await createSessionToken(user.id, user.email);
     await setSessionCookie(token);
 
+    const fresh = await prisma.user.findUnique({ where: { id: user.id } });
+    if (!fresh) {
+      return NextResponse.json({ ok: false, error: "Erro interno." }, { status: 500 });
+    }
+
     return NextResponse.json({
       ok: true,
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        coachingRole: isCoachingRoleId(user.coachingRole) ? user.coachingRole : "head-coach",
-      },
+      user: toCloudUserPublic(fresh),
     });
   } catch (e) {
     console.error("[cloud/register]", e);

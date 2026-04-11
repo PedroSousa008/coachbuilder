@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { AccentProvider } from "@/components/providers/AccentProvider";
+import { CloudHeartbeat } from "@/components/providers/CloudHeartbeat";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { AppDataProvider } from "@/contexts/AppDataContext";
 
@@ -16,6 +17,7 @@ export function ClientProviders({ children }: { children: ReactNode }) {
   return (
     <AccentProvider>
       <AuthProvider>
+        <CloudHeartbeat />
         <AppDataScoped>{children}</AppDataScoped>
       </AuthProvider>
     </AccentProvider>

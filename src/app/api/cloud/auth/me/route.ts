@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
-
-export const dynamic = "force-dynamic";
 import { prisma } from "@/lib/prisma";
 import { isCloudSyncEnabledServer } from "@/lib/cloud-config";
 import { readSessionFromCookies } from "@/lib/cloud-session";
-import { isCoachingRoleId } from "@/types/auth";
+import { isOwnerAdminEmail } from "@/lib/admin-owner";
+import { toCloudUserPublic } from "@/lib/cloud-user-public";
+
+export const dynamic = "force-dynamic";
 
 export async function GET() {
   if (!isCloudSyncEnabledServer()) {
@@ -15,19 +16,20 @@ export async function GET() {
     if (!claims) {
       return NextResponse.json({ ok: false, error: "Sem sessão." }, { status: 401 });
     }
-    const user = await prisma.user.findUnique({ where: { id: claims.sub } });
+    let user = await prisma.user.findUnique({ where: { id: claims.sub } });
     if (!user || user.email !== claims.email) {
       return NextResponse.json({ ok: false, error: "Sessão inválida." }, { status: 401 });
+    }
+    if (isOwnerAdminEmail(user.email) && user.role !== "admin") {
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: { role: "admin" },
+      });
     }
     return NextResponse.json({
       ok: true,
       cloud: true,
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        coachingRole: isCoachingRoleId(user.coachingRole) ? user.coachingRole : "head-coach",
-      },
+      user: toCloudUserPublic(user),
     });
   } catch (e) {
     console.error("[cloud/me]", e);

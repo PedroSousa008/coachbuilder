@@ -12,6 +12,7 @@ import {
   Users,
   UserCircle,
   Settings,
+  Shield,
   LogOut,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -36,6 +37,9 @@ export function AppSidebar() {
   const { user, logout } = useAuth();
   const { coachProfile } = useAppData();
 
+  const adminNav =
+    user?.role === "admin" ? ([{ href: "/app/admin", label: "Admin", icon: Shield }] as const) : [];
+
   const displayName =
     coachProfile.name.trim() || user?.name.trim() || user?.email || "";
   const showEmailUnderName = Boolean(user?.email && displayName !== user.email);
@@ -52,6 +56,25 @@ export function AppSidebar() {
         </div>
       </div>
       <nav className="flex flex-1 flex-col gap-0.5 p-3">
+        {adminNav.map((item) => {
+          const active = pathname.startsWith(item.href);
+          const Icon = item.icon;
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={cn(
+                "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
+                active
+                  ? "bg-amber-500/15 text-amber-400"
+                  : "text-zinc-400 hover:bg-white/5 hover:text-zinc-200"
+              )}
+            >
+              <Icon className="h-[18px] w-[18px] shrink-0 opacity-90" strokeWidth={1.75} />
+              {item.label}
+            </Link>
+          );
+        })}
         {nav.map((item) => {
           const active =
             item.href === "/app" ? pathname === "/app" : pathname.startsWith(item.href);

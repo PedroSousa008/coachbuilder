@@ -14,6 +14,7 @@ import { loadUsers, saveUsers } from "@/lib/auth-local-storage";
 import { AUTH_STORAGE_KEYS, runCoachbuilderStorageMigrations } from "@/lib/coachbuilder-persist";
 import { userDataKey } from "@/lib/user-storage-keys";
 import { isCloudSyncEnabledClient } from "@/lib/cloud-config";
+import { parseCloudUserFromApi } from "@/lib/cloud-user-public";
 import { collectWorkspaceFromLocalStorage } from "@/lib/workspace-snapshot";
 import type { AuthUser, CoachingRoleId, SignUpCredentials } from "@/types/auth";
 import { coachingRoleProfileLabel, isCoachingRoleId } from "@/types/auth";
@@ -125,19 +126,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (isCloudSyncEnabledClient()) {
         try {
           const res = await fetch("/api/cloud/auth/me", { credentials: "include" });
-          const data = (await res.json()) as {
-            ok?: boolean;
-            user?: { id: string; email: string; name: string; coachingRole: string };
-          };
-          if (
-            !cancelled &&
-            res.ok &&
-            data.ok &&
-            data.user &&
-            isCoachingRoleId(data.user.coachingRole)
-          ) {
-            saveSession({ userId: data.user.id, email: data.user.email });
-            setUser(toAuthUser({ ...data.user, coachingRole: data.user.coachingRole }));
+          const data = (await res.json()) as { ok?: boolean; user?: unknown };
+          const cloudUser = parseCloudUserFromApi(data.user);
+          if (!cancelled && res.ok && data.ok && cloudUser) {
+            saveSession({ userId: cloudUser.id, email: cloudUser.email });
+            setUser(cloudUser);
             setAuthReady(true);
             return;
           }
@@ -201,13 +194,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             password: input.password,
           }),
         });
-        const data = (await res.json()) as { ok?: boolean; error?: string; user?: AuthUser };
+        const data = (await res.json()) as { ok?: boolean; error?: string; user?: unknown };
         if (res.status === 503) {
           /* Servidor sem BD — continuar para registo local abaixo */
-        } else if (!res.ok || !data.ok || !data.user || !isCoachingRoleId(data.user.coachingRole)) {
+        } else if (!res.ok || !data.ok) {
           return { ok: false, error: data.error || "Não foi possível criar a conta na cloud." };
         } else {
-          const u = toAuthUser({ ...data.user, coachingRole: data.user.coachingRole });
+          const u = parseCloudUserFromApi(data.user);
+          if (!u) {
+            return { ok: false, error: data.error || "Resposta inválida do servidor." };
+          }
           saveSession({ userId: u.id, email: u.email });
           seedCoachProfileForNewAccount(u.id, name, input.coachingRole, norm);
           setUser(u);
@@ -253,13 +249,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email: norm, password }),
         });
-        const data = (await res.json()) as { ok?: boolean; error?: string; user?: AuthUser };
+        const data = (await res.json()) as { ok?: boolean; error?: string; user?: unknown };
         if (res.status !== 503) {
-          if (res.ok && data.ok && data.user && isCoachingRoleId(data.user.coachingRole)) {
-            const u = toAuthUser({ ...data.user, coachingRole: data.user.coachingRole });
-            saveSession({ userId: u.id, email: u.email });
-            setUser(u);
-            return { ok: true };
+          if (res.ok && data.ok) {
+            const u = parseCloudUserFromApi(data.user);
+            if (u) {
+              saveSession({ userId: u.id, email: u.email });
+              setUser(u);
+              return { ok: true };
+            }
           }
 
           const usersLocal = loadUsers();
@@ -281,12 +279,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 workspace: snap,
               }),
             });
-            const md = (await m.json()) as { ok?: boolean; error?: string; user?: AuthUser };
-            if (m.ok && md.ok && md.user && isCoachingRoleId(md.user.coachingRole)) {
-              const u = toAuthUser({ ...md.user, coachingRole: md.user.coachingRole });
-              saveSession({ userId: u.id, email: u.email });
-              setUser(u);
-              return { ok: true };
+            const md = (await m.json()) as { ok?: boolean; error?: string; user?: unknown };
+            if (m.ok && md.ok) {
+              const migrated = parseCloudUserFromApi(md.user);
+              if (migrated) {
+                saveSession({ userId: migrated.id, email: migrated.email });
+                setUser(migrated);
+                return { ok: true };
+              }
             }
             if (m.status === 409) {
               return {

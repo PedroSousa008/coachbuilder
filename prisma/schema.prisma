@@ -15,9 +15,17 @@ model User {
   name          String
   coachingRole  String
   emailVerified Boolean   @default(true)
+  /// "user" | "admin" — admin definido por ADMIN_OWNER_EMAIL no servidor
+  role          String    @default("user")
+  /// "free" | "pro_monthly" (pagamentos reais quando integrares Stripe)
+  subscriptionPlan     String    @default("free")
+  subscriptionRenewsAt DateTime?
+  lastSeenAt    DateTime?
+  loginCount    Int       @default(0)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   workspace     Workspace?
+  appEvents     AppEvent[]
 }
 
 model Workspace {
@@ -26,4 +34,16 @@ model Workspace {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   payload   Json
   updatedAt DateTime @updatedAt
+}
+
+/// Eventos agregados para estatísticas (RGPD: sem IP em claro; opcionalmente hashes no futuro)
+model AppEvent {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  type      String
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([type, createdAt])
 }

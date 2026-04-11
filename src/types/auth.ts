@@ -43,6 +43,9 @@ export type AuthUser = {
   email: string;
   name: string;
   coachingRole: CoachingRoleId;
+  /** Só preenchido com cloud + API atualizada */
+  role?: "user" | "admin";
+  subscriptionPlan?: string;
 };
 
 export type SignUpCredentials = {
