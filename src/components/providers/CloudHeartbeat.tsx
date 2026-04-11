@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { isCloudSyncEnabledClient } from "@/lib/cloud-config";
+import { shouldUseCloudClientApis } from "@/lib/cloud-config";
 
 /** Mantém `lastSeenAt` e heartbeats para estatísticas de presença (só com cloud). */
 export function CloudHeartbeat() {
@@ -10,7 +10,7 @@ export function CloudHeartbeat() {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
-    if (!isCloudSyncEnabledClient() || !authReady || !user?.id) {
+    if (!shouldUseCloudClientApis(user) || !authReady || !user?.id) {
       if (timerRef.current) {
         clearInterval(timerRef.current);
         timerRef.current = null;
@@ -30,7 +30,7 @@ export function CloudHeartbeat() {
         timerRef.current = null;
       }
     };
-  }, [authReady, user?.id]);
+  }, [authReady, user]);
 
   return null;
 }

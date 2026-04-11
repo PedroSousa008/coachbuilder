@@ -4,7 +4,6 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
-import { isCloudSyncEnabledClient } from "@/lib/cloud-config";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 
@@ -75,11 +74,6 @@ export function AdminPanel() {
 
   useEffect(() => {
     if (!authReady) return;
-    if (!isCloudSyncEnabledClient()) {
-      setError("O painel de admin só está disponível com a sincronização cloud ativa.");
-      setLoading(false);
-      return;
-    }
     if (user?.role !== "admin") {
       router.replace("/app");
       return;

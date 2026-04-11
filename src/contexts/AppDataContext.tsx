@@ -34,7 +34,7 @@ import {
   migrateLegacyDataIfNeeded,
 } from "@/lib/user-storage-keys";
 import { safeLoadJSON, safeSaveJSON } from "@/lib/coachbuilder-persist";
-import { isCloudSyncEnabledClient } from "@/lib/cloud-config";
+import { isCloudSyncEnabledClient, shouldUseCloudClientApis } from "@/lib/cloud-config";
 import {
   collectWorkspaceFromLocalStorage,
   snapshotHasMeaningfulData,
@@ -206,7 +206,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [cloudRemoteReady, setCloudRemoteReady] = useState(() => !isCloudSyncEnabledClient());
 
   useEffect(() => {
-    if (!isCloudSyncEnabledClient()) {
+    if (!shouldUseCloudClientApis(user)) {
       setCloudRemoteReady(true);
       return;
     }
@@ -215,7 +215,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       return;
     }
     setCloudRemoteReady(false);
-  }, [user?.id]);
+  }, [user?.id, user]);
 
   useEffect(() => {
     if (!authReady) return;
@@ -277,7 +277,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   }, [authReady, user?.id, ks]);
 
   useEffect(() => {
-    if (!isCloudSyncEnabledClient() || !authReady || !user?.id || !ks || !hydrated) return;
+    if (!shouldUseCloudClientApis(user) || !authReady || !user?.id || !ks || !hydrated) return;
     let cancelled = false;
     (async () => {
       try {
@@ -342,7 +342,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   }, [authReady, user?.id, ks, hydrated]);
 
   useEffect(() => {
-    if (!isCloudSyncEnabledClient() || !cloudRemoteReady || !hydrated || !user?.id) return;
+    if (!shouldUseCloudClientApis(user) || !cloudRemoteReady || !hydrated || !user?.id) return;
     const snap: WorkspaceSnapshotV1 = {
       version: 1,
       players,

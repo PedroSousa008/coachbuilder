@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { isCloudSyncEnabledClient } from "@/lib/cloud-config";
+import { shouldUseCloudClientApis } from "@/lib/cloud-config";
 
 type AdminDiag = {
   ownerEnvConfigured: boolean;
@@ -16,7 +16,7 @@ export function CloudAccountSettings() {
   const [diag, setDiag] = useState<AdminDiag | null>(null);
 
   useEffect(() => {
-    if (!isCloudSyncEnabledClient() || !authReady || !user) {
+    if (!shouldUseCloudClientApis(user) || !authReady || !user) {
       setDiag(null);
       return;
     }
@@ -30,7 +30,7 @@ export function CloudAccountSettings() {
     };
   }, [authReady, user?.id, user?.role]);
 
-  if (!isCloudSyncEnabledClient() || !authReady || !user) {
+  if (!shouldUseCloudClientApis(user) || !authReady || !user) {
     return null;
   }
 

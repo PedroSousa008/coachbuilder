@@ -13,7 +13,6 @@ import { hashPassword, verifyPassword } from "@/lib/password-crypto";
 import { loadUsers, saveUsers } from "@/lib/auth-local-storage";
 import { AUTH_STORAGE_KEYS, runCoachbuilderStorageMigrations } from "@/lib/coachbuilder-persist";
 import { userDataKey } from "@/lib/user-storage-keys";
-import { isCloudSyncEnabledClient } from "@/lib/cloud-config";
 import { parseCloudUserFromApi } from "@/lib/cloud-user-public";
 import { collectWorkspaceFromLocalStorage } from "@/lib/workspace-snapshot";
 import type { AuthUser, CoachingRoleId, SignUpCredentials } from "@/types/auth";
@@ -125,20 +124,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
 
     (async () => {
-      if (isCloudSyncEnabledClient()) {
-        try {
-          const res = await fetch("/api/cloud/auth/me", { credentials: "include" });
-          const data = (await res.json()) as { ok?: boolean; user?: unknown };
-          const cloudUser = parseCloudUserFromApi(data.user);
-          if (!cancelled && res.ok && data.ok && cloudUser) {
-            saveSession({ userId: cloudUser.id, email: cloudUser.email });
-            setUser(cloudUser);
-            setAuthReady(true);
-            return;
-          }
-        } catch {
-          /* continuar para sessão local */
+      try {
+        const res = await fetch("/api/cloud/auth/me", { credentials: "include" });
+        const data = (await res.json()) as { ok?: boolean; user?: unknown };
+        const cloudUser = parseCloudUserFromApi(data.user);
+        if (!cancelled && res.ok && data.ok && cloudUser) {
+          saveSession({ userId: cloudUser.id, email: cloudUser.email });
+          setUser(cloudUser);
+          setAuthReady(true);
+          return;
         }
+      } catch {
+        /* continuar para sessão local */
       }
 
       const session = loadSession();
@@ -183,37 +180,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { ok: false, error: "A palavra-passe deve ter pelo menos 8 caracteres." };
     }
 
-    if (isCloudSyncEnabledClient()) {
-      try {
-        const res = await fetch("/api/cloud/auth/register", {
-          method: "POST",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            name,
-            coachingRole: input.coachingRole,
-            email: norm,
-            password: input.password,
-          }),
-        });
-        const data = (await res.json()) as { ok?: boolean; error?: string; user?: unknown };
-        if (res.status === 503) {
-          /* Servidor sem BD — continuar para registo local abaixo */
-        } else if (!res.ok || !data.ok) {
-          return { ok: false, error: data.error || "Não foi possível criar a conta na cloud." };
-        } else {
-          const u = parseCloudUserFromApi(data.user);
-          if (!u) {
-            return { ok: false, error: data.error || "Resposta inválida do servidor." };
-          }
-          saveSession({ userId: u.id, email: u.email });
-          seedCoachProfileForNewAccount(u.id, name, input.coachingRole, norm);
-          setUser(u);
-          return { ok: true };
+    try {
+      const res = await fetch("/api/cloud/auth/register", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name,
+          coachingRole: input.coachingRole,
+          email: norm,
+          password: input.password,
+        }),
+      });
+      const data = (await res.json()) as { ok?: boolean; error?: string; user?: unknown };
+      if (res.status === 503) {
+        /* Servidor sem BD — continuar para registo local abaixo */
+      } else if (!res.ok || !data.ok) {
+        return { ok: false, error: data.error || "Não foi possível criar a conta na cloud." };
+      } else {
+        const u = parseCloudUserFromApi(data.user);
+        if (!u) {
+          return { ok: false, error: data.error || "Resposta inválida do servidor." };
         }
-      } catch {
-        return { ok: false, error: "Erro de rede ao criar conta." };
+        saveSession({ userId: u.id, email: u.email });
+        seedCoachProfileForNewAccount(u.id, name, input.coachingRole, norm);
+        setUser(u);
+        return { ok: true };
       }
+    } catch {
+      return { ok: false, error: "Erro de rede ao criar conta." };
     }
 
     const users = loadUsers();
@@ -243,72 +238,70 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const norm = normalizeEmail(email);
     if (!norm || !password) return { ok: false, error: "Email e palavra-passe são obrigatórios." };
 
-    if (isCloudSyncEnabledClient()) {
-      try {
-        const res = await fetch("/api/cloud/auth/login", {
-          method: "POST",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: norm, password }),
-        });
-        const data = (await res.json()) as { ok?: boolean; error?: string; user?: unknown };
-        if (res.status !== 503) {
-          if (res.ok && data.ok) {
-            const u = parseCloudUserFromApi(data.user);
-            if (u) {
-              saveSession({ userId: u.id, email: u.email });
-              setUser(u);
+    try {
+      const res = await fetch("/api/cloud/auth/login", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: norm, password }),
+      });
+      const data = (await res.json()) as { ok?: boolean; error?: string; user?: unknown };
+      if (res.status !== 503) {
+        if (res.ok && data.ok) {
+          const u = parseCloudUserFromApi(data.user);
+          if (u) {
+            saveSession({ userId: u.id, email: u.email });
+            setUser(u);
+            return { ok: true };
+          }
+        }
+
+        const usersLocal = loadUsers();
+        const foundLocal = usersLocal.find((u) => u.email === norm);
+        if (
+          foundLocal &&
+          (await verifyPassword(password, foundLocal.salt, foundLocal.passwordHash))
+        ) {
+          const snap = collectWorkspaceFromLocalStorage(foundLocal.id);
+          const m = await fetch("/api/cloud/auth/migrate", {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              email: norm,
+              password,
+              name: foundLocal.name,
+              coachingRole: foundLocal.coachingRole,
+              workspace: snap,
+            }),
+          });
+          const md = (await m.json()) as { ok?: boolean; error?: string; user?: unknown };
+          if (m.ok && md.ok) {
+            const migrated = parseCloudUserFromApi(md.user);
+            if (migrated) {
+              saveSession({ userId: migrated.id, email: migrated.email });
+              setUser(migrated);
               return { ok: true };
             }
           }
-
-          const usersLocal = loadUsers();
-          const foundLocal = usersLocal.find((u) => u.email === norm);
-          if (
-            foundLocal &&
-            (await verifyPassword(password, foundLocal.salt, foundLocal.passwordHash))
-          ) {
-            const snap = collectWorkspaceFromLocalStorage(foundLocal.id);
-            const m = await fetch("/api/cloud/auth/migrate", {
-              method: "POST",
-              credentials: "include",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                email: norm,
-                password,
-                name: foundLocal.name,
-                coachingRole: foundLocal.coachingRole,
-                workspace: snap,
-              }),
-            });
-            const md = (await m.json()) as { ok?: boolean; error?: string; user?: unknown };
-            if (m.ok && md.ok) {
-              const migrated = parseCloudUserFromApi(md.user);
-              if (migrated) {
-                saveSession({ userId: migrated.id, email: migrated.email });
-                setUser(migrated);
-                return { ok: true };
-              }
-            }
-            if (m.status === 409) {
-              return {
-                ok: false,
-                error:
-                  md.error ||
-                  "Esta conta já existe na cloud. Usa o email e a palavra-passe da conta cloud.",
-              };
-            }
+          if (m.status === 409) {
             return {
               ok: false,
-              error: md.error || "Não foi possível sincronizar a conta local com a cloud.",
+              error:
+                md.error ||
+                "Esta conta já existe na cloud. Usa o email e a palavra-passe da conta cloud.",
             };
           }
-
-          return { ok: false, error: data.error || "Email ou palavra-passe incorretos." };
+          return {
+            ok: false,
+            error: md.error || "Não foi possível sincronizar a conta local com a cloud.",
+          };
         }
-      } catch {
-        /* Cloud indisponível — continua para login só-local */
+
+        return { ok: false, error: data.error || "Email ou palavra-passe incorretos." };
       }
+    } catch {
+      /* Cloud indisponível — continua para login só-local */
     }
 
     const users = loadUsers();
@@ -324,20 +317,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const logout = useCallback(() => {
-    if (isCloudSyncEnabledClient()) {
-      void fetch("/api/cloud/auth/logout", { method: "POST", credentials: "include" }).catch(() => {});
-    }
+    void fetch("/api/cloud/auth/logout", { method: "POST", credentials: "include" }).catch(() => {});
     saveSession(null);
     setUser(null);
   }, []);
 
   const refreshUserFromCloud = useCallback(async (): Promise<AuthResult> => {
-    if (!isCloudSyncEnabledClient()) {
-      return { ok: false, error: "Sincronização cloud não está ativa nesta build." };
-    }
     try {
       const res = await fetch("/api/cloud/auth/me", { credentials: "include" });
       const data = (await res.json()) as { ok?: boolean; error?: string; user?: unknown };
+      if (res.status === 503) {
+        return { ok: false, error: "Servidor sem base de dados cloud configurada." };
+      }
       const cloudUser = parseCloudUserFromApi(data.user);
       if (res.ok && data.ok && cloudUser) {
         saveSession({ userId: cloudUser.id, email: cloudUser.email });
