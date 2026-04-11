@@ -453,6 +453,32 @@ const MAIN_DRILLS: MainDrillDef[] = [
   },
 ];
 
+export type MainDrillCatalogItem = {
+  title: string;
+  videoUrl?: string;
+  /** Descrição principal sem o sufixo «(N min)». */
+  brief: string;
+  coachingPoints: string;
+};
+
+/**
+ * Lista todos os exercícios do motor local para a aba «Todos os exercícios».
+ */
+export function getMainDrillCatalogItems(): MainDrillCatalogItem[] {
+  const previewMinutes = 15;
+  const emptyPlayers: Player[] = [];
+  return MAIN_DRILLS.map((def) => {
+    const body = def.describe(emptyPlayers, previewMinutes);
+    const brief = body.description.replace(/\s*\(\d+\s*min\)\s*\.?$/iu, "").trim();
+    return {
+      title: def.title,
+      ...(body.videoUrl ? { videoUrl: body.videoUrl } : {}),
+      brief,
+      coachingPoints: body.coachingPoints,
+    };
+  });
+}
+
 function scoreDrill(themes: TrainingThemeId[], def: MainDrillDef): number {
   let s = 0;
   for (const t of def.themes) if (themes.includes(t)) s += 2;

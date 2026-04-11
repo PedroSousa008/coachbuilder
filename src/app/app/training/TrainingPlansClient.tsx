@@ -22,7 +22,12 @@ import {
 } from "@/lib/training-print-html";
 import { TrainingVideoEmbed } from "@/components/training/TrainingVideoEmbed";
 import { SaveExerciseModal } from "@/components/training/SaveExerciseModal";
-import { buildLocalFullTrainingSession, buildLocalSingleDrill } from "@/lib/training-session-local";
+import {
+  buildLocalFullTrainingSession,
+  buildLocalSingleDrill,
+  getMainDrillCatalogItems,
+} from "@/lib/training-session-local";
+import { Search } from "lucide-react";
 import {
   SAVED_EXERCISE_CATEGORIES,
   SAVED_EXERCISE_CATEGORY_LABELS,
@@ -57,7 +62,7 @@ export function TrainingPlansClient() {
     removeSavedTrainingExercise,
   } = useAppData();
 
-  const [labTab, setLabTab] = useState<"full" | "drill" | "library">("full");
+  const [labTab, setLabTab] = useState<"full" | "drill" | "library" | "catalog">("full");
   const [durationMin, setDurationMin] = useState<(typeof DURATIONS)[number]>(60);
   const [objective, setObjective] = useState("");
   const [drillBrief, setDrillBrief] = useState("");
@@ -107,6 +112,18 @@ export function TrainingPlansClient() {
     payload: SaveExercisePayload;
   } | null>(null);
   const [libraryFilter, setLibraryFilter] = useState<"all" | SavedExerciseCategory>("all");
+  const [catalogExpandedTitles, setCatalogExpandedTitles] = useState<Set<string>>(() => new Set());
+
+  const mainDrillCatalog = useMemo(() => getMainDrillCatalogItems(), []);
+
+  const toggleCatalogBrief = useCallback((title: string) => {
+    setCatalogExpandedTitles((prev) => {
+      const next = new Set(prev);
+      if (next.has(title)) next.delete(title);
+      else next.add(title);
+      return next;
+    });
+  }, []);
 
   const filteredSaved = useMemo(() => {
     const list = [...savedTrainingExercises].sort(
@@ -374,6 +391,16 @@ export function TrainingPlansClient() {
         >
           Meus exercícios ({savedTrainingExercises.length})
         </button>
+        <button
+          type="button"
+          onClick={() => setLabTab("catalog")}
+          className={cn(
+            "-mb-px border-b-2 px-4 py-2 text-sm font-medium transition-colors",
+            labTab === "catalog" ? "border-accent text-white" : "border-transparent text-zinc-500 hover:text-zinc-300"
+          )}
+        >
+          Todos os exercícios
+        </button>
       </div>
 
       {err ? (
@@ -388,7 +415,79 @@ export function TrainingPlansClient() {
         onConfirm={confirmSaveExercise}
       />
 
-      {labTab === "library" ? (
+      {labTab === "catalog" ? (
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Todos os exercícios</CardTitle>
+              <p className="text-sm text-zinc-500">
+                Catálogo do motor local: vê o vídeo de cada exercício e usa a bola com a lupa para ler a explicação
+                breve.
+              </p>
+            </CardHeader>
+            <CardContent>
+              <ul className="grid gap-8 sm:grid-cols-2 xl:grid-cols-3">
+                {mainDrillCatalog.map((item) => {
+                  const open = catalogExpandedTitles.has(item.title);
+                  return (
+                    <li
+                      key={item.title}
+                      className="flex flex-col rounded-2xl border border-surface-border bg-surface-raised/15 p-4"
+                    >
+                      <h3 className="font-display text-base font-semibold text-white">{item.title}</h3>
+                      <div className="mt-3 flex-1">
+                        {item.videoUrl ? (
+                          <TrainingVideoEmbed videoUrl={item.videoUrl} title={item.title} />
+                        ) : (
+                          <p className="rounded-xl border border-dashed border-surface-border bg-black/20 px-3 py-8 text-center text-xs text-zinc-500">
+                            Sem vídeo de demonstração para este exercício.
+                          </p>
+                        )}
+                      </div>
+                      <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-start">
+                        <button
+                          type="button"
+                          onClick={() => toggleCatalogBrief(item.title)}
+                          className={cn(
+                            "relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full border transition-colors",
+                            open
+                              ? "border-accent/50 bg-accent/10 text-white"
+                              : "border-surface-border bg-surface-raised/40 text-zinc-300 hover:border-accent/35 hover:bg-surface-raised"
+                          )}
+                          aria-expanded={open}
+                          aria-label={
+                            open
+                              ? `Ocultar explicação de ${item.title}`
+                              : `Ver explicação breve de ${item.title}`
+                          }
+                        >
+                          <span className="text-xl leading-none" aria-hidden>
+                            ⚽
+                          </span>
+                          <Search
+                            className="absolute -bottom-0.5 -right-0.5 h-4 w-4 rounded-full border border-[#0c1014] bg-[#0c1014] p-0.5 text-accent"
+                            strokeWidth={2.5}
+                            aria-hidden
+                          />
+                        </button>
+                        {open ? (
+                          <div className="min-w-0 flex-1 space-y-2 rounded-xl border border-surface-border bg-black/25 px-3 py-2 text-sm text-zinc-300">
+                            <p className="leading-relaxed">{item.brief}</p>
+                            <p className="text-xs leading-relaxed text-zinc-500">
+                              <span className="font-medium text-zinc-400">Porquê / como:</span>{" "}
+                              {item.coachingPoints}
+                            </p>
+                          </div>
+                        ) : null}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </CardContent>
+          </Card>
+        </div>
+      ) : labTab === "library" ? (
         <div className="space-y-6">
           <Card>
             <CardHeader>
