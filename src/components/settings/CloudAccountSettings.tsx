@@ -1,13 +1,34 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { isCloudSyncEnabledClient } from "@/lib/cloud-config";
+
+type AdminDiag = {
+  ownerEnvConfigured: boolean;
+  sessionEmailListedAsOwner: boolean;
+};
 
 export function CloudAccountSettings() {
   const { user, authReady, refreshUserFromCloud } = useAuth();
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [diag, setDiag] = useState<AdminDiag | null>(null);
+
+  useEffect(() => {
+    if (!isCloudSyncEnabledClient() || !authReady || !user) {
+      setDiag(null);
+      return;
+    }
+    let cancelled = false;
+    void fetch("/api/cloud/auth/me", { credentials: "include" }).then(async (res) => {
+      const j = (await res.json()) as { adminDiagnostics?: AdminDiag };
+      if (!cancelled && j.adminDiagnostics) setDiag(j.adminDiagnostics);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [authReady, user?.id, user?.role]);
 
   if (!isCloudSyncEnabledClient() || !authReady || !user) {
     return null;
@@ -27,6 +48,34 @@ export function CloudAccountSettings() {
           {isAdmin ? "Administrador (vês o menu Admin)" : "Utilizador"}
         </span>
       </p>
+      {diag ? (
+        <div className="mt-3 space-y-1 rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-xs text-zinc-500">
+          <p>
+            Servidor vê <code className="text-zinc-400">ADMIN_OWNER_EMAIL</code>:{" "}
+            <span className={diag.ownerEnvConfigured ? "text-emerald-400" : "text-red-400"}>
+              {diag.ownerEnvConfigured ? "sim" : "não"}
+            </span>
+          </p>
+          <p>
+            Este email está na lista de dono:{" "}
+            <span className={diag.sessionEmailListedAsOwner ? "text-emerald-400" : "text-red-400"}>
+              {diag.sessionEmailListedAsOwner ? "sim" : "não"}
+            </span>
+          </p>
+          {!diag.ownerEnvConfigured ? (
+            <p className="pt-1 text-amber-200/90">
+              A variável não está a chegar ao servidor (nome errado, projeto errado na Vercel, ou falta{" "}
+              <strong className="font-medium">Redeploy</strong> em Production).
+            </p>
+          ) : null}
+          {diag.ownerEnvConfigured && !diag.sessionEmailListedAsOwner ? (
+            <p className="pt-1 text-amber-200/90">
+              O valor de <code className="text-zinc-400">ADMIN_OWNER_EMAIL</code> não coincide com o email da sessão.
+              Para Gmail, pontos no nome são ignorados pelo código — confirma o email com que te registaste.
+            </p>
+          ) : null}
+        </div>
+      ) : null}
       {!isAdmin ? (
         <p className="mt-3 text-xs leading-relaxed text-zinc-500">
           Se és o dono do projeto, na Vercel define a variável{" "}

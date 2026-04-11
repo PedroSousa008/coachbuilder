@@ -7,6 +7,34 @@ export function normalizeAdminEmail(email: string): string {
   return email.trim().toLowerCase();
 }
 
+/**
+ * Gmail / Googlemail: o servidor ignora pontos no local-part e trata +tag.
+ * Comparar só o string falha se um lado tiver pontos e o outro não.
+ */
+function normalizeGmailCanonical(email: string): string | null {
+  const norm = normalizeAdminEmail(email);
+  const at = norm.lastIndexOf("@");
+  if (at < 1) return null;
+  let local = norm.slice(0, at);
+  const domain = norm.slice(at + 1);
+  const d = domain === "googlemail.com" ? "gmail.com" : domain;
+  if (d !== "gmail.com") return null;
+  const plus = local.indexOf("+");
+  if (plus >= 0) local = local.slice(0, plus);
+  local = local.replace(/\./g, "");
+  return `${local}@${d}`;
+}
+
+function adminEmailsMatch(configured: string, userEmail: string): boolean {
+  const a = normalizeAdminEmail(configured);
+  const b = normalizeAdminEmail(userEmail);
+  if (a === b) return true;
+  const ga = normalizeGmailCanonical(configured);
+  const gb = normalizeGmailCanonical(userEmail);
+  if (ga && gb && ga === gb) return true;
+  return false;
+}
+
 function stripQuotes(s: string): string {
   const t = s.trim();
   if ((t.startsWith('"') && t.endsWith('"')) || (t.startsWith("'") && t.endsWith("'"))) {
@@ -28,5 +56,5 @@ export function parseAdminOwnerEmailsFromEnv(): string[] {
 export function isOwnerAdminEmail(email: string): boolean {
   const allowed = parseAdminOwnerEmailsFromEnv();
   if (allowed.length === 0) return false;
-  return allowed.includes(normalizeAdminEmail(email));
+  return allowed.some((cfg) => adminEmailsMatch(cfg, email));
 }

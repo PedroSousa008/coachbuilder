@@ -33,7 +33,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Email ou palavra-passe incorretos." }, { status: 401 });
     }
 
-    if (isOwnerAdminEmail(user.email)) {
+    if (isOwnerAdminEmail(user.email) && user.role?.trim().toLowerCase() !== "admin") {
       await prisma.user.update({
         where: { id: user.id },
         data: { role: "admin" },

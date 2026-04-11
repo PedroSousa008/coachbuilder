@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { isCloudSyncEnabledServer } from "@/lib/cloud-config";
 import { readSessionFromCookies } from "@/lib/cloud-session";
-import { isOwnerAdminEmail } from "@/lib/admin-owner";
+import { isOwnerAdminEmail, parseAdminOwnerEmailsFromEnv } from "@/lib/admin-owner";
 import { toCloudUserPublic } from "@/lib/cloud-user-public";
 
 export const dynamic = "force-dynamic";
@@ -20,7 +20,9 @@ export async function GET() {
     if (!user || user.email !== claims.email) {
       return NextResponse.json({ ok: false, error: "Sessão inválida." }, { status: 401 });
     }
-    if (isOwnerAdminEmail(user.email) && user.role !== "admin") {
+    const listed = isOwnerAdminEmail(user.email);
+    const roleLower = user.role?.trim().toLowerCase() ?? "user";
+    if (listed && roleLower !== "admin") {
       user = await prisma.user.update({
         where: { id: user.id },
         data: { role: "admin" },
@@ -30,6 +32,10 @@ export async function GET() {
       ok: true,
       cloud: true,
       user: toCloudUserPublic(user),
+      adminDiagnostics: {
+        ownerEnvConfigured: parseAdminOwnerEmailsFromEnv().length > 0,
+        sessionEmailListedAsOwner: listed,
+      },
     });
   } catch (e) {
     console.error("[cloud/me]", e);
