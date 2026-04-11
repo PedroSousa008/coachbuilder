@@ -6,11 +6,13 @@ if [[ -z "${DATABASE_URL:-}" ]]; then
     export DATABASE_URL="$POSTGRES_PRISMA_URL"
   elif [[ -n "${POSTGRES_URL:-}" ]]; then
     export DATABASE_URL="$POSTGRES_URL"
+  elif [[ -n "${STORAGE_URL:-}" ]]; then
+    export DATABASE_URL="$STORAGE_URL"
   fi
 fi
 if [[ -z "${DATABASE_URL:-}" ]]; then
   echo "Erro: define DATABASE_URL nas Environment Variables da Vercel,"
-  echo "ou liga Vercel Postgres ao projeto (gera POSTGRES_PRISMA_URL)."
+  echo "ou liga Neon/Postgres (POSTGRES_PRISMA_URL, POSTGRES_URL ou STORAGE_URL)."
   exit 1
 fi
 

@@ -6,7 +6,9 @@ if (typeof process !== "undefined" && process.env) {
   const cur = process.env.DATABASE_URL?.trim();
   if (!cur) {
     const fallback =
-      process.env.POSTGRES_PRISMA_URL?.trim() || process.env.POSTGRES_URL?.trim();
+      process.env.POSTGRES_PRISMA_URL?.trim() ||
+      process.env.POSTGRES_URL?.trim() ||
+      process.env.STORAGE_URL?.trim();
     if (fallback) {
       process.env.DATABASE_URL = fallback;
     }
