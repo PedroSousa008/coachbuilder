@@ -1,0 +1,37 @@
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { isCloudSyncEnabledServer } from "@/lib/cloud-config";
+import { readSessionFromCookies } from "@/lib/cloud-session";
+import { isOwnerAdminEmail } from "@/lib/admin-owner";
+import { toCloudUserPublic } from "@/lib/cloud-user-public";
+
+export const dynamic = "force-dynamic";
+
+export async function POST() {
+  if (!isCloudSyncEnabledServer()) {
+    return NextResponse.json({ ok: false, error: "Cloud inativa." }, { status: 503 });
+  }
+  try {
+    const claims = await readSessionFromCookies();
+    if (!claims) {
+      return NextResponse.json({ ok: false, error: "Sem sessão." }, { status: 401 });
+    }
+    let user = await prisma.user.findUnique({ where: { id: claims.sub } });
+    if (!user || user.email !== claims.email) {
+      return NextResponse.json({ ok: false, error: "Sessão inválida." }, { status: 401 });
+    }
+    if (!isOwnerAdminEmail(user.email)) {
+      return NextResponse.json({ ok: false, error: "Este email não está na lista de donos." }, { status: 403 });
+    }
+    if (user.role?.trim().toLowerCase() !== "admin") {
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: { role: "admin" },
+      });
+    }
+    return NextResponse.json({ ok: true, user: toCloudUserPublic(user) });
+  } catch (e) {
+    console.error("[cloud/sync-admin-role]", e);
+    return NextResponse.json({ ok: false, error: "Erro interno." }, { status: 500 });
+  }
+}

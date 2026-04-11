@@ -64,6 +64,5 @@ function listAllAdminOwnerEmails(): string[] {
 
 export function isOwnerAdminEmail(email: string): boolean {
   const allowed = listAllAdminOwnerEmails();
-  if (allowed.length === 0) return false;
   return allowed.some((cfg) => adminEmailsMatch(cfg, email));
 }

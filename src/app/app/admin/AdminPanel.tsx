@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
+import { clientEmailShowsAdminNav } from "@/lib/bootstrap-admin-client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 
@@ -36,7 +37,7 @@ type ListedUser = {
 };
 
 export function AdminPanel() {
-  const { user, authReady } = useAuth();
+  const { user, authReady, refreshUserFromCloud } = useAuth();
   const router = useRouter();
   const [stats, setStats] = useState<Stats | null>(null);
   const [users, setUsers] = useState<ListedUser[]>([]);
@@ -74,12 +75,21 @@ export function AdminPanel() {
 
   useEffect(() => {
     if (!authReady) return;
-    if (user?.role !== "admin") {
+    const allowed =
+      user?.role === "admin" || (user?.email ? clientEmailShowsAdminNav(user.email) : false);
+    if (!allowed) {
       router.replace("/app");
       return;
     }
-    void load();
-  }, [authReady, user?.role, router, load]);
+
+    void (async () => {
+      if (user?.role !== "admin" && user?.email && clientEmailShowsAdminNav(user.email)) {
+        await fetch("/api/cloud/auth/sync-admin-role", { method: "POST", credentials: "include" });
+        await refreshUserFromCloud();
+      }
+      await load();
+    })();
+  }, [authReady, user?.role, user?.email, router, load, refreshUserFromCloud]);
 
   const savePlan = async (id: string) => {
     const subscriptionPlan = planDraft[id];
@@ -104,10 +114,6 @@ export function AdminPanel() {
     );
   }
 
-  if (user?.role !== "admin") {
-    return null;
-  }
-
   return (
     <div className="mx-auto max-w-6xl space-y-8">
       <div>
@@ -115,6 +121,12 @@ export function AdminPanel() {
         <p className="mt-1 text-sm text-zinc-500">
           Métricas agregadas e contas (RGPD: dados mínimos; sem pagamentos reais até integrares billing).
         </p>
+        {user?.role !== "admin" && user?.email && clientEmailShowsAdminNav(user.email) ? (
+          <p className="mt-2 text-xs text-amber-200/90">
+            A sincronizar o teu perfil de administrador com o servidor… Se os dados não aparecerem, vai a Settings →
+            &quot;Atualizar sessão com o servidor&quot;.
+          </p>
+        ) : null}
       </div>
 
       {error ? (

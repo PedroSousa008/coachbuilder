@@ -18,6 +18,7 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { useAppData } from "@/contexts/AppDataContext";
 import { cn } from "@/lib/utils";
+import { clientEmailShowsAdminNav } from "@/lib/bootstrap-admin-client";
 
 const nav = [
   { href: "/app", label: "Dashboard", icon: LayoutDashboard },
@@ -37,8 +38,9 @@ export function AppSidebar() {
   const { user, logout } = useAuth();
   const { coachProfile } = useAppData();
 
-  const adminNav =
-    user?.role === "admin" ? ([{ href: "/app/admin", label: "Admin", icon: Shield }] as const) : [];
+  const showAdmin =
+    user?.role === "admin" || (user?.email ? clientEmailShowsAdminNav(user.email) : false);
+  const adminNav = showAdmin ? ([{ href: "/app/admin", label: "Admin", icon: Shield }] as const) : [];
 
   const displayName =
     coachProfile.name.trim() || user?.name.trim() || user?.email || "";
