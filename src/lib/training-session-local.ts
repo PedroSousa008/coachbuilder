@@ -3,9 +3,8 @@
  * Filosofia: igual ao Style of Play Helper (lógica local + dados do plantel).
  */
 
-import type { Player, Position } from "@/types";
+import type { Player } from "@/types";
 import type { AiFullTrainingSession, AiSingleDrill, AiTrainingBlock } from "@/lib/training-ai-types";
-import { formatPlayerPositions, playerHasPosition } from "@/lib/player-positions";
 
 /**
  * Vídeo do exercício "Offensive Between Lines".
@@ -117,90 +116,6 @@ export function detectTrainingThemes(text: string): TrainingThemeId[] {
   return [...hit];
 }
 
-function rosterLines(players: Player[]): string {
-  if (players.length === 0) return "Grupo completo disponível.";
-  return players.map((p) => `#${p.number} ${p.name} (${formatPlayerPositions(p)})`).join("; ");
-}
-
-/** Lista legível; nunca repetir o mesmo jogador em dois grupos — usar funções `group*` abaixo. */
-function formatNames(players: Player[]): string {
-  if (players.length === 0) return "(ninguém nesta lista — ajusta ao plantel)";
-  return players.map((p) => `#${p.number} ${p.name}`).join(", ");
-}
-
-function pickNames(players: Player[], filter: (p: Player) => boolean, max = 4): string {
-  const xs = players.filter(filter).slice(0, max);
-  if (xs.length === 0) return "jogadores da linha indicada";
-  return xs.map((p) => `#${p.number} ${p.name}`).join(", ");
-}
-
-function gkNames(players: Player[]): string {
-  return pickNames(players, (p) => playerHasPosition(p, "GK"), 2);
-}
-
-const DEF_POS: Position[] = ["CB", "LB", "RB"];
-const MID_POS: Position[] = ["CDM", "CM", "CAM"];
-const FWD_POS: Position[] = ["LW", "RW", "ST"];
-
-function isDef(p: Player): boolean {
-  return DEF_POS.some((pos) => playerHasPosition(p, pos));
-}
-function isMid(p: Player): boolean {
-  return MID_POS.some((pos) => playerHasPosition(p, pos));
-}
-function isFwd(p: Player): boolean {
-  return FWD_POS.some((pos) => playerHasPosition(p, pos));
-}
-
-/** Defesas num grupo; todos os outros no rondo (ninguém em duplicado). */
-function groupRondoAB(players: Player[]) {
-  const defs = players.filter(isDef);
-  const defIds = new Set(defs.map((p) => p.id));
-  const grupoA = players.filter((p) => !defIds.has(p.id));
-  return { defs, grupoA };
-}
-
-/** Avançados → médios (do que sobra) → resto (GK, etc.): disjuntos. */
-function groupTransitionLanes(players: Player[]) {
-  const fwds = players.filter(isFwd);
-  const uF = new Set(fwds.map((p) => p.id));
-  const mids = players.filter((p) => !uF.has(p.id) && isMid(p));
-  const uM = new Set(mids.map((p) => p.id));
-  const rest = players.filter((p) => !uF.has(p.id) && !uM.has(p.id));
-  return { fwds, mids, rest };
-}
-
-/** Primeiro largos (LB/LW); depois finalizadores entre os que ainda não foram nomeados. */
-function groupCrossAndFinish(players: Player[]) {
-  const cross = players.filter((p) => playerHasPosition(p, "LW") || playerHasPosition(p, "LB"));
-  const uC = new Set(cross.map((p) => p.id));
-  const finish = players.filter((p) => !uC.has(p.id) && isFwd(p));
-  const uFi = new Set(finish.map((p) => p.id));
-  const rest = players.filter((p) => !uC.has(p.id) && !uFi.has(p.id));
-  return { cross, finish, rest };
-}
-
-/** Bloco = defesas + médios; pressão/saída = avançados do remanescente; resto à parte. */
-function groupBlockAndPress(players: Player[]) {
-  const defs = players.filter(isDef);
-  const uD = new Set(defs.map((p) => p.id));
-  const mids = players.filter((p) => !uD.has(p.id) && isMid(p));
-  const uM = new Set(mids.map((p) => p.id));
-  const fwds = players.filter((p) => !uD.has(p.id) && !uM.has(p.id) && isFwd(p));
-  const uF = new Set(fwds.map((p) => p.id));
-  const rest = players.filter((p) => !uD.has(p.id) && !uM.has(p.id) && !uF.has(p.id));
-  return { defs, mids, fwds, rest };
-}
-
-/** Duas equipas de campo disjuntas + GR listados à parte (ninguém em duas equipas). */
-function splitTwoTeamsField(players: Player[]) {
-  const gks = players.filter((p) => playerHasPosition(p, "GK"));
-  const gkIds = new Set(gks.map((p) => p.id));
-  const field = players.filter((p) => !gkIds.has(p.id)).sort((a, b) => a.number - b.number);
-  const mid = Math.ceil(field.length / 2);
-  return { gks, teamA: field.slice(0, mid), teamB: field.slice(mid) };
-}
-
 type MainDrillDef = {
   themes: TrainingThemeId[];
   title: string;
@@ -212,16 +127,13 @@ const MAIN_DRILLS: MainDrillDef[] = [
     themes: ["possession", "balanced"],
     title: "Rondo com pressão condicionada",
     describe: (pl, m) => ({
-      description: `Dois quadrados ou círculos concentricos: interior com menos jogadores + 2 defesas a pressionar (${m} min). Rotação a cada 90s nas pressões. Plantel: ${rosterLines(pl)}.`,
+      description: `Dois quadrados ou círculos concentricos: interior com menos jogadores + 2 defesas a pressionar (${m} min). Rotação a cada 90s nas pressões.`,
       coachingPoints:
         "Corpo aberto na recepção; primeiro toque orientado; voz constante. Se a pressão ganhar a bola, 6 toques para voltar a estabilizar.",
       setup: "Cones; espaço total ~25x25 m (ajusta ao número).",
       groupSplit:
         pl.length >= 10
-          ? (() => {
-              const { defs, grupoA } = groupRondoAB(pl);
-              return `Grupo A (rondo; cada jogador só aqui): ${formatNames(grupoA)}. Grupo B (ziguezague entre estações): ${formatNames(defs)} — sem sobreposição entre A e B.`;
-            })()
+          ? "Dois grupos sem repetir jogadores: maioria no rondo + pressões; defesas em ziguezague entre estações. Troca de papéis ao intervalo."
           : undefined,
       diagramHint: "Quadrado exterior; quadrado interior menor; 2 coletes a pressionar no meio.",
     }),
@@ -234,10 +146,8 @@ const MAIN_DRILLS: MainDrillDef[] = [
       coachingPoints:
         "Primeira ação após recuperação: olhar à frente. Se não houver linha, segurar e atrair para liberar terceiro homem.",
       setup: "4 coletes de cada cor; 2 balizas pequenas ou portas com cones.",
-      groupSplit: (() => {
-        const { fwds, mids, rest } = groupTransitionLanes(pl);
-        return `Fase ofensiva (avançados): ${formatNames(fwds)}. Ligações do meio-campo (jogadores não repetidos nos avançados): ${formatNames(mids)}.${rest.length > 0 ? ` Suporte / rotação: ${formatNames(rest)}.` : ""}`;
-      })(),
+      groupSplit:
+        "Avançados lideram a transição ao último terço; médios fazem ligações; quem não está nesses papéis apoia e roda para todos experimentarem os dois lados.",
       diagramHint: "Dois rectângulos; setas de transição cruzadas entre campos.",
     }),
   },
@@ -245,7 +155,7 @@ const MAIN_DRILLS: MainDrillDef[] = [
     themes: ["pressing"],
     title: "Pressão alta coordenada 5v5+1",
     describe: (pl, m) => ({
-      description: `Campo 32x24 m. Equipa com bola tem guarda-redes jogador (${gkNames(pl)} ou jogador em pé). Equipa sem bola pressiona em cunha: primeiro salta ao portador, segundos fecham linhas de passe. Séries de ${Math.max(3, Math.floor(m / 4))} min.`,
+      description: `Campo 32x24 m. Equipa com bola: GR real ou jogador em pé nas balizas. Equipa sem bola pressiona em cunha: primeiro salta ao portador, segundos fecham linhas de passe. Séries de ${Math.max(3, Math.floor(m / 4))} min.`,
       coachingPoints: "Gatilho comum (voz ou mão); nunca saltar sozinho; canalizar para banda se for o plano.",
       setup: "Coletes; porta grande ou dois mini-golos.",
       diagramHint: "Cunha de pressão a partir do ponta de lança; meios tapam passes interiores.",
@@ -258,10 +168,8 @@ const MAIN_DRILLS: MainDrillDef[] = [
       description: `Filas nas bandas; cruzamentos alternados; 2 pontas de lança + 2 chegadas ao segundo poste por série. ${m} min com contagem de golos limpos.`,
       coachingPoints: "Tempo de corrida; contacto com o relvado na antevisão; decisão cabeça vs pé.",
       setup: "Bolas nas bandas; mini-balizas ou porta reduzida.",
-      groupSplit: (() => {
-        const { cross, finish, rest } = groupCrossAndFinish(pl);
-        return `Cruzamentos (LB/LW primeiro): ${formatNames(cross)}. Finalização (restantes com papel de ataque): ${formatNames(finish)}.${rest.length > 0 ? ` Apoios: ${formatNames(rest)}.` : ""}`;
-      })(),
+      groupSplit:
+        "Largos (laterais / extremos) iniciam cruzamentos; finalizadores no eixo e segundo poste; apoios sem repetir o mesmo papel na mesma jogada.",
       diagramHint: "Banda → cruzamento rasteiro e alto alternados; 2 filas de atacantes.",
     }),
   },
@@ -272,11 +180,8 @@ const MAIN_DRILLS: MainDrillDef[] = [
       description: `Meio-campo defensivo: linha de 5+4 atrás da bola; ao recuperar, dois jogadores largos esticam e um interior oferece entre linhas (${m} min).`,
       coachingPoints: "Distâncias 8–12 m entre linhas; lateral do lado da bola fecha; do lado oposto mantém largura.",
       setup: "Meio campo real ou 50x40 m.",
-      groupSplit: (() => {
-        const { defs, mids, fwds, rest } = groupBlockAndPress(pl);
-        const bloco = [...defs, ...mids];
-        return `Bloco (defesas + médios; sem repetir nos avançados): ${formatNames(bloco)}. Simulam pressão e lideram saída: ${formatNames(fwds)}.${rest.length > 0 ? ` GR / outros: ${formatNames(rest)}.` : ""}`;
-      })(),
+      groupSplit:
+        "Bloco com defesas e médios; avançados simulam pressão e depois lideram a saída; GR pode ficar na baliza ou participar na construção, conforme o plano.",
       diagramHint: "Duas linhas horizontais; seta em W na recuperação.",
     }),
   },
@@ -294,18 +199,12 @@ const MAIN_DRILLS: MainDrillDef[] = [
     themes: ["transition", "finishing", "possession"],
     title: "Offensive Between Lines",
     describe: (pl, m) => ({
-      description: `Jogo em meio-campo (${m} min): duas equipas com balizas; ideal ~12–20 jogadores de campo + 2 ou 3 GR (8v8 ou 9v9 — com terceira equipa de 8, roda à espera ou em campo vizinho). A equipa em posse começa sempre pela linha defensiva: com poucos toques, procurar um passe rasteiro entre linhas para um médio. Ao receber entre linhas, os médios rodam depressa e a equipa ataca a baliza. Se a bola for intercetada, a equipa que recupera não pode atacar de imediato: primeiro recua e toca nos seus defesas, depois repete o mesmo ciclo (entre linhas → rotação → finalização). Plantel: ${rosterLines(pl)}.`,
+      description: `Jogo em meio-campo (${m} min): duas equipas com balizas; ideal ~12–20 jogadores de campo + 2 ou 3 GR (8v8 ou 9v9 — com terceira equipa de 8, roda à espera ou em campo vizinho). A equipa em posse começa sempre pela linha defensiva: com poucos toques, procurar um passe rasteiro entre linhas para um médio. Ao receber entre linhas, os médios rodam depressa e a equipa ataca a baliza. Se a bola for intercetada, a equipa que recupera não pode atacar de imediato: primeiro recua e toca nos seus defesas, depois repete o mesmo ciclo (entre linhas → rotação → finalização).`,
       coachingPoints:
         "Primeiro toque no médio entre linhas orientado ao golo ou à terceira linha; corpo aberto antes da bola chegar. Após perda, reset disciplinado: bola aos defesas antes de voltar a progredir. Limita toques (ex.: 3) se precisares de mais ritmo e passes rasteiros.",
       setup: "Meio-campo real ou ~55×40 m; 2 balizas; coletes; bolas extra nas linhas de fundo.",
-      groupSplit: (() => {
-        const { gks, teamA, teamB } = splitTwoTeamsField(pl);
-        const grLine =
-          gks.length > 0
-            ? `Guarda-redes (alternam ou um por baliza): ${formatNames(gks)}.`
-            : "Sem GR no plantel: jogador em pé nas balizas.";
-        return `${grLine} Equipa A (só nesta equipa): ${formatNames(teamA)}. Equipa B (só nesta equipa): ${formatNames(teamB)}. Com terceira equipa de 8, mantém estas listas disjuntas e faz rodar o terceiro grupo.`;
-      })(),
+      groupSplit:
+        "Monta duas equipas equilibradas a partir do plantel; cada jogador numa só equipa. Dois ou três GR a alternar ou um por baliza; com terceira equipa de oito, rodar mantendo grupos sempre disjuntos.",
       diagramHint: "Meio-campo; seta desde defesas → passe rasteiro entre linhas → médios a rodar → remate; após recuperação, seta de volta aos defesas antes de repetir.",
       videoUrl: OFFENSIVE_BETWEEN_LINES_VIDEO_URL,
     }),
