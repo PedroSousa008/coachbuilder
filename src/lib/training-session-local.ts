@@ -54,6 +54,12 @@ export const BACK_FOUR_SHIFTING_VIDEO_URL = "/videos/training/back-four-shifting
 export const COMPACT_DEFENDING_TRANSITION_VIDEO_URL =
   "/videos/training/compact-defending-transition.mp4";
 
+/**
+ * Vídeo do exercício "Finishing Transition".
+ * Coloca o ficheiro em `public/videos/training/transition-finishing.mp4` ou substitui por um link YouTube.
+ */
+export const FINISHING_TRANSITION_VIDEO_URL = "/videos/training/transition-finishing.mp4";
+
 export type TrainingThemeId =
   | "possession"
   | "transition"
@@ -154,6 +160,18 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
     "4 balizas",
     "recuperação e ataque",
     "recuperacao e ataque",
+    "finishing transition",
+    "transição ofensiva",
+    "transicao ofensiva",
+    "1v1",
+    "2v1",
+    "3v2",
+    "3v3",
+    "2v2",
+    "superioridade numérica",
+    "superioridade numerica",
+    "ataques em transição",
+    "ataques em transicao",
   ],
   pressing: [
     "pressão",
@@ -202,6 +220,19 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
     "movimentacao na area",
     "overlap",
     "overlap lateral",
+    "finishing transition",
+    "transição ofensiva",
+    "transicao ofensiva",
+    "finalização objetiva",
+    "finalizacao objetiva",
+    "jogo interior",
+    "1v1",
+    "2v1",
+    "3v2",
+    "3v3",
+    "2v2",
+    "ataques rápidos na finalização",
+    "ataques rapidos na finalizacao",
   ],
   defensive: [
     "defens",
@@ -253,6 +284,9 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
     "cruzamento para área",
     "cruzamento para area",
     "laterais",
+    "finishing transition",
+    "transição com extremos",
+    "transicao com extremos",
   ],
   physical: [
     "físico",
@@ -456,6 +490,26 @@ const MAIN_DRILLS: MainDrillDef[] = [
       videoUrl: DOUBLE_FINISHING_DRILL_VIDEO_URL,
     }),
   },
+  {
+    themes: ["transition", "finishing", "wide"],
+    title: "Finishing Transition",
+    describe: (pl, m) => ({
+      description: `O exercício inicia com 1v1, com a equipa branca em posse a atacar. Após a finalização, a equipa preta (que defendia) passa imediatamente a atacar numa situação de 2v1. Depois dessa acção, a equipa branca adiciona um jogador, criando um 3v2, voltando a atacar. Por fim, a equipa preta entra com mais um jogador, ficando 3v3, com apoio de 2 extremos fixos e bem abertos. O exercício decorre de forma contínua, com transições muito rápidas e pouco tempo entre finalizações, focando a reacção à perda e ganho de bola, tomada de decisão e aproveitamento de superioridades numéricas. (${m} min)`,
+      coachingPoints:
+        "Após cada finalização ou defesa, reentrada imediata na fase seguinte — sem pausa longa. Em superioridade, fixar o último defensor com passe ou condução antes do último passe ao golo. Em 3v3, extremos fixos largos: corpo aberto, cruzamento em no máximo 2 toques quando a jogada vai à banda.",
+      setup:
+        "Meio campo ofensivo ou ~40×32 m; 2 balizas (GR ou jogador nas traves); coletes (ex.: branco / preto); 2 extremos fixos nas laterais na fase 3v3; bolas extra junto às balizas para manter ritmo.",
+      groupSplit:
+        pl.length >= 12
+          ? "Rotação por cores: todos passam por atacar e defender nas várias fases; extremos fixos a alternar de lado ao intervalo."
+          : pl.length >= 8
+            ? "Núcleo reduzido no ciclo central; jogadores extra a rodar como extremos fixos ou como 'próximo a entrar' na fase 3v3."
+            : "Reduz tempos de fase ou mantém só 1v1 → 2v1 → 3v2 até haver números para 3v3+2 extremos.",
+      diagramHint:
+        "Sequência contínua: 1v1 à baliza → transição → 2v1 na outra → +1 branco (3v2) → +1 preto (3v3) + 2 extremos fixos abertos; setas de recuperação imediata.",
+      videoUrl: FINISHING_TRANSITION_VIDEO_URL,
+    }),
+  },
 ];
 
 function scoreDrill(themes: TrainingThemeId[], def: MainDrillDef): number {
@@ -590,7 +644,11 @@ export function buildLocalFullTrainingSession(params: {
   };
 }
 
-const SINGLE_DRILL_20_MIN_TITLES = new Set<string>(["Offensive Between Lines", "9v9 + 2 Game"]);
+const SINGLE_DRILL_20_MIN_TITLES = new Set<string>([
+  "Offensive Between Lines",
+  "9v9 + 2 Game",
+  "Finishing Transition",
+]);
 /** Valor médio quando o treinador indica ~15–20 min (ex.: bloco final). */
 const SINGLE_DRILL_18_MIN_TITLES = new Set<string>(["Double Finishing Drill"]);
 const SINGLE_DRILL_10_MIN_TITLES = new Set<string>([
@@ -614,6 +672,7 @@ function singleDrillProgressionVariationsForTitle(title: string): {
   const isBetweenLines = title === "Offensive Between Lines";
   const isBackFourShifting = title === "Back Four Shifting";
   const isCompactDefendingTransition = title === "Compact Defending Transition";
+  const isFinishingTransition = title === "Finishing Transition";
   const isDoubleFinishing = title === "Double Finishing Drill";
   const is9v9Plus2Game = title === "9v9 + 2 Game";
   const isPassingActivation = title === "Passing Activation";
@@ -625,15 +684,17 @@ function singleDrillProgressionVariationsForTitle(title: string): {
       ? "Encurta o espaço entre defesa e meio para forçar linha mais alta; ou acrescenta terceiro atacante a fixar o último defesa; ou alterna quem inicia a pressão a cada 90 s."
       : isCompactDefendingTransition
         ? "Reduz o tempo máximo após recuperação (ex.: 4 toques para remate); ou acrescenta quinta baliza no eixo para forçar ainda mais fecho do meio; ou exige que só o trinco fale na reorganização durante 3 min."
-        : isDoubleFinishing
-          ? "Aumenta a exigência no primeiro remate (vértice mais fechado); ou obriga cruzamento só com o pé interior; ou acrescenta defensor na área com contacto leve."
-          : is9v9Plus2Game
-            ? "Encosta o campo para forçar decisões mais rápidas no extremo; ou permite 3 toques no extremo em fase inicial; ou golo vale duplo se a jogada tiver mudança de corredor antes do cruzamento."
-            : isPassingActivation
-              ? "Aperta distâncias entre postes para exigir passes mais curtos e reacção mais rápida; ou fixa 2 toques máx.; ou alterna o pé obrigatório em cada série."
-              : isDualPassing
-                ? "Encolhe o hexágono para forçar primeiro toque ainda mais limpo; ou acrescenta um defensor ligeiro no centro por 45 s; ou exige só combinações com o pé não dominante."
-                : "Aumenta espaço (mais difícil defender) ou reduz toques permitidos no rondo. Alterna pé fraco em passes fixos.";
+        : isFinishingTransition
+          ? "Encurta o tempo entre fases (apito ou grito a cada 10–15 s); ou na 1v1 obriga remate em 2 toques; ou na fase 3v3 exige que o golo venha sempre de cruzamento de extremo."
+          : isDoubleFinishing
+            ? "Aumenta a exigência no primeiro remate (vértice mais fechado); ou obriga cruzamento só com o pé interior; ou acrescenta defensor na área com contacto leve."
+            : is9v9Plus2Game
+              ? "Encosta o campo para forçar decisões mais rápidas no extremo; ou permite 3 toques no extremo em fase inicial; ou golo vale duplo se a jogada tiver mudança de corredor antes do cruzamento."
+              : isPassingActivation
+                ? "Aperta distâncias entre postes para exigir passes mais curtos e reacção mais rápida; ou fixa 2 toques máx.; ou alterna o pé obrigatório em cada série."
+                : isDualPassing
+                  ? "Encolhe o hexágono para forçar primeiro toque ainda mais limpo; ou acrescenta um defensor ligeiro no centro por 45 s; ou exige só combinações com o pé não dominante."
+                  : "Aumenta espaço (mais difícil defender) ou reduz toques permitidos no rondo. Alterna pé fraco em passes fixos.";
 
   if (isDualPassing) return { progression };
 
@@ -643,13 +704,15 @@ function singleDrillProgressionVariationsForTitle(title: string): {
       ? "Atacante obrigado a receber de costas; ou passe filtrado simulado com linha a subir no timing; ou capitão da linha só ele dá ordem de pressão."
       : isCompactDefendingTransition
         ? "Só duas balizas activas de cada vez (rotação a cada 90 s); ou adversário com passe obrigatório ao pivô antes de finalizar contra o bloco; ou golo na transição vale duplo se vier de passe vertical do trinco."
-        : isDoubleFinishing
-          ? "Segunda bola viva após o primeiro remate para forçar reacção; ou defensores a saírem na linha em 2 toques; ou contagem de golos só com assistência de lateral."
-          : is9v9Plus2Game
-            ? "Extremos a trocar de lado ao intervalo; ou um extremo neutro que só pode dar largura à equipa em posse; ou limite de 5 passes antes de obrigar jogo ao extremo."
-            : isPassingActivation
-              ? "Dois coletes com passes obrigatórios entre cores; ou inverte o sentido da rotação a cada minuto; ou acrescenta um jogador 'defensor' a tapar uma linha de passe por 30 s."
-              : "Reduz jogadores no meio; ou acrescenta neutro exterior; ou pontua por X passes seguidos.";
+        : isFinishingTransition
+          ? "Começar o ciclo pelo 2v1 ou 2v2; ou extremos neutros que só podem cruzar com o pé interior; ou golo nas fases 1v1 e 2v1 vale duplo."
+          : isDoubleFinishing
+            ? "Segunda bola viva após o primeiro remate para forçar reacção; ou defensores a saírem na linha em 2 toques; ou contagem de golos só com assistência de lateral."
+            : is9v9Plus2Game
+              ? "Extremos a trocar de lado ao intervalo; ou um extremo neutro que só pode dar largura à equipa em posse; ou limite de 5 passes antes de obrigar jogo ao extremo."
+              : isPassingActivation
+                ? "Dois coletes com passes obrigatórios entre cores; ou inverte o sentido da rotação a cada minuto; ou acrescenta um jogador 'defensor' a tapar uma linha de passe por 30 s."
+                : "Reduz jogadores no meio; ou acrescenta neutro exterior; ou pontua por X passes seguidos.";
 
   return { progression, variations };
 }
