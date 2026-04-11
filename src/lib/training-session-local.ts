@@ -3,8 +3,13 @@
  * Filosofia: igual ao Style of Play Helper (lógica local + dados do plantel).
  */
 
-import type { Player } from "@/types";
-import type { AiFullTrainingSession, AiSingleDrill, AiTrainingBlock } from "@/lib/training-ai-types";
+import type { Player, SavedExerciseCategory } from "@/types";
+import type {
+  AiFullTrainingSession,
+  AiSingleDrill,
+  AiTrainingBlock,
+  AiTrainingPhase,
+} from "@/lib/training-ai-types";
 
 /**
  * Vídeo do exercício "Offensive Between Lines".
@@ -453,32 +458,6 @@ const MAIN_DRILLS: MainDrillDef[] = [
   },
 ];
 
-export type MainDrillCatalogItem = {
-  title: string;
-  videoUrl?: string;
-  /** Descrição principal sem o sufixo «(N min)». */
-  brief: string;
-  coachingPoints: string;
-};
-
-/**
- * Lista todos os exercícios do motor local para a aba «Todos os exercícios».
- */
-export function getMainDrillCatalogItems(): MainDrillCatalogItem[] {
-  const previewMinutes = 15;
-  const emptyPlayers: Player[] = [];
-  return MAIN_DRILLS.map((def) => {
-    const body = def.describe(emptyPlayers, previewMinutes);
-    const brief = body.description.replace(/\s*\(\d+\s*min\)\s*\.?$/iu, "").trim();
-    return {
-      title: def.title,
-      ...(body.videoUrl ? { videoUrl: body.videoUrl } : {}),
-      brief,
-      coachingPoints: body.coachingPoints,
-    };
-  });
-}
-
 function scoreDrill(themes: TrainingThemeId[], def: MainDrillDef): number {
   let s = 0;
   for (const t of def.themes) if (themes.includes(t)) s += 2;
@@ -620,29 +599,69 @@ const SINGLE_DRILL_10_MIN_TITLES = new Set<string>([
 ]);
 const SINGLE_DRILL_8_MIN_TITLES = new Set<string>(["Passing Activation", "Dual Passing"]);
 
+function singleDrillDurationForTitle(title: string, briefLength: number): number {
+  if (SINGLE_DRILL_20_MIN_TITLES.has(title)) return 20;
+  if (SINGLE_DRILL_18_MIN_TITLES.has(title)) return 18;
+  if (SINGLE_DRILL_10_MIN_TITLES.has(title)) return 10;
+  if (SINGLE_DRILL_8_MIN_TITLES.has(title)) return 8;
+  return briefLength > 80 ? 18 : 14;
+}
+
+function singleDrillProgressionVariationsForTitle(title: string): {
+  progression: string;
+  variations?: string;
+} {
+  const isBetweenLines = title === "Offensive Between Lines";
+  const isBackFourShifting = title === "Back Four Shifting";
+  const isCompactDefendingTransition = title === "Compact Defending Transition";
+  const isDoubleFinishing = title === "Double Finishing Drill";
+  const is9v9Plus2Game = title === "9v9 + 2 Game";
+  const isPassingActivation = title === "Passing Activation";
+  const isDualPassing = title === "Dual Passing";
+
+  const progression = isBetweenLines
+    ? "Aperta o meio-campo (menos espaço entre linhas) ou exige 2 toques máx. depois do passe interior; aumenta largura para forçar mais metros percorridos após a rotação."
+    : isBackFourShifting
+      ? "Encurta o espaço entre defesa e meio para forçar linha mais alta; ou acrescenta terceiro atacante a fixar o último defesa; ou alterna quem inicia a pressão a cada 90 s."
+      : isCompactDefendingTransition
+        ? "Reduz o tempo máximo após recuperação (ex.: 4 toques para remate); ou acrescenta quinta baliza no eixo para forçar ainda mais fecho do meio; ou exige que só o trinco fale na reorganização durante 3 min."
+        : isDoubleFinishing
+          ? "Aumenta a exigência no primeiro remate (vértice mais fechado); ou obriga cruzamento só com o pé interior; ou acrescenta defensor na área com contacto leve."
+          : is9v9Plus2Game
+            ? "Encosta o campo para forçar decisões mais rápidas no extremo; ou permite 3 toques no extremo em fase inicial; ou golo vale duplo se a jogada tiver mudança de corredor antes do cruzamento."
+            : isPassingActivation
+              ? "Aperta distâncias entre postes para exigir passes mais curtos e reacção mais rápida; ou fixa 2 toques máx.; ou alterna o pé obrigatório em cada série."
+              : isDualPassing
+                ? "Encolhe o hexágono para forçar primeiro toque ainda mais limpo; ou acrescenta um defensor ligeiro no centro por 45 s; ou exige só combinações com o pé não dominante."
+                : "Aumenta espaço (mais difícil defender) ou reduz toques permitidos no rondo. Alterna pé fraco em passes fixos.";
+
+  if (isDualPassing) return { progression };
+
+  const variations = isBetweenLines
+    ? "Terceira equipa de 8 a rodar; ou zona obrigatória de 'pé em campo' nos médios; ou golo vale duplo se vier de passe rasteiro entre linhas."
+    : isBackFourShifting
+      ? "Atacante obrigado a receber de costas; ou passe filtrado simulado com linha a subir no timing; ou capitão da linha só ele dá ordem de pressão."
+      : isCompactDefendingTransition
+        ? "Só duas balizas activas de cada vez (rotação a cada 90 s); ou adversário com passe obrigatório ao pivô antes de finalizar contra o bloco; ou golo na transição vale duplo se vier de passe vertical do trinco."
+        : isDoubleFinishing
+          ? "Segunda bola viva após o primeiro remate para forçar reacção; ou defensores a saírem na linha em 2 toques; ou contagem de golos só com assistência de lateral."
+          : is9v9Plus2Game
+            ? "Extremos a trocar de lado ao intervalo; ou um extremo neutro que só pode dar largura à equipa em posse; ou limite de 5 passes antes de obrigar jogo ao extremo."
+            : isPassingActivation
+              ? "Dois coletes com passes obrigatórios entre cores; ou inverte o sentido da rotação a cada minuto; ou acrescenta um jogador 'defensor' a tapar uma linha de passe por 30 s."
+              : "Reduz jogadores no meio; ou acrescenta neutro exterior; ou pontua por X passes seguidos.";
+
+  return { progression, variations };
+}
+
 export function buildLocalSingleDrill(brief: string, players: Player[]): AiSingleDrill {
   const themes = detectTrainingThemes(brief);
   const seed = hashSeed(brief, 0);
   const defs = pickMainDrills(themes, 1, seed);
   const def = defs[0]!;
-  const mins = SINGLE_DRILL_20_MIN_TITLES.has(def.title)
-    ? 20
-    : SINGLE_DRILL_18_MIN_TITLES.has(def.title)
-      ? 18
-      : SINGLE_DRILL_10_MIN_TITLES.has(def.title)
-        ? 10
-        : SINGLE_DRILL_8_MIN_TITLES.has(def.title)
-          ? 8
-          : brief.length > 80
-            ? 18
-            : 14;
+  const mins = singleDrillDurationForTitle(def.title, brief.length);
   const body = def.describe(players, mins);
-  const isBetweenLines = def.title === "Offensive Between Lines";
-  const isBackFourShifting = def.title === "Back Four Shifting";
-  const isCompactDefendingTransition = def.title === "Compact Defending Transition";
-  const isDoubleFinishing = def.title === "Double Finishing Drill";
-  const is9v9Plus2Game = def.title === "9v9 + 2 Game";
-  const isPassingActivation = def.title === "Passing Activation";
+  const { progression, variations } = singleDrillProgressionVariationsForTitle(def.title);
   const isDualPassing = def.title === "Dual Passing";
 
   return {
@@ -651,39 +670,124 @@ export function buildLocalSingleDrill(brief: string, players: Player[]): AiSingl
     objective: `Pedido: ${brief.slice(0, 120)}${brief.length > 120 ? "…" : ""}`,
     description: body.description,
     ...(body.videoUrl ? { videoUrl: body.videoUrl } : {}),
-    progression: isBetweenLines
-      ? "Aperta o meio-campo (menos espaço entre linhas) ou exige 2 toques máx. depois do passe interior; aumenta largura para forçar mais metros percorridos após a rotação."
-      : isBackFourShifting
-        ? "Encurta o espaço entre defesa e meio para forçar linha mais alta; ou acrescenta terceiro atacante a fixar o último defesa; ou alterna quem inicia a pressão a cada 90 s."
-        : isCompactDefendingTransition
-          ? "Reduz o tempo máximo após recuperação (ex.: 4 toques para remate); ou acrescenta quinta baliza no eixo para forçar ainda mais fecho do meio; ou exige que só o trinco fale na reorganização durante 3 min."
-          : isDoubleFinishing
-            ? "Aumenta a exigência no primeiro remate (vértice mais fechado); ou obriga cruzamento só com o pé interior; ou acrescenta defensor na área com contacto leve."
-            : is9v9Plus2Game
-              ? "Encosta o campo para forçar decisões mais rápidas no extremo; ou permite 3 toques no extremo em fase inicial; ou golo vale duplo se a jogada tiver mudança de corredor antes do cruzamento."
-              : isPassingActivation
-                ? "Aperta distâncias entre postes para exigir passes mais curtos e reacção mais rápida; ou fixa 2 toques máx.; ou alterna o pé obrigatório em cada série."
-                : isDualPassing
-                  ? "Encolhe o hexágono para forçar primeiro toque ainda mais limpo; ou acrescenta um defensor ligeiro no centro por 45 s; ou exige só combinações com o pé não dominante."
-                  : "Aumenta espaço (mais difícil defender) ou reduz toques permitidos no rondo. Alterna pé fraco em passes fixos.",
+    progression,
     coachingCues: body.coachingPoints,
-    ...(isDualPassing
-      ? {}
-      : {
-          variations: isBetweenLines
-            ? "Terceira equipa de 8 a rodar; ou zona obrigatória de 'pé em campo' nos médios; ou golo vale duplo se vier de passe rasteiro entre linhas."
-            : isBackFourShifting
-              ? "Atacante obrigado a receber de costas; ou passe filtrado simulado com linha a subir no timing; ou capitão da linha só ele dá ordem de pressão."
-              : isCompactDefendingTransition
-                ? "Só duas balizas activas de cada vez (rotação a cada 90 s); ou adversário com passe obrigatório ao pivô antes de finalizar contra o bloco; ou golo na transição vale duplo se vier de passe vertical do trinco."
-                : isDoubleFinishing
-                  ? "Segunda bola viva após o primeiro remate para forçar reacção; ou defensores a saírem na linha em 2 toques; ou contagem de golos só com assistência de lateral."
-                  : is9v9Plus2Game
-                    ? "Extremos a trocar de lado ao intervalo; ou um extremo neutro que só pode dar largura à equipa em posse; ou limite de 5 passes antes de obrigar jogo ao extremo."
-                    : isPassingActivation
-                      ? "Dois coletes com passes obrigatórios entre cores; ou inverte o sentido da rotação a cada minuto; ou acrescenta um jogador 'defensor' a tapar uma linha de passe por 30 s."
-                      : "Reduz jogadores no meio; ou acrescenta neutro exterior; ou pontua por X passes seguidos.",
-        }),
+    ...(isDualPassing ? {} : { variations }),
     diagramHint: body.diagramHint,
   };
+}
+
+function themesToFilterCategories(themes: TrainingThemeId[]): SavedExerciseCategory[] {
+  const s = new Set<SavedExerciseCategory>();
+  for (const th of themes) {
+    if (th === "possession") s.add("possession");
+    else if (th === "transition") s.add("transition");
+    else if (th === "pressing") s.add("pressing");
+    else if (th === "finishing") s.add("finishing");
+    else if (th === "defensive") s.add("defensive");
+    else if (th === "physical") s.add("physical");
+    else if (th === "wide") s.add("mixed");
+    else if (th === "balanced") s.add("mixed");
+  }
+  if (s.size === 0) s.add("mixed");
+  return [...s];
+}
+
+function primarySaveCategoryFromFilters(cats: SavedExerciseCategory[]): SavedExerciseCategory {
+  const order: SavedExerciseCategory[] = [
+    "finishing",
+    "defensive",
+    "pressing",
+    "transition",
+    "possession",
+    "physical",
+    "warmup",
+    "mixed",
+  ];
+  for (const o of order) if (cats.includes(o)) return o;
+  return "mixed";
+}
+
+export type TrainingCatalogItem = {
+  catalogId: string;
+  title: string;
+  phase: AiTrainingPhase;
+  durationMin: number;
+  brief: string;
+  description: string;
+  coachingPoints: string;
+  setup?: string;
+  groupSplit?: string;
+  diagramHint?: string;
+  videoUrl?: string;
+  progression?: string;
+  variations?: string;
+  /** Filtros na aba «Todos os exercícios» (OR). */
+  filterCategories: readonly SavedExerciseCategory[];
+  defaultSaveCategory: SavedExerciseCategory;
+};
+
+/**
+ * Catálogo completo do motor local: aquecimento fixo, todos os exercícios principais (com ou sem vídeo), volta à calma.
+ */
+export function getTrainingCatalogItems(players: Player[]): TrainingCatalogItem[] {
+  const n = Math.max(1, players.length);
+  const warmDuration = 12;
+  const coolDuration = 10;
+
+  const warmup: TrainingCatalogItem = {
+    catalogId: "template:warmup",
+    title: "Aquecimento integrado com bola",
+    phase: "warmup",
+    durationMin: warmDuration,
+    brief: `Mobilidade + passes em movimento (pares e triângulos); últimos 3 min com aumento de ritmo. ${n} jogadores.`,
+    description: `Mobilidade + passes em movimento (pares e triângulos); últimos 3 min com aumento de ritmo. ${n} jogadores.`,
+    coachingPoints: "Qualidade do passe antes da velocidade; cabeça levantada.",
+    setup: "Bolsa de bolas; rectângulo 20x15 m.",
+    diagramHint: "Zigzag entre cones com passe ao desmarcar.",
+    filterCategories: ["warmup", "possession", "physical"],
+    defaultSaveCategory: "warmup",
+  };
+
+  const cooldown: TrainingCatalogItem = {
+    catalogId: "template:cooldown",
+    title: "Volta à calma e alongamento activo",
+    phase: "cooldown",
+    durationMin: coolDuration,
+    brief:
+      "Caminhada 2 minutos; alongamentos dinâmicos leves em pares; respiração controlada. Hidratação e recapitulação de 1 ponto-chave do treino.",
+    description:
+      "Caminhada 2 minutos; alongamentos dinâmicos leves em pares; respiração controlada. Hidratação e recapitulação de 1 ponto-chave do treino.",
+    coachingPoints: "Sem forçar amplitude máxima; foco em costas e posteriores de coxa.",
+    setup: "Relvado ou final do campo.",
+    filterCategories: ["warmup", "physical"],
+    defaultSaveCategory: "warmup",
+  };
+
+  const mains: TrainingCatalogItem[] = MAIN_DRILLS.map((def) => {
+    const mins = singleDrillDurationForTitle(def.title, 40);
+    const body = def.describe(players, mins);
+    const { progression, variations } = singleDrillProgressionVariationsForTitle(def.title);
+    const brief = body.description.replace(/\s*\(\d+\s*min\)\s*\.?$/iu, "").trim();
+    const fc = themesToFilterCategories(def.themes);
+    return {
+      catalogId: `main:${def.title}`,
+      title: def.title,
+      phase: "main" as const,
+      durationMin: mins,
+      brief,
+      description: body.description,
+      coachingPoints: body.coachingPoints,
+      setup: body.setup,
+      groupSplit: body.groupSplit,
+      diagramHint: body.diagramHint,
+      ...(body.videoUrl ? { videoUrl: body.videoUrl } : {}),
+      progression,
+      ...(variations !== undefined ? { variations } : {}),
+      filterCategories: fc,
+      defaultSaveCategory: primarySaveCategoryFromFilters(fc),
+    };
+  });
+
+  return [warmup, ...mains, cooldown];
 }

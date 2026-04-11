@@ -25,7 +25,8 @@ import { SaveExerciseModal } from "@/components/training/SaveExerciseModal";
 import {
   buildLocalFullTrainingSession,
   buildLocalSingleDrill,
-  getMainDrillCatalogItems,
+  getTrainingCatalogItems,
+  type TrainingCatalogItem,
 } from "@/lib/training-session-local";
 import { Search } from "lucide-react";
 import {
@@ -112,15 +113,30 @@ export function TrainingPlansClient() {
     payload: SaveExercisePayload;
   } | null>(null);
   const [libraryFilter, setLibraryFilter] = useState<"all" | SavedExerciseCategory>("all");
-  const [catalogExpandedTitles, setCatalogExpandedTitles] = useState<Set<string>>(() => new Set());
+  const [catalogExpandedIds, setCatalogExpandedIds] = useState<Set<string>>(() => new Set());
+  const [catalogFilterPick, setCatalogFilterPick] = useState<Set<SavedExerciseCategory>>(() => new Set());
 
-  const mainDrillCatalog = useMemo(() => getMainDrillCatalogItems(), []);
+  const trainingCatalog = useMemo(() => getTrainingCatalogItems(selectedPlayers), [selectedPlayers]);
 
-  const toggleCatalogBrief = useCallback((title: string) => {
-    setCatalogExpandedTitles((prev) => {
+  const filteredTrainingCatalog = useMemo(() => {
+    if (catalogFilterPick.size === 0) return trainingCatalog;
+    return trainingCatalog.filter((item) => item.filterCategories.some((c) => catalogFilterPick.has(c)));
+  }, [trainingCatalog, catalogFilterPick]);
+
+  const toggleCatalogBrief = useCallback((catalogId: string) => {
+    setCatalogExpandedIds((prev) => {
       const next = new Set(prev);
-      if (next.has(title)) next.delete(title);
-      else next.add(title);
+      if (next.has(catalogId)) next.delete(catalogId);
+      else next.add(catalogId);
+      return next;
+    });
+  }, []);
+
+  const toggleCatalogFilter = useCallback((c: SavedExerciseCategory) => {
+    setCatalogFilterPick((prev) => {
+      const next = new Set(prev);
+      if (next.has(c)) next.delete(c);
+      else next.add(c);
       return next;
     });
   }, []);
@@ -164,6 +180,26 @@ export function TrainingPlansClient() {
         progression: singleDrill.progression,
         variations: singleDrill.variations,
         objective: singleDrill.objective,
+      },
+    });
+  };
+
+  const openSaveFromCatalogItem = (item: TrainingCatalogItem) => {
+    setSaveModal({
+      defaultCategory: item.defaultSaveCategory,
+      payload: {
+        title: item.title,
+        durationMin: item.durationMin,
+        description: item.description,
+        coachingPoints: item.coachingPoints,
+        setup: item.setup,
+        groupSplit: item.groupSplit,
+        diagramHint: item.diagramHint,
+        videoUrl: item.videoUrl,
+        progression: item.progression,
+        variations: item.variations,
+        objective: "Adicionado a partir do catálogo «Todos os exercícios».",
+        sourcePhase: item.phase,
       },
     });
   };
@@ -421,69 +457,157 @@ export function TrainingPlansClient() {
             <CardHeader>
               <CardTitle>Todos os exercícios</CardTitle>
               <p className="text-sm text-zinc-500">
-                Catálogo do motor local: vê o vídeo de cada exercício e usa a bola com a lupa para ler a explicação
-                breve.
+                Todos os modelos do motor local (aquecimento, blocos principais com ou sem vídeo, volta à calma).
+                Filtra por uma ou mais categorias; sem nenhuma selecção vês a lista completa. A bola com a lupa mostra
+                a explicação; «Guardar exercício» envia para «Meus exercícios» com o mesmo detalhe que os outros.
               </p>
             </CardHeader>
-            <CardContent>
-              <ul className="grid gap-8 sm:grid-cols-2 xl:grid-cols-3">
-                {mainDrillCatalog.map((item) => {
-                  const open = catalogExpandedTitles.has(item.title);
-                  return (
-                    <li
-                      key={item.title}
-                      className="flex flex-col rounded-2xl border border-surface-border bg-surface-raised/15 p-4"
-                    >
-                      <h3 className="font-display text-base font-semibold text-white">{item.title}</h3>
-                      <div className="mt-3 flex-1">
-                        {item.videoUrl ? (
-                          <TrainingVideoEmbed videoUrl={item.videoUrl} title={item.title} />
-                        ) : (
-                          <p className="rounded-xl border border-dashed border-surface-border bg-black/20 px-3 py-8 text-center text-xs text-zinc-500">
-                            Sem vídeo de demonstração para este exercício.
-                          </p>
+            <CardContent className="space-y-6">
+              <div>
+                <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">Filtrar por tipo</p>
+                <p className="mt-1 text-xs text-zinc-600">
+                  Podes activar várias opções. Mostram-se exercícios que coincidam com pelo menos um filtro.
+                </p>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  {SAVED_EXERCISE_CATEGORIES.map((c) => {
+                    const on = catalogFilterPick.has(c);
+                    return (
+                      <button
+                        key={c}
+                        type="button"
+                        onClick={() => toggleCatalogFilter(c)}
+                        className={cn(
+                          "rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
+                          on ? "bg-accent/25 text-accent" : "bg-surface-raised text-zinc-400 hover:text-zinc-200"
                         )}
-                      </div>
-                      <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-start">
-                        <button
-                          type="button"
-                          onClick={() => toggleCatalogBrief(item.title)}
-                          className={cn(
-                            "relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full border transition-colors",
-                            open
-                              ? "border-accent/50 bg-accent/10 text-white"
-                              : "border-surface-border bg-surface-raised/40 text-zinc-300 hover:border-accent/35 hover:bg-surface-raised"
-                          )}
-                          aria-expanded={open}
-                          aria-label={
-                            open
-                              ? `Ocultar explicação de ${item.title}`
-                              : `Ver explicação breve de ${item.title}`
-                          }
-                        >
-                          <span className="text-xl leading-none" aria-hidden>
-                            ⚽
-                          </span>
-                          <Search
-                            className="absolute -bottom-0.5 -right-0.5 h-4 w-4 rounded-full border border-[#0c1014] bg-[#0c1014] p-0.5 text-accent"
-                            strokeWidth={2.5}
-                            aria-hidden
-                          />
-                        </button>
-                        {open ? (
-                          <div className="min-w-0 flex-1 space-y-2 rounded-xl border border-surface-border bg-black/25 px-3 py-2 text-sm text-zinc-300">
-                            <p className="leading-relaxed">{item.brief}</p>
-                            <p className="text-xs leading-relaxed text-zinc-500">
-                              <span className="font-medium text-zinc-400">Porquê / como:</span>{" "}
-                              {item.coachingPoints}
+                      >
+                        {SAVED_EXERCISE_CATEGORY_LABELS[c]}
+                      </button>
+                    );
+                  })}
+                  {catalogFilterPick.size > 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => setCatalogFilterPick(new Set())}
+                      className="rounded-full border border-surface-border px-3 py-1.5 text-xs font-medium text-zinc-400 hover:text-zinc-200"
+                    >
+                      Limpar filtros
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+              {filteredTrainingCatalog.length === 0 ? (
+                <p className="text-sm text-zinc-500">Nenhum exercício corresponde a esta combinação de filtros.</p>
+              ) : (
+                <ul className="grid gap-8 sm:grid-cols-2 xl:grid-cols-3">
+                  {filteredTrainingCatalog.map((item) => {
+                    const open = catalogExpandedIds.has(item.catalogId);
+                    return (
+                      <li
+                        key={item.catalogId}
+                        className="flex flex-col rounded-2xl border border-surface-border bg-surface-raised/15 p-4"
+                      >
+                        <div className="flex flex-wrap items-baseline justify-between gap-2">
+                          <h3 className="font-display text-base font-semibold text-white">{item.title}</h3>
+                          <Badge variant="muted" className="text-[10px]">
+                            {phaseLabel(item.phase)} · {item.durationMin} min
+                          </Badge>
+                        </div>
+                        <div className="mt-2 flex flex-wrap gap-1">
+                          {item.filterCategories.map((c) => (
+                            <span
+                              key={c}
+                              className="rounded-md bg-zinc-800/80 px-1.5 py-0.5 text-[10px] text-zinc-500"
+                            >
+                              {SAVED_EXERCISE_CATEGORY_LABELS[c]}
+                            </span>
+                          ))}
+                        </div>
+                        <div className="mt-3 flex-1">
+                          {item.videoUrl ? (
+                            <TrainingVideoEmbed videoUrl={item.videoUrl} title={item.title} />
+                          ) : (
+                            <p className="rounded-xl border border-dashed border-surface-border bg-black/20 px-3 py-8 text-center text-xs text-zinc-500">
+                              Sem vídeo de demonstração para este exercício.
                             </p>
-                          </div>
-                        ) : null}
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
+                          )}
+                        </div>
+                        <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-start">
+                          <button
+                            type="button"
+                            onClick={() => toggleCatalogBrief(item.catalogId)}
+                            className={cn(
+                              "relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full border transition-colors",
+                              open
+                                ? "border-accent/50 bg-accent/10 text-white"
+                                : "border-surface-border bg-surface-raised/40 text-zinc-300 hover:border-accent/35 hover:bg-surface-raised"
+                            )}
+                            aria-expanded={open}
+                            aria-label={
+                              open
+                                ? `Ocultar explicação de ${item.title}`
+                                : `Ver explicação breve de ${item.title}`
+                            }
+                          >
+                            <span className="text-xl leading-none" aria-hidden>
+                              ⚽
+                            </span>
+                            <Search
+                              className="absolute -bottom-0.5 -right-0.5 h-4 w-4 rounded-full border border-[#0c1014] bg-[#0c1014] p-0.5 text-accent"
+                              strokeWidth={2.5}
+                              aria-hidden
+                            />
+                          </button>
+                          {open ? (
+                            <div className="min-w-0 flex-1 space-y-2 rounded-xl border border-surface-border bg-black/25 px-3 py-2 text-sm text-zinc-300">
+                              <p className="leading-relaxed">{item.brief}</p>
+                              <p className="text-xs leading-relaxed text-zinc-500">
+                                <span className="font-medium text-zinc-400">Porquê / como:</span>{" "}
+                                {item.coachingPoints}
+                              </p>
+                              {item.setup ? (
+                                <p className="text-xs leading-relaxed text-zinc-500">
+                                  <span className="font-medium text-zinc-400">Organização:</span> {item.setup}
+                                </p>
+                              ) : null}
+                              {item.groupSplit ? (
+                                <p className="rounded-lg bg-amber-500/10 px-2 py-1.5 text-xs text-amber-100/90">
+                                  <span className="font-medium">Grupos:</span> {item.groupSplit}
+                                </p>
+                              ) : null}
+                              {item.progression ? (
+                                <p className="text-xs text-zinc-500">
+                                  <span className="font-medium text-zinc-400">Progressão:</span> {item.progression}
+                                </p>
+                              ) : null}
+                              {item.variations ? (
+                                <p className="text-xs text-zinc-500">
+                                  <span className="font-medium text-zinc-400">Variações:</span> {item.variations}
+                                </p>
+                              ) : null}
+                              {item.diagramHint ? (
+                                <p className="rounded-lg bg-zinc-800/80 px-2 py-1.5 font-mono text-[11px] text-zinc-400">
+                                  Diagrama sugerido: {item.diagramHint}
+                                </p>
+                              ) : null}
+                            </div>
+                          ) : null}
+                        </div>
+                        <div className="mt-4 flex justify-end">
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            className="text-xs"
+                            onClick={() => openSaveFromCatalogItem(item)}
+                          >
+                            Guardar exercício
+                          </Button>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
             </CardContent>
           </Card>
         </div>
