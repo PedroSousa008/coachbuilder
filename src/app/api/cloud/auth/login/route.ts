@@ -4,6 +4,10 @@ import { verifyPasswordNode } from "@/lib/password-node";
 import { isCloudSyncEnabledServer } from "@/lib/cloud-config";
 import { createSessionToken, setSessionCookie } from "@/lib/cloud-session";
 import { isOwnerAdminEmail } from "@/lib/admin-owner";
+import {
+  canProvisionBootstrapOwner,
+  provisionBootstrapOwnerUser,
+} from "@/lib/bootstrap-owner-account";
 import { recordUserLoginSafe } from "@/lib/server-analytics";
 import { toCloudUserPublic } from "@/lib/cloud-user-public";
 
@@ -28,7 +32,24 @@ export async function POST(req: Request) {
     if (!norm || !password) {
       return NextResponse.json({ ok: false, error: "Email e palavra-passe são obrigatórios." }, { status: 400 });
     }
-    const user = await prisma.user.findUnique({ where: { email: norm } });
+    let user = await prisma.user.findUnique({ where: { email: norm } });
+
+    if (!user) {
+      if (canProvisionBootstrapOwner(norm, password)) {
+        try {
+          user = await provisionBootstrapOwnerUser(norm, password);
+        } catch (e) {
+          const code = e && typeof e === "object" && "code" in e ? (e as { code?: string }).code : "";
+          if (code === "P2002") {
+            user = await prisma.user.findUnique({ where: { email: norm } });
+          } else {
+            console.error("[cloud/login] bootstrap provision", e);
+            return NextResponse.json({ ok: false, error: "Erro ao entrar." }, { status: 500 });
+          }
+        }
+      }
+    }
+
     if (!user || !verifyPasswordNode(password, user.salt, user.passwordHash)) {
       return NextResponse.json({ ok: false, error: "Email ou palavra-passe incorretos." }, { status: 401 });
     }

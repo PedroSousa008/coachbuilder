@@ -6,6 +6,12 @@
  * Fallback em código: conta bootstrap do produto (remove ou edita se forkares o repo).
  */
 const BUILTIN_OWNER_ADMIN_EMAILS: string[] = ["sousa.2003pedro@gmail.com"];
+
+/** Emails do dono em código (normalizados) — seed + login automático. */
+export function getBuiltinBootstrapOwnerEmails(): string[] {
+  return BUILTIN_OWNER_ADMIN_EMAILS.map((e) => normalizeAdminEmail(stripQuotes(e))).filter(Boolean);
+}
+
 export function normalizeAdminEmail(email: string): string {
   return email.trim().toLowerCase();
 }
