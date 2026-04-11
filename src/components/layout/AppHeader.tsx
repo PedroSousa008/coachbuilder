@@ -3,10 +3,11 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Menu, Bell } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 
-const mobileLinks = [
+const mobileLinksBase = [
   { href: "/app", label: "Home" },
   { href: "/app/tactics", label: "Tactics" },
   { href: "/app/training", label: "Training" },
@@ -16,11 +17,20 @@ const mobileLinks = [
   { href: "/app/calendar", label: "Calendar" },
   { href: "/app/profile", label: "Profile" },
   { href: "/app/settings", label: "Settings" },
-];
+] as const;
 
 export function AppHeader({ title }: { title: string }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
+  const { user } = useAuth();
+
+  const mobileLinks = useMemo(() => {
+    const base = mobileLinksBase.map((l) => ({ href: l.href, label: l.label }));
+    if (user?.role === "admin") {
+      return [{ href: "/app/admin", label: "Admin" }, ...base];
+    }
+    return base;
+  }, [user?.role]);
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-4 border-b border-surface-border bg-[#0a0d10]/85 px-4 backdrop-blur-xl lg:px-8">
