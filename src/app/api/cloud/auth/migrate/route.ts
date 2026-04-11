@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { hashPasswordNode } from "@/lib/password-node";
 import { isCloudSyncEnabledServer } from "@/lib/cloud-config";
 import { createSessionToken, setSessionCookie } from "@/lib/cloud-session";
+import { isCoachingRoleId } from "@/types/auth";
 import { isOwnerAdminEmail } from "@/lib/admin-owner";
 import { recordAccountCreated } from "@/lib/server-analytics";
 import { toCloudUserPublic } from "@/lib/cloud-user-public";
