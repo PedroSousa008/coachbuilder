@@ -42,6 +42,13 @@ export const DOUBLE_FINISHING_DRILL_VIDEO_URL = "/videos/training/finishing-dril
  */
 export const BACK_FOUR_SHIFTING_VIDEO_URL = "/videos/training/back-four-shifting.mp4";
 
+/**
+ * Vídeo do exercício "Compact Defending Transition".
+ * Coloca o ficheiro em `public/videos/training/compact-defending-transition.mp4` ou substitui por um link YouTube.
+ */
+export const COMPACT_DEFENDING_TRANSITION_VIDEO_URL =
+  "/videos/training/compact-defending-transition.mp4";
+
 export type TrainingThemeId =
   | "possession"
   | "transition"
@@ -134,6 +141,14 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
     "quick attack",
     "midfield",
     "offensive between lines",
+    "compact defending transition",
+    "defesa compacta",
+    "transição rápida",
+    "transicao rapida",
+    "quatro balizas",
+    "4 balizas",
+    "recuperação e ataque",
+    "recuperacao e ataque",
   ],
   pressing: [
     "pressão",
@@ -207,6 +222,14 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
     "back four",
     "shifting",
     "quatro defesas",
+    "compact defending",
+    "fechar o meio",
+    "manter linha",
+    "linha defensiva",
+    "linha sempre",
+    "trinco",
+    "defesa e trinco",
+    "bloco compacto",
   ],
   wide: [
     "largo",
@@ -360,6 +383,20 @@ const MAIN_DRILLS: MainDrillDef[] = [
         "Quatro defesas fixos na linha durante a série; atacantes a rodar como referência; opcional: médios a pressionar por detrás da bola.",
       diagramHint: "Linha de 4; seta de pressão ao portador; setas de fecho ao centro; canalização para a banda; linha de fora de jogo.",
       videoUrl: BACK_FOUR_SHIFTING_VIDEO_URL,
+    }),
+  },
+  {
+    themes: ["defensive", "transition", "balanced"],
+    title: "Compact Defending Transition",
+    describe: (_pl, m) => ({
+      description: `Defesa compacta com transição rápida: a equipa organiza-se de forma compacta, com a linha defensiva e o trinco bem coordenados, garantindo equilíbrio e proximidade entre setores. A prioridade é fechar o corredor central, manter a linha defensiva alinhada e organizada e assegurar comunicação constante entre todos. Após a recuperação da bola, a equipa reage de imediato, procurando atacar o mais rápido possível as quatro balizas, explorando o espaço e a desorganização do adversário. (${m} min)`,
+      coachingPoints:
+        "Sem bola: linha recta e junta; trinco a tapar o eixo e a falar com a última linha; corpo aberto para ver bola + jogo. Com bola: primeira ação vertical ou para a baliza mais livre; não hesitar após o 'click' da recuperação.",
+      setup: "Meio-campo defensivo ou ~45×36 m; quatro mini-balizas ou portas nos cantos / linha média para forçar decisão após recuperação; coletes e bolas extra.",
+      groupSplit:
+        "Bloco defensivo (linha + trinco) fixo num período; atacantes a simular circulação; após recuperação, os mesmos ou um núcleo ofensivo designado ataca as 4 balizas em 3–5 toques.",
+      diagramHint: "Bloco compacto (defesas + trinco); corredor central fechado; após recuperação, setas rápidas para as 4 balizas.",
+      videoUrl: COMPACT_DEFENDING_TRANSITION_VIDEO_URL,
     }),
   },
   {
@@ -551,7 +588,10 @@ export function buildLocalFullTrainingSession(params: {
 const SINGLE_DRILL_20_MIN_TITLES = new Set<string>(["Offensive Between Lines", "9v9 + 2 Game"]);
 /** Valor médio quando o treinador indica ~15–20 min (ex.: bloco final). */
 const SINGLE_DRILL_18_MIN_TITLES = new Set<string>(["Double Finishing Drill"]);
-const SINGLE_DRILL_10_MIN_TITLES = new Set<string>(["Back Four Shifting"]);
+const SINGLE_DRILL_10_MIN_TITLES = new Set<string>([
+  "Back Four Shifting",
+  "Compact Defending Transition",
+]);
 const SINGLE_DRILL_8_MIN_TITLES = new Set<string>(["Passing Activation", "Dual Passing"]);
 
 export function buildLocalSingleDrill(brief: string, players: Player[]): AiSingleDrill {
@@ -573,6 +613,7 @@ export function buildLocalSingleDrill(brief: string, players: Player[]): AiSingl
   const body = def.describe(players, mins);
   const isBetweenLines = def.title === "Offensive Between Lines";
   const isBackFourShifting = def.title === "Back Four Shifting";
+  const isCompactDefendingTransition = def.title === "Compact Defending Transition";
   const isDoubleFinishing = def.title === "Double Finishing Drill";
   const is9v9Plus2Game = def.title === "9v9 + 2 Game";
   const isPassingActivation = def.title === "Passing Activation";
@@ -588,8 +629,10 @@ export function buildLocalSingleDrill(brief: string, players: Player[]): AiSingl
       ? "Aperta o meio-campo (menos espaço entre linhas) ou exige 2 toques máx. depois do passe interior; aumenta largura para forçar mais metros percorridos após a rotação."
       : isBackFourShifting
         ? "Encurta o espaço entre defesa e meio para forçar linha mais alta; ou acrescenta terceiro atacante a fixar o último defesa; ou alterna quem inicia a pressão a cada 90 s."
-        : isDoubleFinishing
-          ? "Aumenta a exigência no primeiro remate (vértice mais fechado); ou obriga cruzamento só com o pé interior; ou acrescenta defensor na área com contacto leve."
+        : isCompactDefendingTransition
+          ? "Reduz o tempo máximo após recuperação (ex.: 4 toques para remate); ou acrescenta quinta baliza no eixo para forçar ainda mais fecho do meio; ou exige que só o trinco fale na reorganização durante 3 min."
+          : isDoubleFinishing
+            ? "Aumenta a exigência no primeiro remate (vértice mais fechado); ou obriga cruzamento só com o pé interior; ou acrescenta defensor na área com contacto leve."
             : is9v9Plus2Game
               ? "Encosta o campo para forçar decisões mais rápidas no extremo; ou permite 3 toques no extremo em fase inicial; ou golo vale duplo se a jogada tiver mudança de corredor antes do cruzamento."
               : isPassingActivation
@@ -605,8 +648,10 @@ export function buildLocalSingleDrill(brief: string, players: Player[]): AiSingl
             ? "Terceira equipa de 8 a rodar; ou zona obrigatória de 'pé em campo' nos médios; ou golo vale duplo se vier de passe rasteiro entre linhas."
             : isBackFourShifting
               ? "Atacante obrigado a receber de costas; ou passe filtrado simulado com linha a subir no timing; ou capitão da linha só ele dá ordem de pressão."
-              : isDoubleFinishing
-                ? "Segunda bola viva após o primeiro remate para forçar reacção; ou defensores a saírem na linha em 2 toques; ou contagem de golos só com assistência de lateral."
+              : isCompactDefendingTransition
+                ? "Só duas balizas activas de cada vez (rotação a cada 90 s); ou adversário com passe obrigatório ao pivô antes de finalizar contra o bloco; ou golo na transição vale duplo se vier de passe vertical do trinco."
+                : isDoubleFinishing
+                  ? "Segunda bola viva após o primeiro remate para forçar reacção; ou defensores a saírem na linha em 2 toques; ou contagem de golos só com assistência de lateral."
                   : is9v9Plus2Game
                     ? "Extremos a trocar de lado ao intervalo; ou um extremo neutro que só pode dar largura à equipa em posse; ou limite de 5 passes antes de obrigar jogo ao extremo."
                     : isPassingActivation
