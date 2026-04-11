@@ -36,6 +36,12 @@ export const NINE_V_NINE_PLUS_TWO_VIDEO_URL = "/videos/training/9v9+2.mp4";
  */
 export const DOUBLE_FINISHING_DRILL_VIDEO_URL = "/videos/training/finishing-drill.mp4";
 
+/**
+ * Vídeo do exercício "Back Four Shifting".
+ * Coloca o ficheiro em `public/videos/training/back-four-shifting.mp4` ou substitui por um link YouTube.
+ */
+export const BACK_FOUR_SHIFTING_VIDEO_URL = "/videos/training/back-four-shifting.mp4";
+
 export type TrainingThemeId =
   | "possession"
   | "transition"
@@ -129,7 +135,20 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
     "midfield",
     "offensive between lines",
   ],
-  pressing: ["pressão", "pressao", "pressing", "press", "alta", "recuper", "ganhar bola"],
+  pressing: [
+    "pressão",
+    "pressao",
+    "pressing",
+    "press",
+    "alta",
+    "recuper",
+    "ganhar bola",
+    "fechar espaços",
+    "fechar espacos",
+    "pressão ao portador",
+    "pressao ao portador",
+    "back four shifting",
+  ],
   finishing: [
     "finaliza",
     "remate",
@@ -164,7 +183,31 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
     "overlap",
     "overlap lateral",
   ],
-  defensive: ["defens", "linha", "compacto", "bloco", "baixo", "equilíbrio", "equilibrio", "transição defensiva"],
+  defensive: [
+    "defens",
+    "defesa",
+    "linha",
+    "compacto",
+    "bloco",
+    "baixo",
+    "equilíbrio",
+    "equilibrio",
+    "transição defensiva",
+    "organização defensiva",
+    "organizacao defensiva",
+    "linha de 4",
+    "linha dos 4",
+    "fora de jogo",
+    "movimentação sem bola",
+    "movimentacao sem bola",
+    "cobrir espaços",
+    "cobrir espacos",
+    "comunicação",
+    "comunicacao",
+    "back four",
+    "shifting",
+    "quatro defesas",
+  ],
   wide: [
     "largo",
     "flanco",
@@ -306,15 +349,17 @@ const MAIN_DRILLS: MainDrillDef[] = [
     }),
   },
   {
-    themes: ["defensive", "balanced"],
-    title: "Bloco médio-baixo + saída em W",
-    describe: (pl, m) => ({
-      description: `Meio-campo defensivo: linha de 5+4 atrás da bola; ao recuperar, dois jogadores largos esticam e um interior oferece entre linhas (${m} min).`,
-      coachingPoints: "Distâncias 8–12 m entre linhas; lateral do lado da bola fecha; do lado oposto mantém largura.",
-      setup: "Meio campo real ou 50x40 m.",
+    themes: ["defensive", "pressing", "balanced"],
+    title: "Back Four Shifting",
+    describe: (_pl, m) => ({
+      description: `Organização da linha de 4 defensiva: manter a linha alinhada, explorar o fora de jogo e fechar espaços com rapidez. Pressão imediata ao portador da bola. O defesa mais próximo da bola deve pressionar o portador, enquanto os restantes ajustam o posicionamento, fechando dentro e protegendo a zona central. O objectivo é orientar o adversário para as zonas laterais, onde o perigo é menor. É fundamental manter uma boa orientação corporal, permitindo reagir rapidamente, e garantir comunicação constante entre os jogadores para coordenar movimentos e coberturas. (${m} min)`,
+      coachingPoints:
+        "Linha a subir e descer junta; lateral do lado da bola a fechar o corredor interior; não saltar sem cobertura; voz constante (troca de pressão, 'segura', 'linha'); se a bola vai à banda, bloquear o centro primeiro.",
+      setup: "Meio-campo defensivo ou ~45×35 m; 4 defesas + GR; atacantes ou coletes a simular circulação e passes; bolas de reposição.",
       groupSplit:
-        "Bloco com defesas e médios; avançados simulam pressão e depois lideram a saída; GR pode ficar na baliza ou participar na construção, conforme o plano.",
-      diagramHint: "Duas linhas horizontais; seta em W na recuperação.",
+        "Quatro defesas fixos na linha durante a série; atacantes a rodar como referência; opcional: médios a pressionar por detrás da bola.",
+      diagramHint: "Linha de 4; seta de pressão ao portador; setas de fecho ao centro; canalização para a banda; linha de fora de jogo.",
+      videoUrl: BACK_FOUR_SHIFTING_VIDEO_URL,
     }),
   },
   {
@@ -506,6 +551,7 @@ export function buildLocalFullTrainingSession(params: {
 const SINGLE_DRILL_20_MIN_TITLES = new Set<string>(["Offensive Between Lines", "9v9 + 2 Game"]);
 /** Valor médio quando o treinador indica ~15–20 min (ex.: bloco final). */
 const SINGLE_DRILL_18_MIN_TITLES = new Set<string>(["Double Finishing Drill"]);
+const SINGLE_DRILL_10_MIN_TITLES = new Set<string>(["Back Four Shifting"]);
 const SINGLE_DRILL_8_MIN_TITLES = new Set<string>(["Passing Activation", "Dual Passing"]);
 
 export function buildLocalSingleDrill(brief: string, players: Player[]): AiSingleDrill {
@@ -517,13 +563,16 @@ export function buildLocalSingleDrill(brief: string, players: Player[]): AiSingl
     ? 20
     : SINGLE_DRILL_18_MIN_TITLES.has(def.title)
       ? 18
-      : SINGLE_DRILL_8_MIN_TITLES.has(def.title)
-        ? 8
-        : brief.length > 80
-          ? 18
-          : 14;
+      : SINGLE_DRILL_10_MIN_TITLES.has(def.title)
+        ? 10
+        : SINGLE_DRILL_8_MIN_TITLES.has(def.title)
+          ? 8
+          : brief.length > 80
+            ? 18
+            : 14;
   const body = def.describe(players, mins);
   const isBetweenLines = def.title === "Offensive Between Lines";
+  const isBackFourShifting = def.title === "Back Four Shifting";
   const isDoubleFinishing = def.title === "Double Finishing Drill";
   const is9v9Plus2Game = def.title === "9v9 + 2 Game";
   const isPassingActivation = def.title === "Passing Activation";
@@ -537,28 +586,32 @@ export function buildLocalSingleDrill(brief: string, players: Player[]): AiSingl
     ...(body.videoUrl ? { videoUrl: body.videoUrl } : {}),
     progression: isBetweenLines
       ? "Aperta o meio-campo (menos espaço entre linhas) ou exige 2 toques máx. depois do passe interior; aumenta largura para forçar mais metros percorridos após a rotação."
-      : isDoubleFinishing
-        ? "Aumenta a exigência no primeiro remate (vértice mais fechado); ou obriga cruzamento só com o pé interior; ou acrescenta defensor na área com contacto leve."
-        : is9v9Plus2Game
-          ? "Encosta o campo para forçar decisões mais rápidas no extremo; ou permite 3 toques no extremo em fase inicial; ou golo vale duplo se a jogada tiver mudança de corredor antes do cruzamento."
-          : isPassingActivation
-            ? "Aperta distâncias entre postes para exigir passes mais curtos e reacção mais rápida; ou fixa 2 toques máx.; ou alterna o pé obrigatório em cada série."
-            : isDualPassing
-              ? "Encolhe o hexágono para forçar primeiro toque ainda mais limpo; ou acrescenta um defensor ligeiro no centro por 45 s; ou exige só combinações com o pé não dominante."
-              : "Aumenta espaço (mais difícil defender) ou reduz toques permitidos no rondo. Alterna pé fraco em passes fixos.",
+      : isBackFourShifting
+        ? "Encurta o espaço entre defesa e meio para forçar linha mais alta; ou acrescenta terceiro atacante a fixar o último defesa; ou alterna quem inicia a pressão a cada 90 s."
+        : isDoubleFinishing
+          ? "Aumenta a exigência no primeiro remate (vértice mais fechado); ou obriga cruzamento só com o pé interior; ou acrescenta defensor na área com contacto leve."
+            : is9v9Plus2Game
+              ? "Encosta o campo para forçar decisões mais rápidas no extremo; ou permite 3 toques no extremo em fase inicial; ou golo vale duplo se a jogada tiver mudança de corredor antes do cruzamento."
+              : isPassingActivation
+                ? "Aperta distâncias entre postes para exigir passes mais curtos e reacção mais rápida; ou fixa 2 toques máx.; ou alterna o pé obrigatório em cada série."
+                : isDualPassing
+                  ? "Encolhe o hexágono para forçar primeiro toque ainda mais limpo; ou acrescenta um defensor ligeiro no centro por 45 s; ou exige só combinações com o pé não dominante."
+                  : "Aumenta espaço (mais difícil defender) ou reduz toques permitidos no rondo. Alterna pé fraco em passes fixos.",
     coachingCues: body.coachingPoints,
     ...(isDualPassing
       ? {}
       : {
           variations: isBetweenLines
             ? "Terceira equipa de 8 a rodar; ou zona obrigatória de 'pé em campo' nos médios; ou golo vale duplo se vier de passe rasteiro entre linhas."
-            : isDoubleFinishing
-              ? "Segunda bola viva após o primeiro remate para forçar reacção; ou defensores a saírem na linha em 2 toques; ou contagem de golos só com assistência de lateral."
-              : is9v9Plus2Game
-                ? "Extremos a trocar de lado ao intervalo; ou um extremo neutro que só pode dar largura à equipa em posse; ou limite de 5 passes antes de obrigar jogo ao extremo."
-                : isPassingActivation
-                  ? "Dois coletes com passes obrigatórios entre cores; ou inverte o sentido da rotação a cada minuto; ou acrescenta um jogador 'defensor' a tapar uma linha de passe por 30 s."
-                  : "Reduz jogadores no meio; ou acrescenta neutro exterior; ou pontua por X passes seguidos.",
+            : isBackFourShifting
+              ? "Atacante obrigado a receber de costas; ou passe filtrado simulado com linha a subir no timing; ou capitão da linha só ele dá ordem de pressão."
+              : isDoubleFinishing
+                ? "Segunda bola viva após o primeiro remate para forçar reacção; ou defensores a saírem na linha em 2 toques; ou contagem de golos só com assistência de lateral."
+                  : is9v9Plus2Game
+                    ? "Extremos a trocar de lado ao intervalo; ou um extremo neutro que só pode dar largura à equipa em posse; ou limite de 5 passes antes de obrigar jogo ao extremo."
+                    : isPassingActivation
+                      ? "Dois coletes com passes obrigatórios entre cores; ou inverte o sentido da rotação a cada minuto; ou acrescenta um jogador 'defensor' a tapar uma linha de passe por 30 s."
+                      : "Reduz jogadores no meio; ou acrescenta neutro exterior; ou pontua por X passes seguidos.",
         }),
     diagramHint: body.diagramHint,
   };
