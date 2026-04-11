@@ -26,6 +26,7 @@ export function buildFullSessionDocumentHtml(params: {
         <p><strong>Pontos de treino:</strong> ${esc(b.coachingPoints)}</p>
         ${b.setup ? `<p><strong>Organização:</strong> ${esc(b.setup)}</p>` : ""}
         ${b.groupSplit ? `<p><strong>Grupos / focos:</strong> ${esc(b.groupSplit)}</p>` : ""}
+        ${b.videoUrl ? `<p><strong>Vídeo:</strong> ${esc(b.videoUrl)}</p>` : ""}
         ${b.diagramHint ? `<p class="diagram"><strong>Diagrama (sugestão):</strong> ${esc(b.diagramHint)}</p>` : ""}
       </section>`;
     })
@@ -91,6 +92,7 @@ export function buildSingleDrillDocumentHtml(params: {
   ${drill.progression ? `<p><strong>Progressão:</strong> ${esc(drill.progression)}</p>` : ""}
   ${drill.coachingCues ? `<p><strong>Cues:</strong> ${esc(drill.coachingCues)}</p>` : ""}
   ${drill.variations ? `<p><strong>Variações:</strong> ${esc(drill.variations)}</p>` : ""}
+  ${drill.videoUrl ? `<p><strong>Vídeo:</strong> ${esc(drill.videoUrl)}</p>` : ""}
   ${drill.diagramHint ? `<p><strong>Diagrama:</strong> ${esc(drill.diagramHint)}</p>` : ""}
 </body>
 </html>`;

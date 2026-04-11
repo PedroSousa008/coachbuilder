@@ -15,6 +15,7 @@ import {
   buildSingleDrillDocumentHtml,
   openPrintableHtml,
 } from "@/lib/training-print-html";
+import { TrainingVideoEmbed } from "@/components/training/TrainingVideoEmbed";
 import { buildLocalFullTrainingSession, buildLocalSingleDrill } from "@/lib/training-session-local";
 import type { TrainingSession } from "@/types";
 
@@ -398,6 +399,7 @@ export function TrainingPlansClient() {
                           <span className="font-medium">Grupos:</span> {b.groupSplit}
                         </p>
                       ) : null}
+                      {b.videoUrl ? <TrainingVideoEmbed videoUrl={b.videoUrl} title={b.title} /> : null}
                       {b.diagramHint ? (
                         <p className="mt-2 rounded-lg bg-zinc-800/80 px-3 py-2 font-mono text-xs text-zinc-400">
                           Diagrama sugerido: {b.diagramHint}
@@ -469,6 +471,9 @@ export function TrainingPlansClient() {
                   <p className="text-zinc-400">
                     <span className="text-zinc-500">Variações:</span> {singleDrill.variations}
                   </p>
+                ) : null}
+                {singleDrill.videoUrl ? (
+                  <TrainingVideoEmbed videoUrl={singleDrill.videoUrl} title={singleDrill.title} />
                 ) : null}
                 {singleDrill.diagramHint ? (
                   <p className="rounded-lg bg-zinc-800/80 p-3 font-mono text-xs text-zinc-400">

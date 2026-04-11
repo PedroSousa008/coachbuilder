@@ -7,6 +7,12 @@ import type { Player, Position } from "@/types";
 import type { AiFullTrainingSession, AiSingleDrill, AiTrainingBlock } from "@/lib/training-ai-types";
 import { formatPlayerPositions, playerHasPosition } from "@/lib/player-positions";
 
+/**
+ * Vídeo do exercício "Offensive Between Lines".
+ * Coloca o ficheiro em `public/videos/training/offensive-between-lines.mp4` ou substitui por um link YouTube (URL completa).
+ */
+export const OFFENSIVE_BETWEEN_LINES_VIDEO_URL = "/videos/training/offensive-between-lines.mp4";
+
 export type TrainingThemeId =
   | "possession"
   | "transition"
@@ -27,6 +33,16 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
     "constru",
     "manter bola",
     "tocar",
+    "posse de bola",
+    "começar pela defesa",
+    "comecar pela defesa",
+    "pela defesa",
+    "sair desde trás",
+    "sair desde tras",
+    "desde trás",
+    "desde tras",
+    "build from back",
+    "start from defense",
   ],
   transition: [
     "transição",
@@ -38,9 +54,40 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
     "ataque directo",
     "direto",
     "profundidade",
+    "entre linhas",
+    "meio-campo",
+    "meio campo",
+    "ofensivo",
+    "ofensiva",
+    "ataque rápido",
+    "ataque rapido",
+    "jogo ofensivo",
+    "between lines",
+    "offensive",
+    "quick attack",
+    "midfield",
+    "offensive between lines",
   ],
   pressing: ["pressão", "pressao", "pressing", "press", "alta", "recuper", "ganhar bola"],
-  finishing: ["finaliza", "remate", "golo", "gol", "área", "area", "conclusão", "conclusao", "atacar"],
+  finishing: [
+    "finaliza",
+    "remate",
+    "golo",
+    "gol",
+    "área",
+    "area",
+    "conclusão",
+    "conclusao",
+    "atacar",
+    "finalização rápida",
+    "finalizacao rapida",
+    "à baliza",
+    "a baliza",
+    "ataques à baliza",
+    "ataques a baliza",
+    "quick finish",
+    "attack goal",
+  ],
   defensive: ["defens", "linha", "compacto", "bloco", "baixo", "equilíbrio", "equilibrio", "transição defensiva"],
   wide: ["largo", "flanco", "extremo", "lateral", "cruzamento", "largura"],
   physical: ["físico", "fisico", "resistência", "resistencia", "intensidade", "sprint", "velocidade", "força", "forca"],
@@ -145,6 +192,15 @@ function groupBlockAndPress(players: Player[]) {
   return { defs, mids, fwds, rest };
 }
 
+/** Duas equipas de campo disjuntas + GR listados à parte (ninguém em duas equipas). */
+function splitTwoTeamsField(players: Player[]) {
+  const gks = players.filter((p) => playerHasPosition(p, "GK"));
+  const gkIds = new Set(gks.map((p) => p.id));
+  const field = players.filter((p) => !gkIds.has(p.id)).sort((a, b) => a.number - b.number);
+  const mid = Math.ceil(field.length / 2);
+  return { gks, teamA: field.slice(0, mid), teamB: field.slice(mid) };
+}
+
 type MainDrillDef = {
   themes: TrainingThemeId[];
   title: string;
@@ -232,6 +288,26 @@ const MAIN_DRILLS: MainDrillDef[] = [
       coachingPoints: "Neutros só com 2 toques; interiorizações dos extremos para criar superioridade.",
       setup: "Coletes; 1 bola principal + bolas ao redor.",
       diagramHint: "Rectângulo; neutros fixos nas linhas laterais.",
+    }),
+  },
+  {
+    themes: ["transition", "finishing", "possession"],
+    title: "Offensive Between Lines",
+    describe: (pl, m) => ({
+      description: `Jogo em meio-campo (${m} min): duas equipas com balizas; ideal ~12–20 jogadores de campo + 2 ou 3 GR (8v8 ou 9v9 — com terceira equipa de 8, roda à espera ou em campo vizinho). A equipa em posse começa sempre pela linha defensiva: com poucos toques, procurar um passe rasteiro entre linhas para um médio. Ao receber entre linhas, os médios rodam depressa e a equipa ataca a baliza. Se a bola for intercetada, a equipa que recupera não pode atacar de imediato: primeiro recua e toca nos seus defesas, depois repete o mesmo ciclo (entre linhas → rotação → finalização). Plantel: ${rosterLines(pl)}.`,
+      coachingPoints:
+        "Primeiro toque no médio entre linhas orientado ao golo ou à terceira linha; corpo aberto antes da bola chegar. Após perda, reset disciplinado: bola aos defesas antes de voltar a progredir. Limita toques (ex.: 3) se precisares de mais ritmo e passes rasteiros.",
+      setup: "Meio-campo real ou ~55×40 m; 2 balizas; coletes; bolas extra nas linhas de fundo.",
+      groupSplit: (() => {
+        const { gks, teamA, teamB } = splitTwoTeamsField(pl);
+        const grLine =
+          gks.length > 0
+            ? `Guarda-redes (alternam ou um por baliza): ${formatNames(gks)}.`
+            : "Sem GR no plantel: jogador em pé nas balizas.";
+        return `${grLine} Equipa A (só nesta equipa): ${formatNames(teamA)}. Equipa B (só nesta equipa): ${formatNames(teamB)}. Com terceira equipa de 8, mantém estas listas disjuntas e faz rodar o terceiro grupo.`;
+      })(),
+      diagramHint: "Meio-campo; seta desde defesas → passe rasteiro entre linhas → médios a rodar → remate; após recuperação, seta de volta aos defesas antes de repetir.",
+      videoUrl: OFFENSIVE_BETWEEN_LINES_VIDEO_URL,
     }),
   },
 ];
@@ -368,22 +444,31 @@ export function buildLocalFullTrainingSession(params: {
   };
 }
 
+const SINGLE_DRILL_TITLE_20_MIN = "Offensive Between Lines";
+
 export function buildLocalSingleDrill(brief: string, players: Player[]): AiSingleDrill {
   const themes = detectTrainingThemes(brief);
   const seed = hashSeed(brief, 0);
   const defs = pickMainDrills(themes, 1, seed);
   const def = defs[0]!;
-  const mins = brief.length > 80 ? 18 : 14;
+  const mins =
+    def.title === SINGLE_DRILL_TITLE_20_MIN ? 20 : brief.length > 80 ? 18 : 14;
   const body = def.describe(players, mins);
+  const isBetweenLines = def.title === SINGLE_DRILL_TITLE_20_MIN;
 
   return {
     title: def.title,
     durationMin: mins,
     objective: `Pedido: ${brief.slice(0, 120)}${brief.length > 120 ? "…" : ""}`,
     description: body.description,
-    progression: "Aumenta espaço (mais difícil defender) ou reduz toques permitidos no rondo. Alterna pé fraco em passes fixos.",
+    ...(body.videoUrl ? { videoUrl: body.videoUrl } : {}),
+    progression: isBetweenLines
+      ? "Aperta o meio-campo (menos espaço entre linhas) ou exige 2 toques máx. depois do passe interior; aumenta largura para forçar mais metros percorridos após a rotação."
+      : "Aumenta espaço (mais difícil defender) ou reduz toques permitidos no rondo. Alterna pé fraco em passes fixos.",
     coachingCues: body.coachingPoints,
-    variations: "Reduz jogadores no meio; ou acrescenta neutro exterior; ou pontua por X passes seguidos.",
+    variations: isBetweenLines
+      ? "Terceira equipa de 8 a rodar; ou zona obrigatória de 'pé em campo' nos médios; ou golo vale duplo se vier de passe rasteiro entre linhas."
+      : "Reduz jogadores no meio; ou acrescenta neutro exterior; ou pontua por X passes seguidos.",
     diagramHint: body.diagramHint,
   };
 }
