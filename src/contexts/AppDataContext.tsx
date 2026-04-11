@@ -34,6 +34,13 @@ import {
   migrateLegacyDataIfNeeded,
 } from "@/lib/user-storage-keys";
 import { safeLoadJSON, safeSaveJSON } from "@/lib/coachbuilder-persist";
+import { isCloudSyncEnabledClient } from "@/lib/cloud-config";
+import {
+  collectWorkspaceFromLocalStorage,
+  snapshotHasMeaningfulData,
+  writeWorkspaceSnapshotToLocalStorage,
+  type WorkspaceSnapshotV1,
+} from "@/lib/workspace-snapshot";
 import { useAuth } from "@/contexts/AuthContext";
 
 function tacticPlayerNoteKey(tacticId: string, playerId: string) {
@@ -196,6 +203,20 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [tacticMatches, setTacticMatches] = useState<TacticMatch[]>([]);
   const [tacticPlayerNotes, setTacticPlayerNotesState] = useState<Record<string, TacticPlayerAnalysisNote>>({});
 
+  const [cloudRemoteReady, setCloudRemoteReady] = useState(() => !isCloudSyncEnabledClient());
+
+  useEffect(() => {
+    if (!isCloudSyncEnabledClient()) {
+      setCloudRemoteReady(true);
+      return;
+    }
+    if (!user?.id) {
+      setCloudRemoteReady(true);
+      return;
+    }
+    setCloudRemoteReady(false);
+  }, [user?.id]);
+
   useEffect(() => {
     if (!authReady) return;
 
@@ -254,6 +275,125 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setTacticPlayerNotesState(loadJSON<Record<string, TacticPlayerAnalysisNote>>(ks.tacticPlayerNotes, {}));
     setHydrated(true);
   }, [authReady, user?.id, ks]);
+
+  useEffect(() => {
+    if (!isCloudSyncEnabledClient() || !authReady || !user?.id || !ks || !hydrated) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/cloud/workspace", { credentials: "include" });
+        const data = (await res.json()) as {
+          ok?: boolean;
+          payload?: WorkspaceSnapshotV1 | null;
+        };
+        if (cancelled) return;
+        if (res.ok && data.ok && data.payload && snapshotHasMeaningfulData(data.payload)) {
+          const s = data.payload;
+          let loadedConvs = s.conversations;
+          if (!loadedConvs.some((c) => c.type === "group")) {
+            loadedConvs = [defaultGroup(), ...loadedConvs];
+          }
+          const loadedMsgs = { ...s.messages };
+          if (!loadedMsgs[SQUAD_GROUP_ID]) loadedMsgs[SQUAD_GROUP_ID] = [];
+          const leagueMatchesDeduped = dedupeMatches(s.league.matches ?? []);
+          setPlayers(s.players);
+          setConversations(loadedConvs);
+          setMessagesByConv(loadedMsgs);
+          setTrainingSessions(s.trainingSessions);
+          setTrainingPlayerIdsBySession(s.trainingPlayers);
+          setFixtures(s.fixtures);
+          setCoachProfileState({ ...defaultCoachProfile(), ...s.coachProfile });
+          setLeagueTableUrlState(s.league.url ?? "");
+          setLeagueTableRows(s.league.rows ?? []);
+          setLeagueMatches(leagueMatchesDeduped);
+          setLeagueCompetitionName(s.league.competitionName ?? null);
+          setLeagueTableLastFetched(s.league.lastFetched ?? null);
+          setLeagueTableFetchError(s.league.lastError ?? null);
+          setSavedTactics(s.tactics);
+          setTacticMatches(s.tacticMatches);
+          setTacticPlayerNotesState(s.tacticPlayerNotes);
+          writeWorkspaceSnapshotToLocalStorage(user.id, {
+            ...s,
+            conversations: loadedConvs,
+            messages: loadedMsgs,
+            league: {
+              ...s.league,
+              matches: leagueMatchesDeduped,
+            },
+          });
+        } else {
+          const local = collectWorkspaceFromLocalStorage(user.id);
+          if (snapshotHasMeaningfulData(local)) {
+            await fetch("/api/cloud/workspace", {
+              method: "PUT",
+              credentials: "include",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ payload: local }),
+            });
+          }
+        }
+      } finally {
+        if (!cancelled) setCloudRemoteReady(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [authReady, user?.id, ks, hydrated]);
+
+  useEffect(() => {
+    if (!isCloudSyncEnabledClient() || !cloudRemoteReady || !hydrated || !user?.id) return;
+    const snap: WorkspaceSnapshotV1 = {
+      version: 1,
+      players,
+      conversations,
+      messages: messagesByConv,
+      trainingSessions,
+      trainingPlayers: trainingPlayerIdsBySession,
+      fixtures,
+      league: {
+        url: leagueTableUrl,
+        rows: leagueTableRows,
+        matches: leagueMatches,
+        competitionName: leagueCompetitionName,
+        lastFetched: leagueTableLastFetched,
+        lastError: leagueTableFetchError,
+      },
+      coachProfile,
+      tactics: savedTactics,
+      tacticMatches,
+      tacticPlayerNotes,
+    };
+    const t = window.setTimeout(() => {
+      void fetch("/api/cloud/workspace", {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ payload: snap }),
+      });
+    }, 2200);
+    return () => window.clearTimeout(t);
+  }, [
+    cloudRemoteReady,
+    hydrated,
+    user?.id,
+    players,
+    conversations,
+    messagesByConv,
+    trainingSessions,
+    trainingPlayerIdsBySession,
+    fixtures,
+    leagueTableUrl,
+    leagueTableRows,
+    leagueMatches,
+    leagueCompetitionName,
+    leagueTableLastFetched,
+    leagueTableFetchError,
+    coachProfile,
+    savedTactics,
+    tacticMatches,
+    tacticPlayerNotes,
+  ]);
 
   useEffect(() => {
     if (!hydrated || !ks) return;

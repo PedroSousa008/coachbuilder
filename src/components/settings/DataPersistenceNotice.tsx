@@ -2,6 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { useAuth } from "@/contexts/AuthContext";
+import { isCloudSyncEnabledClient } from "@/lib/cloud-config";
 import { clearPerUserImportFlag } from "@/lib/user-storage-keys";
 
 export function DataPersistenceNotice() {
@@ -21,9 +22,22 @@ export function DataPersistenceNotice() {
           algo, fica gravado no armazenamento local do dispositivo.</p>
         <p>
           <strong className="font-medium text-zinc-300">Atualizações do site</strong> (novas versões na Vercel){" "}
-          <strong className="font-medium text-zinc-300">não apagam</strong> estes dados. Mantêm-se até limpares os dados
-          do site, mudares de navegador sem os dados, ou usares outro dispositivo (cada browser tem a sua cópia local).
+          <strong className="font-medium text-zinc-300">não apagam</strong> estes dados no teu dispositivo. Mantêm-se até
+          limpares os dados do site ou usares modo privado como único sítio de uso.
         </p>
+        {isCloudSyncEnabledClient() ? (
+          <p className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-200/90">
+            <strong className="font-medium text-emerald-100">Sincronização na cloud ativa:</strong> a conta e os dados da
+            app são também guardados no servidor. Podes entrar noutro browser ou dispositivo com o mesmo email e
+            palavra-passe; a última versão guardada (com pequeno atraso após editares) fica disponível em todo o lado.
+            Continua a haver uma cópia local para rapidez e uso offline parcial.
+          </p>
+        ) : (
+          <p className="text-xs text-zinc-500">
+            Sem sincronização na cloud, cada browser/dispositivo tem a sua própria cópia — os dados não viajam entre
+            equipamentos até ativares a cloud no projeto (variáveis de ambiente na Vercel).
+          </p>
+        )}
         {user ? (
           <div className="space-y-2 rounded-xl border border-surface-border bg-surface-raised/30 px-3 py-2 text-xs text-zinc-500">
             <p>

@@ -11,6 +11,9 @@
  * Ao alterar chaves ou formato no código, **incrementa** `CURRENT_STORAGE_SCHEMA_VERSION`
  * e acrescenta uma migração em `runCoachbuilderStorageMigrations` para nunca perder
  * contas antigas.
+ *
+ * Opcional: com `NEXT_PUBLIC_ENABLE_CLOUD_SYNC=true` e PostgreSQL na Vercel, a conta e o
+ * workspace são também persistidos no servidor (ver `/api/cloud/*` e Prisma).
  */
 
 export const CURRENT_STORAGE_SCHEMA_VERSION = 1;
