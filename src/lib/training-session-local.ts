@@ -75,6 +75,12 @@ function rosterLines(players: Player[]): string {
   return players.map((p) => `#${p.number} ${p.name} (${formatPlayerPositions(p)})`).join("; ");
 }
 
+/** Lista legível; nunca repetir o mesmo jogador em dois grupos — usar funções `group*` abaixo. */
+function formatNames(players: Player[]): string {
+  if (players.length === 0) return "(ninguém nesta lista — ajusta ao plantel)";
+  return players.map((p) => `#${p.number} ${p.name}`).join(", ");
+}
+
 function pickNames(players: Player[], filter: (p: Player) => boolean, max = 4): string {
   const xs = players.filter(filter).slice(0, max);
   if (xs.length === 0) return "jogadores da linha indicada";
@@ -89,16 +95,54 @@ const DEF_POS: Position[] = ["CB", "LB", "RB"];
 const MID_POS: Position[] = ["CDM", "CM", "CAM"];
 const FWD_POS: Position[] = ["LW", "RW", "ST"];
 
-function defNames(players: Player[]): string {
-  return pickNames(players, (p) => DEF_POS.some((pos) => playerHasPosition(p, pos)), 5);
+function isDef(p: Player): boolean {
+  return DEF_POS.some((pos) => playerHasPosition(p, pos));
+}
+function isMid(p: Player): boolean {
+  return MID_POS.some((pos) => playerHasPosition(p, pos));
+}
+function isFwd(p: Player): boolean {
+  return FWD_POS.some((pos) => playerHasPosition(p, pos));
 }
 
-function midNames(players: Player[]): string {
-  return pickNames(players, (p) => MID_POS.some((pos) => playerHasPosition(p, pos)), 5);
+/** Defesas num grupo; todos os outros no rondo (ninguém em duplicado). */
+function groupRondoAB(players: Player[]) {
+  const defs = players.filter(isDef);
+  const defIds = new Set(defs.map((p) => p.id));
+  const grupoA = players.filter((p) => !defIds.has(p.id));
+  return { defs, grupoA };
 }
 
-function fwdNames(players: Player[]): string {
-  return pickNames(players, (p) => FWD_POS.some((pos) => playerHasPosition(p, pos)), 4);
+/** Avançados → médios (do que sobra) → resto (GK, etc.): disjuntos. */
+function groupTransitionLanes(players: Player[]) {
+  const fwds = players.filter(isFwd);
+  const uF = new Set(fwds.map((p) => p.id));
+  const mids = players.filter((p) => !uF.has(p.id) && isMid(p));
+  const uM = new Set(mids.map((p) => p.id));
+  const rest = players.filter((p) => !uF.has(p.id) && !uM.has(p.id));
+  return { fwds, mids, rest };
+}
+
+/** Primeiro largos (LB/LW); depois finalizadores entre os que ainda não foram nomeados. */
+function groupCrossAndFinish(players: Player[]) {
+  const cross = players.filter((p) => playerHasPosition(p, "LW") || playerHasPosition(p, "LB"));
+  const uC = new Set(cross.map((p) => p.id));
+  const finish = players.filter((p) => !uC.has(p.id) && isFwd(p));
+  const uFi = new Set(finish.map((p) => p.id));
+  const rest = players.filter((p) => !uC.has(p.id) && !uFi.has(p.id));
+  return { cross, finish, rest };
+}
+
+/** Bloco = defesas + médios; pressão/saída = avançados do remanescente; resto à parte. */
+function groupBlockAndPress(players: Player[]) {
+  const defs = players.filter(isDef);
+  const uD = new Set(defs.map((p) => p.id));
+  const mids = players.filter((p) => !uD.has(p.id) && isMid(p));
+  const uM = new Set(mids.map((p) => p.id));
+  const fwds = players.filter((p) => !uD.has(p.id) && !uM.has(p.id) && isFwd(p));
+  const uF = new Set(fwds.map((p) => p.id));
+  const rest = players.filter((p) => !uD.has(p.id) && !uM.has(p.id) && !uF.has(p.id));
+  return { defs, mids, fwds, rest };
 }
 
 type MainDrillDef = {
@@ -118,7 +162,10 @@ const MAIN_DRILLS: MainDrillDef[] = [
       setup: "Cones; espaço total ~25x25 m (ajusta ao número).",
       groupSplit:
         pl.length >= 10
-          ? `Grupo A: rondo 6v3+2 com ${midNames(pl)} e ${fwdNames(pl)}. Grupo B: ${defNames(pl)} trabalha passes em ziguezague entre 3 estações (mesmo tempo, troca ao intervalo).`
+          ? (() => {
+              const { defs, grupoA } = groupRondoAB(pl);
+              return `Grupo A (rondo; cada jogador só aqui): ${formatNames(grupoA)}. Grupo B (ziguezague entre estações): ${formatNames(defs)} — sem sobreposição entre A e B.`;
+            })()
           : undefined,
       diagramHint: "Quadrado exterior; quadrado interior menor; 2 coletes a pressionar no meio.",
     }),
@@ -131,7 +178,10 @@ const MAIN_DRILLS: MainDrillDef[] = [
       coachingPoints:
         "Primeira ação após recuperação: olhar à frente. Se não houver linha, segurar e atrair para liberar terceiro homem.",
       setup: "4 coletes de cada cor; 2 balizas pequenas ou portas com cones.",
-      groupSplit: `Atacantes em destaque na fase ofensiva: ${fwdNames(pl)}. Meios a apoiar ligações: ${midNames(pl)}.`,
+      groupSplit: (() => {
+        const { fwds, mids, rest } = groupTransitionLanes(pl);
+        return `Fase ofensiva (avançados): ${formatNames(fwds)}. Ligações do meio-campo (jogadores não repetidos nos avançados): ${formatNames(mids)}.${rest.length > 0 ? ` Suporte / rotação: ${formatNames(rest)}.` : ""}`;
+      })(),
       diagramHint: "Dois rectângulos; setas de transição cruzadas entre campos.",
     }),
   },
@@ -152,7 +202,10 @@ const MAIN_DRILLS: MainDrillDef[] = [
       description: `Filas nas bandas; cruzamentos alternados; 2 pontas de lança + 2 chegadas ao segundo poste por série. ${m} min com contagem de golos limpos.`,
       coachingPoints: "Tempo de corrida; contacto com o relvado na antevisão; decisão cabeça vs pé.",
       setup: "Bolas nas bandas; mini-balizas ou porta reduzida.",
-      groupSplit: `Cruzamentos: ${pickNames(pl, (p) => playerHasPosition(p, "LW") || playerHasPosition(p, "LB"), 3)}. Finalizações: ${fwdNames(pl)}.`,
+      groupSplit: (() => {
+        const { cross, finish, rest } = groupCrossAndFinish(pl);
+        return `Cruzamentos (LB/LW primeiro): ${formatNames(cross)}. Finalização (restantes com papel de ataque): ${formatNames(finish)}.${rest.length > 0 ? ` Apoios: ${formatNames(rest)}.` : ""}`;
+      })(),
       diagramHint: "Banda → cruzamento rasteiro e alto alternados; 2 filas de atacantes.",
     }),
   },
@@ -163,7 +216,11 @@ const MAIN_DRILLS: MainDrillDef[] = [
       description: `Meio-campo defensivo: linha de 5+4 atrás da bola; ao recuperar, dois jogadores largos esticam e um interior oferece entre linhas (${m} min).`,
       coachingPoints: "Distâncias 8–12 m entre linhas; lateral do lado da bola fecha; do lado oposto mantém largura.",
       setup: "Meio campo real ou 50x40 m.",
-      groupSplit: `Defesas e médios defensivos (${defNames(pl)}, ${midNames(pl)}) no bloco; ${fwdNames(pl)} simula pressão adversária e depois lidera saída.`,
+      groupSplit: (() => {
+        const { defs, mids, fwds, rest } = groupBlockAndPress(pl);
+        const bloco = [...defs, ...mids];
+        return `Bloco (defesas + médios; sem repetir nos avançados): ${formatNames(bloco)}. Simulam pressão e lideram saída: ${formatNames(fwds)}.${rest.length > 0 ? ` GR / outros: ${formatNames(rest)}.` : ""}`;
+      })(),
       diagramHint: "Duas linhas horizontais; seta em W na recuperação.",
     }),
   },
