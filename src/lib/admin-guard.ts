@@ -10,7 +10,8 @@ export async function requireAdminSession(): Promise<
     return { ok: false, response: NextResponse.json({ ok: false, error: "Não autorizado." }, { status: 401 }) };
   }
   const user = await prisma.user.findUnique({ where: { id: claims.sub } });
-  if (!user || user.email !== claims.email || user.role !== "admin") {
+  const isAdmin = user?.role?.trim().toLowerCase() === "admin";
+  if (!user || user.email !== claims.email || !isAdmin) {
     return { ok: false, response: NextResponse.json({ ok: false, error: "Acesso reservado a administradores." }, { status: 403 }) };
   }
   return { ok: true, userId: user.id };

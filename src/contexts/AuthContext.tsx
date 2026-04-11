@@ -34,6 +34,8 @@ type AuthContextValue = {
   signUp: (input: SignUpCredentials) => Promise<AuthResult>;
   login: (email: string, password: string) => Promise<AuthResult>;
   logout: () => void;
+  /** Re-lê `/api/cloud/auth/me` (útil após configurares ADMIN_OWNER_EMAIL na Vercel). */
+  refreshUserFromCloud: () => Promise<AuthResult>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -329,6 +331,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }, []);
 
+  const refreshUserFromCloud = useCallback(async (): Promise<AuthResult> => {
+    if (!isCloudSyncEnabledClient()) {
+      return { ok: false, error: "Sincronização cloud não está ativa nesta build." };
+    }
+    try {
+      const res = await fetch("/api/cloud/auth/me", { credentials: "include" });
+      const data = (await res.json()) as { ok?: boolean; error?: string; user?: unknown };
+      const cloudUser = parseCloudUserFromApi(data.user);
+      if (res.ok && data.ok && cloudUser) {
+        saveSession({ userId: cloudUser.id, email: cloudUser.email });
+        setUser(cloudUser);
+        return { ok: true };
+      }
+      return { ok: false, error: data.error || "Não foi possível atualizar a sessão." };
+    } catch {
+      return { ok: false, error: "Erro de rede ao atualizar a sessão." };
+    }
+  }, []);
+
   const value = useMemo<AuthContextValue>(
     () => ({
       user,
@@ -336,8 +357,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signUp,
       login,
       logout,
+      refreshUserFromCloud,
     }),
-    [user, authReady, signUp, login, logout]
+    [user, authReady, signUp, login, logout, refreshUserFromCloud]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

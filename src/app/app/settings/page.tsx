@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { TeamAccentSettings } from "@/components/settings/TeamAccentSettings";
 import { DataPersistenceNotice } from "@/components/settings/DataPersistenceNotice";
+import { CloudAccountSettings } from "@/components/settings/CloudAccountSettings";
 import { mockCoach } from "@/data/mock";
 
 export default function SettingsPage() {
@@ -74,6 +75,7 @@ export default function SettingsPage() {
           <CardTitle>Account</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4 text-sm text-zinc-400">
+          <CloudAccountSettings />
           <p>Email e palavra-passe da conta estão guardados neste dispositivo. Para alterar a palavra-passe, contacta o
             suporte ou aguarda a opção na app.</p>
           <Link href="/app/profile" className="inline-flex text-accent hover:underline">

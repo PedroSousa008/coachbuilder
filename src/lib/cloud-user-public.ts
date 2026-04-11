@@ -15,7 +15,7 @@ export function toCloudUserPublic(u: {
   subscriptionPlan?: string | null;
 }): CloudUserPublic {
   const cr = typeof u.coachingRole === "string" ? u.coachingRole : "head-coach";
-  const r = typeof u.role === "string" ? u.role : "user";
+  const r = typeof u.role === "string" ? u.role.trim().toLowerCase() : "user";
   return {
     id: u.id,
     email: u.email,
@@ -39,7 +39,7 @@ export function parseCloudUserFromApi(raw: unknown): CloudUserPublic | null {
     email: o.email,
     name: typeof o.name === "string" ? o.name : "",
     coachingRole: typeof o.coachingRole === "string" ? o.coachingRole : "head-coach",
-    role: typeof o.role === "string" ? o.role : "user",
+    role: typeof o.role === "string" ? o.role.trim().toLowerCase() : "user",
     subscriptionPlan,
   });
 }
