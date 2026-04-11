@@ -76,10 +76,52 @@ type OnlinePayload = {
   error?: string;
 };
 
-type AdminTab = "overview" | "online";
+type RevenueSubscriber = {
+  id: string;
+  email: string;
+  name: string;
+  subscriptionPlan: string;
+  subscriptionRenewsAt: string | null;
+  createdAt: string;
+  status: "ativo" | "gratuito" | "em_atraso";
+  totalLifetimePaidEur: number | null;
+};
+
+type RevenuePayload = {
+  ok?: boolean;
+  error?: string;
+  generatedAt?: string;
+  cashRevenueTracked?: boolean;
+  paymentsIntegrated?: boolean;
+  overview?: {
+    mrrEur: number;
+    proPriceEur: number;
+    revenueTodayEur: number | null;
+    revenueWeekEur: number | null;
+    revenueMonthEur: number | null;
+    activeSubscriptionsCount: number;
+    freeToPaidConversionPct: number;
+    freeToPaidConversionNote?: string;
+    newCoachesLast7d: number;
+    newCoachesPrev7d: number;
+    newCoachesGrowthVsPrevWeekPct: number;
+    mrrGrowthVsPreviousTracked: boolean;
+    mrrGrowthVsPreviousPct: number | null;
+  };
+  payments?: {
+    receivedTodayEur: number;
+    pendingCount: number;
+    failedCount: number;
+    atRiskEur: number;
+  };
+  subscribers?: RevenueSubscriber[];
+};
+
+type AdminTab = "overview" | "online" | "revenue";
 
 const REFRESH_OVERVIEW_MS = 45_000;
 const REFRESH_ONLINE_MS = 15_000;
+const REFRESH_REVENUE_MS = 60_000;
 
 function planLabel(plan: string): string {
   if (plan === "pro_monthly") return "Pro mensal";
@@ -108,6 +150,22 @@ function labelForAppPath(path: string | null | undefined): string {
   return path;
 }
 
+function formatEurValue(n: number | null | undefined, empty = "—"): string {
+  if (n == null || Number.isNaN(n)) return empty;
+  return new Intl.NumberFormat("pt-PT", { style: "currency", currency: "EUR" }).format(n);
+}
+
+function subscriberStatusLabel(s: RevenueSubscriber["status"]): string {
+  if (s === "ativo") return "Ativo";
+  if (s === "em_atraso") return "Em atraso";
+  return "Gratuito";
+}
+
+function formatGrowthPct(p: number): string {
+  const sign = p > 0 ? "+" : "";
+  return `${sign}${p}%`;
+}
+
 export function AdminPanel() {
   const { user, authReady, refreshUserFromCloud } = useAuth();
   const router = useRouter();
@@ -115,6 +173,7 @@ export function AdminPanel() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [users, setUsers] = useState<ListedUser[]>([]);
   const [online, setOnline] = useState<OnlinePayload | null>(null);
+  const [revenue, setRevenue] = useState<RevenuePayload | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [planDraft, setPlanDraft] = useState<Record<string, string>>({});
@@ -159,6 +218,25 @@ export function AdminPanel() {
     }
   }, []);
 
+  const loadRevenue = useCallback(async () => {
+    try {
+      const res = await fetch("/api/cloud/admin/revenue", { credentials: "include" });
+      const j = (await res.json()) as RevenuePayload;
+      if (res.ok && j.ok && j.subscribers && j.overview) {
+        setRevenue(j);
+        setPlanDraft((d) => {
+          const next = { ...d };
+          for (const s of j.subscribers!) {
+            if (next[s.id] === undefined) next[s.id] = s.subscriptionPlan;
+          }
+          return next;
+        });
+      }
+    } catch {
+      /* ignorar */
+    }
+  }, []);
+
   useEffect(() => {
     if (!authReady) return;
     const allowed =
@@ -191,21 +269,38 @@ export function AdminPanel() {
     return () => window.clearInterval(t);
   }, [tab, loadOnline]);
 
+  useEffect(() => {
+    if (tab !== "revenue") return;
+    void loadRevenue();
+    const t = window.setInterval(() => void loadRevenue(), REFRESH_REVENUE_MS);
+    return () => window.clearInterval(t);
+  }, [tab, loadRevenue]);
+
+  const patchSubscription = useCallback(
+    async (id: string, body: { subscriptionPlan: string; subscriptionRenewsAt?: string | null }) => {
+      setError(null);
+      const res = await fetch(`/api/cloud/admin/users/${encodeURIComponent(id)}`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const j = (await res.json()) as { ok?: boolean; error?: string };
+      if (!res.ok || !j.ok) {
+        setError(j.error || "Não foi possível atualizar a subscrição.");
+        return false;
+      }
+      setPlanDraft((d) => ({ ...d, [id]: body.subscriptionPlan }));
+      await Promise.all([load(), loadRevenue()]);
+      return true;
+    },
+    [load, loadRevenue]
+  );
+
   const savePlan = async (id: string) => {
     const subscriptionPlan = planDraft[id];
     if (!subscriptionPlan) return;
-    const res = await fetch(`/api/cloud/admin/users/${encodeURIComponent(id)}`, {
-      method: "PATCH",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ subscriptionPlan }),
-    });
-    const j = (await res.json()) as { ok?: boolean; error?: string };
-    if (!res.ok || !j.ok) {
-      setError(j.error || "Não foi possível atualizar o plano.");
-      return;
-    }
-    void load();
+    await patchSubscription(id, { subscriptionPlan });
   };
 
   if (!authReady || loading) {
@@ -220,7 +315,7 @@ export function AdminPanel() {
         <div>
           <h1 className="font-display text-2xl font-semibold text-white">Admin</h1>
           <p className="mt-1 text-sm text-zinc-500">
-            Separadores para visão de negócio e presença em tempo real. A lista “Pessoas online” atualiza a cada ~15s.
+            Visão geral, pessoas online, receita (MRR MVP) e subscrições. “Pessoas online” ~15s; Revenue Center ~60s.
           </p>
           {user?.role !== "admin" && user?.email && clientEmailShowsAdminNav(user.email) ? (
             <p className="mt-2 text-xs text-amber-200/90">
@@ -236,6 +331,7 @@ export function AdminPanel() {
           onClick={() => {
             void load();
             if (tab === "online") void loadOnline();
+            if (tab === "revenue") void loadRevenue();
           }}
         >
           Atualizar agora
@@ -243,7 +339,7 @@ export function AdminPanel() {
       </div>
 
       <div
-        className="flex gap-1 border-b border-surface-border"
+        className="flex flex-wrap gap-1 border-b border-surface-border"
         role="tablist"
         aria-label="Secções do painel"
       >
@@ -252,6 +348,9 @@ export function AdminPanel() {
         </TabButton>
         <TabButton id="online" selected={tab === "online"} onClick={() => setTab("online")}>
           Pessoas online
+        </TabButton>
+        <TabButton id="revenue" selected={tab === "revenue"} onClick={() => setTab("revenue")}>
+          Revenue Center
         </TabButton>
       </div>
 
@@ -268,6 +367,18 @@ export function AdminPanel() {
       ) : null}
 
       {tab === "online" ? <OnlineTabContent online={online} onRefresh={() => void loadOnline()} /> : null}
+
+      {tab === "revenue" ? (
+        <RevenueTabContent
+          revenue={revenue}
+          planDraft={planDraft}
+          setPlanDraft={setPlanDraft}
+          onApplyPlan={(id) => void savePlan(id)}
+          onCancelSubscription={(id) => void patchSubscription(id, { subscriptionPlan: "free", subscriptionRenewsAt: null })}
+          onGrantCompPro={(id) => void patchSubscription(id, { subscriptionPlan: "pro_monthly", subscriptionRenewsAt: null })}
+          onRefresh={() => void loadRevenue()}
+        />
+      ) : null}
 
       <p className="text-xs text-zinc-600">
         <strong className="text-zinc-500">Nota legal:</strong> em produção deves ter política de privacidade e base de
@@ -481,6 +592,276 @@ function OverviewTabContent({
   );
 }
 
+function RevenueTabContent({
+  revenue,
+  planDraft,
+  setPlanDraft,
+  onApplyPlan,
+  onCancelSubscription,
+  onGrantCompPro,
+  onRefresh,
+}: {
+  revenue: RevenuePayload | null;
+  planDraft: Record<string, string>;
+  setPlanDraft: Dispatch<SetStateAction<Record<string, string>>>;
+  onApplyPlan: (id: string) => void;
+  onCancelSubscription: (id: string) => void;
+  onGrantCompPro: (id: string) => void;
+  onRefresh: () => void;
+}) {
+  const o = revenue?.overview;
+  const p = revenue?.payments;
+  const list = revenue?.subscribers ?? [];
+  const cashTracked = revenue?.cashRevenueTracked === true;
+
+  if (!revenue || !o || !p) {
+    return (
+      <section className="py-8 text-sm text-zinc-500" role="tabpanel" aria-labelledby="tab-revenue">
+        A carregar Revenue Center…
+      </section>
+    );
+  }
+
+  const growthColor =
+    o.newCoachesGrowthVsPrevWeekPct > 0
+      ? "text-emerald-400"
+      : o.newCoachesGrowthVsPrevWeekPct < 0
+        ? "text-red-400"
+        : "text-zinc-300";
+
+  return (
+    <section className="space-y-10" role="tabpanel" aria-labelledby="tab-revenue">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h2 className="font-display text-xl font-semibold text-white">Revenue Center</h2>
+          {revenue.generatedAt ? (
+            <p className="mt-1 text-xs text-zinc-600">
+              Actualizado: {new Date(revenue.generatedAt).toLocaleString("pt-PT")}
+            </p>
+          ) : null}
+        </div>
+        <Button type="button" variant="secondary" className="text-xs" onClick={onRefresh}>
+          Atualizar receita
+        </Button>
+      </div>
+
+      <div className="space-y-4">
+        <div>
+          <h3 className="text-base font-semibold text-zinc-200">
+            <span className="mr-1.5" aria-hidden>
+              🔹
+            </span>
+            Receita &amp; crescimento (o estado actual)
+          </h3>
+          <p className="mt-1 text-sm text-zinc-500">
+            Vê de relance se o negócio está a crescer. MRR abaixo é{" "}
+            <span className="font-medium text-zinc-400">estimado</span> (ADMIN_PRO_MONTHLY_PRICE_EUR × subscrições Pro
+            ativas), não extrato bancário.
+          </p>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <StatCardEuro
+            title="MRR (receita mensal recorrente)"
+            amount={o.mrrEur}
+            hint={`${o.activeSubscriptionsCount} subscrições ativas × ${o.proPriceEur} €`}
+          />
+          <StatCard
+            title="Receita total — hoje"
+            value={cashTracked && o.revenueTodayEur != null ? formatEurValue(o.revenueTodayEur) : "—"}
+            hint={cashTracked ? "Cash recebido (Stripe)" : "Sem gateway — integra pagamentos"}
+          />
+          <StatCard
+            title="Receita total — semana"
+            value={cashTracked && o.revenueWeekEur != null ? formatEurValue(o.revenueWeekEur) : "—"}
+            hint={cashTracked ? "Últimos 7 dias" : "Sem gateway"}
+          />
+          <StatCard
+            title="Receita total — mês"
+            value={cashTracked && o.revenueMonthEur != null ? formatEurValue(o.revenueMonthEur) : "—"}
+            hint={cashTracked ? "Mês civil (UTC)" : "Sem gateway"}
+          />
+          <StatCard
+            title="Subscrições ativas"
+            value={o.activeSubscriptionsCount}
+            hint="Pro mensal com renovação válida ou sem data de fim"
+          />
+          <StatCard
+            title="Conversão free → paid"
+            value={`${o.freeToPaidConversionPct}%`}
+            hint={o.freeToPaidConversionNote ?? "Pro ativo / (Pro ativo + grátis)"}
+          />
+          <StatCard
+            title="Crescimento vs período anterior"
+            value={<span className={growthColor}>{formatGrowthPct(o.newCoachesGrowthVsPrevWeekPct)}</span>}
+            hint={`Novos coaches: ${o.newCoachesLast7d} (últimos 7d) vs ${o.newCoachesPrev7d} (7d anteriores). Evolução de MRR: ainda não calculada (sem histórico na BD).`}
+          />
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        <div>
+          <h3 className="text-base font-semibold text-zinc-200">
+            <span className="mr-1.5" aria-hidden>
+              🔹
+            </span>
+            Dinheiro real (pagamentos)
+          </h3>
+          <p className="mt-1 text-sm text-zinc-500">
+            Quanto dinheiro está quase a escapar-te sem notares — preenchido automaticamente quando integrares Stripe (ou
+            outro PSP).
+          </p>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <StatCard
+            title="Pagamentos recebidos hoje"
+            value={cashTracked ? formatEurValue(p.receivedTodayEur, "0,00 €") : "—"}
+            hint={cashTracked ? undefined : "Sem integração"}
+          />
+          <StatCard
+            title="Pagamentos pendentes"
+            value={cashTracked ? p.pendingCount : "—"}
+            hint={cashTracked ? "A processar" : "Sem integração"}
+          />
+          <StatCard
+            title="Pagamentos falhados"
+            value={cashTracked ? p.failedCount : "—"}
+            hint={cashTracked ? "Última janela configurável" : "Sem integração"}
+          />
+          <StatCard
+            title='Dinheiro "em risco"'
+            value={cashTracked ? formatEurValue(p.atRiskEur, "0,00 €") : "—"}
+            hint={cashTracked ? "Falhas + retries" : "Sem integração"}
+          />
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        <div>
+          <h3 className="text-base font-semibold text-zinc-200">
+            <span className="mr-1.5" aria-hidden>
+              🔹
+            </span>
+            Subscrições (quem paga)
+          </h3>
+          <p className="mt-1 text-sm text-zinc-500">
+            Controlo por cliente: plano, datas, estado e acções rápidas. Total pago só com histórico de faturação.
+          </p>
+        </div>
+        <Card>
+          <CardContent className="overflow-x-auto p-0">
+            <table className="w-full min-w-[1100px] text-left text-sm text-zinc-400">
+              <thead className="border-b border-surface-border bg-surface-raised/40 text-xs uppercase tracking-wide text-zinc-500">
+                <tr>
+                  <th className="px-3 py-3">Coach</th>
+                  <th className="px-3 py-3">Email</th>
+                  <th className="px-3 py-3">Plano actual</th>
+                  <th className="px-3 py-3">Início</th>
+                  <th className="px-3 py-3">Próxima cobrança</th>
+                  <th className="px-3 py-3">Estado</th>
+                  <th className="px-3 py-3">Total pago</th>
+                  <th className="px-3 py-3">Acções</th>
+                </tr>
+              </thead>
+              <tbody>
+                {list.map((row) => {
+                  const draft = planDraft[row.id] ?? row.subscriptionPlan;
+                  const dirty = draft !== row.subscriptionPlan;
+                  return (
+                    <tr key={row.id} className="border-b border-surface-border/60">
+                      <td className="px-3 py-3 font-medium text-zinc-200">{row.name}</td>
+                      <td className="px-3 py-3 font-mono text-[11px] text-zinc-500">{row.email}</td>
+                      <td className="px-3 py-3">
+                        <select
+                          value={draft}
+                          onChange={(e) => setPlanDraft((d) => ({ ...d, [row.id]: e.target.value }))}
+                          className="max-w-[140px] rounded-lg border border-surface-border bg-[#0c1014] px-2 py-1 text-xs text-zinc-200"
+                        >
+                          <option value="free">Grátis</option>
+                          <option value="pro_monthly">Pro mensal</option>
+                        </select>
+                      </td>
+                      <td className="px-3 py-3 text-xs text-zinc-500">
+                        {new Date(row.createdAt).toLocaleDateString("pt-PT")}
+                      </td>
+                      <td className="px-3 py-3 text-xs text-zinc-500">
+                        {row.subscriptionRenewsAt
+                          ? new Date(row.subscriptionRenewsAt).toLocaleString("pt-PT")
+                          : draft === "pro_monthly"
+                            ? "— (sem data)"
+                            : "—"}
+                      </td>
+                      <td className="px-3 py-3">
+                        <span
+                          className={clsx(
+                            "rounded-md px-2 py-0.5 text-xs font-medium",
+                            row.status === "ativo"
+                              ? "bg-emerald-500/15 text-emerald-300"
+                              : row.status === "em_atraso"
+                                ? "bg-amber-500/15 text-amber-200"
+                                : "bg-zinc-500/15 text-zinc-400"
+                          )}
+                        >
+                          {subscriberStatusLabel(row.status)}
+                        </span>
+                      </td>
+                      <td className="px-3 py-3 text-xs text-zinc-500">
+                        {row.totalLifetimePaidEur != null
+                          ? formatEurValue(row.totalLifetimePaidEur)
+                          : "— (Stripe)"}
+                      </td>
+                      <td className="px-3 py-3">
+                        <div className="flex max-w-[280px] flex-wrap gap-1">
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            className="px-2 py-1 text-[10px]"
+                            disabled={!dirty}
+                            onClick={() => onApplyPlan(row.id)}
+                          >
+                            Aplicar plano
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            className="px-2 py-1 text-[10px]"
+                            onClick={() => onCancelSubscription(row.id)}
+                          >
+                            Cancelar
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            className="px-2 py-1 text-[10px]"
+                            onClick={() => onGrantCompPro(row.id)}
+                          >
+                            Pro oferta
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            className="px-2 py-1 text-[10px] opacity-50"
+                            disabled
+                            title="Requer Stripe / registo de pagamentos"
+                          >
+                            Reembolsar
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            {list.length === 0 ? (
+              <p className="px-4 py-8 text-center text-sm text-zinc-500">Sem coaches (não-admin) na plataforma.</p>
+            ) : null}
+          </CardContent>
+        </Card>
+      </div>
+    </section>
+  );
+}
+
 function OnlineTabContent({
   online,
   onRefresh,
@@ -578,7 +959,7 @@ function StatCard({
   accent,
 }: {
   title: string;
-  value: number | string;
+  value: ReactNode;
   hint?: string;
   accent?: boolean;
 }) {
@@ -593,7 +974,7 @@ function StatCard({
         {hint ? <p className="text-xs text-zinc-600">{hint}</p> : null}
       </CardHeader>
       <CardContent>
-        <p className="font-display text-3xl font-semibold text-white">{value}</p>
+        <div className="font-display text-3xl font-semibold text-white">{value}</div>
       </CardContent>
     </Card>
   );
