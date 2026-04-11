@@ -60,6 +60,12 @@ export const COMPACT_DEFENDING_TRANSITION_VIDEO_URL =
  */
 export const FINISHING_TRANSITION_VIDEO_URL = "/videos/training/transition-finishing.mp4";
 
+/**
+ * Vídeo do exercício "Cross and Strike".
+ * Coloca o ficheiro em `public/videos/training/cross-and-strike.mp4` ou substitui por um link YouTube.
+ */
+export const CROSS_AND_STRIKE_VIDEO_URL = "/videos/training/cross-and-strike.mp4";
+
 export type TrainingThemeId =
   | "possession"
   | "transition"
@@ -172,6 +178,12 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
     "superioridade numerica",
     "ataques em transição",
     "ataques em transicao",
+    "cross and strike",
+    "cruzamento da linha central",
+    "cruzamento do médio",
+    "cruzamento do medio",
+    "remate fora de área",
+    "remate fora de area",
   ],
   pressing: [
     "pressão",
@@ -233,6 +245,18 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
     "2v2",
     "ataques rápidos na finalização",
     "ataques rapidos na finalizacao",
+    "cross and strike",
+    "cruzamento do médio",
+    "cruzamento do medio",
+    "cruzamento do lateral",
+    "primeiro poste",
+    "segundo poste",
+    "trocas na área",
+    "trocas na area",
+    "remate fora de área",
+    "remate fora de area",
+    "ataque forte na finalização",
+    "ataque forte na finalizacao",
   ],
   defensive: [
     "defens",
@@ -287,6 +311,9 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
     "finishing transition",
     "transição com extremos",
     "transicao com extremos",
+    "cross and strike",
+    "cruzamento central",
+    "linha central ofensiva",
   ],
   physical: [
     "físico",
@@ -510,6 +537,22 @@ const MAIN_DRILLS: MainDrillDef[] = [
       videoUrl: FINISHING_TRANSITION_VIDEO_URL,
     }),
   },
+  {
+    themes: ["transition", "finishing", "wide"],
+    title: "Cross and Strike",
+    describe: (_pl, m) => ({
+      description: `O exercício inicia com troca de bola entre médio e lateral ou extremo, preparando o momento do cruzamento vindo da zona central / interior. O médio (ou quem assume o papel de cruzador desde o eixo) executa o cruzamento no timing certo, enquanto os avançados fazem movimentos cruzados para atacar o primeiro e o segundo poste. Após a primeira finalização, a bola é colocada em passe atrasado para a entrada da área, onde o médio finaliza de primeira. De seguida, o exercício repete no lado oposto. O foco está no timing das movimentações, qualidade do cruzamento e eficácia na finalização (na área e em situação de remate vindo de fora da área após o lay-off). (${m} min)`,
+      coachingPoints:
+        "Cruzamento com cabeça levantada e pé de apoio orientado à área; avançados a não cruzarem na mesma linha — um ataca primeiro poste, outro segundo / zona do penalty. No lay-off, apoio num ângulo aberto para o médio bater de primeira com corpo por cima da bola.",
+      setup:
+        "Último terço ou meio campo ofensivo (~32–38 m de profundidade); baliza ou GR; cones para marcar zona de cruzamento a partir do corredor central; bolas em cada estação; coletes.",
+      groupSplit:
+        "Filas: médios a cruzar e a finalizar fora da área; laterais/extremos no combinar inicial; dois avançados fixos na área por série, a rodar com o grupo.",
+      diagramHint:
+        "Meio/lateral ↔ troca → cruzamento desde zona central/interior → movimentos cruzados 1.º/2.º poste → remate; lay-off na entrada da área → remate médio de primeira; espelhar na outra banda.",
+      videoUrl: CROSS_AND_STRIKE_VIDEO_URL,
+    }),
+  },
 ];
 
 function scoreDrill(themes: TrainingThemeId[], def: MainDrillDef): number {
@@ -654,6 +697,7 @@ const SINGLE_DRILL_18_MIN_TITLES = new Set<string>(["Double Finishing Drill"]);
 const SINGLE_DRILL_10_MIN_TITLES = new Set<string>([
   "Back Four Shifting",
   "Compact Defending Transition",
+  "Cross and Strike",
 ]);
 const SINGLE_DRILL_8_MIN_TITLES = new Set<string>(["Passing Activation", "Dual Passing"]);
 
@@ -673,6 +717,7 @@ function singleDrillProgressionVariationsForTitle(title: string): {
   const isBackFourShifting = title === "Back Four Shifting";
   const isCompactDefendingTransition = title === "Compact Defending Transition";
   const isFinishingTransition = title === "Finishing Transition";
+  const isCrossAndStrike = title === "Cross and Strike";
   const isDoubleFinishing = title === "Double Finishing Drill";
   const is9v9Plus2Game = title === "9v9 + 2 Game";
   const isPassingActivation = title === "Passing Activation";
@@ -686,15 +731,17 @@ function singleDrillProgressionVariationsForTitle(title: string): {
         ? "Reduz o tempo máximo após recuperação (ex.: 4 toques para remate); ou acrescenta quinta baliza no eixo para forçar ainda mais fecho do meio; ou exige que só o trinco fale na reorganização durante 3 min."
         : isFinishingTransition
           ? "Encurta o tempo entre fases (apito ou grito a cada 10–15 s); ou na 1v1 obriga remate em 2 toques; ou na fase 3v3 exige que o golo venha sempre de cruzamento de extremo."
-          : isDoubleFinishing
-            ? "Aumenta a exigência no primeiro remate (vértice mais fechado); ou obriga cruzamento só com o pé interior; ou acrescenta defensor na área com contacto leve."
-            : is9v9Plus2Game
-              ? "Encosta o campo para forçar decisões mais rápidas no extremo; ou permite 3 toques no extremo em fase inicial; ou golo vale duplo se a jogada tiver mudança de corredor antes do cruzamento."
-              : isPassingActivation
-                ? "Aperta distâncias entre postes para exigir passes mais curtos e reacção mais rápida; ou fixa 2 toques máx.; ou alterna o pé obrigatório em cada série."
-                : isDualPassing
-                  ? "Encolhe o hexágono para forçar primeiro toque ainda mais limpo; ou acrescenta um defensor ligeiro no centro por 45 s; ou exige só combinações com o pé não dominante."
-                  : "Aumenta espaço (mais difícil defender) ou reduz toques permitidos no rondo. Alterna pé fraco em passes fixos.";
+          : isCrossAndStrike
+            ? "Exige cruzamento só com o pé 'fraco'; ou máximo 3 toques antes do cruzamento; ou acrescenta defensor a fechar o primeiro poste com contacto leve."
+            : isDoubleFinishing
+              ? "Aumenta a exigência no primeiro remate (vértice mais fechado); ou obriga cruzamento só com o pé interior; ou acrescenta defensor na área com contacto leve."
+              : is9v9Plus2Game
+                ? "Encosta o campo para forçar decisões mais rápidas no extremo; ou permite 3 toques no extremo em fase inicial; ou golo vale duplo se a jogada tiver mudança de corredor antes do cruzamento."
+                : isPassingActivation
+                  ? "Aperta distâncias entre postes para exigir passes mais curtos e reacção mais rápida; ou fixa 2 toques máx.; ou alterna o pé obrigatório em cada série."
+                  : isDualPassing
+                    ? "Encolhe o hexágono para forçar primeiro toque ainda mais limpo; ou acrescenta um defensor ligeiro no centro por 45 s; ou exige só combinações com o pé não dominante."
+                    : "Aumenta espaço (mais difícil defender) ou reduz toques permitidos no rondo. Alterna pé fraco em passes fixos.";
 
   if (isDualPassing) return { progression };
 
@@ -706,13 +753,15 @@ function singleDrillProgressionVariationsForTitle(title: string): {
         ? "Só duas balizas activas de cada vez (rotação a cada 90 s); ou adversário com passe obrigatório ao pivô antes de finalizar contra o bloco; ou golo na transição vale duplo se vier de passe vertical do trinco."
         : isFinishingTransition
           ? "Começar o ciclo pelo 2v1 ou 2v2; ou extremos neutros que só podem cruzar com o pé interior; ou golo nas fases 1v1 e 2v1 vale duplo."
-          : isDoubleFinishing
-            ? "Segunda bola viva após o primeiro remate para forçar reacção; ou defensores a saírem na linha em 2 toques; ou contagem de golos só com assistência de lateral."
-            : is9v9Plus2Game
-              ? "Extremos a trocar de lado ao intervalo; ou um extremo neutro que só pode dar largura à equipa em posse; ou limite de 5 passes antes de obrigar jogo ao extremo."
-              : isPassingActivation
-                ? "Dois coletes com passes obrigatórios entre cores; ou inverte o sentido da rotação a cada minuto; ou acrescenta um jogador 'defensor' a tapar uma linha de passe por 30 s."
-                : "Reduz jogadores no meio; ou acrescenta neutro exterior; ou pontua por X passes seguidos.";
+          : isCrossAndStrike
+            ? "Primeira fase só cruzamento à altura do segundo poste; ou remate de fora da área após lay-off obrigatório com o pé não dominante; ou médio e lateral trocam de papel a cada 3 repetições."
+            : isDoubleFinishing
+              ? "Segunda bola viva após o primeiro remate para forçar reacção; ou defensores a saírem na linha em 2 toques; ou contagem de golos só com assistência de lateral."
+              : is9v9Plus2Game
+                ? "Extremos a trocar de lado ao intervalo; ou um extremo neutro que só pode dar largura à equipa em posse; ou limite de 5 passes antes de obrigar jogo ao extremo."
+                : isPassingActivation
+                  ? "Dois coletes com passes obrigatórios entre cores; ou inverte o sentido da rotação a cada minuto; ou acrescenta um jogador 'defensor' a tapar uma linha de passe por 30 s."
+                  : "Reduz jogadores no meio; ou acrescenta neutro exterior; ou pontua por X passes seguidos.";
 
   return { progression, variations };
 }
