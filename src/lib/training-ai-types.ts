@@ -1,4 +1,4 @@
-/** Resposta estruturada da IA para sessão completa (JSON). */
+/** Estrutura dos planos de treino (gerador local ou futura API). */
 
 export type AiTrainingPhase = "warmup" | "main" | "cooldown";
 

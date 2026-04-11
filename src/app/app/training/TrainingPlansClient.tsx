@@ -15,6 +15,7 @@ import {
   buildSingleDrillDocumentHtml,
   openPrintableHtml,
 } from "@/lib/training-print-html";
+import { buildLocalFullTrainingSession, buildLocalSingleDrill } from "@/lib/training-session-local";
 import type { TrainingSession } from "@/types";
 
 const DURATIONS = [30, 60, 90, 120] as const;
@@ -79,69 +80,42 @@ export function TrainingPlansClient() {
   const [fullMeta, setFullMeta] = useState<{ durationMin: number; playerCount: number } | null>(null);
   const [singleDrill, setSingleDrill] = useState<AiSingleDrill | null>(null);
 
-  const runFullAi = async () => {
+  const runFullLocal = () => {
     setErr(null);
-    setFullLoading(true);
     setFullPlan(null);
     setFullMeta(null);
-    try {
-      const payload = {
-        durationMin,
-        objective,
-        players: selectedPlayers.map((p) => ({
-          name: p.name,
-          number: p.number,
-          positions: formatPlayerPositions(p),
-        })),
-      };
-      const res = await fetch("/api/training/ai-full-session", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const j = (await res.json()) as {
-        ok?: boolean;
-        error?: string;
-        plan?: AiFullTrainingSession;
-        meta?: { durationMin: number; playerCount: number };
-      };
-      if (!res.ok || !j.ok || !j.plan) {
-        setErr(j.error || "Não foi possível gerar o treino.");
-        return;
+    setFullLoading(true);
+    queueMicrotask(() => {
+      try {
+        const plan = buildLocalFullTrainingSession({
+          durationMin,
+          objective: objective.trim(),
+          players: selectedPlayers,
+        });
+        setFullPlan(plan);
+        setFullMeta({ durationMin, playerCount: selectedCount });
+      } catch {
+        setErr("Não foi possível gerar o plano.");
+      } finally {
+        setFullLoading(false);
       }
-      setFullPlan(j.plan);
-      setFullMeta(j.meta ?? { durationMin, playerCount: selectedCount });
-    } catch {
-      setErr("Erro de rede.");
-    } finally {
-      setFullLoading(false);
-    }
+    });
   };
 
-  const runDrillAi = async () => {
+  const runDrillLocal = () => {
     setErr(null);
-    setDrillLoading(true);
     setSingleDrill(null);
-    try {
-      const res = await fetch("/api/training/ai-single-drill", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          brief: drillBrief,
-          players: selectedPlayers.map((p) => ({ name: p.name, number: p.number })),
-        }),
-      });
-      const j = (await res.json()) as { ok?: boolean; error?: string; drill?: AiSingleDrill };
-      if (!res.ok || !j.ok || !j.drill) {
-        setErr(j.error || "Não foi possível gerar o exercício.");
-        return;
+    setDrillLoading(true);
+    queueMicrotask(() => {
+      try {
+        const drill = buildLocalSingleDrill(drillBrief.trim(), selectedPlayers);
+        setSingleDrill(drill);
+      } catch {
+        setErr("Não foi possível gerar o exercício.");
+      } finally {
+        setDrillLoading(false);
       }
-      setSingleDrill(j.drill);
-    } catch {
-      setErr("Erro de rede.");
-    } finally {
-      setDrillLoading(false);
-    }
+    });
   };
 
   const printFull = useCallback(() => {
@@ -233,8 +207,8 @@ export function TrainingPlansClient() {
         <div>
           <h2 className="font-display text-xl font-semibold text-white">Planos de treino</h2>
           <p className="mt-1 max-w-2xl text-sm text-zinc-500">
-            Gera sessões completas (30–120 min) ou um exercício isolado com IA. Define o plantel, o objetivo e imprime
-            para PDF pelo browser. Imagens de campo: por agora sugerimos descrições textuais para desenhares no quadro.
+            Motor local (como o Style of Play): combina o teu texto com templates e o plantel — sem API externa, sem
+            custo por uso. Imprime ou guarda em PDF pelo browser. Diagramas: descrições para desenhares no quadro.
           </p>
         </div>
         <button
@@ -251,9 +225,9 @@ export function TrainingPlansClient() {
       {pickerOpen ? (
         <Card className="border-sky-500/20">
           <CardHeader className="pb-2">
-            <CardTitle className="text-base">Quem entra no plano IA</CardTitle>
+            <CardTitle className="text-base">Quem entra no plano</CardTitle>
             <p className="text-xs text-zinc-500">
-              Sincronizado com a tua equipa (Team). A IA usa nomes, números e posições para personalizar o treino.
+              Dados da Equipa. O gerador usa nomes, números e posições nos textos (ex.: divisão de grupos).
             </p>
           </CardHeader>
           <CardContent>
@@ -300,7 +274,7 @@ export function TrainingPlansClient() {
             labTab === "full" ? "border-accent text-white" : "border-transparent text-zinc-500 hover:text-zinc-300"
           )}
         >
-          Sessão completa (IA)
+          Sessão completa
         </button>
         <button
           type="button"
@@ -310,7 +284,7 @@ export function TrainingPlansClient() {
             labTab === "drill" ? "border-accent text-white" : "border-transparent text-zinc-500 hover:text-zinc-300"
           )}
         >
-          Exercício isolado (IA)
+          Exercício isolado
         </button>
       </div>
 
@@ -364,11 +338,11 @@ export function TrainingPlansClient() {
               </div>
               <Button
                 type="button"
-                onClick={() => void runFullAi()}
+                onClick={runFullLocal}
                 disabled={fullLoading || selectedCount === 0 || objective.trim().length < 8}
                 className="w-full sm:w-auto"
               >
-                {fullLoading ? "A gerar…" : "AI Full Training Session"}
+                {fullLoading ? "A gerar…" : "Gerar sessão completa"}
               </Button>
               {selectedCount === 0 ? (
                 <p className="text-xs text-amber-200/90">Selecciona pelo menos um jogador no plantel acima.</p>
@@ -457,10 +431,10 @@ export function TrainingPlansClient() {
               />
               <Button
                 type="button"
-                onClick={() => void runDrillAi()}
+                onClick={runDrillLocal}
                 disabled={drillLoading || drillBrief.trim().length < 10}
               >
-                {drillLoading ? "A gerar…" : "Gerar exercício (IA)"}
+                {drillLoading ? "A gerar…" : "Gerar exercício"}
               </Button>
             </CardContent>
           </Card>
@@ -579,7 +553,7 @@ export function TrainingPlansClient() {
                   </div>
                 </>
               ) : (
-                <p className="text-sm text-zinc-500">Cria uma sessão manual ou usa a IA em cima.</p>
+                <p className="text-sm text-zinc-500">Cria uma sessão manual ou usa o gerador em cima.</p>
               )}
             </CardContent>
           </Card>
