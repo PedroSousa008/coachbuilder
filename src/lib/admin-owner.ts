@@ -2,7 +2,10 @@
  * Email(s) do dono / admin (painel /app/admin). Vercel: ADMIN_OWNER_EMAIL
  * Vários endereços: separar por vírgula, ponto e vírgula ou nova linha.
  * Nunca colocar palavra-passe no código — o login é o fluxo normal de registo/entrar.
+ *
+ * Fallback em código: conta bootstrap do produto (remove ou edita se forkares o repo).
  */
+const BUILTIN_OWNER_ADMIN_EMAILS: string[] = ["sousa.2003pedro@gmail.com"];
 export function normalizeAdminEmail(email: string): string {
   return email.trim().toLowerCase();
 }
@@ -43,7 +46,7 @@ function stripQuotes(s: string): string {
   return t;
 }
 
-/** Lista de emails admin configurados no servidor (normalizados). */
+/** Só variável de ambiente (para diagnósticos / métricas). */
 export function parseAdminOwnerEmailsFromEnv(): string[] {
   const raw = process.env.ADMIN_OWNER_EMAIL;
   if (!raw?.trim()) return [];
@@ -53,8 +56,14 @@ export function parseAdminOwnerEmailsFromEnv(): string[] {
     .filter(Boolean);
 }
 
+function listAllAdminOwnerEmails(): string[] {
+  const env = parseAdminOwnerEmailsFromEnv();
+  const built = BUILTIN_OWNER_ADMIN_EMAILS.map((e) => normalizeAdminEmail(stripQuotes(e))).filter(Boolean);
+  return [...new Set([...env, ...built])];
+}
+
 export function isOwnerAdminEmail(email: string): boolean {
-  const allowed = parseAdminOwnerEmailsFromEnv();
+  const allowed = listAllAdminOwnerEmails();
   if (allowed.length === 0) return false;
   return allowed.some((cfg) => adminEmailsMatch(cfg, email));
 }
