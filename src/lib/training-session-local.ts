@@ -80,6 +80,12 @@ export const FOUR_FINISHING_DRILLS_VIDEO_URL = "/videos/training/4-finishing-dri
 export const RONDO_9V3_VIDEO_URL = "/videos/training/rondo-9v3.mp4";
 
 /**
+ * Vídeo do exercício "Rondo 5v3".
+ * Coloca o ficheiro em `public/videos/training/rondo-5v3.mp4` ou substitui por um link YouTube.
+ */
+export const RONDO_5V3_VIDEO_URL = "/videos/training/rondo-5v3.mp4";
+
+/**
  * Vídeo do exercício "Goal Kick 1".
  * Coloca o ficheiro em `public/videos/training/goal-kick-1.mp4` ou substitui por um link YouTube.
  */
@@ -187,6 +193,21 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
     "combinacao medio extremo",
     "cruzamento médio para médio",
     "cruzamento medio para medio",
+    "rondo 5v3",
+    "5v3",
+    "rondo para aquecimento",
+    "rondo para aquecimento rápido",
+    "troca de bola rápida",
+    "linhas de passe",
+    "meio toque",
+    "meios toques",
+    "1 toque",
+    "2 toques",
+    "comunicação no rondo",
+    "comunicacao no rondo",
+    "movimentação após passe",
+    "movimentacao apos passe",
+    "variar o jogo rapidamente",
   ],
   transition: [
     "transição",
@@ -279,6 +300,14 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
     "medios a aparecer nas costas",
     "cruzamento médio para médio",
     "cruzamento medio para medio",
+    "rondo 5v3",
+    "5v3",
+    "virar o jogo",
+    "troca de bola rápida",
+    "reação à perda",
+    "reacao a perda",
+    "recuperar e virar",
+    "variar o jogo rapidamente",
   ],
   pressing: [
     "pressão",
@@ -302,6 +331,16 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
     "forte recuperacao",
     "recuperação na perda",
     "recuperacao na perda",
+    "rondo 5v3",
+    "5v3",
+    "pressão alta",
+    "pressao alta",
+    "pressão sobre o portador",
+    "pressao sobre o portador",
+    "forte pressão",
+    "forte pressao",
+    "pressão no quadrado",
+    "pressao no quadrado",
   ],
   finishing: [
     "finaliza",
@@ -505,6 +544,12 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
     "aquecimento com rondo",
     "rondo com pressão",
     "rondo com pressao",
+    "rondo 5v3",
+    "rondo de aquecimento",
+    "aquecimento com rondo",
+    "futebol curto",
+    "movimentos rápidos após passar a bola",
+    "movimentos rapidos apos passar a bola",
   ],
   balanced: [],
 };
@@ -770,6 +815,26 @@ const MAIN_DRILLS: MainDrillDef[] = [
     }),
   },
   {
+    themes: ["possession", "pressing", "physical", "transition"],
+    title: "Rondo 5v3",
+    describe: (pl, m) => ({
+      description: `Três equipas de 5 jogadores distribuem-se por dois quadrados laterais e um setor central com 2 jogadores. O treinador inicia passando a bola a uma das equipas num dos quadrados; de imediato, 3 jogadores da equipa do setor central entram a pressionar, formando um 5v3. A equipa em posse deve realizar 5 passes consecutivos (número ajustável pelo treinador) e depois virar o jogo para a equipa do quadrado oposto, evitando a intercepção dos 3 defesas e dos 2 do centro. Se conseguir: os 2 do meio e 1 dos que pressionavam deslocam-se depressa para pressionar no outro lado, mantendo a lógica. Se a defesa recuperar: deve virar imediatamente para a equipa livre; a equipa que perdeu passa a defender com 3, mantendo 2 fixos no centro. O exercício corre de forma contínua durante 10–15 minutos. O foco está na circulação rápida, tomada de decisão, mudança de corredor, comunicação e reacção à perda/ganho de bola, com futebol curto e 1–2 toques. (${m} min)`,
+      coachingPoints:
+        "Em posse: corpo aberto, voz constante, linhas de passe curtas e apoio atrás e ao lado da bola; antes de virar, fixar um defensor com olhar ou passe falso. Pressão: os 3 fecham canto e canal ao portador; ao roubar, primeiro passe vertical ou para o espaço livre. Centro: os 2 leem o momento da viragem e saltam para o novo lado sem atrasar a transição.",
+      setup:
+        "Dois quadrados laterais (~12×12 m cada, ajustáveis) + faixa ou rectângulo central (~8×14 m) a unir as zonas; 15 jogadores de campo + treinador a servir primeira bola; coletes por equipa; várias bolas para repor ritmo.",
+      groupSplit:
+        pl.length >= 15
+          ? "Três equipas de 5 com rotação de papéis (lateral / central / pressão) a cada 4–5 min."
+          : pl.length >= 12
+            ? "Reduz para 4+4+2 no centro e 2+2 a pressionar de cada lado, ou dois quadrados com menos jogadores mantendo a lógica 4v2."
+            : "Espaço menor e meta de 4 passes; coach entra como neutro de ligação se faltarem jogadores.",
+      diagramHint:
+        "Dois quadrados laterais + zona central; seta coach→equipa A; 3 saltam do centro para 5v3; após 5 passes, viragem longa ao quadrado B; seta 2 do centro + 1 pressionador a migrar; se roubo, viragem à equipa livre e rotação de papéis defensivos.",
+      videoUrl: RONDO_5V3_VIDEO_URL,
+    }),
+  },
+  {
     themes: ["possession", "transition", "wide"],
     title: "Goal Kick 1",
     describe: (_pl, m) => ({
@@ -966,6 +1031,7 @@ const SINGLE_DRILL_10_MIN_TITLES = new Set<string>([
   "Goal Kick 1",
   "Goal Kick 2",
   "Midfielder Run Behind Defense",
+  "Rondo 5v3",
 ]);
 const SINGLE_DRILL_8_MIN_TITLES = new Set<string>(["Passing Activation", "Dual Passing"]);
 const SINGLE_DRILL_5_MIN_TITLES = new Set<string>(["Rondo 9v3"]);
@@ -992,6 +1058,7 @@ function singleDrillProgressionVariationsForTitle(title: string): {
   const isDoubleFinishing = title === "Double Finishing Drill";
   const is9v9Plus2Game = title === "9v9 + 2 Game";
   const isRondo9v3 = title === "Rondo 9v3";
+  const isRondo5v3 = title === "Rondo 5v3";
   const isGoalKick1 = title === "Goal Kick 1";
   const isGoalKick2 = title === "Goal Kick 2";
   const isMidfielderRunBehindDefense = title === "Midfielder Run Behind Defense";
@@ -1016,17 +1083,19 @@ function singleDrillProgressionVariationsForTitle(title: string): {
                   ? "Encosta o campo para forçar decisões mais rápidas no extremo; ou permite 3 toques no extremo em fase inicial; ou golo vale duplo se a jogada tiver mudança de corredor antes do cruzamento."
                   : isRondo9v3
                     ? "Sobe a meta a 12 passes por ponto; ou os 3 têm no máximo 4 toques para marcar após recuperação; ou meiinho só pode tocar com 1 toque."
-                    : isGoalKick1
-                      ? "Adversário com linha mais alta para forçar timing do overlap; ou máximo 8 s desde a reposição até ao passe em profundidade; ou lateral obrigado a cruzar com o pé interior na primeira série."
-                      : isGoalKick2
-                        ? "Avançado adversário com pressão dobrada (salto + sombra ao GR); ou GR com máximo 5 s para jogar; ou extremo obrigado a iniciar o movimento de pressão antes do passe ao lateral."
-                        : isMidfielderRunBehindDefense
-                          ? "Linha defensiva mais alta e viva; ou máximo 2 toques na combinação médio–extremo–avançado; ou cruzamento obrigatório com o pé interior na primeira série."
-                          : isPassingActivation
-                            ? "Aperta distâncias entre postes para exigir passes mais curtos e reacção mais rápida; ou fixa 2 toques máx.; ou alterna o pé obrigatório em cada série."
-                            : isDualPassing
-                              ? "Encolhe o hexágono para forçar primeiro toque ainda mais limpo; ou acrescenta um defensor ligeiro no centro por 45 s; ou exige só combinações com o pé não dominante."
-                              : "Aumenta espaço (mais difícil defender) ou reduz toques permitidos no rondo. Alterna pé fraco em passes fixos.";
+                    : isRondo5v3
+                      ? "Meta de 7 passes antes da viragem; ou máximo 6 s para o grupo de 3 roubar; ou zona central com 1 toque obrigatório para os 2 fixos."
+                      : isGoalKick1
+                        ? "Adversário com linha mais alta para forçar timing do overlap; ou máximo 8 s desde a reposição até ao passe em profundidade; ou lateral obrigado a cruzar com o pé interior na primeira série."
+                        : isGoalKick2
+                          ? "Avançado adversário com pressão dobrada (salto + sombra ao GR); ou GR com máximo 5 s para jogar; ou extremo obrigado a iniciar o movimento de pressão antes do passe ao lateral."
+                          : isMidfielderRunBehindDefense
+                            ? "Linha defensiva mais alta e viva; ou máximo 2 toques na combinação médio–extremo–avançado; ou cruzamento obrigatório com o pé interior na primeira série."
+                            : isPassingActivation
+                              ? "Aperta distâncias entre postes para exigir passes mais curtos e reacção mais rápida; ou fixa 2 toques máx.; ou alterna o pé obrigatório em cada série."
+                              : isDualPassing
+                                ? "Encolhe o hexágono para forçar primeiro toque ainda mais limpo; ou acrescenta um defensor ligeiro no centro por 45 s; ou exige só combinações com o pé não dominante."
+                                : "Aumenta espaço (mais difícil defender) ou reduz toques permitidos no rondo. Alterna pé fraco em passes fixos.";
 
   if (isDualPassing) return { progression };
 
@@ -1048,15 +1117,17 @@ function singleDrillProgressionVariationsForTitle(title: string): {
                   ? "Extremos a trocar de lado ao intervalo; ou um extremo neutro que só pode dar largura à equipa em posse; ou limite de 5 passes antes de obrigar jogo ao extremo."
                   : isRondo9v3
                     ? "Golo dos 3 após recuperação vale duplo se vier em ≤3 toques; ou só uma baliza 'viva' de cada vez; ou equipa de 9 perde 1 ponto se o meiinho perder a bola."
-                    : isGoalKick1
-                      ? "Espelhar toda a sequência pelo lado esquerdo; ou falso 9 a descair antes do passe ao trinco; ou profundidade obrigatoriamente em passe rasteiro (sem elevação)."
-                      : isGoalKick2
-                        ? "Espelhar padrão no lado esquerdo; ou trinco com 1 toque obrigatório nas duas primeiras saídas; ou lateral adversário com 'permissão' de contacto leve no duelo com o extremo."
-                        : isMidfielderRunBehindDefense
-                          ? "Espelhar sequência completa pelo lado esquerdo; ou defensor vivo a acompanhar uma das corridas nas costas; ou golo vale duplo se a finalização for de cabeça no 2.º poste."
-                          : isPassingActivation
-                            ? "Dois coletes com passes obrigatórios entre cores; ou inverte o sentido da rotação a cada minuto; ou acrescenta um jogador 'defensor' a tapar uma linha de passe por 30 s."
-                            : "Reduz jogadores no meio; ou acrescenta neutro exterior; ou pontua por X passes seguidos.";
+                    : isRondo5v3
+                      ? "Quadrados mais estreitos para forçar viragem longa; ou quarto jogador a saltar à pressão no último minuto; ou viragem obrigatória só após combinação triangular."
+                      : isGoalKick1
+                        ? "Espelhar toda a sequência pelo lado esquerdo; ou falso 9 a descair antes do passe ao trinco; ou profundidade obrigatoriamente em passe rasteiro (sem elevação)."
+                        : isGoalKick2
+                          ? "Espelhar padrão no lado esquerdo; ou trinco com 1 toque obrigatório nas duas primeiras saídas; ou lateral adversário com 'permissão' de contacto leve no duelo com o extremo."
+                          : isMidfielderRunBehindDefense
+                            ? "Espelhar sequência completa pelo lado esquerdo; ou defensor vivo a acompanhar uma das corridas nas costas; ou golo vale duplo se a finalização for de cabeça no 2.º poste."
+                            : isPassingActivation
+                              ? "Dois coletes com passes obrigatórios entre cores; ou inverte o sentido da rotação a cada minuto; ou acrescenta um jogador 'defensor' a tapar uma linha de passe por 30 s."
+                              : "Reduz jogadores no meio; ou acrescenta neutro exterior; ou pontua por X passes seguidos.";
 
   return { progression, variations };
 }
