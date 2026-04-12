@@ -91,6 +91,12 @@ export const GOAL_KICK_1_VIDEO_URL = "/videos/training/goal-kick-1.mp4";
  */
 export const GOAL_KICK_2_VIDEO_URL = "/videos/training/goal-kick-2.mp4";
 
+/**
+ * Vídeo do exercício "Midfielder Run Behind Defense".
+ * Coloca o ficheiro em `public/videos/training/behind-defense.mp4` ou substitui por um link YouTube.
+ */
+export const MIDFIELDER_RUN_BEHIND_DEFENSE_VIDEO_URL = "/videos/training/behind-defense.mp4";
+
 export type TrainingThemeId =
   | "possession"
   | "transition"
@@ -175,6 +181,12 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
     "central a bater pontapé",
     "goal kick 2",
     "virar o jogo",
+    "midfielder run behind",
+    "run behind defense",
+    "combinação médio extremo",
+    "combinacao medio extremo",
+    "cruzamento médio para médio",
+    "cruzamento medio para medio",
   ],
   transition: [
     "transição",
@@ -259,6 +271,14 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
     "vantagem 2v1",
     "leitura da pressão",
     "leitura da pressao",
+    "midfielder run behind",
+    "run behind defense",
+    "médios nas costas",
+    "medios nas costas",
+    "médios a aparecer nas costas",
+    "medios a aparecer nas costas",
+    "cruzamento médio para médio",
+    "cruzamento medio para medio",
   ],
   pressing: [
     "pressão",
@@ -360,6 +380,16 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
     "goal kick",
     "goal kick 1",
     "passe atrasado",
+    "midfielder run behind",
+    "run behind defense",
+    "médios nas costas",
+    "medios nas costas",
+    "médios a aparecer nas costas",
+    "medios a aparecer nas costas",
+    "extremos a apoiar",
+    "ataque ao segundo poste",
+    "cruzamento médio para médio",
+    "cruzamento medio para medio",
   ],
   defensive: [
     "defens",
@@ -444,6 +474,13 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
     "extremo na pressão",
     "extremo na pressao",
     "corredor lateral livre",
+    "midfielder run behind",
+    "run behind defense",
+    "extremos a apoiar",
+    "cruzamento médio para médio",
+    "cruzamento medio para medio",
+    "médios nas costas",
+    "medios nas costas",
   ],
   physical: [
     "físico",
@@ -764,6 +801,22 @@ const MAIN_DRILLS: MainDrillDef[] = [
       videoUrl: GOAL_KICK_2_VIDEO_URL,
     }),
   },
+  {
+    themes: ["possession", "transition", "finishing", "wide"],
+    title: "Midfielder Run Behind Defense",
+    describe: (_pl, m) => ({
+      description: `A jogada começa com bola no médio, que liga no extremo. O extremo simula que vai abrir, mas vem para dentro e joga de primeira no avançado, que amortece para o médio em apoio. Em paralelo, o médio e o extremo do lado oposto atacam as costas da defesa, preparando a zona de finalização. O médio em posse cruza para o segundo poste, onde surgem os jogadores em movimento para finalizar. O foco está na combinação rápida na primeira zona, nos movimentos sem bola nas costas da linha e no ataque coordenado ao segundo poste. (${m} min)`,
+      coachingPoints:
+        "Combinação inicial: extremo vende a abertura com corpo e primeiro passo antes de cortar para dentro; avançado amortecimento orientado para o médio já em movimento. Lado oposto: arranque nas costas no timing do passe interior — não antes da bola sair. Cruzamento: cabeça levantada, bola entre GR e defesa ou à altura do 2.º poste; finalizadores chegam de fora do cone de visão do defesa.",
+      setup:
+        "Terço ofensivo ou meio campo atacado (~40×36 m); baliza ou GR; linha defensiva simulada (4 defesas passivos ou cones); bolas junto ao médio inicial e ao servidor de continuidade; coletes.",
+      groupSplit:
+        "Cadeia: médio iniciador + extremo + avançado + médio oposto + extremo oposto + 2 finalizadores no 2.º poste; rotação a cada 6–8 repetições para todos passarem por médio em posse, extremo interior e corrida nas costas.",
+      diagramHint:
+        "Médio A→extremo (falso largo→corte interior)→1ª no avançado→amortecimento→médio A; simultâneo médio B+extremo B corridas nas costas; médio A cruza 2.º poste→entradas finalização; seta espelhar na outra banda.",
+      videoUrl: MIDFIELDER_RUN_BEHIND_DEFENSE_VIDEO_URL,
+    }),
+  },
 ];
 
 function scoreDrill(themes: TrainingThemeId[], def: MainDrillDef): number {
@@ -912,6 +965,7 @@ const SINGLE_DRILL_10_MIN_TITLES = new Set<string>([
   "4 Finishing Drills",
   "Goal Kick 1",
   "Goal Kick 2",
+  "Midfielder Run Behind Defense",
 ]);
 const SINGLE_DRILL_8_MIN_TITLES = new Set<string>(["Passing Activation", "Dual Passing"]);
 const SINGLE_DRILL_5_MIN_TITLES = new Set<string>(["Rondo 9v3"]);
@@ -940,6 +994,7 @@ function singleDrillProgressionVariationsForTitle(title: string): {
   const isRondo9v3 = title === "Rondo 9v3";
   const isGoalKick1 = title === "Goal Kick 1";
   const isGoalKick2 = title === "Goal Kick 2";
+  const isMidfielderRunBehindDefense = title === "Midfielder Run Behind Defense";
   const isPassingActivation = title === "Passing Activation";
   const isDualPassing = title === "Dual Passing";
 
@@ -965,11 +1020,13 @@ function singleDrillProgressionVariationsForTitle(title: string): {
                       ? "Adversário com linha mais alta para forçar timing do overlap; ou máximo 8 s desde a reposição até ao passe em profundidade; ou lateral obrigado a cruzar com o pé interior na primeira série."
                       : isGoalKick2
                         ? "Avançado adversário com pressão dobrada (salto + sombra ao GR); ou GR com máximo 5 s para jogar; ou extremo obrigado a iniciar o movimento de pressão antes do passe ao lateral."
-                        : isPassingActivation
-                          ? "Aperta distâncias entre postes para exigir passes mais curtos e reacção mais rápida; ou fixa 2 toques máx.; ou alterna o pé obrigatório em cada série."
-                          : isDualPassing
-                            ? "Encolhe o hexágono para forçar primeiro toque ainda mais limpo; ou acrescenta um defensor ligeiro no centro por 45 s; ou exige só combinações com o pé não dominante."
-                            : "Aumenta espaço (mais difícil defender) ou reduz toques permitidos no rondo. Alterna pé fraco em passes fixos.";
+                        : isMidfielderRunBehindDefense
+                          ? "Linha defensiva mais alta e viva; ou máximo 2 toques na combinação médio–extremo–avançado; ou cruzamento obrigatório com o pé interior na primeira série."
+                          : isPassingActivation
+                            ? "Aperta distâncias entre postes para exigir passes mais curtos e reacção mais rápida; ou fixa 2 toques máx.; ou alterna o pé obrigatório em cada série."
+                            : isDualPassing
+                              ? "Encolhe o hexágono para forçar primeiro toque ainda mais limpo; ou acrescenta um defensor ligeiro no centro por 45 s; ou exige só combinações com o pé não dominante."
+                              : "Aumenta espaço (mais difícil defender) ou reduz toques permitidos no rondo. Alterna pé fraco em passes fixos.";
 
   if (isDualPassing) return { progression };
 
@@ -995,9 +1052,11 @@ function singleDrillProgressionVariationsForTitle(title: string): {
                       ? "Espelhar toda a sequência pelo lado esquerdo; ou falso 9 a descair antes do passe ao trinco; ou profundidade obrigatoriamente em passe rasteiro (sem elevação)."
                       : isGoalKick2
                         ? "Espelhar padrão no lado esquerdo; ou trinco com 1 toque obrigatório nas duas primeiras saídas; ou lateral adversário com 'permissão' de contacto leve no duelo com o extremo."
-                        : isPassingActivation
-                          ? "Dois coletes com passes obrigatórios entre cores; ou inverte o sentido da rotação a cada minuto; ou acrescenta um jogador 'defensor' a tapar uma linha de passe por 30 s."
-                          : "Reduz jogadores no meio; ou acrescenta neutro exterior; ou pontua por X passes seguidos.";
+                        : isMidfielderRunBehindDefense
+                          ? "Espelhar sequência completa pelo lado esquerdo; ou defensor vivo a acompanhar uma das corridas nas costas; ou golo vale duplo se a finalização for de cabeça no 2.º poste."
+                          : isPassingActivation
+                            ? "Dois coletes com passes obrigatórios entre cores; ou inverte o sentido da rotação a cada minuto; ou acrescenta um jogador 'defensor' a tapar uma linha de passe por 30 s."
+                            : "Reduz jogadores no meio; ou acrescenta neutro exterior; ou pontua por X passes seguidos.";
 
   return { progression, variations };
 }
