@@ -1,3 +1,4 @@
+import { honorCabinetDedupeKey } from "@/lib/coach-career-aggregates";
 import { newCoachEntityId } from "@/lib/coach-entity-id";
 import type { CoachCareerSeason, CoachHonorEntry } from "@/types";
 
@@ -104,7 +105,15 @@ export function buildCareerOriginatedHonors(seasons: CoachCareerSeason[]): Coach
   for (const s of seasons) {
     list.push(...honorsDerivedFromSeason(s));
   }
-  return list;
+  const seen = new Set<string>();
+  const deduped: CoachHonorEntry[] = [];
+  for (const h of list) {
+    const k = honorCabinetDedupeKey(h);
+    if (seen.has(k)) continue;
+    seen.add(k);
+    deduped.push(h);
+  }
+  return deduped;
 }
 
 /**

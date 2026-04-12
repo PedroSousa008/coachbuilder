@@ -9,48 +9,29 @@ import {
   TROPHY_CABINET_ROWS,
   TROPHY_CABINET_SLOTS,
 } from "@/lib/coach-profile-constants";
-import { sortHonorsForCabinetDisplay } from "@/lib/coach-career-aggregates";
+import { honorsForTrophyCabinet } from "@/lib/coach-career-aggregates";
 import { HonorTrophyVisual } from "@/components/profile/HonorTrophyVisual";
 
 function TrophyPlaque({ honor }: { honor: CoachHonorEntry }) {
   const season = honor.seasonLabel.trim() || "—";
   const tier = honor.ageGroup.trim() || "—";
   const club = honor.club.trim() || "—";
+  const line = `${season} · ${tier} · ${club}`;
 
   return (
     <div
-      className="pointer-events-none relative z-[2] shrink-0 border-t-2 border-[#f0d78c]/35 px-1 py-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_-2px_8px_rgba(0,0,0,0.5)] sm:px-1.5 sm:py-1.5"
+      className="pointer-events-none relative z-[2] min-h-0 shrink-0 border-t border-[#f0d78c]/40 px-1 py-0.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_-1px_6px_rgba(0,0,0,0.45)] sm:px-1.5 sm:py-0.5"
       style={{
         background: "linear-gradient(180deg, #c4a035 0%, #e8d18a 22%, #b8922e 48%, #8f7024 100%)",
       }}
     >
-      <div
-        className="rounded-sm px-0.5 py-0.5 sm:px-1"
-        style={{
-          background: "linear-gradient(180deg, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.45) 100%)",
-          boxShadow: "inset 0 1px 2px rgba(255,255,255,0.12)",
-        }}
+      <p
+        className="truncate whitespace-nowrap font-display text-[0.5rem] font-bold uppercase leading-none tracking-wide text-[#fffef5] sm:text-[0.55rem]"
+        style={{ textShadow: "0 1px 2px rgba(0,0,0,0.85)" }}
+        title={line}
       >
-        <p
-          className="font-display text-[0.55rem] font-bold uppercase leading-tight tracking-wide text-[#fffef5] sm:text-[0.62rem]"
-          style={{ textShadow: "0 1px 2px rgba(0,0,0,0.85)" }}
-        >
-          {season}
-        </p>
-        <p
-          className="mt-0.5 font-display text-[0.5rem] font-semibold uppercase tracking-wider text-[#fff3c4] sm:text-[0.55rem]"
-          style={{ textShadow: "0 1px 2px rgba(0,0,0,0.75)" }}
-        >
-          {tier}
-        </p>
-        <p
-          className="mt-0.5 truncate font-display text-[0.48rem] font-medium leading-snug text-[#f5ebc8] sm:text-[0.52rem]"
-          style={{ textShadow: "0 1px 2px rgba(0,0,0,0.8)" }}
-          title={club}
-        >
-          {club}
-        </p>
-      </div>
+        {line}
+      </p>
     </div>
   );
 }
@@ -63,7 +44,7 @@ type Props = {
 
 export function TrophyCabinet({ honors, selectedId, onSelect }: Props) {
   const rows = useMemo(() => {
-    const sorted = sortHonorsForCabinetDisplay(honors);
+    const sorted = honorsForTrophyCabinet(honors);
     const flat: (CoachHonorEntry | null)[] = Array.from({ length: TROPHY_CABINET_SLOTS }, () => null);
     sorted.slice(0, TROPHY_CABINET_SLOTS).forEach((h, i) => {
       flat[i] = h;
