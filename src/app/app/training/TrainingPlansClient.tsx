@@ -32,6 +32,7 @@ import { Search } from "lucide-react";
 import {
   SAVED_EXERCISE_CATEGORIES,
   SAVED_EXERCISE_CATEGORY_LABELS,
+  suggestSavedExerciseCategory,
 } from "@/lib/saved-exercise-categories";
 import type { NewSavedTrainingExerciseInput, SavedExerciseCategory, TrainingSession } from "@/types";
 
@@ -41,11 +42,6 @@ function phaseLabel(p: AiTrainingPhase): string {
   if (p === "warmup") return "Aquecimento";
   if (p === "cooldown") return "Alongamento / volta à calma";
   return "Principal";
-}
-
-function suggestCategoryFromPhase(phase: AiTrainingPhase): SavedExerciseCategory {
-  if (phase === "warmup" || phase === "cooldown") return "warmup";
-  return "mixed";
 }
 
 type SaveExercisePayload = Omit<NewSavedTrainingExerciseInput, "category">;
@@ -151,7 +147,11 @@ export function TrainingPlansClient() {
 
   const openSaveFromBlock = (b: AiTrainingBlock) => {
     setSaveModal({
-      defaultCategory: suggestCategoryFromPhase(b.phase),
+      defaultCategory: suggestSavedExerciseCategory({
+        title: b.title,
+        videoUrl: b.videoUrl,
+        phase: b.phase,
+      }),
       payload: {
         title: b.title,
         durationMin: b.durationMin,
@@ -169,7 +169,10 @@ export function TrainingPlansClient() {
   const openSaveFromDrill = () => {
     if (!singleDrill) return;
     setSaveModal({
-      defaultCategory: "mixed",
+      defaultCategory: suggestSavedExerciseCategory({
+        title: singleDrill.title,
+        videoUrl: singleDrill.videoUrl,
+      }),
       payload: {
         title: singleDrill.title,
         durationMin: singleDrill.durationMin,

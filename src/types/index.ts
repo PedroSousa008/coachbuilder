@@ -192,6 +192,7 @@ export interface TrainingSession {
 export type SavedExerciseCategory =
   | "warmup"
   | "possession"
+  | "goalKick"
   | "pressing"
   | "finishing"
   | "defensive"

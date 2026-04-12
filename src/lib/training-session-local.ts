@@ -4,6 +4,7 @@
  */
 
 import type { Player, SavedExerciseCategory } from "@/types";
+import { isGoalKickExercise } from "@/lib/saved-exercise-categories";
 import type {
   AiFullTrainingSession,
   AiSingleDrill,
@@ -994,6 +995,7 @@ function themesToFilterCategories(themes: TrainingThemeId[]): SavedExerciseCateg
 
 function primarySaveCategoryFromFilters(cats: SavedExerciseCategory[]): SavedExerciseCategory {
   const order: SavedExerciseCategory[] = [
+    "goalKick",
     "finishing",
     "defensive",
     "pressing",
@@ -1068,7 +1070,10 @@ export function getTrainingCatalogItems(players: Player[]): TrainingCatalogItem[
     const body = def.describe(players, mins);
     const { progression, variations } = singleDrillProgressionVariationsForTitle(def.title);
     const brief = body.description.replace(/\s*\(\d+\s*min\)\s*\.?$/iu, "").trim();
-    const fc = themesToFilterCategories(def.themes);
+    const fcBase = themesToFilterCategories(def.themes);
+    const fc = isGoalKickExercise(def.title, body.videoUrl)
+      ? [...new Set<SavedExerciseCategory>([...fcBase, "goalKick"])]
+      : fcBase;
     return {
       catalogId: `main:${def.title}`,
       title: def.title,
