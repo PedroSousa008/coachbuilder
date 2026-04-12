@@ -25,6 +25,12 @@ export const OFFENSIVE_BETWEEN_LINES_VIDEO_URL = "/videos/training/offensive-bet
 export const PASSING_ACTIVATION_VIDEO_URL = "/videos/training/passing-activation.mp4";
 
 /**
+ * Vídeo do exercício "Warm Up with Ball".
+ * Coloca o ficheiro em `public/videos/training/warm-up.mp4` ou substitui por um link YouTube.
+ */
+export const WARM_UP_WITH_BALL_VIDEO_URL = "/videos/training/warm-up.mp4";
+
+/**
  * Vídeo do exercício "Dual Passing".
  * Coloca o ficheiro em `public/videos/training/dual-passing.mp4` ou substitui por um link YouTube.
  */
@@ -214,6 +220,15 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
     "movimentação após passe",
     "movimentacao apos passe",
     "variar o jogo rapidamente",
+    "warm up with ball",
+    "início de treino",
+    "inicio de treino",
+    "movimentação com bola",
+    "movimentacao com bola",
+    "controlo de bola",
+    "controle de bola",
+    "ativação",
+    "ativacao",
   ],
   transition: [
     "transição",
@@ -575,6 +590,16 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
     "futebol curto",
     "movimentos rápidos após passar a bola",
     "movimentos rapidos apos passar a bola",
+    "warm up with ball",
+    "warm up",
+    "início de treino",
+    "inicio de treino",
+    "movimentação com bola",
+    "movimentacao com bola",
+    "controlo de bola",
+    "controle de bola",
+    "ativação",
+    "ativacao",
   ],
   balanced: [],
 };
@@ -609,6 +634,24 @@ type MainDrillDef = {
 };
 
 const MAIN_DRILLS: MainDrillDef[] = [
+  {
+    themes: ["physical", "possession", "balanced"],
+    title: "Warm Up with Ball",
+    describe: (pl, m) => ({
+      description: `Os jogadores conduzem a bola, passam por 2 cones em drible e, após realizar o passe para um colega, saem imediatamente em sprint para o espaço livre. O exercício decorre de forma contínua, focando a coordenação, controlo de bola e aceleração após passe. (${m} min)`,
+      coachingPoints:
+        "Condução com toques próximos e cabeça levantada nos cones; passe firme e jogável ao colega; arranque explosivo no instante após o passe, atacando espaço livre sem colidir com o próximo par.",
+      setup: "Rectângulo ou corredor ~20×15 m (ajustável); 2 cones por repetição + bolas suficientes para fluidez; filas ou rotação em pares.",
+      groupSplit:
+        pl.length >= 10
+          ? "Dois corredores paralelos com filas alternadas; rotação de papéis condução / recepção / sprint."
+          : pl.length >= 6
+            ? "Um corredor; pares a alternar quem conduz e quem oferece o alvo de passe."
+            : "Espaço menor; coach como parede de passe ou neutro se faltarem jogadores.",
+      diagramHint: "Condução → slalom 2 cones → passe ao colega → sprint imediato ao espaço; rotação contínua.",
+      videoUrl: WARM_UP_WITH_BALL_VIDEO_URL,
+    }),
+  },
   {
     themes: ["possession", "physical", "balanced"],
     title: "Passing Activation",
@@ -936,8 +979,18 @@ function scoreDrill(themes: TrainingThemeId[], def: MainDrillDef): number {
   return s;
 }
 
-function pickMainDrills(themes: TrainingThemeId[], count: number, seed: number): MainDrillDef[] {
-  const scored = MAIN_DRILLS.map((d, i) => ({ d, s: scoreDrill(themes, d) + ((seed + i * 13) % 3) * 0.1 }))
+function pickMainDrills(
+  themes: TrainingThemeId[],
+  count: number,
+  seed: number,
+  excludeTitles?: ReadonlySet<string>,
+): MainDrillDef[] {
+  const pool =
+    excludeTitles && excludeTitles.size > 0
+      ? MAIN_DRILLS.filter((d) => !excludeTitles.has(d.title))
+      : MAIN_DRILLS;
+  const scored = pool
+    .map((d, i) => ({ d, s: scoreDrill(themes, d) + ((seed + i * 13) % 3) * 0.1 }))
     .sort((a, b) => b.s - a.s)
     .map((x) => x.d);
   const out: MainDrillDef[] = [];
@@ -949,8 +1002,8 @@ function pickMainDrills(themes: TrainingThemeId[], count: number, seed: number):
     out.push(d);
   }
   let i = 0;
-  while (out.length < count && i < MAIN_DRILLS.length) {
-    const d = MAIN_DRILLS[i++]!;
+  while (out.length < count && i < pool.length) {
+    const d = pool[i++]!;
     if (!used.has(d.title)) {
       used.add(d.title);
       out.push(d);
@@ -993,16 +1046,18 @@ export function buildLocalFullTrainingSession(params: {
   let mainTotal = durationMin - warmD - coolD;
   if (mainTotal < 10) mainTotal = 10;
   const parts2 = splitMinutes(mainTotal, nMain);
-  const defs2 = pickMainDrills(themes, nMain, seed);
+  const defs2 = pickMainDrills(themes, nMain, seed, new Set<string>(["Warm Up with Ball"]));
 
   recalc.push({
-    title: "Aquecimento integrado com bola",
+    title: "Warm Up with Ball",
     durationMin: warmD,
     phase: "warmup",
-    description: `Mobilidade + passes em movimento (pares e triângulos); últimos 3 min com aumento de ritmo. ${players.length} jogadores.`,
-    coachingPoints: "Qualidade do passe antes da velocidade; cabeça levantada.",
-    setup: "Bolsa de bolas; rectângulo 20x15 m.",
-    diagramHint: "Zigzag entre cones com passe ao desmarcar.",
+    description: `Os jogadores conduzem a bola, passam por 2 cones em drible e, após realizar o passe para um colega, saem imediatamente em sprint para o espaço livre. O exercício decorre de forma contínua, focando a coordenação, controlo de bola e aceleração após passe. (${warmD} min). ${players.length} jogadores.`,
+    coachingPoints:
+      "Condução com toques próximos e cabeça levantada nos cones; passe firme e jogável ao colega; arranque explosivo no instante após o passe, atacando espaço livre.",
+    setup: "Rectângulo ou corredor ~20×15 m (ajustável); 2 cones por repetição + bolas suficientes para fluidez; filas ou rotação em pares.",
+    diagramHint: "Condução → slalom 2 cones → passe ao colega → sprint imediato ao espaço; rotação contínua.",
+    videoUrl: WARM_UP_WITH_BALL_VIDEO_URL,
   });
 
   defs2.forEach((def, i) => {
@@ -1080,7 +1135,7 @@ const SINGLE_DRILL_10_MIN_TITLES = new Set<string>([
   "Rondo 5v3",
 ]);
 const SINGLE_DRILL_8_MIN_TITLES = new Set<string>(["Passing Activation", "Dual Passing"]);
-const SINGLE_DRILL_5_MIN_TITLES = new Set<string>(["Rondo 9v3"]);
+const SINGLE_DRILL_5_MIN_TITLES = new Set<string>(["Rondo 9v3", "Warm Up with Ball"]);
 
 function singleDrillDurationForTitle(title: string, briefLength: number): number {
   if (SINGLE_DRILL_20_MIN_TITLES.has(title)) return 20;
@@ -1110,6 +1165,7 @@ function singleDrillProgressionVariationsForTitle(title: string): {
   const isGoalKick2 = title === "Goal Kick 2";
   const isMidfielderRunBehindDefense = title === "Midfielder Run Behind Defense";
   const is3v2FastBreak = title === "3v2 Fast Break";
+  const isWarmUpWithBall = title === "Warm Up with Ball";
   const isPassingActivation = title === "Passing Activation";
   const isDualPassing = title === "Dual Passing";
 
@@ -1141,7 +1197,9 @@ function singleDrillProgressionVariationsForTitle(title: string): {
                             ? "Linha defensiva mais alta e viva; ou máximo 2 toques na combinação médio–extremo–avançado; ou cruzamento obrigatório com o pé interior na primeira série."
                             : is3v2FastBreak
                               ? "Encurta o eixo a ~24 m para decisões ainda mais rápidas; ou extremo com máximo 2 toques antes do cruzamento na 1.ª fase; ou defesa pode sair ao cruzamento com contacto leve."
-                              : isPassingActivation
+                              : isWarmUpWithBall
+                                ? "Acrescenta um 3.º cone no slalom; ou exige passe com o pé interior; ou sprint com mudança de direcção obrigatória ao desmarcar."
+                                : isPassingActivation
                               ? "Aperta distâncias entre postes para exigir passes mais curtos e reacção mais rápida; ou fixa 2 toques máx.; ou alterna o pé obrigatório em cada série."
                               : isDualPassing
                                 ? "Encolhe o hexágono para forçar primeiro toque ainda mais limpo; ou acrescenta um defensor ligeiro no centro por 45 s; ou exige só combinações com o pé não dominante."
@@ -1177,7 +1235,9 @@ function singleDrillProgressionVariationsForTitle(title: string): {
                             ? "Espelhar sequência completa pelo lado esquerdo; ou defensor vivo a acompanhar uma das corridas nas costas; ou golo vale duplo se a finalização for de cabeça no 2.º poste."
                             : is3v2FastBreak
                               ? "1.ª fase só cruzamento rasteiro; ou médio/treinador serve a 2.ª bola em profundidade para o extremo entrar ao eixo; ou GR activo nas duas fases com saída ao primeiro passe."
-                              : isPassingActivation
+                              : isWarmUpWithBall
+                                ? "Duas filas opostas a cruzar sem colidir; ou volteio extra entre cones; ou após o sprint, regressar a pé ao fim da fila com ball mastery leve."
+                                : isPassingActivation
                               ? "Dois coletes com passes obrigatórios entre cores; ou inverte o sentido da rotação a cada minuto; ou acrescenta um jogador 'defensor' a tapar uma linha de passe por 30 s."
                               : "Reduz jogadores no meio; ou acrescenta neutro exterior; ou pontua por X passes seguidos.";
 
@@ -1263,19 +1323,30 @@ export type TrainingCatalogItem = {
  */
 export function getTrainingCatalogItems(players: Player[]): TrainingCatalogItem[] {
   const n = Math.max(1, players.length);
-  const warmDuration = 12;
+  const warmDuration = 5;
   const coolDuration = 10;
+  const warmPv = singleDrillProgressionVariationsForTitle("Warm Up with Ball");
 
   const warmup: TrainingCatalogItem = {
     catalogId: "template:warmup",
-    title: "Aquecimento integrado com bola",
+    title: "Warm Up with Ball",
     phase: "warmup",
     durationMin: warmDuration,
-    brief: `Mobilidade + passes em movimento (pares e triângulos); últimos 3 min com aumento de ritmo. ${n} jogadores.`,
-    description: `Mobilidade + passes em movimento (pares e triângulos); últimos 3 min com aumento de ritmo. ${n} jogadores.`,
-    coachingPoints: "Qualidade do passe antes da velocidade; cabeça levantada.",
-    setup: "Bolsa de bolas; rectângulo 20x15 m.",
-    diagramHint: "Zigzag entre cones com passe ao desmarcar.",
+    brief: `Aquecimento com bola: drible por 2 cones, passe ao colega e sprint ao espaço livre. Foco em coordenação, controlo e aceleração após passe. ${n} jogadores.`,
+    description: `Os jogadores conduzem a bola, passam por 2 cones em drible e, após realizar o passe para um colega, saem imediatamente em sprint para o espaço livre. O exercício decorre de forma contínua durante 5 minutos, focando a coordenação, controlo de bola e aceleração após passe. ${n} jogadores.`,
+    coachingPoints:
+      "Condução com toques próximos e cabeça levantada nos cones; passe firme e jogável ao colega; arranque explosivo no instante após o passe, atacando espaço livre.",
+    setup: "Rectângulo ou corredor ~20×15 m (ajustável); 2 cones por repetição + bolas suficientes para fluidez; filas ou rotação em pares.",
+    groupSplit:
+      n >= 10
+        ? "Dois corredores paralelos com filas alternadas; rotação de papéis condução / recepção / sprint."
+        : n >= 6
+          ? "Um corredor; pares a alternar quem conduz e quem oferece o alvo de passe."
+          : "Espaço menor; coach como parede de passe ou neutro se faltarem jogadores.",
+    diagramHint: "Condução → slalom 2 cones → passe ao colega → sprint imediato ao espaço; rotação contínua.",
+    videoUrl: WARM_UP_WITH_BALL_VIDEO_URL,
+    progression: warmPv.progression,
+    ...(warmPv.variations !== undefined ? { variations: warmPv.variations } : {}),
     filterCategories: ["warmup", "possession", "physical"],
     defaultSaveCategory: "warmup",
   };
@@ -1295,7 +1366,7 @@ export function getTrainingCatalogItems(players: Player[]): TrainingCatalogItem[
     defaultSaveCategory: "warmup",
   };
 
-  const mains: TrainingCatalogItem[] = MAIN_DRILLS.map((def) => {
+  const mains: TrainingCatalogItem[] = MAIN_DRILLS.filter((def) => def.title !== "Warm Up with Ball").map((def) => {
     const mins = singleDrillDurationForTitle(def.title, 40);
     const body = def.describe(players, mins);
     const { progression, variations } = singleDrillProgressionVariationsForTitle(def.title);
