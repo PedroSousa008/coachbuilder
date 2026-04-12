@@ -131,32 +131,3 @@ export function sortHonorsForCabinetDisplay(honors: CoachHonorEntry[]): CoachHon
     return a.title.localeCompare(b.title, "pt");
   });
 }
-
-function normHonorField(s: string): string {
-  return s.trim().toLowerCase();
-}
-
-/** Chave para não repetir o mesmo troféu na vitrine (época, clube, escalão, tipo e título). */
-export function honorCabinetDedupeKey(h: CoachHonorEntry): string {
-  return [
-    h.category,
-    normHonorField(h.seasonLabel),
-    normHonorField(h.club),
-    normHonorField(h.ageGroup),
-    normHonorField(h.title),
-  ].join("|");
-}
-
-/** Vitrine: só conquistas derivadas da carreira, sem duplicados, ordenadas para exibição. */
-export function honorsForTrophyCabinet(honors: CoachHonorEntry[]): CoachHonorEntry[] {
-  const career = honors.filter((h) => h.origin === "career");
-  const seen = new Set<string>();
-  const deduped: CoachHonorEntry[] = [];
-  for (const h of career) {
-    const k = honorCabinetDedupeKey(h);
-    if (seen.has(k)) continue;
-    seen.add(k);
-    deduped.push(h);
-  }
-  return sortHonorsForCabinetDisplay(deduped);
-}

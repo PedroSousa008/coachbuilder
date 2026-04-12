@@ -9,32 +9,8 @@ import {
   TROPHY_CABINET_ROWS,
   TROPHY_CABINET_SLOTS,
 } from "@/lib/coach-profile-constants";
-import { honorsForTrophyCabinet } from "@/lib/coach-career-aggregates";
+import { sortHonorsForCabinetDisplay } from "@/lib/coach-career-aggregates";
 import { HonorTrophyVisual } from "@/components/profile/HonorTrophyVisual";
-
-function TrophyPlaque({ honor }: { honor: CoachHonorEntry }) {
-  const season = honor.seasonLabel.trim() || "—";
-  const tier = honor.ageGroup.trim() || "—";
-  const club = honor.club.trim() || "—";
-  const line = `${season} · ${tier} · ${club}`;
-
-  return (
-    <div
-      className="pointer-events-none w-full border-t border-[#f0d78c]/40 px-1 py-0.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_-2px_10px_rgba(0,0,0,0.55)] sm:px-1.5 sm:py-0.5"
-      style={{
-        background: "linear-gradient(180deg, #c4a035 0%, #e8d18a 22%, #b8922e 48%, #8f7024 100%)",
-      }}
-    >
-      <p
-        className="truncate whitespace-nowrap font-display text-[0.5rem] font-bold uppercase leading-none tracking-wide text-[#fffef5] sm:text-[0.55rem]"
-        style={{ textShadow: "0 1px 2px rgba(0,0,0,0.85)" }}
-        title={line}
-      >
-        {line}
-      </p>
-    </div>
-  );
-}
 
 type Props = {
   honors: CoachHonorEntry[];
@@ -42,9 +18,17 @@ type Props = {
   onSelect: (honor: CoachHonorEntry | null) => void;
 };
 
+function shelfCaption(honor: CoachHonorEntry | null): string {
+  if (!honor) return "";
+  const ep = honor.seasonLabel.trim() || "—";
+  const esc = honor.ageGroup.trim() || "—";
+  const cl = honor.club.trim() || "—";
+  return `${ep} - ${esc} - ${cl}`;
+}
+
 export function TrophyCabinet({ honors, selectedId, onSelect }: Props) {
   const rows = useMemo(() => {
-    const sorted = honorsForTrophyCabinet(honors);
+    const sorted = sortHonorsForCabinetDisplay(honors);
     const flat: (CoachHonorEntry | null)[] = Array.from({ length: TROPHY_CABINET_SLOTS }, () => null);
     sorted.slice(0, TROPHY_CABINET_SLOTS).forEach((h, i) => {
       flat[i] = h;
@@ -79,46 +63,57 @@ export function TrophyCabinet({ honors, selectedId, onSelect }: Props) {
               {row.map((honor, ci) => {
                 const idx = ri * TROPHY_CABINET_COLS + ci;
                 const selected = honor ? selectedId === honor.id : false;
+                const caption = shelfCaption(honor);
                 return (
                   <button
                     key={honor?.id ?? `empty-${idx}`}
                     type="button"
                     onClick={() => onSelect(honor)}
-                    title={
-                      honor
-                        ? `${honor.seasonLabel} · ${honor.ageGroup || "—"} · ${honor.club || "—"}`
-                        : undefined
-                    }
                     className={cn(
-                      "group relative aspect-square overflow-hidden rounded-lg border text-left transition-all",
-                      "border-black/50 bg-gradient-to-b from-zinc-950/90 to-black",
-                      "shadow-[inset_0_6px_18px_rgba(0,0,0,0.75)]",
+                      "group flex min-w-0 flex-col overflow-visible rounded-lg text-left outline-none transition-all",
+                      "focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-[#1a1410]",
                       selected && "ring-2 ring-accent ring-offset-2 ring-offset-[#1a1410]"
                     )}
                   >
                     <div
-                      className="pointer-events-none absolute inset-x-[8%] top-0 z-0 h-[50%] rounded-b-[40%] opacity-90 transition-opacity group-hover:opacity-100"
-                      style={{
-                        background:
-                          "radial-gradient(ellipse at 50% 0%, rgb(var(--accent-rgb) / 0.38), transparent 72%)",
-                      }}
-                    />
-                    {honor ? (
-                      <>
-                        <div className="absolute inset-x-0 top-0 z-[1] flex items-end justify-center px-0.5 pb-[1.375rem] pt-1 sm:pb-6">
-                          <div className="flex h-full max-h-full w-full items-end justify-center">
-                            <HonorTrophyVisual honor={honor} variant="cabinet" />
-                          </div>
-                        </div>
-                        <div className="absolute bottom-0 left-0 right-0 z-[2] rounded-b-lg">
-                          <TrophyPlaque honor={honor} />
-                        </div>
-                      </>
-                    ) : (
-                      <div className="absolute inset-0 z-[1] flex items-end justify-center pb-[22%]">
-                        <div className="h-[18%] w-[55%] rounded-sm bg-black/35 shadow-[inset_0_2px_6px_rgba(0,0,0,0.9)]" />
+                      className={cn(
+                        "relative aspect-square w-full overflow-hidden rounded-t-lg border border-b-0 transition-all",
+                        "border-black/50 bg-gradient-to-b from-zinc-950/90 to-black",
+                        "shadow-[inset_0_6px_18px_rgba(0,0,0,0.75)]"
+                      )}
+                    >
+                      <div
+                        className="pointer-events-none absolute inset-x-[8%] top-0 z-0 h-[55%] rounded-b-[40%] opacity-90 transition-opacity group-hover:opacity-100"
+                        style={{
+                          background:
+                            "radial-gradient(ellipse at 50% 0%, rgb(var(--accent-rgb) / 0.38), transparent 72%)",
+                        }}
+                      />
+                      <div className="relative z-[1] flex h-full w-full items-end justify-center">
+                        {honor ? (
+                          <HonorTrophyVisual honor={honor} variant="cabinet" />
+                        ) : (
+                          <div className="mb-1 h-[18%] w-[55%] rounded-sm bg-black/35 shadow-[inset_0_2px_6px_rgba(0,0,0,0.9)]" />
+                        )}
                       </div>
-                    )}
+                    </div>
+                    <div
+                      className={cn(
+                        "flex min-h-[2.35rem] w-full items-center justify-center rounded-b-lg border border-t-0 border-black/45 px-0.5 py-1",
+                        "bg-gradient-to-b from-[#7a5c47] via-[#5c4334] to-[#3d2d24]",
+                        "shadow-[inset_0_1px_0_rgba(255,255,255,0.18),inset_0_-2px_6px_rgba(0,0,0,0.35)]"
+                      )}
+                    >
+                      <p
+                        className={cn(
+                          "line-clamp-2 w-full px-0.5 text-center text-[9px] font-medium leading-tight tracking-tight text-[#f8f0e4] sm:text-[10px]",
+                          !caption && "opacity-0"
+                        )}
+                        aria-hidden={!caption}
+                      >
+                        {caption || "\u00a0"}
+                      </p>
+                    </div>
                   </button>
                 );
               })}

@@ -12,7 +12,7 @@ import {
   honorCategoryLabel,
   TROPHY_CABINET_SLOTS,
 } from "@/lib/coach-profile-constants";
-import { honorsForTrophyCabinet } from "@/lib/coach-career-aggregates";
+import { sortHonorsForCabinetDisplay } from "@/lib/coach-career-aggregates";
 import {
   buildCareerOriginatedHonors,
   filterManualRemovingConflictsWithGenerated,
@@ -47,10 +47,10 @@ export function HonorsTab({ coachProfile, onCommit }: Props) {
   const [conflictOpen, setConflictOpen] = useState(false);
   const [conflictLines, setConflictLines] = useState<string[]>([]);
 
-  const cabinetHonors = useMemo(() => honorsForTrophyCabinet(honors), [honors]);
+  const sortedForCabinet = useMemo(() => sortHonorsForCabinetDisplay(honors), [honors]);
   const overflowHonors = useMemo(
-    () => cabinetHonors.slice(TROPHY_CABINET_SLOTS),
-    [cabinetHonors]
+    () => sortedForCabinet.slice(TROPHY_CABINET_SLOTS),
+    [sortedForCabinet]
   );
 
   const selectedHonor = useMemo(
