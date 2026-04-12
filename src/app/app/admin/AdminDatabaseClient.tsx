@@ -13,6 +13,33 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { cn } from "@/lib/utils";
 
+type AdminSummaryRow = {
+  userId: string;
+  email: string;
+  name: string;
+  role: string;
+  subscriptionPlan: string;
+  workspaceUpdatedAt: string | null;
+  hasWorkspace: boolean;
+  counts: {
+    players: number;
+    tactics: number;
+    tacticMatches: number;
+    tacticPlayerNotes: number;
+    trainingSessions: number;
+    fixtures: number;
+    conversations: number;
+    messages: number;
+    savedTrainingExercises: number;
+    sketchCalendarEvents: number;
+    sketchNotes: number;
+    sketchTasks: number;
+    sketchFiles: number;
+    sketchBoardDrafts: number;
+    sketchWatchlist: number;
+  };
+};
+
 function JsonBlock({ value }: { value: unknown }) {
   const text = useMemo(() => JSON.stringify(value, null, 2), [value]);
   return (
@@ -90,6 +117,16 @@ export function AdminDatabaseClient() {
   const [serverUpdatedAt, setServerUpdatedAt] = useState<string | null>(null);
   const [serverFetchState, setServerFetchState] = useState<"idle" | "loading" | "error">("idle");
 
+  const [allRows, setAllRows] = useState<AdminSummaryRow[]>([]);
+  const [summaryMeta, setSummaryMeta] = useState<{ generatedAt: string; totalUsers: number } | null>(null);
+  const [summaryErr, setSummaryErr] = useState<string | null>(null);
+  const [summaryLoading, setSummaryLoading] = useState(false);
+  const [inspectUserId, setInspectUserId] = useState<string | null>(null);
+  const [inspectLabel, setInspectLabel] = useState<string>("");
+  const [inspectPayload, setInspectPayload] = useState<unknown>(null);
+  const [inspectLoading, setInspectLoading] = useState(false);
+  const [inspectErr, setInspectErr] = useState<string | null>(null);
+
   const refreshServerMeta = useCallback(async () => {
     if (!isCloudSyncEnabledClient()) {
       setServerUpdatedAt(null);
@@ -111,10 +148,71 @@ export function AdminDatabaseClient() {
     }
   }, []);
 
+  const loadAllWorkspacesSummary = useCallback(async () => {
+    setSummaryLoading(true);
+    setSummaryErr(null);
+    try {
+      const res = await fetch("/api/cloud/admin/workspaces/summary", { credentials: "include" });
+      const data = (await res.json()) as {
+        ok?: boolean;
+        error?: string;
+        rows?: AdminSummaryRow[];
+        generatedAt?: string;
+        totalUsers?: number;
+      };
+      if (!res.ok || !data.ok) {
+        setSummaryErr(typeof data.error === "string" ? data.error : "Não foi possível carregar o índice de contas.");
+        setAllRows([]);
+        setSummaryMeta(null);
+        return;
+      }
+      setAllRows(Array.isArray(data.rows) ? data.rows : []);
+      setSummaryMeta(
+        data.generatedAt != null && data.totalUsers != null
+          ? { generatedAt: data.generatedAt, totalUsers: data.totalUsers }
+          : null
+      );
+    } catch {
+      setSummaryErr("Erro de rede ao pedir o índice.");
+      setAllRows([]);
+      setSummaryMeta(null);
+    } finally {
+      setSummaryLoading(false);
+    }
+  }, []);
+
+  const loadInspectPayload = useCallback(async (row: AdminSummaryRow) => {
+    setInspectUserId(row.userId);
+    setInspectLabel(`${row.name} · ${row.email}`);
+    setInspectPayload(null);
+    setInspectErr(null);
+    setInspectLoading(true);
+    try {
+      const res = await fetch(`/api/cloud/admin/workspaces/${encodeURIComponent(row.userId)}`, {
+        credentials: "include",
+      });
+      const data = (await res.json()) as { ok?: boolean; error?: string; payload?: unknown };
+      if (!res.ok || !data.ok) {
+        setInspectErr(typeof data.error === "string" ? data.error : "Falha ao ler o workspace.");
+        return;
+      }
+      setInspectPayload(data.payload ?? null);
+    } catch {
+      setInspectErr("Erro de rede.");
+    } finally {
+      setInspectLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (!authReady || !isAdmin) return;
     void refreshServerMeta();
   }, [authReady, isAdmin, refreshServerMeta, hydrated]);
+
+  useEffect(() => {
+    if (!authReady || !isAdmin) return;
+    void loadAllWorkspacesSummary();
+  }, [authReady, isAdmin, loadAllWorkspacesSummary]);
 
   useEffect(() => {
     if (!authReady) return;
@@ -187,6 +285,17 @@ export function AdminDatabaseClient() {
     URL.revokeObjectURL(a.href);
   }, [snapshot, user?.id]);
 
+  const downloadInspectJson = useCallback(() => {
+    if (inspectPayload == null) return;
+    const blob = new Blob([JSON.stringify(inspectPayload, null, 2)], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    const safe = inspectUserId ?? "user";
+    a.download = `coachbuilder-workspace-server-${safe}-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }, [inspectPayload, inspectUserId]);
+
   if (!authReady || !user || !isAdmin) {
     return (
       <div className="mx-auto max-w-3xl py-16 text-center text-sm text-zinc-500">
@@ -198,12 +307,147 @@ export function AdminDatabaseClient() {
   return (
     <div className="mx-auto max-w-5xl space-y-6">
       <div>
-        <h2 className="font-display text-xl font-semibold text-white">Base de dados da conta</h2>
+        <h2 className="font-display text-xl font-semibold text-white">Base de dados (admin)</h2>
         <p className="mt-1 text-sm text-zinc-500">
-          Vista única de tudo o que a app guarda para <span className="text-zinc-300">{user.email}</span>. Cada alteração
-          noutras páginas aparece aqui logo que grava no estado (local + sync cloud quando activa).
+          <strong className="font-medium text-zinc-400">Todas as contas (PostgreSQL):</strong> cada utilizador que usa a
+          sync na nuvem tem uma linha <code className="text-zinc-600">Workspace</code> com o pacote completo (táticas,
+          jogadores, treinos, calendário, mensagens, Sketch Area, etc.). O índice abaixo inclui{" "}
+          <span className="text-zinc-300">contas actuais e futuras</span> automaticamente quando sincronizam.
+        </p>
+        <p className="mt-2 text-sm text-zinc-500">
+          <strong className="font-medium text-zinc-400">Sessão actual (browser):</strong> os setores mais abaixo
+          reflectem a conta com que estás autenticado agora (<span className="text-zinc-300">{user.email}</span>) — útil
+          para ver alterações em tempo real antes de irem para o servidor.
         </p>
       </div>
+
+      <Card>
+        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3">
+          <CardTitle className="text-base text-white">Índice — todas as contas no servidor</CardTitle>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            className="text-xs"
+            disabled={summaryLoading}
+            onClick={() => void loadAllWorkspacesSummary()}
+          >
+            <RefreshCw className={cn("h-3.5 w-3.5", summaryLoading && "animate-spin")} />
+            Actualizar índice
+          </Button>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {summaryErr ? <p className="text-sm text-red-400/90">{summaryErr}</p> : null}
+          {summaryMeta ? (
+            <p className="text-xs text-zinc-500">
+              {summaryMeta.totalUsers} utilizadores · gerado {new Date(summaryMeta.generatedAt).toLocaleString()}
+            </p>
+          ) : null}
+          <div className="overflow-x-auto rounded-xl border border-surface-border">
+            <table className="w-full min-w-[920px] border-collapse text-left text-xs">
+              <thead>
+                <tr className="border-b border-surface-border bg-zinc-900/50 text-[10px] uppercase tracking-wide text-zinc-500">
+                  <th className="px-3 py-2 font-medium">Conta</th>
+                  <th className="px-3 py-2 font-medium">Plano</th>
+                  <th className="px-3 py-2 font-medium">Sync</th>
+                  <th className="px-3 py-2 font-medium">Jog.</th>
+                  <th className="px-3 py-2 font-medium">Tát.</th>
+                  <th className="px-3 py-2 font-medium">Jogos</th>
+                  <th className="px-3 py-2 font-medium">Treinos</th>
+                  <th className="px-3 py-2 font-medium">Fix.</th>
+                  <th className="px-3 py-2 font-medium">Msg</th>
+                  <th className="px-3 py-2 font-medium">Ex.</th>
+                  <th className="px-3 py-2 font-medium">Sketch</th>
+                  <th className="px-3 py-2 font-medium" />
+                </tr>
+              </thead>
+              <tbody>
+                {allRows.map((r) => {
+                  const sk =
+                    r.counts.sketchCalendarEvents +
+                    r.counts.sketchNotes +
+                    r.counts.sketchTasks +
+                    r.counts.sketchFiles +
+                    r.counts.sketchBoardDrafts +
+                    r.counts.sketchWatchlist;
+                  return (
+                    <tr key={r.userId} className="border-b border-surface-border/60 text-zinc-300 hover:bg-white/[0.02]">
+                      <td className="px-3 py-2">
+                        <p className="font-medium text-zinc-200">{r.name}</p>
+                        <p className="text-[10px] text-zinc-500">{r.email}</p>
+                      </td>
+                      <td className="px-3 py-2 text-zinc-400">{r.subscriptionPlan}</td>
+                      <td className="px-3 py-2 text-zinc-500">
+                        {r.hasWorkspace && r.workspaceUpdatedAt
+                          ? new Date(r.workspaceUpdatedAt).toLocaleString()
+                          : r.hasWorkspace
+                            ? "—"
+                            : "sem workspace"}
+                      </td>
+                      <td className="px-3 py-2">{r.counts.players}</td>
+                      <td className="px-3 py-2">{r.counts.tactics}</td>
+                      <td className="px-3 py-2">{r.counts.tacticMatches}</td>
+                      <td className="px-3 py-2">{r.counts.trainingSessions}</td>
+                      <td className="px-3 py-2">{r.counts.fixtures}</td>
+                      <td className="px-3 py-2">{r.counts.messages}</td>
+                      <td className="px-3 py-2">{r.counts.savedTrainingExercises}</td>
+                      <td className="px-3 py-2">{sk}</td>
+                      <td className="px-3 py-2">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 text-[11px] text-accent"
+                          onClick={() => void loadInspectPayload(r)}
+                        >
+                          Ver JSON
+                        </Button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          {!summaryLoading && allRows.length === 0 && !summaryErr ? (
+            <p className="text-sm text-zinc-500">Sem utilizadores na base de dados.</p>
+          ) : null}
+        </CardContent>
+      </Card>
+
+      {inspectUserId ? (
+        <Card>
+          <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3">
+            <CardTitle className="text-base text-white">Payload no servidor · {inspectLabel}</CardTitle>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                className="text-xs"
+                onClick={() => {
+                  setInspectUserId(null);
+                  setInspectPayload(null);
+                  setInspectErr(null);
+                }}
+              >
+                Fechar
+              </Button>
+              <Button type="button" size="sm" className="text-xs" disabled={inspectPayload == null} onClick={downloadInspectJson}>
+                <Download className="h-3.5 w-3.5" />
+                Descarregar JSON
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {inspectLoading ? <p className="text-sm text-zinc-500">A carregar…</p> : null}
+            {inspectErr ? <p className="text-sm text-red-400/90">{inspectErr}</p> : null}
+            {!inspectLoading && inspectPayload != null ? <JsonBlock value={inspectPayload} /> : null}
+          </CardContent>
+        </Card>
+      ) : null}
+
+      <p className="text-xs font-medium uppercase tracking-wider text-zinc-600">Sessão actual (esta conta)</p>
 
       <Card>
         <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3">
@@ -248,7 +492,7 @@ export function AdminDatabaseClient() {
         </CardContent>
       </Card>
 
-      <Sector id="account" title="Conta & perfil de treinador" count={1 + (coachProfile.name ? 1 : 0)} defaultOpen>
+      <Sector id="account" title="Conta & perfil de treinador (sessão)" count={2} defaultOpen>
         <div className="space-y-3">
           <JsonBlock
             value={{
