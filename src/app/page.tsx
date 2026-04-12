@@ -3,7 +3,7 @@ import {
   GitBranch,
   CalendarDays,
   MessageSquare,
-  Video,
+  PenSquare,
   Users,
   Trophy,
   Zap,
@@ -33,8 +33,8 @@ export default function LandingPage() {
               <span className="text-accent">Communicate faster.</span>
             </h1>
             <p className="mt-6 max-w-xl text-lg leading-relaxed text-zinc-400">
-              CoachBuilder is your club-grade workspace for formations, session planning, squad chat, and match
-              analysis — so you spend less time in spreadsheets and more time winning football matches.
+              CoachBuilder is your club-grade workspace for formations, session planning, squad chat, and a daily sketch
+              workspace — so you spend less time in spreadsheets and more time winning football matches.
             </p>
             <div className="mt-10 flex flex-wrap items-center gap-4">
               <Link
@@ -97,9 +97,9 @@ export default function LandingPage() {
                 description="Group thread for announcements and DMs for individual detail — the channel stays professional and searchable."
               />
               <FeatureCard
-                icon={Video}
-                title="Video analysis"
-                description="Tag clips by phase of play, attach notes, and build a shared language with your players (full workspace coming soon)."
+                icon={PenSquare}
+                title="Sketch Area"
+                description="Plan the day, typed notes, tasks, files, tactical sketches, and a player watchlist — your private staff hub without leaving the app."
               />
               <FeatureCard
                 icon={Users}
@@ -137,8 +137,8 @@ export default function LandingPage() {
                   <li className="flex gap-3">
                     <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
                     <span>
-                      <strong className="text-zinc-200">Faster feedback loops:</strong> clip a moment, tag the pattern,
-                      message the unit — without losing context in five different apps.
+                      <strong className="text-zinc-200">Faster feedback loops:</strong> jot a note, set a reminder,
+                      sketch a pattern — without losing context in five different apps.
                     </span>
                   </li>
                   <li className="flex gap-3">
@@ -189,8 +189,8 @@ export default function LandingPage() {
                 Simple pricing for serious coaches
               </h2>
               <p className="mt-4 text-zinc-400">
-                Start with free messaging. Upgrade when you want the full bench: tactics, training, video, and roster
-                tools for €5/month.
+                Start with free messaging. Upgrade when you want the full bench: tactics, training, sketch workspace, and
+                roster tools for €5/month.
               </p>
             </div>
             <div className="mx-auto mt-14 grid max-w-4xl gap-8 md:grid-cols-2">
@@ -210,7 +210,7 @@ export default function LandingPage() {
                   "Everything in Free",
                   "Tactics board & saved ideas",
                   "Training plan builder",
-                  "Video analysis workspace",
+                  "Sketch Area (notes, tasks, files & board)",
                   "Roster, availability & performance view",
                 ]}
                 highlighted

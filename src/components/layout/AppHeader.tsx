@@ -13,7 +13,7 @@ const mobileLinksBase = [
   { href: "/app/tactics", label: "Tactics" },
   { href: "/app/training", label: "Training" },
   { href: "/app/messages", label: "Messages" },
-  { href: "/app/video", label: "Video" },
+  { href: "/app/sketch", label: "Sketch" },
   { href: "/app/team", label: "Team" },
   { href: "/app/calendar", label: "Calendar" },
   { href: "/app/profile", label: "Profile" },

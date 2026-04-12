@@ -22,6 +22,12 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+@media print {
+  .no-print {
+    display: none !important;
+  }
+}
+
 /* Subtle grid for marketing sections */
 .bg-grid {
   background-image: linear-gradient(

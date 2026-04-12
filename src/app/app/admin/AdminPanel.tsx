@@ -140,7 +140,7 @@ function labelForAppPath(path: string | null | undefined): string {
     ["/app/team", "Equipa"],
     ["/app/messages", "Mensagens"],
     ["/app/training", "Treinos"],
-    ["/app/video", "Vídeo"],
+    ["/app/sketch", "Sketch Area"],
     ["/app/settings", "Definições"],
     ["/app", "Início"],
   ];

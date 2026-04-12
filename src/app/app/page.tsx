@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { GitBranch, CalendarDays, MessageSquare, Target, TrendingUp } from "lucide-react";
+import { GitBranch, CalendarDays, MessageSquare, PenSquare, Target, TrendingUp } from "lucide-react";
 import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -9,6 +9,7 @@ import { StatCard } from "@/components/dashboard/StatCard";
 import { mockCoach } from "@/data/mock";
 import { DashboardInboxPreview } from "@/components/dashboard/DashboardInboxPreview";
 import { DashboardNextMatch } from "@/components/dashboard/DashboardNextMatch";
+import { DashboardSketchToday } from "@/components/dashboard/DashboardSketchToday";
 import { formatRelativeDay } from "@/lib/format";
 import { useAppData } from "@/contexts/AppDataContext";
 import { computeCoachPerformance, tallyForTactic, winRatePercent } from "@/lib/tactics-match-stats";
@@ -61,6 +62,9 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
+        <div className="lg:col-span-1">
+          <DashboardSketchToday />
+        </div>
         <Card className="lg:col-span-2" hover>
           <CardHeader>
             <CardTitle>Upcoming training</CardTitle>
@@ -211,6 +215,13 @@ export default function DashboardPage() {
           >
             <MessageSquare className="h-4 w-4" />
             Open team chat
+          </Link>
+          <Link
+            href="/app/sketch"
+            className="inline-flex h-11 items-center gap-2 rounded-xl border border-surface-border bg-surface-raised px-5 text-sm font-medium text-zinc-200 hover:border-zinc-600"
+          >
+            <PenSquare className="h-4 w-4" />
+            Sketch Area
           </Link>
         </div>
       </div>

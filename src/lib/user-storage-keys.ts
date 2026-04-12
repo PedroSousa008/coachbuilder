@@ -34,7 +34,8 @@ export type UserDataKeyId =
   | "tactics"
   | "tacticMatches"
   | "tacticPlayerNotes"
-  | "savedTrainingExercises";
+  | "savedTrainingExercises"
+  | "sketchArea";
 
 const LEGACY_MAP: Record<UserDataKeyId, string> = {
   players: "coachbuilder-players",
@@ -49,6 +50,7 @@ const LEGACY_MAP: Record<UserDataKeyId, string> = {
   tacticMatches: "coachbuilder-tactic-matches",
   tacticPlayerNotes: "coachbuilder-tactic-player-notes",
   savedTrainingExercises: "coachbuilder-saved-training-exercises-v1",
+  sketchArea: "coachbuilder-sketch-area-v1",
 };
 
 export function userDataKey(userId: string, id: UserDataKeyId): string {
@@ -69,6 +71,7 @@ export function getAllUserDataKeys(userId: string): Record<UserDataKeyId, string
     tacticMatches: userDataKey(userId, "tacticMatches"),
     tacticPlayerNotes: userDataKey(userId, "tacticPlayerNotes"),
     savedTrainingExercises: userDataKey(userId, "savedTrainingExercises"),
+    sketchArea: userDataKey(userId, "sketchArea"),
   };
 }
 

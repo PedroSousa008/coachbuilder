@@ -47,14 +47,14 @@ export default function SettingsPage() {
               Coach Pro
               <span className="rounded-md bg-accent px-2 py-0.5 text-xs font-semibold text-zinc-950">€5/mo</span>
             </CardTitle>
-            <p className="text-sm text-zinc-500">Tactics, training, video, roster & more</p>
+            <p className="text-sm text-zinc-500">Tactics, training, sketch workspace, roster & more</p>
           </CardHeader>
           <CardContent className="space-y-4">
             <ul className="space-y-2 text-sm text-zinc-300">
               {[
                 "Tactics board & saved ideas",
                 "Training plan builder",
-                "Video analysis workspace",
+                "Sketch Area workspace",
                 "Team roster & availability",
               ].map((f) => (
                 <li key={f} className="flex gap-2">

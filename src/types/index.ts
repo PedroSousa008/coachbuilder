@@ -357,3 +357,149 @@ export interface CoachProfileState {
   role: string;
   email: string;
 }
+
+/** Sketch Area — staff workspace (calendar, notes, tasks, files, board, watchlist). */
+export type SketchCalendarEventCategory =
+  | "training"
+  | "match"
+  | "player_review"
+  | "opponent_analysis"
+  | "task_deadline"
+  | "meeting"
+  | "other";
+
+export interface SketchCalendarEvent {
+  id: string;
+  title: string;
+  category: SketchCalendarEventCategory;
+  /** ISO date YYYY-MM-DD */
+  date: string;
+  timeStart?: string;
+  timeEnd?: string;
+  location?: string;
+  notes?: string;
+  linkedPlayerId?: string;
+  linkedTrainingSessionId?: string;
+  linkedFixtureId?: string;
+  /** Whole-squad context (no specific player id). */
+  teamScope?: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type SketchStaffNoteCategory =
+  | "training"
+  | "player"
+  | "todo"
+  | "meeting"
+  | "match"
+  | "opponent"
+  | "players_to_analyze"
+  | "session_reflection"
+  | "recruitment"
+  | "generic";
+
+export interface SketchStaffNote {
+  id: string;
+  category: SketchStaffNoteCategory;
+  title: string;
+  body: string;
+  tags: string[];
+  pinned: boolean;
+  date: string;
+  linkedPlayerId?: string;
+  linkedTrainingSessionId?: string;
+  linkedFixtureId?: string;
+  attachmentHint?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type SketchTaskCategory = "team" | "player" | "training" | "match" | "staff" | "personal";
+export type SketchTaskPriority = "low" | "medium" | "high";
+export type SketchTaskRecurring = "none" | "daily" | "weekly";
+
+export interface SketchTask {
+  id: string;
+  title: string;
+  category: SketchTaskCategory;
+  dueDate?: string;
+  priority: SketchTaskPriority;
+  completed: boolean;
+  completedAt?: string;
+  linkedPlayerId?: string;
+  linkedCalendarEventId?: string;
+  recurring: SketchTaskRecurring;
+  reminderEnabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type SketchFileFolder =
+  | "training"
+  | "matchday"
+  | "opponents"
+  | "team_talks"
+  | "player_analysis"
+  | "staff_meetings"
+  | "season_planning"
+  | "recruitment";
+
+export type SketchFileVisibility = "private" | "team" | "selected_players" | "assistants";
+
+export interface SketchFileEntry {
+  id: string;
+  name: string;
+  folder: SketchFileFolder;
+  mimeType: string;
+  sizeBytes: number;
+  externalUrl?: string;
+  /** Small files only — larger uploads should use external URL. */
+  dataUrl?: string;
+  reviewLater: boolean;
+  visibility: SketchFileVisibility;
+  selectedPlayerIds?: string[];
+  createdAt: string;
+}
+
+export type SketchPitchTemplate = "blank" | "half" | "full";
+
+export type SketchStrokeTool = "draw" | "arrow" | "circle" | "cone" | "player";
+
+export interface SketchStroke {
+  tool: SketchStrokeTool;
+  color: string;
+  lineWidth: number;
+  points: [number, number][];
+}
+
+export interface SketchBoardDraft {
+  id: string;
+  title: string;
+  pitchTemplate: SketchPitchTemplate;
+  strokes: SketchStroke[];
+  noteAttached?: string;
+  updatedAt: string;
+}
+
+export interface SketchWatchlistEntry {
+  id: string;
+  playerId: string;
+  focusTags: string[];
+  latestNote: string;
+  nextAction: string;
+  reminderText?: string;
+  clipLinks: string[];
+  attendanceNote?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SketchAreaState {
+  calendarEvents: SketchCalendarEvent[];
+  notes: SketchStaffNote[];
+  tasks: SketchTask[];
+  files: SketchFileEntry[];
+  boardDrafts: SketchBoardDraft[];
+  watchlist: SketchWatchlistEntry[];
+}

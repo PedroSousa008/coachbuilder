@@ -8,7 +8,7 @@ import {
   CalendarDays,
   Calendar,
   MessageSquare,
-  Video,
+  PenSquare,
   Users,
   UserCircle,
   Settings,
@@ -25,7 +25,7 @@ const nav = [
   { href: "/app/tactics", label: "Tactics", icon: GitBranch },
   { href: "/app/training", label: "Training Plans", icon: CalendarDays },
   { href: "/app/messages", label: "Messages", icon: MessageSquare },
-  { href: "/app/video", label: "Video Analysis", icon: Video },
+  { href: "/app/sketch", label: "Sketch Area", icon: PenSquare },
   { href: "/app/team", label: "Team", icon: Users },
   { href: "/app/calendar", label: "Calendar", icon: Calendar },
   { href: "/app/profile", label: "Profile", icon: UserCircle },
@@ -123,7 +123,7 @@ export function AppSidebar() {
           <LogOut className="h-3.5 w-3.5" strokeWidth={2} />
           Sair
         </button>
-        <p className="mt-3 text-xs text-zinc-500">Pro unlocks tactics, training, video &amp; team tools.</p>
+        <p className="mt-3 text-xs text-zinc-500">Pro unlocks tactics, training, sketch workspace &amp; team tools.</p>
         <Link
           href="/app/settings"
           className="mt-2 inline-flex text-xs font-medium text-accent hover:underline"

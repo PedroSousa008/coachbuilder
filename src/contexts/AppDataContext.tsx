@@ -7,7 +7,9 @@ import {
   useEffect,
   useMemo,
   useState,
+  type Dispatch,
   type ReactNode,
+  type SetStateAction,
 } from "react";
 import type {
   CoachProfileState,
@@ -19,6 +21,7 @@ import type {
   Player,
   Position,
   PreferredFoot,
+  SketchAreaState,
   Tactic,
   TacticMatch,
   TacticPlayerAnalysisNote,
@@ -39,10 +42,12 @@ import { safeLoadJSON, safeSaveJSON } from "@/lib/coachbuilder-persist";
 import { isCloudSyncEnabledClient, shouldUseCloudClientApis } from "@/lib/cloud-config";
 import {
   collectWorkspaceFromLocalStorage,
+  mergeSketchArea,
   snapshotHasMeaningfulData,
   writeWorkspaceSnapshotToLocalStorage,
   type WorkspaceSnapshotV1,
 } from "@/lib/workspace-snapshot";
+import { emptySketchAreaState } from "@/lib/sketch-area";
 import { useAuth } from "@/contexts/AuthContext";
 
 function tacticPlayerNoteKey(tacticId: string, playerId: string) {
@@ -187,6 +192,9 @@ type AppDataContextValue = {
 
   tacticPlayerNotes: Record<string, TacticPlayerAnalysisNote>;
   setTacticPlayerAnalysisNote: (tacticId: string, playerId: string, notes: string) => void;
+
+  sketchArea: SketchAreaState;
+  setSketchArea: Dispatch<SetStateAction<SketchAreaState>>;
 };
 
 const AppDataContext = createContext<AppDataContextValue | null>(null);
@@ -213,6 +221,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [tacticMatches, setTacticMatches] = useState<TacticMatch[]>([]);
   const [tacticPlayerNotes, setTacticPlayerNotesState] = useState<Record<string, TacticPlayerAnalysisNote>>({});
   const [savedTrainingExercises, setSavedTrainingExercises] = useState<SavedTrainingExercise[]>([]);
+  const [sketchArea, setSketchArea] = useState<SketchAreaState>(() => emptySketchAreaState());
 
   const [cloudRemoteReady, setCloudRemoteReady] = useState(() => !isCloudSyncEnabledClient());
 
@@ -249,6 +258,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       setTacticMatches([]);
       setTacticPlayerNotesState({});
       setSavedTrainingExercises([]);
+      setSketchArea(emptySketchAreaState());
       setHydrated(true);
       return;
     }
@@ -286,6 +296,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setTacticMatches(loadJSON<TacticMatch[]>(ks.tacticMatches, []));
     setTacticPlayerNotesState(loadJSON<Record<string, TacticPlayerAnalysisNote>>(ks.tacticPlayerNotes, {}));
     setSavedTrainingExercises(loadJSON<SavedTrainingExercise[]>(ks.savedTrainingExercises, []));
+    setSketchArea(mergeSketchArea(loadJSON<unknown>(ks.sketchArea, null), emptySketchAreaState()));
     setHydrated(true);
   }, [authReady, user?.id, ks]);
 
@@ -326,6 +337,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           setTacticMatches(s.tacticMatches);
           setTacticPlayerNotesState(s.tacticPlayerNotes);
           setSavedTrainingExercises(s.savedTrainingExercises ?? []);
+          setSketchArea(mergeSketchArea(s.sketchArea, emptySketchAreaState()));
           writeWorkspaceSnapshotToLocalStorage(user.id, {
             ...s,
             conversations: loadedConvs,
@@ -335,6 +347,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
               matches: leagueMatchesDeduped,
             },
             savedTrainingExercises: s.savedTrainingExercises ?? [],
+            sketchArea: mergeSketchArea(s.sketchArea, emptySketchAreaState()),
           });
         } else {
           const local = collectWorkspaceFromLocalStorage(user.id);
@@ -379,6 +392,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       tacticMatches,
       tacticPlayerNotes,
       savedTrainingExercises,
+      sketchArea,
     };
     const t = window.setTimeout(() => {
       void fetch("/api/cloud/workspace", {
@@ -410,6 +424,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     tacticMatches,
     tacticPlayerNotes,
     savedTrainingExercises,
+    sketchArea,
   ]);
 
   useEffect(() => {
@@ -487,6 +502,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     if (!hydrated || !ks) return;
     saveJSON(ks.savedTrainingExercises, savedTrainingExercises);
   }, [savedTrainingExercises, hydrated, ks]);
+
+  useEffect(() => {
+    if (!hydrated || !ks) return;
+    saveJSON(ks.sketchArea, sketchArea);
+  }, [sketchArea, hydrated, ks]);
 
   /** Mantém `matchesUsed` / vitórias / empates / derrotas nas táticas alinhados com os jogos registados. */
   useEffect(() => {
@@ -866,6 +886,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       removeTacticMatch,
       tacticPlayerNotes,
       setTacticPlayerAnalysisNote,
+      sketchArea,
+      setSketchArea,
     }),
     [
       hydrated,
@@ -908,6 +930,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       removeTacticMatch,
       tacticPlayerNotes,
       setTacticPlayerAnalysisNote,
+      sketchArea,
+      setSketchArea,
     ]
   );
 

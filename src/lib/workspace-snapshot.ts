@@ -7,6 +7,7 @@ import type {
   Message,
   Player,
   SavedTrainingExercise,
+  SketchAreaState,
   Tactic,
   TacticMatch,
   TacticPlayerAnalysisNote,
@@ -15,6 +16,7 @@ import type {
 import { safeLoadJSON, safeSaveJSON } from "@/lib/coachbuilder-persist";
 import { getAllUserDataKeys } from "@/lib/user-storage-keys";
 import { dedupeMatches } from "@/lib/league-match-dedupe";
+import { emptySketchAreaState } from "@/lib/sketch-area";
 
 export const WORKSPACE_SNAPSHOT_VERSION = 1 as const;
 
@@ -42,6 +44,7 @@ export type WorkspaceSnapshotV1 = {
   tacticMatches: TacticMatch[];
   tacticPlayerNotes: Record<string, TacticPlayerAnalysisNote>;
   savedTrainingExercises: SavedTrainingExercise[];
+  sketchArea: SketchAreaState;
 };
 
 export function emptyWorkspaceSnapshot(): WorkspaceSnapshotV1 {
@@ -66,6 +69,7 @@ export function emptyWorkspaceSnapshot(): WorkspaceSnapshotV1 {
     tacticMatches: [],
     tacticPlayerNotes: {},
     savedTrainingExercises: [],
+    sketchArea: emptySketchAreaState(),
   };
 }
 
@@ -82,6 +86,17 @@ export function snapshotHasMeaningfulData(s: WorkspaceSnapshotV1 | null | undefi
   if (s.coachProfile.name.trim() !== "" || s.coachProfile.club.trim() !== "") return true;
   if (Object.keys(s.tacticPlayerNotes).length > 0) return true;
   if (s.savedTrainingExercises.length > 0) return true;
+  const sk = s.sketchArea;
+  if (
+    sk &&
+    (sk.calendarEvents.length > 0 ||
+      sk.notes.length > 0 ||
+      sk.tasks.length > 0 ||
+      sk.files.length > 0 ||
+      sk.boardDrafts.length > 0 ||
+      sk.watchlist.length > 0)
+  )
+    return true;
   return false;
 }
 
@@ -101,6 +116,7 @@ export function writeWorkspaceSnapshotToLocalStorage(userId: string, s: Workspac
   safeSaveJSON(ks.tacticMatches, s.tacticMatches);
   safeSaveJSON(ks.tacticPlayerNotes, s.tacticPlayerNotes);
   safeSaveJSON(ks.savedTrainingExercises, s.savedTrainingExercises);
+  safeSaveJSON(ks.sketchArea, s.sketchArea);
 }
 
 export function collectWorkspaceFromLocalStorage(userId: string): WorkspaceSnapshotV1 {
@@ -134,6 +150,7 @@ export function collectWorkspaceFromLocalStorage(userId: string): WorkspaceSnaps
     tacticMatches: safeLoadJSON<TacticMatch[]>(ks.tacticMatches, []),
     tacticPlayerNotes: safeLoadJSON<Record<string, TacticPlayerAnalysisNote>>(ks.tacticPlayerNotes, {}),
     savedTrainingExercises: safeLoadJSON<SavedTrainingExercise[]>(ks.savedTrainingExercises, []),
+    sketchArea: mergeSketchArea(safeLoadJSON<unknown>(ks.sketchArea, null), emptySketchAreaState()),
   };
 }
 
@@ -178,5 +195,20 @@ export function parseWorkspacePayload(raw: unknown): WorkspaceSnapshotV1 | null 
     savedTrainingExercises: Array.isArray(o.savedTrainingExercises)
       ? (o.savedTrainingExercises as SavedTrainingExercise[])
       : e.savedTrainingExercises,
+    sketchArea: mergeSketchArea(o.sketchArea, e.sketchArea),
+  };
+}
+
+export function mergeSketchArea(raw: unknown, fallback: SketchAreaState): SketchAreaState {
+  if (!raw || typeof raw !== "object") return fallback;
+  const u = raw as Record<string, unknown>;
+  const base = emptySketchAreaState();
+  return {
+    calendarEvents: Array.isArray(u.calendarEvents) ? (u.calendarEvents as SketchAreaState["calendarEvents"]) : base.calendarEvents,
+    notes: Array.isArray(u.notes) ? (u.notes as SketchAreaState["notes"]) : base.notes,
+    tasks: Array.isArray(u.tasks) ? (u.tasks as SketchAreaState["tasks"]) : base.tasks,
+    files: Array.isArray(u.files) ? (u.files as SketchAreaState["files"]) : base.files,
+    boardDrafts: Array.isArray(u.boardDrafts) ? (u.boardDrafts as SketchAreaState["boardDrafts"]) : base.boardDrafts,
+    watchlist: Array.isArray(u.watchlist) ? (u.watchlist as SketchAreaState["watchlist"]) : base.watchlist,
   };
 }

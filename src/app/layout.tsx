@@ -22,7 +22,7 @@ const outfit = Outfit({
 export const metadata: Metadata = {
   title: "CoachBuilder — The operating system for football coaches",
   description:
-    "Plan smarter. Train better. Communicate faster. Tactics, training, team chat, and analysis in one premium workspace.",
+    "Plan smarter. Train better. Communicate faster. Tactics, training, team chat, and Sketch Area in one premium workspace.",
   icons: { icon: "/icon.svg" },
 };
 
