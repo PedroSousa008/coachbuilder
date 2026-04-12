@@ -52,9 +52,9 @@ function Sector({
         </div>
       </button>
       {open ? (
-        <CardContent id={`sector-${id}`} className="border-t border-surface-border pt-4">
-          {children}
-        </CardContent>
+        <div id={`sector-${id}`}>
+          <CardContent className="border-t border-surface-border pt-4">{children}</CardContent>
+        </div>
       ) : null}
     </Card>
   );
