@@ -20,7 +20,7 @@ function TrophyPlaque({ honor }: { honor: CoachHonorEntry }) {
 
   return (
     <div
-      className="pointer-events-none relative z-[2] min-h-0 shrink-0 border-t border-[#f0d78c]/40 px-1 py-0.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_-1px_6px_rgba(0,0,0,0.45)] sm:px-1.5 sm:py-0.5"
+      className="pointer-events-none w-full border-t border-[#f0d78c]/40 px-1 py-0.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_-2px_10px_rgba(0,0,0,0.55)] sm:px-1.5 sm:py-0.5"
       style={{
         background: "linear-gradient(180deg, #c4a035 0%, #e8d18a 22%, #b8922e 48%, #8f7024 100%)",
       }}
@@ -90,31 +90,35 @@ export function TrophyCabinet({ honors, selectedId, onSelect }: Props) {
                         : undefined
                     }
                     className={cn(
-                      "group relative flex aspect-square flex-col overflow-hidden rounded-lg border text-left transition-all",
+                      "group relative aspect-square overflow-hidden rounded-lg border text-left transition-all",
                       "border-black/50 bg-gradient-to-b from-zinc-950/90 to-black",
                       "shadow-[inset_0_6px_18px_rgba(0,0,0,0.75)]",
                       selected && "ring-2 ring-accent ring-offset-2 ring-offset-[#1a1410]"
                     )}
                   >
-                    <div className="relative flex min-h-0 flex-1 flex-col">
-                      <div
-                        className="pointer-events-none absolute inset-x-[8%] top-0 z-0 h-[50%] rounded-b-[40%] opacity-90 transition-opacity group-hover:opacity-100"
-                        style={{
-                          background:
-                            "radial-gradient(ellipse at 50% 0%, rgb(var(--accent-rgb) / 0.38), transparent 72%)",
-                        }}
-                      />
-                      <div className="relative z-[1] flex min-h-0 flex-1 items-end justify-center pb-0.5">
-                        {honor ? (
-                          <div className="flex max-h-full w-full items-end justify-center px-0.5">
+                    <div
+                      className="pointer-events-none absolute inset-x-[8%] top-0 z-0 h-[50%] rounded-b-[40%] opacity-90 transition-opacity group-hover:opacity-100"
+                      style={{
+                        background:
+                          "radial-gradient(ellipse at 50% 0%, rgb(var(--accent-rgb) / 0.38), transparent 72%)",
+                      }}
+                    />
+                    {honor ? (
+                      <>
+                        <div className="absolute inset-x-0 top-0 z-[1] flex items-end justify-center px-0.5 pb-[1.375rem] pt-1 sm:pb-6">
+                          <div className="flex h-full max-h-full w-full items-end justify-center">
                             <HonorTrophyVisual honor={honor} variant="cabinet" />
                           </div>
-                        ) : (
-                          <div className="mb-1 h-[18%] w-[55%] rounded-sm bg-black/35 shadow-[inset_0_2px_6px_rgba(0,0,0,0.9)]" />
-                        )}
+                        </div>
+                        <div className="absolute bottom-0 left-0 right-0 z-[2] rounded-b-lg">
+                          <TrophyPlaque honor={honor} />
+                        </div>
+                      </>
+                    ) : (
+                      <div className="absolute inset-0 z-[1] flex items-end justify-center pb-[22%]">
+                        <div className="h-[18%] w-[55%] rounded-sm bg-black/35 shadow-[inset_0_2px_6px_rgba(0,0,0,0.9)]" />
                       </div>
-                    </div>
-                    {honor ? <TrophyPlaque honor={honor} /> : null}
+                    )}
                   </button>
                 );
               })}
