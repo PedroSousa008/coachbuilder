@@ -12,6 +12,49 @@ import {
 import { sortHonorsForCabinetDisplay } from "@/lib/coach-career-aggregates";
 import { HonorTrophyVisual } from "@/components/profile/HonorTrophyVisual";
 
+function TrophyPlaque({ honor }: { honor: CoachHonorEntry }) {
+  const season = honor.seasonLabel.trim() || "—";
+  const tier = honor.ageGroup.trim() || "—";
+  const club = honor.club.trim() || "—";
+
+  return (
+    <div
+      className="pointer-events-none relative z-[2] shrink-0 border-t-2 border-[#f0d78c]/35 px-1 py-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_-2px_8px_rgba(0,0,0,0.5)] sm:px-1.5 sm:py-1.5"
+      style={{
+        background: "linear-gradient(180deg, #c4a035 0%, #e8d18a 22%, #b8922e 48%, #8f7024 100%)",
+      }}
+    >
+      <div
+        className="rounded-sm px-0.5 py-0.5 sm:px-1"
+        style={{
+          background: "linear-gradient(180deg, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.45) 100%)",
+          boxShadow: "inset 0 1px 2px rgba(255,255,255,0.12)",
+        }}
+      >
+        <p
+          className="font-display text-[0.55rem] font-bold uppercase leading-tight tracking-wide text-[#fffef5] sm:text-[0.62rem]"
+          style={{ textShadow: "0 1px 2px rgba(0,0,0,0.85)" }}
+        >
+          {season}
+        </p>
+        <p
+          className="mt-0.5 font-display text-[0.5rem] font-semibold uppercase tracking-wider text-[#fff3c4] sm:text-[0.55rem]"
+          style={{ textShadow: "0 1px 2px rgba(0,0,0,0.75)" }}
+        >
+          {tier}
+        </p>
+        <p
+          className="mt-0.5 truncate font-display text-[0.48rem] font-medium leading-snug text-[#f5ebc8] sm:text-[0.52rem]"
+          style={{ textShadow: "0 1px 2px rgba(0,0,0,0.8)" }}
+          title={club}
+        >
+          {club}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 type Props = {
   honors: CoachHonorEntry[];
   selectedId: string | null;
@@ -60,27 +103,37 @@ export function TrophyCabinet({ honors, selectedId, onSelect }: Props) {
                     key={honor?.id ?? `empty-${idx}`}
                     type="button"
                     onClick={() => onSelect(honor)}
+                    title={
+                      honor
+                        ? `${honor.seasonLabel} · ${honor.ageGroup || "—"} · ${honor.club || "—"}`
+                        : undefined
+                    }
                     className={cn(
-                      "group relative aspect-square overflow-hidden rounded-lg border transition-all",
+                      "group relative flex aspect-square flex-col overflow-hidden rounded-lg border text-left transition-all",
                       "border-black/50 bg-gradient-to-b from-zinc-950/90 to-black",
                       "shadow-[inset_0_6px_18px_rgba(0,0,0,0.75)]",
                       selected && "ring-2 ring-accent ring-offset-2 ring-offset-[#1a1410]"
                     )}
                   >
-                    <div
-                      className="pointer-events-none absolute inset-x-[8%] top-0 z-0 h-[55%] rounded-b-[40%] opacity-90 transition-opacity group-hover:opacity-100"
-                      style={{
-                        background:
-                          "radial-gradient(ellipse at 50% 0%, rgb(var(--accent-rgb) / 0.38), transparent 72%)",
-                      }}
-                    />
-                    <div className="relative z-[1] flex h-full w-full items-end justify-center">
-                      {honor ? (
-                        <HonorTrophyVisual honor={honor} variant="cabinet" />
-                      ) : (
-                        <div className="mb-1 h-[18%] w-[55%] rounded-sm bg-black/35 shadow-[inset_0_2px_6px_rgba(0,0,0,0.9)]" />
-                      )}
+                    <div className="relative flex min-h-0 flex-1 flex-col">
+                      <div
+                        className="pointer-events-none absolute inset-x-[8%] top-0 z-0 h-[50%] rounded-b-[40%] opacity-90 transition-opacity group-hover:opacity-100"
+                        style={{
+                          background:
+                            "radial-gradient(ellipse at 50% 0%, rgb(var(--accent-rgb) / 0.38), transparent 72%)",
+                        }}
+                      />
+                      <div className="relative z-[1] flex min-h-0 flex-1 items-end justify-center pb-0.5">
+                        {honor ? (
+                          <div className="flex max-h-full w-full items-end justify-center px-0.5">
+                            <HonorTrophyVisual honor={honor} variant="cabinet" />
+                          </div>
+                        ) : (
+                          <div className="mb-1 h-[18%] w-[55%] rounded-sm bg-black/35 shadow-[inset_0_2px_6px_rgba(0,0,0,0.9)]" />
+                        )}
+                      </div>
                     </div>
+                    {honor ? <TrophyPlaque honor={honor} /> : null}
                   </button>
                 );
               })}
