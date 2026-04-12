@@ -30,7 +30,11 @@ export function AppHeader({ title }: { title: string }) {
     const showAdmin =
       user?.role === "admin" || (user?.email ? clientEmailShowsAdminNav(user.email) : false);
     if (showAdmin) {
-      return [{ href: "/app/admin", label: "Admin" }, ...base];
+      return [
+        { href: "/app/admin", label: "Admin" },
+        { href: "/app/admin/database", label: "Base de dados" },
+        ...base,
+      ];
     }
     return base;
   }, [user?.role, user?.email]);
@@ -82,7 +86,9 @@ export function AppHeader({ title }: { title: string }) {
               onClick={() => setOpen(false)}
               className={cn(
                 "rounded-xl px-3 py-2.5 text-sm font-medium",
-                pathname === l.href || (l.href !== "/app" && pathname.startsWith(l.href))
+                l.href === "/app/admin"
+                  ? pathname === "/app/admin" || pathname === "/app/admin/"
+                  : pathname === l.href || (l.href !== "/app" && pathname.startsWith(l.href))
                   ? "bg-accent/10 text-accent"
                   : "text-zinc-400 hover:bg-white/5"
               )}

@@ -17,9 +17,15 @@ const titles: Record<string, string> = {
   "/app/admin": "Admin",
 };
 
+function shellTitle(pathname: string): string {
+  if (pathname.startsWith("/app/admin/database")) return "Base de dados";
+  if (pathname.startsWith("/app/admin")) return "Admin";
+  return titles[pathname] ?? "CoachBuilder";
+}
+
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const title = titles[pathname] ?? "CoachBuilder";
+  const title = shellTitle(pathname);
 
   return (
     <div className="min-h-screen bg-[#0a0d10] lg:pl-64">

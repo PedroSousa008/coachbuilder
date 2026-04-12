@@ -47,6 +47,7 @@ import {
   writeWorkspaceSnapshotToLocalStorage,
   type WorkspaceSnapshotV1,
 } from "@/lib/workspace-snapshot";
+import { buildWorkspaceSnapshotV1 } from "@/lib/build-workspace-snapshot";
 import { emptySketchAreaState } from "@/lib/sketch-area";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -371,29 +372,26 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!shouldUseCloudClientApis(user) || !cloudRemoteReady || !hydrated || !user?.id) return;
-    const snap: WorkspaceSnapshotV1 = {
-      version: 1,
+    const snap: WorkspaceSnapshotV1 = buildWorkspaceSnapshotV1({
       players,
       conversations,
-      messages: messagesByConv,
+      messagesByConv,
       trainingSessions,
-      trainingPlayers: trainingPlayerIdsBySession,
+      trainingPlayerIdsBySession,
       fixtures,
-      league: {
-        url: leagueTableUrl,
-        rows: leagueTableRows,
-        matches: leagueMatches,
-        competitionName: leagueCompetitionName,
-        lastFetched: leagueTableLastFetched,
-        lastError: leagueTableFetchError,
-      },
+      leagueTableUrl,
+      leagueTableRows,
+      leagueMatches,
+      leagueCompetitionName,
+      leagueTableLastFetched,
+      leagueTableFetchError,
       coachProfile,
-      tactics: savedTactics,
+      savedTactics,
       tacticMatches,
       tacticPlayerNotes,
       savedTrainingExercises,
       sketchArea,
-    };
+    });
     const t = window.setTimeout(() => {
       void fetch("/api/cloud/workspace", {
         method: "PUT",

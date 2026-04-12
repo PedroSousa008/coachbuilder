@@ -133,6 +133,7 @@ function planLabel(plan: string): string {
 function labelForAppPath(path: string | null | undefined): string {
   if (!path?.trim()) return "— (abre a app para atualizar)";
   const pairs: [string, string][] = [
+    ["/app/admin/database", "Base de dados"],
     ["/app/admin", "Admin"],
     ["/app/calendar", "Calendário"],
     ["/app/profile", "Perfil"],

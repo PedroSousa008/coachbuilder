@@ -13,6 +13,7 @@ import {
   UserCircle,
   Settings,
   Shield,
+  Database,
   LogOut,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -40,7 +41,12 @@ export function AppSidebar() {
 
   const showAdmin =
     user?.role === "admin" || (user?.email ? clientEmailShowsAdminNav(user.email) : false);
-  const adminNav = showAdmin ? ([{ href: "/app/admin", label: "Admin", icon: Shield }] as const) : [];
+  const adminNav = showAdmin
+    ? ([
+        { href: "/app/admin", label: "Admin", icon: Shield },
+        { href: "/app/admin/database", label: "Base de dados", icon: Database },
+      ] as const)
+    : [];
 
   const displayName =
     coachProfile.name.trim() || user?.name.trim() || user?.email || "";
@@ -59,7 +65,10 @@ export function AppSidebar() {
       </div>
       <nav className="flex flex-1 flex-col gap-0.5 p-3">
         {adminNav.map((item) => {
-          const active = pathname.startsWith(item.href);
+          const active =
+            item.href === "/app/admin"
+              ? pathname === "/app/admin" || pathname === "/app/admin/"
+              : pathname === item.href || pathname.startsWith(`${item.href}/`);
           const Icon = item.icon;
           return (
             <Link
