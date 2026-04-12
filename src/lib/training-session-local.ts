@@ -85,6 +85,12 @@ export const RONDO_9V3_VIDEO_URL = "/videos/training/rondo-9v3.mp4";
  */
 export const GOAL_KICK_1_VIDEO_URL = "/videos/training/goal-kick-1.mp4";
 
+/**
+ * Vídeo do exercício "Goal Kick 2".
+ * Coloca o ficheiro em `public/videos/training/goal-kick-2.mp4` ou substitui por um link YouTube.
+ */
+export const GOAL_KICK_2_VIDEO_URL = "/videos/training/goal-kick-2.mp4";
+
 export type TrainingThemeId =
   | "possession"
   | "transition"
@@ -166,6 +172,9 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
     "saida curta gr",
     "overlap lateral",
     "futebol direto",
+    "central a bater pontapé",
+    "goal kick 2",
+    "virar o jogo",
   ],
   transition: [
     "transição",
@@ -245,6 +254,11 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
     "atrair para um lado",
     "atração para o meio",
     "atracao para o meio",
+    "goal kick 2",
+    "2v1 no corredor",
+    "vantagem 2v1",
+    "leitura da pressão",
+    "leitura da pressao",
   ],
   pressing: [
     "pressão",
@@ -384,6 +398,14 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
     "goal kick",
     "organização defensiva",
     "organizacao defensiva",
+    "defesa a bater o pontapé",
+    "defesa a bater o pontape",
+    "criar dúvida no avançado",
+    "dúvida no avançado",
+    "duvida no avancado",
+    "superioridade no pontapé",
+    "superioridade no pontape",
+    "goal kick 2",
   ],
   wide: [
     "largo",
@@ -418,6 +440,10 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
     "lateral rápido",
     "lateral rapido",
     "atrair defesa",
+    "goal kick 2",
+    "extremo na pressão",
+    "extremo na pressao",
+    "corredor lateral livre",
   ],
   physical: [
     "físico",
@@ -722,6 +748,22 @@ const MAIN_DRILLS: MainDrillDef[] = [
       videoUrl: GOAL_KICK_1_VIDEO_URL,
     }),
   },
+  {
+    themes: ["possession", "transition", "wide", "defensive"],
+    title: "Goal Kick 2",
+    describe: (_pl, m) => ({
+      description: `O pontapé de baliza inicia no central do lado do extremo mais rápido, que joga no guarda-redes para este abrir com os pés. O GR lê a pressão do avançado adversário: se o avançado fecha o lado do central que bateu o pontapé, a bola entra no trinco, que de primeira liga no central que subiu, explorando o espaço livre; se o avançado pressiona de frente ao GR, o guarda-redes joga no outro central enquanto o primeiro abre com o seu lateral. Com a bola no lado oposto, cria-se espaço graças ao arrastamento do meio-campo, e o central espera o momento certo para virar o jogo. Como o avançado está mais atrasado na pressão, quem salta primeiro é o extremo, deixando o nosso lateral livre e projetado. Após o passe para o lateral: se o lateral adversário sai na pressão, o nosso extremo ataca a profundidade e cria 1v1 com o central; se não sai, o lateral progride com espaço. O foco está na leitura da pressão, criação de espaço, atrair para um lado e explorar rapidamente o corredor lateral com futebol directo. (${m} min)`,
+      coachingPoints:
+        "Central no pontapé: passe firme ao GR com ângulo para abrir; GR cabeça levantada e duas soluções pré-definidas conforme o trigger do avançado. Trinco: primeiro toque limpo na diagonal quando o avançado fecha o primeiro lado. Extremo: timing do 'salto' na pressão — não antes da bola sair do pé do GR/lateral. Lateral: primeira acção em linha recta ou por dentro conforme a saída do adversário.",
+      setup:
+        "Meio campo ou terço defensivo + transição (~50×40 m); baliza + GR; 2 centrais + laterais + trinco + extremos + médios; coletes para bloco adversário (avançado + laterais ou médios a simular pressões); bolas extra.",
+      groupSplit:
+        "Equipa A executa o padrão completo; equipa B roda o papel de pressão (avançado fecha vs pressiona GR). A cada 6–8 repetições, troca o central que inicia o pontapé e o corredor preferencial.",
+      diagramHint:
+        "Pontapé central→GR→abertura; bifurcação avançado fecha lateral vs pressiona GR; trinco liga central subido OU GR→2.º central + 1.º abre com lateral; viragem de jogo; extremo salta → lateral livre; bifurcação lateral adv. sai → extremo profundidade 1v1 vs não sai → lateral progride.",
+      videoUrl: GOAL_KICK_2_VIDEO_URL,
+    }),
+  },
 ];
 
 function scoreDrill(themes: TrainingThemeId[], def: MainDrillDef): number {
@@ -869,6 +911,7 @@ const SINGLE_DRILL_10_MIN_TITLES = new Set<string>([
   "Cross and Strike",
   "4 Finishing Drills",
   "Goal Kick 1",
+  "Goal Kick 2",
 ]);
 const SINGLE_DRILL_8_MIN_TITLES = new Set<string>(["Passing Activation", "Dual Passing"]);
 const SINGLE_DRILL_5_MIN_TITLES = new Set<string>(["Rondo 9v3"]);
@@ -896,6 +939,7 @@ function singleDrillProgressionVariationsForTitle(title: string): {
   const is9v9Plus2Game = title === "9v9 + 2 Game";
   const isRondo9v3 = title === "Rondo 9v3";
   const isGoalKick1 = title === "Goal Kick 1";
+  const isGoalKick2 = title === "Goal Kick 2";
   const isPassingActivation = title === "Passing Activation";
   const isDualPassing = title === "Dual Passing";
 
@@ -919,11 +963,13 @@ function singleDrillProgressionVariationsForTitle(title: string): {
                     ? "Sobe a meta a 12 passes por ponto; ou os 3 têm no máximo 4 toques para marcar após recuperação; ou meiinho só pode tocar com 1 toque."
                     : isGoalKick1
                       ? "Adversário com linha mais alta para forçar timing do overlap; ou máximo 8 s desde a reposição até ao passe em profundidade; ou lateral obrigado a cruzar com o pé interior na primeira série."
-                      : isPassingActivation
-                        ? "Aperta distâncias entre postes para exigir passes mais curtos e reacção mais rápida; ou fixa 2 toques máx.; ou alterna o pé obrigatório em cada série."
-                        : isDualPassing
-                          ? "Encolhe o hexágono para forçar primeiro toque ainda mais limpo; ou acrescenta um defensor ligeiro no centro por 45 s; ou exige só combinações com o pé não dominante."
-                          : "Aumenta espaço (mais difícil defender) ou reduz toques permitidos no rondo. Alterna pé fraco em passes fixos.";
+                      : isGoalKick2
+                        ? "Avançado adversário com pressão dobrada (salto + sombra ao GR); ou GR com máximo 5 s para jogar; ou extremo obrigado a iniciar o movimento de pressão antes do passe ao lateral."
+                        : isPassingActivation
+                          ? "Aperta distâncias entre postes para exigir passes mais curtos e reacção mais rápida; ou fixa 2 toques máx.; ou alterna o pé obrigatório em cada série."
+                          : isDualPassing
+                            ? "Encolhe o hexágono para forçar primeiro toque ainda mais limpo; ou acrescenta um defensor ligeiro no centro por 45 s; ou exige só combinações com o pé não dominante."
+                            : "Aumenta espaço (mais difícil defender) ou reduz toques permitidos no rondo. Alterna pé fraco em passes fixos.";
 
   if (isDualPassing) return { progression };
 
@@ -947,9 +993,11 @@ function singleDrillProgressionVariationsForTitle(title: string): {
                     ? "Golo dos 3 após recuperação vale duplo se vier em ≤3 toques; ou só uma baliza 'viva' de cada vez; ou equipa de 9 perde 1 ponto se o meiinho perder a bola."
                     : isGoalKick1
                       ? "Espelhar toda a sequência pelo lado esquerdo; ou falso 9 a descair antes do passe ao trinco; ou profundidade obrigatoriamente em passe rasteiro (sem elevação)."
-                      : isPassingActivation
-                        ? "Dois coletes com passes obrigatórios entre cores; ou inverte o sentido da rotação a cada minuto; ou acrescenta um jogador 'defensor' a tapar uma linha de passe por 30 s."
-                        : "Reduz jogadores no meio; ou acrescenta neutro exterior; ou pontua por X passes seguidos.";
+                      : isGoalKick2
+                        ? "Espelhar padrão no lado esquerdo; ou trinco com 1 toque obrigatório nas duas primeiras saídas; ou lateral adversário com 'permissão' de contacto leve no duelo com o extremo."
+                        : isPassingActivation
+                          ? "Dois coletes com passes obrigatórios entre cores; ou inverte o sentido da rotação a cada minuto; ou acrescenta um jogador 'defensor' a tapar uma linha de passe por 30 s."
+                          : "Reduz jogadores no meio; ou acrescenta neutro exterior; ou pontua por X passes seguidos.";
 
   return { progression, variations };
 }
