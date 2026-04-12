@@ -8,6 +8,13 @@ import type { CoachCareerRoleId, CoachEmploymentStatus, CoachHonorCategory } fro
  */
 export const CHAMPIONSHIP_TROPHY_IMAGE_PATH = "/images/trophies/campeao-campeonato.png";
 
+/** Fundo decorativo do armário de troféus (vitrine 5×5). */
+export const TROPHY_CABINET_BG_PATH = "/images/trophies/trophy-cabinet-bg.png";
+
+export const TROPHY_CABINET_ROWS = 5;
+export const TROPHY_CABINET_COLS = 5;
+export const TROPHY_CABINET_SLOTS = TROPHY_CABINET_ROWS * TROPHY_CABINET_COLS;
+
 export const CAREER_ROLE_OPTIONS: { id: CoachCareerRoleId; label: string }[] = [
   { id: "head", label: "Treinador Principal" },
   { id: "assistant", label: "Treinador Adjunto" },

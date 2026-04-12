@@ -245,7 +245,7 @@ export function CareerTab({ coachProfile, hydrated, onCommit }: Props) {
               ))}
             </ul>
             <div className="mt-6 flex flex-col gap-2">
-              <Button className="w-full bg-emerald-600 hover:bg-emerald-500" onClick={() => resolveConflict("keep-both")}>
+              <Button type="button" className="w-full" onClick={() => resolveConflict("keep-both")}>
                 Manter ambos
               </Button>
               <Button
@@ -270,9 +270,9 @@ export function CareerTab({ coachProfile, hydrated, onCommit }: Props) {
         </div>
       ) : null}
 
-      <Card className="overflow-hidden border-emerald-500/20 bg-gradient-to-br from-emerald-950/40 via-zinc-950 to-zinc-950">
+      <Card className="overflow-hidden border-accent/25 bg-gradient-to-br from-accent/15 via-zinc-950 to-zinc-950">
         <CardHeader className="border-b border-white/5">
-          <div className="flex items-center gap-2 text-emerald-400">
+          <div className="flex items-center gap-2 text-accent">
             <Briefcase className="h-5 w-5" />
             <CardTitle className="text-white">Estado actual</CardTitle>
           </div>
@@ -520,7 +520,7 @@ export function CareerTab({ coachProfile, hydrated, onCommit }: Props) {
                               />
                             </div>
                             <div className="flex items-end sm:col-span-2">
-                              <p className="text-sm text-emerald-400/90">
+                              <p className="text-sm text-accent">
                                 Aproveitamento: {winRatePercent(s.stats.wins, s.stats.played)}%
                               </p>
                             </div>
@@ -711,12 +711,12 @@ export function CareerTab({ coachProfile, hydrated, onCommit }: Props) {
               <div key={t.id} className="flex flex-1 items-center" style={{ minWidth: "140px" }}>
                 <div
                   className={`flex flex-1 flex-col rounded-xl border px-3 py-3 ${
-                    done ? "border-emerald-500/40 bg-emerald-950/30" : "border-white/10 bg-zinc-900/40"
+                    done ? "border-accent/40 bg-accent/10" : "border-white/10 bg-zinc-900/40"
                   }`}
                 >
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-display text-sm font-semibold text-white">{t.shortLabel}</span>
-                    {done ? <Award className="h-4 w-4 text-emerald-400" /> : null}
+                    {done ? <Award className="h-4 w-4 text-accent" /> : null}
                   </div>
                   <p className="text-[10px] text-zinc-500">{t.label}</p>
                   <button
@@ -737,7 +737,7 @@ export function CareerTab({ coachProfile, hydrated, onCommit }: Props) {
                   ) : (
                     <button
                       type="button"
-                      className="mt-2 text-xs font-medium text-emerald-400 hover:underline"
+                      className="mt-2 text-xs font-medium text-accent hover:underline"
                       onClick={() => addUefaCompleted(t.id)}
                     >
                       Marcar concluído
@@ -1138,12 +1138,12 @@ export function CareerTab({ coachProfile, hydrated, onCommit }: Props) {
         </CardContent>
       </Card>
 
-      <div className="sticky bottom-4 z-40 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-emerald-500/30 bg-zinc-950/95 p-4 shadow-2xl backdrop-blur-md">
+      <div className="sticky bottom-4 z-40 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-accent/30 bg-zinc-950/95 p-4 shadow-2xl backdrop-blur-md">
         <p className="text-sm text-zinc-400">
-          Modo palmarés: <span className="text-emerald-400">{coachProfile.careerHonorSyncMode ?? "auto"}</span>
-          {hint ? <span className="ml-3 text-emerald-400">{hint}</span> : null}
+          Modo palmarés: <span className="text-accent">{coachProfile.careerHonorSyncMode ?? "auto"}</span>
+          {hint ? <span className="ml-3 text-accent">{hint}</span> : null}
         </p>
-        <Button type="button" className="bg-emerald-600 hover:bg-emerald-500" onClick={() => runSave()}>
+        <Button type="button" onClick={() => runSave()}>
           <Save className="mr-2 h-4 w-4" />
           Guardar carreira
         </Button>

@@ -1,4 +1,4 @@
-import type { CoachCareerSeason } from "@/types";
+import type { CoachCareerSeason, CoachHonorEntry } from "@/types";
 import { winRatePercent, type CoachPerformanceSummary } from "@/lib/tactics-match-stats";
 
 export type CareerSeasonAggregate = {
@@ -120,4 +120,14 @@ function seasonLabelSortKey(label: string): number {
   const y2Raw = m[2]!;
   const y2 = y2Raw.length === 2 ? 2000 + parseInt(y2Raw, 10) : parseInt(y2Raw, 10);
   return y1 + y2 / 10000;
+}
+
+/** Palmarés: épocas mais recentes primeiro, depois título (A→Z). */
+export function sortHonorsForCabinetDisplay(honors: CoachHonorEntry[]): CoachHonorEntry[] {
+  return [...honors].sort((a, b) => {
+    const sb = seasonLabelSortKey(b.seasonLabel);
+    const sa = seasonLabelSortKey(a.seasonLabel);
+    if (sb !== sa) return sb - sa;
+    return a.title.localeCompare(b.title, "pt");
+  });
 }

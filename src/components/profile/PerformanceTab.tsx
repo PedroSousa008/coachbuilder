@@ -27,7 +27,7 @@ function PerfCell({
       <p className="text-[10px] uppercase tracking-wider text-zinc-500">{label}</p>
       <p
         className={`mt-2 font-display text-xl font-semibold tabular-nums ${
-          danger ? "text-red-400/90" : accent ? "text-emerald-400" : "text-white"
+          danger ? "text-red-400/90" : accent ? "text-accent" : "text-white"
         }`}
       >
         {value}
@@ -150,11 +150,11 @@ export function PerformanceTab({ savedTactics, tacticMatches, players, careerSea
         </CardContent>
       </Card>
 
-      <Card className="border-white/10 bg-gradient-to-br from-emerald-950/20 to-zinc-950/90">
+      <Card className="border-white/10 bg-gradient-to-br from-accent/10 to-zinc-950/90">
         <CardHeader>
           <CardTitle className="text-white">Da carreira</CardTitle>
           <p className="text-sm text-zinc-500">
-            Soma das estatísticas que introduzes na aba <span className="text-emerald-400/90">Carreira</span>, por época
+            Soma das estatísticas que introduzes na aba <span className="text-accent">Carreira</span>, por época
             desportiva.
           </p>
         </CardHeader>
@@ -213,7 +213,7 @@ export function PerformanceTab({ savedTactics, tacticMatches, players, careerSea
                     </div>
                     <div className="h-2 overflow-hidden rounded-full bg-zinc-800">
                       <div
-                        className="h-full rounded-full bg-gradient-to-r from-emerald-600 to-emerald-400 transition-all"
+                        className="h-full rounded-full bg-gradient-to-r from-accent to-accent-muted transition-all"
                         style={{ width: `${w}%` }}
                       />
                     </div>

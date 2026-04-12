@@ -59,7 +59,7 @@ export function PersonalTab({ coachProfile, hydrated, onSave }: Props) {
               <input
                 type="file"
                 accept="image/*"
-                className="block w-full text-sm text-zinc-400 file:mr-3 file:rounded-lg file:border-0 file:bg-emerald-600/20 file:px-3 file:py-2 file:text-emerald-200"
+                className="block w-full text-sm text-zinc-400 file:mr-3 file:rounded-lg file:border-0 file:bg-accent/20 file:px-3 file:py-2 file:text-accent"
                 onChange={(e) => readAvatar(e.target.files?.[0] ?? null)}
               />
               {draft.avatarDataUrl ? (
@@ -241,7 +241,7 @@ export function PersonalTab({ coachProfile, hydrated, onSave }: Props) {
           <div className="flex flex-col gap-3 border-t border-white/10 pt-6 sm:flex-row sm:items-center sm:justify-between">
             <Button
               type="button"
-              className="bg-emerald-600 hover:bg-emerald-500 sm:min-w-[160px]"
+              className="sm:min-w-[160px]"
               onClick={() => {
                 onSave(draft);
                 setHint("Guardado.");
@@ -250,7 +250,7 @@ export function PersonalTab({ coachProfile, hydrated, onSave }: Props) {
             >
               Guardar dados
             </Button>
-            {hint ? <p className="text-sm text-emerald-400">{hint}</p> : null}
+            {hint ? <p className="text-sm text-accent">{hint}</p> : null}
           </div>
         </CardContent>
       </Card>

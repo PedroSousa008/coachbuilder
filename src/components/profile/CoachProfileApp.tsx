@@ -82,11 +82,11 @@ export function CoachProfileApp() {
             onClick={() => setTab(id)}
             className={`flex items-center gap-2 rounded-t-xl px-4 py-3 text-sm font-medium transition ${
               active
-                ? "bg-white/[0.08] text-white shadow-[inset_0_-2px_0_0] shadow-emerald-500/90"
+                ? "bg-white/[0.08] text-white shadow-[inset_0_-2px_0_0_rgb(var(--accent-rgb))]"
                 : "text-zinc-500 hover:bg-white/[0.04] hover:text-zinc-200"
             }`}
           >
-            <Icon className={`h-4 w-4 ${active ? "text-emerald-400" : "text-zinc-600"}`} />
+            <Icon className={`h-4 w-4 ${active ? "text-accent" : "text-zinc-600"}`} />
             {label}
           </button>
         );
@@ -97,13 +97,25 @@ export function CoachProfileApp() {
   return (
     <div className="min-h-screen bg-[#06080c]">
       <div className="relative overflow-hidden border-b border-white/10">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_-20%,rgba(16,185,129,0.18),transparent)]" />
-        <div className="pointer-events-none absolute -right-20 top-0 h-64 w-64 rounded-full bg-emerald-500/10 blur-3xl" />
-        <div className="pointer-events-none absolute bottom-0 left-1/4 h-48 w-48 rounded-full bg-violet-600/10 blur-3xl" />
+        <div
+          className="pointer-events-none absolute inset-0"
+          style={{
+            background:
+              "radial-gradient(ellipse 80% 60% at 50% -20%, rgb(var(--accent-rgb) / 0.22), transparent)",
+          }}
+        />
+        <div
+          className="pointer-events-none absolute -right-20 top-0 h-64 w-64 rounded-full blur-3xl"
+          style={{ background: "rgb(var(--accent-rgb) / 0.14)" }}
+        />
+        <div
+          className="pointer-events-none absolute bottom-0 left-1/4 h-48 w-48 rounded-full blur-3xl"
+          style={{ background: "rgb(var(--accent-rgb) / 0.1)" }}
+        />
         <div className="relative mx-auto max-w-6xl px-4 pb-10 pt-10 sm:px-6 lg:px-8">
           <div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
             <div className="flex flex-col gap-6 sm:flex-row sm:items-center">
-              <div className="relative h-28 w-28 shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-zinc-800 to-zinc-950 shadow-2xl ring-2 ring-emerald-500/20">
+              <div className="relative h-28 w-28 shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-zinc-800 to-zinc-950 shadow-2xl ring-2 ring-accent/25">
                 {coachProfile.avatarDataUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={coachProfile.avatarDataUrl} alt="" className="h-full w-full object-cover" />
@@ -114,7 +126,7 @@ export function CoachProfileApp() {
                 )}
               </div>
               <div>
-                <p className="text-xs font-medium uppercase tracking-[0.2em] text-emerald-400/80">
+                <p className="text-xs font-medium uppercase tracking-[0.2em] text-accent/90">
                   Perfil do treinador
                 </p>
                 <h1 className="mt-1 font-display text-3xl font-semibold tracking-tight text-white sm:text-4xl">

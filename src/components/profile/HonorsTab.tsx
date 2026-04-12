@@ -7,7 +7,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { profileFieldClass } from "@/components/profile/field-styles";
 import { newCoachEntityId } from "@/lib/coach-entity-id";
-import { CHAMPIONSHIP_TROPHY_IMAGE_PATH, HONOR_CATEGORY_OPTIONS } from "@/lib/coach-profile-constants";
+import {
+  HONOR_CATEGORY_OPTIONS,
+  honorCategoryLabel,
+  TROPHY_CABINET_SLOTS,
+} from "@/lib/coach-profile-constants";
+import { sortHonorsForCabinetDisplay } from "@/lib/coach-career-aggregates";
 import {
   buildCareerOriginatedHonors,
   filterManualRemovingConflictsWithGenerated,
@@ -15,41 +20,13 @@ import {
   mergeHonorsWithCareer,
   minimalSeasonFromHonor,
 } from "@/lib/coach-career-honors-sync";
+import { HonorTrophyVisual } from "@/components/profile/HonorTrophyVisual";
+import { TrophyCabinet } from "@/components/profile/TrophyCabinet";
 
 type Props = {
   coachProfile: CoachProfileState;
   onCommit: (next: Partial<CoachProfileState>) => void;
 };
-
-function HonorTrophyVisual({ honor }: { honor: CoachHonorEntry }) {
-  const defaultChampion =
-    honor.category === "league" ? CHAMPIONSHIP_TROPHY_IMAGE_PATH : null;
-  const src = honor.trophyImageDataUrl ?? defaultChampion;
-  const [broken, setBroken] = useState(false);
-
-  useEffect(() => {
-    setBroken(false);
-  }, [src]);
-
-  if (!src || broken) {
-    return (
-      <div className="flex h-full w-full flex-col items-center justify-center gap-2 text-amber-500/40">
-        <Trophy className="h-14 w-14" />
-        <span className="text-xs uppercase tracking-wider">Troféu</span>
-      </div>
-    );
-  }
-
-  return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src={src}
-      alt=""
-      className="h-full w-full object-cover opacity-90"
-      onError={() => setBroken(true)}
-    />
-  );
-}
 
 export function HonorsTab({ coachProfile, onCommit }: Props) {
   const honors = coachProfile.honors ?? [];
@@ -58,6 +35,7 @@ export function HonorsTab({ coachProfile, onCommit }: Props) {
 
   const [hint, setHint] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
+  const [selectedHonorId, setSelectedHonorId] = useState<string | null>(null);
   const [newHonor, setNewHonor] = useState({
     category: "cup" as CoachHonorCategory,
     title: "",
@@ -69,15 +47,22 @@ export function HonorsTab({ coachProfile, onCommit }: Props) {
   const [conflictOpen, setConflictOpen] = useState(false);
   const [conflictLines, setConflictLines] = useState<string[]>([]);
 
-  const grouped = useMemo(() => {
-    const g = new Map<CoachHonorCategory, CoachHonorEntry[]>();
-    for (const h of honors) {
-      const list = g.get(h.category) ?? [];
-      list.push(h);
-      g.set(h.category, list);
+  const sortedForCabinet = useMemo(() => sortHonorsForCabinetDisplay(honors), [honors]);
+  const overflowHonors = useMemo(
+    () => sortedForCabinet.slice(TROPHY_CABINET_SLOTS),
+    [sortedForCabinet]
+  );
+
+  const selectedHonor = useMemo(
+    () => (selectedHonorId ? honors.find((h) => h.id === selectedHonorId) ?? null : null),
+    [honors, selectedHonorId]
+  );
+
+  useEffect(() => {
+    if (selectedHonorId && !honors.some((h) => h.id === selectedHonorId)) {
+      setSelectedHonorId(null);
     }
-    return g;
-  }, [honors]);
+  }, [honors, selectedHonorId]);
 
   function seasonExists(label: string, club: string): boolean {
     return seasons.some((s) => s.seasonLabel.trim() === label.trim() && s.club.trim() === club.trim());
@@ -165,7 +150,7 @@ export function HonorsTab({ coachProfile, onCommit }: Props) {
               ))}
             </ul>
             <div className="mt-6 flex flex-col gap-2">
-              <Button className="w-full bg-emerald-600 hover:bg-emerald-500" onClick={() => applySync("keep-both")}>
+              <Button type="button" className="w-full" onClick={() => applySync("keep-both")}>
                 Manter ambos
               </Button>
               <Button variant="outline" className="w-full border-zinc-600" onClick={() => applySync("drop-manual")}>
@@ -183,6 +168,88 @@ export function HonorsTab({ coachProfile, onCommit }: Props) {
         </div>
       ) : null}
 
+      <TrophyCabinet
+        honors={honors}
+        selectedId={selectedHonorId}
+        onSelect={(h) => setSelectedHonorId(h?.id ?? null)}
+      />
+
+      {selectedHonor ? (
+        <Card className="border-accent/25 bg-zinc-900/70">
+          <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-4">
+            <div>
+              <CardTitle className="text-white">{selectedHonor.title}</CardTitle>
+              <p className="mt-1 text-sm text-zinc-500">
+                {honorCategoryLabel(selectedHonor.category)} · {selectedHonor.seasonLabel} ·{" "}
+                {selectedHonor.club || "—"} · {selectedHonor.ageGroup || "—"}
+              </p>
+              <p className="mt-1 text-xs text-zinc-600">
+                {selectedHonor.origin === "career" ? "Origem: Carreira" : "Origem: Manual"}
+              </p>
+            </div>
+            <Button type="button" variant="ghost" className="text-zinc-400" onClick={() => setSelectedHonorId(null)}>
+              Fechar
+            </Button>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-6 sm:flex-row">
+            <div className="relative aspect-[4/3] w-full max-w-xs overflow-hidden rounded-xl border border-white/10 bg-zinc-800/50">
+              <HonorTrophyVisual honor={selectedHonor} variant="card" />
+            </div>
+            <div className="flex flex-1 flex-col justify-center gap-3">
+              <div className="flex flex-wrap gap-2">
+                <label className="cursor-pointer text-sm text-accent hover:underline">
+                  Carregar imagem do troféu
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (!f || f.size > 900_000) return;
+                      const r = new FileReader();
+                      r.onload = () => {
+                        const url = typeof r.result === "string" ? r.result : undefined;
+                        onCommit({
+                          honors: honors.map((x) =>
+                            x.id === selectedHonor.id ? { ...x, trophyImageDataUrl: url } : x
+                          ),
+                        });
+                      };
+                      r.readAsDataURL(f);
+                    }}
+                  />
+                </label>
+                {selectedHonor.trophyImageDataUrl && selectedHonor.category === "league" ? (
+                  <button
+                    type="button"
+                    className="text-sm text-zinc-500 hover:text-zinc-300 hover:underline"
+                    onClick={() =>
+                      onCommit({
+                        honors: honors.map((x) =>
+                          x.id === selectedHonor.id ? { ...x, trophyImageDataUrl: undefined } : x
+                        ),
+                      })
+                    }
+                  >
+                    Usar troféu de campeão padrão
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  className="text-sm text-red-400/90 hover:underline"
+                  onClick={() => {
+                    onCommit({ honors: honors.filter((x) => x.id !== selectedHonor.id) });
+                    setSelectedHonorId(null);
+                  }}
+                >
+                  Remover conquista
+                </button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
+
       <Card className="border-amber-500/20 bg-gradient-to-r from-amber-950/30 to-zinc-950">
         <CardContent className="flex flex-col gap-4 py-6 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-start gap-3">
@@ -195,20 +262,18 @@ export function HonorsTab({ coachProfile, onCommit }: Props) {
                   ? "ao guardares a Carreira, o palmarés é actualizado (com confirmação se houver conflitos)."
                   : "só alteras o palmarés quando sincronizas aqui ou editas entradas."}
               </p>
-              {hint ? <p className="mt-2 text-sm text-emerald-400">{hint}</p> : null}
+              {hint ? <p className="mt-2 text-sm text-accent">{hint}</p> : null}
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
             <Button
               variant={mode === "auto" ? "primary" : "outline"}
-              className={mode === "auto" ? "bg-emerald-700 hover:bg-emerald-600" : ""}
               onClick={() => onCommit({ careerHonorSyncMode: "auto" })}
             >
               Automático
             </Button>
             <Button
               variant={mode === "manual" ? "primary" : "outline"}
-              className={mode === "manual" ? "bg-emerald-700 hover:bg-emerald-600" : ""}
               onClick={() => onCommit({ careerHonorSyncMode: "manual" })}
             >
               Manual
@@ -222,7 +287,11 @@ export function HonorsTab({ coachProfile, onCommit }: Props) {
       </Card>
 
       <div className="flex justify-end">
-        <Button variant="outline" className="border-dashed border-amber-600/50 text-amber-200" onClick={() => setAddOpen((v) => !v)}>
+        <Button
+          variant="outline"
+          className="border-dashed border-amber-600/50 text-amber-200"
+          onClick={() => setAddOpen((v) => !v)}
+        >
           {addOpen ? "Fechar formulário" : "+ Conquista manual"}
         </Button>
       </div>
@@ -301,89 +370,52 @@ export function HonorsTab({ coachProfile, onCommit }: Props) {
         </Card>
       ) : null}
 
-      {HONOR_CATEGORY_OPTIONS.map((cat) => {
-        const list = grouped.get(cat.id) ?? [];
-        if (list.length === 0) return null;
-        return (
-          <section key={cat.id}>
-            <h3 className="mb-4 flex items-center gap-2 font-display text-lg text-white">
-              <Trophy className="h-5 w-5 text-amber-400/90" />
-              {cat.label}
-            </h3>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {list.map((h) => (
-                <Card
-                  key={h.id}
-                  className="group overflow-hidden border-white/10 bg-gradient-to-b from-zinc-900/80 to-zinc-950 transition hover:border-amber-500/30"
-                >
-                  <div className="relative aspect-[4/3] bg-zinc-800/50">
-                    <HonorTrophyVisual honor={h} />
-                    <span className="absolute right-2 top-2 rounded-full bg-black/50 px-2 py-0.5 text-[10px] text-zinc-300">
-                      {h.origin === "career" ? "Carreira" : "Manual"}
-                    </span>
-                  </div>
-                  <CardContent className="p-4">
-                    <p className="font-display text-base font-semibold text-white">{h.title}</p>
-                    <p className="mt-1 text-xs text-zinc-500">
-                      {h.seasonLabel} · {h.club || "—"} · {h.ageGroup || "—"}
-                    </p>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      <label className="cursor-pointer text-xs text-amber-400/90 hover:underline">
-                        Imagem
-                        <input
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={(e) => {
-                            const f = e.target.files?.[0];
-                            if (!f || f.size > 900_000) return;
-                            const r = new FileReader();
-                            r.onload = () => {
-                              const url = typeof r.result === "string" ? r.result : undefined;
-                              onCommit({
-                                honors: honors.map((x) => (x.id === h.id ? { ...x, trophyImageDataUrl: url } : x)),
-                              });
-                            };
-                            r.readAsDataURL(f);
-                          }}
-                        />
-                      </label>
-                      {h.trophyImageDataUrl && h.category === "league" ? (
-                        <button
-                          type="button"
-                          className="text-xs text-zinc-500 hover:text-zinc-300 hover:underline"
-                          onClick={() =>
-                            onCommit({
-                              honors: honors.map((x) =>
-                                x.id === h.id ? { ...x, trophyImageDataUrl: undefined } : x
-                              ),
-                            })
-                          }
-                        >
-                          Usar troféu de campeão padrão
-                        </button>
-                      ) : null}
-                      <button
-                        type="button"
-                        className="text-xs text-red-400/80 hover:underline"
-                        onClick={() => onCommit({ honors: honors.filter((x) => x.id !== h.id) })}
-                      >
-                        Remover
-                      </button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </section>
-        );
-      })}
-
-      {honors.length === 0 ? (
-        <p className="rounded-2xl border border-dashed border-zinc-700 p-10 text-center text-sm text-zinc-500">
-          Ainda sem troféus. Sincroniza com a Carreira ou adiciona conquistas manualmente.
-        </p>
+      {overflowHonors.length > 0 ? (
+        <Card className="border-white/10 bg-zinc-900/50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base text-white">
+              <Trophy className="h-4 w-4 text-amber-500" />
+              Fora da vitrine ({overflowHonors.length})
+            </CardTitle>
+            <p className="text-sm text-zinc-500">
+              O armário mostra as {TROPHY_CABINET_SLOTS} conquistas mais recentes (por época). As restantes ficam
+              listadas aqui para editares ou removeres.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {overflowHonors.map((h) => (
+              <div
+                key={h.id}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-white/5 bg-black/20 px-3 py-2"
+              >
+                <div>
+                  <p className="text-sm font-medium text-zinc-200">{h.title}</p>
+                  <p className="text-xs text-zinc-500">
+                    {honorCategoryLabel(h.category)} · {h.seasonLabel} · {h.club || "—"}
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    className="text-xs text-accent hover:underline"
+                    onClick={() => setSelectedHonorId(h.id)}
+                  >
+                    Detalhes
+                  </button>
+                  <button
+                    type="button"
+                    className="text-xs text-red-400/80 hover:underline"
+                    onClick={() => onCommit({ honors: honors.filter((x) => x.id !== h.id) })}
+                  >
+                    Remover
+                  </button>
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
       ) : null}
+
     </div>
   );
 }
