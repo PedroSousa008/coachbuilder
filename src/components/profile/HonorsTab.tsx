@@ -1,13 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { RefreshCw, Sparkles, Trophy } from "lucide-react";
 import type { CoachHonorCategory, CoachHonorEntry, CoachProfileState } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { profileFieldClass } from "@/components/profile/field-styles";
 import { newCoachEntityId } from "@/lib/coach-entity-id";
-import { HONOR_CATEGORY_OPTIONS } from "@/lib/coach-profile-constants";
+import { CHAMPIONSHIP_TROPHY_IMAGE_PATH, HONOR_CATEGORY_OPTIONS } from "@/lib/coach-profile-constants";
 import {
   buildCareerOriginatedHonors,
   filterManualRemovingConflictsWithGenerated,
@@ -20,6 +20,36 @@ type Props = {
   coachProfile: CoachProfileState;
   onCommit: (next: Partial<CoachProfileState>) => void;
 };
+
+function HonorTrophyVisual({ honor }: { honor: CoachHonorEntry }) {
+  const defaultChampion =
+    honor.category === "league" ? CHAMPIONSHIP_TROPHY_IMAGE_PATH : null;
+  const src = honor.trophyImageDataUrl ?? defaultChampion;
+  const [broken, setBroken] = useState(false);
+
+  useEffect(() => {
+    setBroken(false);
+  }, [src]);
+
+  if (!src || broken) {
+    return (
+      <div className="flex h-full w-full flex-col items-center justify-center gap-2 text-amber-500/40">
+        <Trophy className="h-14 w-14" />
+        <span className="text-xs uppercase tracking-wider">Troféu</span>
+      </div>
+    );
+  }
+
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={src}
+      alt=""
+      className="h-full w-full object-cover opacity-90"
+      onError={() => setBroken(true)}
+    />
+  );
+}
 
 export function HonorsTab({ coachProfile, onCommit }: Props) {
   const honors = coachProfile.honors ?? [];
@@ -287,15 +317,7 @@ export function HonorsTab({ coachProfile, onCommit }: Props) {
                   className="group overflow-hidden border-white/10 bg-gradient-to-b from-zinc-900/80 to-zinc-950 transition hover:border-amber-500/30"
                 >
                   <div className="relative aspect-[4/3] bg-zinc-800/50">
-                    {h.trophyImageDataUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={h.trophyImageDataUrl} alt="" className="h-full w-full object-cover opacity-90" />
-                    ) : (
-                      <div className="flex h-full w-full flex-col items-center justify-center gap-2 text-amber-500/40">
-                        <Trophy className="h-14 w-14" />
-                        <span className="text-xs uppercase tracking-wider">Troféu</span>
-                      </div>
-                    )}
+                    <HonorTrophyVisual honor={h} />
                     <span className="absolute right-2 top-2 rounded-full bg-black/50 px-2 py-0.5 text-[10px] text-zinc-300">
                       {h.origin === "career" ? "Carreira" : "Manual"}
                     </span>
@@ -305,7 +327,7 @@ export function HonorsTab({ coachProfile, onCommit }: Props) {
                     <p className="mt-1 text-xs text-zinc-500">
                       {h.seasonLabel} · {h.club || "—"} · {h.ageGroup || "—"}
                     </p>
-                    <div className="mt-3 flex gap-2">
+                    <div className="mt-3 flex flex-wrap gap-2">
                       <label className="cursor-pointer text-xs text-amber-400/90 hover:underline">
                         Imagem
                         <input
@@ -326,6 +348,21 @@ export function HonorsTab({ coachProfile, onCommit }: Props) {
                           }}
                         />
                       </label>
+                      {h.trophyImageDataUrl && h.category === "league" ? (
+                        <button
+                          type="button"
+                          className="text-xs text-zinc-500 hover:text-zinc-300 hover:underline"
+                          onClick={() =>
+                            onCommit({
+                              honors: honors.map((x) =>
+                                x.id === h.id ? { ...x, trophyImageDataUrl: undefined } : x
+                              ),
+                            })
+                          }
+                        >
+                          Usar troféu de campeão padrão
+                        </button>
+                      ) : null}
                       <button
                         type="button"
                         className="text-xs text-red-400/80 hover:underline"

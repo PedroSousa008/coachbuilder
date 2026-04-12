@@ -1,5 +1,13 @@
 import type { CoachCareerRoleId, CoachEmploymentStatus, CoachHonorCategory } from "@/types";
 
+/**
+ * Imagem fixa do troféu de **campeão** (categoria Campeonatos / `league`).
+ * Coloca o ficheiro em `public/images/trophies/campeao-campeonato.png`
+ * (podes usar `.jpg` ou `.webp` — nesse caso altera também esta constante).
+ * Aparece para todas as épocas e escalões quando não há foto personalizada.
+ */
+export const CHAMPIONSHIP_TROPHY_IMAGE_PATH = "/images/trophies/campeao-campeonato.png";
+
 export const CAREER_ROLE_OPTIONS: { id: CoachCareerRoleId; label: string }[] = [
   { id: "head", label: "Treinador Principal" },
   { id: "assistant", label: "Treinador Adjunto" },
