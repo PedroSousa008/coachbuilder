@@ -351,11 +351,145 @@ export interface LeagueImportedMatch {
   fpfFixtureId?: string;
 }
 
+/** Função técnica num clube (época). */
+export type CoachCareerRoleId =
+  | "head"
+  | "assistant"
+  | "analyst"
+  | "gk"
+  | "fitness"
+  | "coordinator";
+
+/** Situação profissional actual. */
+export type CoachEmploymentStatus = "active" | "unattached" | "break";
+
+export interface CoachCareerCurrent {
+  club: string;
+  ageGroup: string;
+  role: CoachCareerRoleId;
+  /** ISO date — desde quando no cargo */
+  since?: string;
+  status: CoachEmploymentStatus;
+}
+
+export interface CoachSeasonStats {
+  played: number;
+  wins: number;
+  draws: number;
+  losses: number;
+  goalsFor: number;
+  goalsAgainst: number;
+  points?: number;
+  finalPosition?: number;
+}
+
+export interface CoachSeasonAchievements {
+  champion: boolean;
+  /** Uma linha por taça ou texto livre */
+  cupsWon: string;
+  promotion: boolean;
+  maintenance: boolean;
+  qualifiedFinals: boolean;
+  recordsNotes?: string;
+  distinctions?: string;
+}
+
+/** Uma época desportiva na carreira (ex.: 2024/25). */
+export interface CoachCareerSeason {
+  id: string;
+  seasonLabel: string;
+  club: string;
+  ageGroup: string;
+  role: CoachCareerRoleId;
+  stats: CoachSeasonStats;
+  achievements: CoachSeasonAchievements;
+}
+
+export type UefaLicenseId = "uefa_c" | "uefa_b" | "uefa_a" | "uefa_pro";
+
+export type CoachCertKind = "uefa" | "fpf" | "course";
+
+export interface CoachCertificationEntry {
+  id: string;
+  kind: CoachCertKind;
+  uefaLevel?: UefaLicenseId;
+  /** Título para FPF / curso complementar */
+  title?: string;
+  completed: boolean;
+  completionYear?: number;
+  costEur?: number;
+  certificateDataUrl?: string;
+  issuingBody?: string;
+  licenseNumber?: string;
+  validUntil?: string;
+  notes?: string;
+}
+
+export interface CoachCertificationGoal {
+  targetLevelId: UefaLicenseId | string;
+  progressPercent: number;
+  criteriaMet: string[];
+  criteriaPending: string[];
+  deadline?: string;
+}
+
+export interface CoachCareerDocument {
+  id: string;
+  name: string;
+  category: "certificate" | "proof" | "other";
+  dataUrl?: string;
+  uploadedAt: string;
+  notes?: string;
+}
+
+export type CoachHonorCategory =
+  | "league"
+  | "cup"
+  | "supercup"
+  | "tournament"
+  | "individual"
+  | "special";
+
+export type CoachHonorOrigin = "manual" | "career";
+
+export interface CoachHonorEntry {
+  id: string;
+  category: CoachHonorCategory;
+  title: string;
+  seasonLabel: string;
+  club: string;
+  ageGroup: string;
+  trophyImageDataUrl?: string;
+  /** Quando gerado a partir da Carreira */
+  sourceSeasonId?: string;
+  origin: CoachHonorOrigin;
+}
+
 export interface CoachProfileState {
   name: string;
   club: string;
   role: string;
   email: string;
+
+  profession?: string;
+  dateOfBirth?: string;
+  nationality?: string;
+  location?: string;
+  phone?: string;
+  bio?: string;
+  avatarDataUrl?: string;
+  socialInstagram?: string;
+  socialTwitter?: string;
+  socialLinkedin?: string;
+  socialWebsite?: string;
+
+  careerSeasons?: CoachCareerSeason[];
+  careerCurrent?: CoachCareerCurrent;
+  certifications?: CoachCertificationEntry[];
+  certificationGoal?: CoachCertificationGoal;
+  careerDocuments?: CoachCareerDocument[];
+  honors?: CoachHonorEntry[];
+  careerHonorSyncMode?: "auto" | "manual";
 }
 
 /** Sketch Area — staff workspace (calendar, notes, tasks, files, board, watchlist). */

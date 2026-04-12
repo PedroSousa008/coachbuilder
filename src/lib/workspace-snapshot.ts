@@ -84,6 +84,9 @@ export function snapshotHasMeaningfulData(s: WorkspaceSnapshotV1 | null | undefi
   if (Object.keys(s.messages).length > 1) return true;
   if (s.league.matches.length > 0 || s.league.rows.length > 0) return true;
   if (s.coachProfile.name.trim() !== "" || s.coachProfile.club.trim() !== "") return true;
+  if ((s.coachProfile.careerSeasons?.length ?? 0) > 0) return true;
+  if ((s.coachProfile.honors?.length ?? 0) > 0) return true;
+  if (s.coachProfile.avatarDataUrl) return true;
   if (Object.keys(s.tacticPlayerNotes).length > 0) return true;
   if (s.savedTrainingExercises.length > 0) return true;
   const sk = s.sketchArea;

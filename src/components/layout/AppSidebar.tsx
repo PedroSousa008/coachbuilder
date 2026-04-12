@@ -29,7 +29,7 @@ const nav = [
   { href: "/app/sketch", label: "Sketch Area", icon: PenSquare },
   { href: "/app/team", label: "Team", icon: Users },
   { href: "/app/calendar", label: "Calendar", icon: Calendar },
-  { href: "/app/profile", label: "Profile", icon: UserCircle },
+  { href: "/app/profile", label: "Perfil", icon: UserCircle },
   { href: "/app/settings", label: "Settings", icon: Settings },
 ];
 
