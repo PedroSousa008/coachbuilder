@@ -103,6 +103,12 @@ export const GOAL_KICK_2_VIDEO_URL = "/videos/training/goal-kick-2.mp4";
  */
 export const MIDFIELDER_RUN_BEHIND_DEFENSE_VIDEO_URL = "/videos/training/behind-defense.mp4";
 
+/**
+ * Vídeo do exercício "3v2 Fast Break".
+ * Coloca o ficheiro em `public/videos/training/3x2-fast-breaks.mp4` ou substitui por um link YouTube.
+ */
+export const THREE_V_TWO_FAST_BREAK_VIDEO_URL = "/videos/training/3x2-fast-breaks.mp4";
+
 export type TrainingThemeId =
   | "possession"
   | "transition"
@@ -302,12 +308,20 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
     "cruzamento medio para medio",
     "rondo 5v3",
     "5v3",
+    "3v2 fast break",
+    "3x2 fast break",
+    "3x2 fast breaks",
+    "contra-ataques rápidos",
+    "contra ataques rapidos",
+    "contra-ataque 3v2",
+    "contra ataque 3v2",
+    "decisão rápida",
+    "decisao rapida",
+    "variação de jogo",
+    "variacao de jogo",
+    "segunda bola",
+    "primeiro lance cruzamento",
     "virar o jogo",
-    "troca de bola rápida",
-    "reação à perda",
-    "reacao a perda",
-    "recuperar e virar",
-    "variar o jogo rapidamente",
   ],
   pressing: [
     "pressão",
@@ -429,6 +443,14 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
     "ataque ao segundo poste",
     "cruzamento médio para médio",
     "cruzamento medio para medio",
+    "3v2 fast break",
+    "3x2 fast break",
+    "contra-ataque rápido",
+    "contra ataque rapido",
+    "bolas nas costas",
+    "bola nas costas da defesa",
+    "2v2 na área",
+    "2v2 na area",
   ],
   defensive: [
     "defens",
@@ -520,6 +542,9 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
     "cruzamento medio para medio",
     "médios nas costas",
     "medios nas costas",
+    "3v2 fast break",
+    "3x2 fast break",
+    "bola longa extremo",
   ],
   physical: [
     "físico",
@@ -882,6 +907,26 @@ const MAIN_DRILLS: MainDrillDef[] = [
       videoUrl: MIDFIELDER_RUN_BEHIND_DEFENSE_VIDEO_URL,
     }),
   },
+  {
+    themes: ["transition", "finishing", "wide"],
+    title: "3v2 Fast Break",
+    describe: (pl, m) => ({
+      description: `O exercício decorre num espaço de ~30 metros com duas balizas. Inicia com o treinador ou um médio a colocar uma bola longa no extremo oposto, fora do setor central. Este recebe e realiza um cruzamento obrigatório para a área, onde os avançados enfrentam os defesas numa situação de 2v2 para finalização. Após remate ou corte, todos transitam depressa para a outra baliza; os avançados ajustam o timing de corrida para evitar fora de jogo. De seguida, o extremo do lado contrário recebe nova bola (podendo entrar no setor central), criando um 3v2 ofensivo com bola no chão e jogo normal no interior. Após nova finalização, o exercício reinicia com outros jogadores. O foco está na velocidade de transição, na tomada de decisão e na eficácia na finalização. (${m} min)`,
+      coachingPoints:
+        "1.ª fase: extremo largo recebe com orientação para cruzar cedo; avançados atacam primeiro e segundo poste com arranques escalonados. Transição: sprint coletivo à outra baliza sem adiantar demasiado a linha de ataque. 2.ª fase: 3v2 com apoios curtos e penetração; explorar superioridade numérica com passes firmes e remate ou último passe limpo.",
+      setup:
+        "Faixa longitudinal ~30×36 m (ajustável) com baliza em cada extremo; cones para delimitar 'fora do eixo' na 1.ª entrega; várias bolas; coletes para ataque e defesa; GR ou mini-balizas opcionais.",
+      groupSplit:
+        pl.length >= 12
+          ? "Rotação por posição: pares de avançados e defesas no 2v2; extremos alternam o primeiro e o segundo lance; fila de reposição rápida."
+          : pl.length >= 8
+            ? "Reduz defesas a 1v2 na área na 1.ª fase ou 2v2 com menos largura; mantém a lógica cruzamento → transição → 3v2."
+            : "Escala o campo, 2v1 na área na 1.ª fase e 2v1 no segundo lance; coach como servidor e neutro no 3v2 se necessário.",
+      diagramHint:
+        "Bola longa ao extremo fora do eixo → cruzamento → 2v2 na área; seta transição rápida toda a equipa à baliza oposta; 2.ª bola ao extremo contrário (pode entrar ao centro) → 3v2 com bola no chão no interior; rotação de jogadores.",
+      videoUrl: THREE_V_TWO_FAST_BREAK_VIDEO_URL,
+    }),
+  },
 ];
 
 function scoreDrill(themes: TrainingThemeId[], def: MainDrillDef): number {
@@ -1023,6 +1068,7 @@ const SINGLE_DRILL_20_MIN_TITLES = new Set<string>([
 ]);
 /** Valor médio quando o treinador indica ~15–20 min (ex.: bloco final). */
 const SINGLE_DRILL_18_MIN_TITLES = new Set<string>(["Double Finishing Drill"]);
+const SINGLE_DRILL_15_MIN_TITLES = new Set<string>(["3v2 Fast Break"]);
 const SINGLE_DRILL_10_MIN_TITLES = new Set<string>([
   "Back Four Shifting",
   "Compact Defending Transition",
@@ -1039,6 +1085,7 @@ const SINGLE_DRILL_5_MIN_TITLES = new Set<string>(["Rondo 9v3"]);
 function singleDrillDurationForTitle(title: string, briefLength: number): number {
   if (SINGLE_DRILL_20_MIN_TITLES.has(title)) return 20;
   if (SINGLE_DRILL_18_MIN_TITLES.has(title)) return 18;
+  if (SINGLE_DRILL_15_MIN_TITLES.has(title)) return 15;
   if (SINGLE_DRILL_10_MIN_TITLES.has(title)) return 10;
   if (SINGLE_DRILL_8_MIN_TITLES.has(title)) return 8;
   if (SINGLE_DRILL_5_MIN_TITLES.has(title)) return 5;
@@ -1062,6 +1109,7 @@ function singleDrillProgressionVariationsForTitle(title: string): {
   const isGoalKick1 = title === "Goal Kick 1";
   const isGoalKick2 = title === "Goal Kick 2";
   const isMidfielderRunBehindDefense = title === "Midfielder Run Behind Defense";
+  const is3v2FastBreak = title === "3v2 Fast Break";
   const isPassingActivation = title === "Passing Activation";
   const isDualPassing = title === "Dual Passing";
 
@@ -1091,7 +1139,9 @@ function singleDrillProgressionVariationsForTitle(title: string): {
                           ? "Avançado adversário com pressão dobrada (salto + sombra ao GR); ou GR com máximo 5 s para jogar; ou extremo obrigado a iniciar o movimento de pressão antes do passe ao lateral."
                           : isMidfielderRunBehindDefense
                             ? "Linha defensiva mais alta e viva; ou máximo 2 toques na combinação médio–extremo–avançado; ou cruzamento obrigatório com o pé interior na primeira série."
-                            : isPassingActivation
+                            : is3v2FastBreak
+                              ? "Encurta o eixo a ~24 m para decisões ainda mais rápidas; ou extremo com máximo 2 toques antes do cruzamento na 1.ª fase; ou defesa pode sair ao cruzamento com contacto leve."
+                              : isPassingActivation
                               ? "Aperta distâncias entre postes para exigir passes mais curtos e reacção mais rápida; ou fixa 2 toques máx.; ou alterna o pé obrigatório em cada série."
                               : isDualPassing
                                 ? "Encolhe o hexágono para forçar primeiro toque ainda mais limpo; ou acrescenta um defensor ligeiro no centro por 45 s; ou exige só combinações com o pé não dominante."
@@ -1125,7 +1175,9 @@ function singleDrillProgressionVariationsForTitle(title: string): {
                           ? "Espelhar padrão no lado esquerdo; ou trinco com 1 toque obrigatório nas duas primeiras saídas; ou lateral adversário com 'permissão' de contacto leve no duelo com o extremo."
                           : isMidfielderRunBehindDefense
                             ? "Espelhar sequência completa pelo lado esquerdo; ou defensor vivo a acompanhar uma das corridas nas costas; ou golo vale duplo se a finalização for de cabeça no 2.º poste."
-                            : isPassingActivation
+                            : is3v2FastBreak
+                              ? "1.ª fase só cruzamento rasteiro; ou médio/treinador serve a 2.ª bola em profundidade para o extremo entrar ao eixo; ou GR activo nas duas fases com saída ao primeiro passe."
+                              : isPassingActivation
                               ? "Dois coletes com passes obrigatórios entre cores; ou inverte o sentido da rotação a cada minuto; ou acrescenta um jogador 'defensor' a tapar uma linha de passe por 30 s."
                               : "Reduz jogadores no meio; ou acrescenta neutro exterior; ou pontua por X passes seguidos.";
 
