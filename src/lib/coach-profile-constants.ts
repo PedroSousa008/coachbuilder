@@ -2,7 +2,12 @@ import {
   districtTrophyPathForId,
   parseDistrictAssociationIdFromHonorTitle,
 } from "@/lib/coach-district-associations";
-import type { CoachCareerRoleId, CoachEmploymentStatus, CoachHonorEntry } from "@/types";
+import type {
+  CoachCareerRoleId,
+  CoachEmploymentStatus,
+  CoachHonorCategory,
+  CoachHonorEntry,
+} from "@/types";
 
 /**
  * Troféu por defeito para **campeonato nacional**. Coloca `campeao-nacional.png` em public/images/trophies/.
