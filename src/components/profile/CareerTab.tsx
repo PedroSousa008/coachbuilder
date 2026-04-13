@@ -46,6 +46,7 @@ import {
 } from "@/lib/coach-career-honors-sync";
 import { winRatePercent } from "@/lib/tactics-match-stats";
 import { sortSeasonsChronologically } from "@/lib/coach-career-aggregates";
+import { UEFA_ENROLLMENT_FORM_URL, UEFA_REGULATION_PDF_URL } from "@/lib/uefa-license-links";
 
 function emptySeason(): CoachCareerSeason {
   return {
@@ -765,6 +766,26 @@ export function CareerTab({ coachProfile, hydrated, onCommit }: Props) {
                   >
                     {openUefa === t.id ? "Fechar detalhes" : "Critérios & preparação"}
                   </button>
+                  <div className="mt-2 flex flex-col gap-1 border-t border-white/5 pt-2">
+                    <a
+                      href={UEFA_REGULATION_PDF_URL[t.id]}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-left text-[11px] leading-snug text-zinc-400 transition hover:text-sky-300 hover:underline"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      Regulamento
+                    </a>
+                    <a
+                      href={UEFA_ENROLLMENT_FORM_URL[t.id]}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-left text-[11px] leading-snug text-zinc-400 transition hover:text-sky-300 hover:underline"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      Formulário de inscrição
+                    </a>
+                  </div>
                   {done ? (
                     <button
                       type="button"
