@@ -10,6 +10,7 @@ import { newCoachEntityId } from "@/lib/coach-entity-id";
 import {
   HONOR_CATEGORY_OPTIONS,
   honorCategoryLabel,
+  honorCategoryUsesLeagueDefaultTrophy,
   TROPHY_CABINET_SLOTS,
 } from "@/lib/coach-profile-constants";
 import { sortHonorsForCabinetDisplay } from "@/lib/coach-career-aggregates";
@@ -196,6 +197,31 @@ export function HonorsTab({ coachProfile, onCommit }: Props) {
               <HonorTrophyVisual honor={selectedHonor} variant="card" />
             </div>
             <div className="flex flex-1 flex-col justify-center gap-3">
+              <div>
+                <label className="text-xs text-zinc-500" htmlFor="honor-category-edit">
+                  Categoria
+                </label>
+                <select
+                  id="honor-category-edit"
+                  className={`${profileFieldClass} mt-1`}
+                  value={selectedHonor.category}
+                  onChange={(e) => {
+                    const category = e.target.value as CoachHonorCategory;
+                    onCommit({
+                      honors: honors.map((x) => (x.id === selectedHonor.id ? { ...x, category } : x)),
+                    });
+                  }}
+                >
+                  {HONOR_CATEGORY_OPTIONS.map((o) => (
+                    <option key={o.id} value={o.id}>
+                      {o.label}
+                    </option>
+                  ))}
+                  {selectedHonor.category === "league" ? (
+                    <option value="league">{honorCategoryLabel("league")}</option>
+                  ) : null}
+                </select>
+              </div>
               <div className="flex flex-wrap gap-2">
                 <label className="cursor-pointer text-sm text-accent hover:underline">
                   Carregar imagem do troféu
@@ -219,7 +245,7 @@ export function HonorsTab({ coachProfile, onCommit }: Props) {
                     }}
                   />
                 </label>
-                {selectedHonor.trophyImageDataUrl && selectedHonor.category === "league" ? (
+                {selectedHonor.trophyImageDataUrl && honorCategoryUsesLeagueDefaultTrophy(selectedHonor.category) ? (
                   <button
                     type="button"
                     className="text-sm text-zinc-500 hover:text-zinc-300 hover:underline"

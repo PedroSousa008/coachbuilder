@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Trophy } from "lucide-react";
 import type { CoachHonorEntry } from "@/types";
-import { CHAMPIONSHIP_TROPHY_IMAGE_PATH } from "@/lib/coach-profile-constants";
+import { defaultHonorTrophyImagePath } from "@/lib/coach-profile-constants";
 
 type Props = {
   honor: CoachHonorEntry;
@@ -12,8 +12,7 @@ type Props = {
 };
 
 export function HonorTrophyVisual({ honor, variant = "card" }: Props) {
-  const defaultChampion = honor.category === "league" ? CHAMPIONSHIP_TROPHY_IMAGE_PATH : null;
-  const src = honor.trophyImageDataUrl ?? defaultChampion;
+  const src = honor.trophyImageDataUrl ?? defaultHonorTrophyImagePath(honor.category);
   const [broken, setBroken] = useState(false);
 
   useEffect(() => {

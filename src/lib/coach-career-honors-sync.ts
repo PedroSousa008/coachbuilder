@@ -15,7 +15,7 @@ export function honorsDerivedFromSeason(season: CoachCareerSeason): CoachHonorEn
   if (a.champion) {
     out.push({
       id: newCoachEntityId("hon"),
-      category: "league",
+      category: "league_national",
       title: "Campeão nacional / competição principal",
       seasonLabel,
       club,
@@ -159,7 +159,10 @@ export function minimalSeasonFromHonor(h: CoachHonorEntry): CoachCareerSeason {
     role: "head",
     stats: { played: 0, wins: 0, draws: 0, losses: 0, goalsFor: 0, goalsAgainst: 0 },
     achievements: {
-      champion: h.category === "league",
+      champion:
+        h.category === "league_national" ||
+        h.category === "league_district" ||
+        h.category === "league",
       cupsWon: h.category === "cup" ? h.title : "",
       promotion: h.category === "special" && h.title.toLowerCase().includes("subida"),
       maintenance: h.category === "special" && h.title.toLowerCase().includes("manutenção"),

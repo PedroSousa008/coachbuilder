@@ -50,6 +50,7 @@ import {
 import { buildWorkspaceSnapshotV1 } from "@/lib/build-workspace-snapshot";
 import { emptySketchAreaState } from "@/lib/sketch-area";
 import { useAuth } from "@/contexts/AuthContext";
+import { withNormalizedHonorCategories } from "@/lib/coach-honor-migration";
 
 function tacticPlayerNoteKey(tacticId: string, playerId: string) {
   return `${tacticId}::${playerId}`;
@@ -217,7 +218,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [leagueCompetitionName, setLeagueCompetitionName] = useState<string | null>(null);
   const [leagueTableLastFetched, setLeagueTableLastFetched] = useState<string | null>(null);
   const [leagueTableFetchError, setLeagueTableFetchError] = useState<string | null>(null);
-  const [coachProfile, setCoachProfileState] = useState<CoachProfileState>(defaultCoachProfile);
+  const [coachProfile, setCoachProfileState] = useState<CoachProfileState>(() =>
+    withNormalizedHonorCategories(defaultCoachProfile())
+  );
   const [savedTactics, setSavedTactics] = useState<Tactic[]>([]);
   const [tacticMatches, setTacticMatches] = useState<TacticMatch[]>([]);
   const [tacticPlayerNotes, setTacticPlayerNotesState] = useState<Record<string, TacticPlayerAnalysisNote>>({});
@@ -254,7 +257,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       setLeagueCompetitionName(null);
       setLeagueTableLastFetched(null);
       setLeagueTableFetchError(null);
-      setCoachProfileState(defaultCoachProfile());
+      setCoachProfileState(withNormalizedHonorCategories(defaultCoachProfile()));
       setSavedTactics([]);
       setTacticMatches([]);
       setTacticPlayerNotesState({});
@@ -282,10 +285,12 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setTrainingSessions(loadJSON<TrainingSession[]>(ks.sessions, []));
     setTrainingPlayerIdsBySession(loadJSON<Record<string, string[]>>(ks.trainingPlayers, {}));
     setFixtures(loadJSON<MatchFixture[]>(ks.fixtures, []));
-    setCoachProfileState({
-      ...defaultCoachProfile(),
-      ...loadJSON<Partial<CoachProfileState>>(ks.coachProfile, {}),
-    });
+    setCoachProfileState(
+      withNormalizedHonorCategories({
+        ...defaultCoachProfile(),
+        ...loadJSON<Partial<CoachProfileState>>(ks.coachProfile, {}),
+      } as CoachProfileState)
+    );
     const league = loadJSON<Partial<LeaguePersist>>(ks.league, {});
     setLeagueTableUrlState(league.url ?? "");
     setLeagueTableRows(league.rows ?? []);
@@ -327,7 +332,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           setTrainingSessions(s.trainingSessions);
           setTrainingPlayerIdsBySession(s.trainingPlayers);
           setFixtures(s.fixtures);
-          setCoachProfileState({ ...defaultCoachProfile(), ...s.coachProfile });
+          setCoachProfileState(
+            withNormalizedHonorCategories({ ...defaultCoachProfile(), ...s.coachProfile } as CoachProfileState)
+          );
           setLeagueTableUrlState(s.league.url ?? "");
           setLeagueTableRows(s.league.rows ?? []);
           setLeagueMatches(leagueMatchesDeduped);
@@ -809,7 +816,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const setCoachProfile = useCallback((patch: Partial<CoachProfileState>) => {
-    setCoachProfileState((prev) => ({ ...prev, ...patch }));
+    setCoachProfileState((prev) => withNormalizedHonorCategories({ ...prev, ...patch }));
   }, []);
 
   const refreshLeagueTable = useCallback(async () => {

@@ -443,6 +443,9 @@ export interface CoachCareerDocument {
 }
 
 export type CoachHonorCategory =
+  | "league_national"
+  | "league_district"
+  /** Legado (JSON antigo); migrado para nacional/distrital ao carregar */
   | "league"
   | "cup"
   | "supercup"
