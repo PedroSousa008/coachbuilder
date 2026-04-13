@@ -54,6 +54,9 @@ export function CoachProfileApp() {
     [setCoachProfile]
   );
 
+  /** Só dados gravados — a pré-visualização do ficheiro em Dados pessoais não actualiza isto até "Guardar dados". */
+  const savedAvatarUrl = coachProfile.avatarDataUrl;
+
   const displayName = coachProfile.name.trim() || "O teu nome";
   const subtitle = useMemo(() => {
     const parts = [
@@ -116,9 +119,9 @@ export function CoachProfileApp() {
           <div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
             <div className="flex flex-col gap-6 sm:flex-row sm:items-center">
               <div className="relative h-28 w-28 shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-zinc-800 to-zinc-950 shadow-2xl ring-2 ring-accent/25">
-                {coachProfile.avatarDataUrl ? (
+                {savedAvatarUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={coachProfile.avatarDataUrl} alt="" className="h-full w-full object-cover" />
+                  <img src={savedAvatarUrl} alt="" className="h-full w-full object-cover" />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center font-display text-3xl font-bold text-white/90">
                     {letters}

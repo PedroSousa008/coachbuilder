@@ -12,13 +12,26 @@ type Props = {
   onSave: (patch: Partial<CoachProfileState>) => void;
 };
 
+/**
+ * Foto escolhida no input: só entra no perfil (e na capa do hero) após "Guardar dados".
+ * undefined = não há alteração local; null = utilizador removeu a foto antes de gravar.
+ */
+type AvatarPending = string | null | undefined;
+
 export function PersonalTab({ coachProfile, hydrated, onSave }: Props) {
   const [draft, setDraft] = useState(coachProfile);
+  const [avatarPending, setAvatarPending] = useState<AvatarPending>(undefined);
+  const [dirty, setDirty] = useState(false);
   const [hint, setHint] = useState<string | null>(null);
 
   useEffect(() => {
-    if (hydrated) setDraft(coachProfile);
-  }, [hydrated, coachProfile]);
+    if (!hydrated || dirty) return;
+    setDraft(coachProfile);
+    setAvatarPending(undefined);
+  }, [hydrated, coachProfile, dirty]);
+
+  const previewAvatarUrl: string | undefined =
+    avatarPending === undefined ? draft.avatarDataUrl : avatarPending === null ? undefined : avatarPending;
 
   const readAvatar = (file: File | null) => {
     if (!file || !file.type.startsWith("image/")) return;
@@ -30,7 +43,9 @@ export function PersonalTab({ coachProfile, hydrated, onSave }: Props) {
     const r = new FileReader();
     r.onload = () => {
       const url = typeof r.result === "string" ? r.result : "";
-      setDraft((d) => ({ ...d, avatarDataUrl: url || undefined }));
+      if (!url) return;
+      setAvatarPending(url);
+      setDirty(true);
     };
     r.readAsDataURL(file);
   };
@@ -47,26 +62,32 @@ export function PersonalTab({ coachProfile, hydrated, onSave }: Props) {
         <CardContent className="space-y-6">
           <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-start">
             <div className="relative h-28 w-28 shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-zinc-800/80 shadow-lg">
-              {draft.avatarDataUrl ? (
+              {previewAvatarUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={draft.avatarDataUrl} alt="" className="h-full w-full object-cover" />
+                <img src={previewAvatarUrl} alt="" className="h-full w-full object-cover" />
               ) : (
                 <div className="flex h-full w-full items-center justify-center text-sm text-zinc-500">Foto</div>
               )}
             </div>
             <div className="w-full space-y-2">
               <label className="text-xs font-medium text-zinc-500">Foto de perfil</label>
+              <p className="text-[11px] text-zinc-600">
+                A imagem na capa do perfil só muda depois de guardares.
+              </p>
               <input
                 type="file"
                 accept="image/*"
                 className="block w-full text-sm text-zinc-400 file:mr-3 file:rounded-lg file:border-0 file:bg-accent/20 file:px-3 file:py-2 file:text-accent"
                 onChange={(e) => readAvatar(e.target.files?.[0] ?? null)}
               />
-              {draft.avatarDataUrl ? (
+              {previewAvatarUrl ? (
                 <button
                   type="button"
                   className="text-xs text-red-400/90 hover:underline"
-                  onClick={() => setDraft((d) => ({ ...d, avatarDataUrl: undefined }))}
+                  onClick={() => {
+                    setAvatarPending(null);
+                    setDirty(true);
+                  }}
                 >
                   Remover foto
                 </button>
@@ -82,7 +103,10 @@ export function PersonalTab({ coachProfile, hydrated, onSave }: Props) {
               <input
                 id="full-name"
                 value={draft.name}
-                onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
+                onChange={(e) => {
+                  setDirty(true);
+                  setDraft((d) => ({ ...d, name: e.target.value }));
+                }}
                 className={profileFieldClass}
               />
             </div>
@@ -94,7 +118,10 @@ export function PersonalTab({ coachProfile, hydrated, onSave }: Props) {
                 id="email"
                 type="email"
                 value={draft.email}
-                onChange={(e) => setDraft((d) => ({ ...d, email: e.target.value }))}
+                onChange={(e) => {
+                  setDirty(true);
+                  setDraft((d) => ({ ...d, email: e.target.value }));
+                }}
                 className={profileFieldClass}
               />
             </div>
@@ -105,7 +132,10 @@ export function PersonalTab({ coachProfile, hydrated, onSave }: Props) {
               <input
                 id="phone"
                 value={draft.phone ?? ""}
-                onChange={(e) => setDraft((d) => ({ ...d, phone: e.target.value || undefined }))}
+                onChange={(e) => {
+                  setDirty(true);
+                  setDraft((d) => ({ ...d, phone: e.target.value || undefined }));
+                }}
                 className={profileFieldClass}
                 placeholder="+351 …"
               />
@@ -117,7 +147,10 @@ export function PersonalTab({ coachProfile, hydrated, onSave }: Props) {
               <input
                 id="club"
                 value={draft.club}
-                onChange={(e) => setDraft((d) => ({ ...d, club: e.target.value }))}
+                onChange={(e) => {
+                  setDirty(true);
+                  setDraft((d) => ({ ...d, club: e.target.value }));
+                }}
                 className={profileFieldClass}
               />
             </div>
@@ -128,9 +161,10 @@ export function PersonalTab({ coachProfile, hydrated, onSave }: Props) {
               <input
                 id="profession"
                 value={draft.profession ?? draft.role}
-                onChange={(e) =>
-                  setDraft((d) => ({ ...d, profession: e.target.value, role: e.target.value || d.role }))
-                }
+                onChange={(e) => {
+                  setDirty(true);
+                  setDraft((d) => ({ ...d, profession: e.target.value, role: e.target.value || d.role }));
+                }}
                 className={profileFieldClass}
                 placeholder="Ex.: Treinador de futebol"
               />
@@ -143,7 +177,10 @@ export function PersonalTab({ coachProfile, hydrated, onSave }: Props) {
                 id="dob"
                 type="date"
                 value={draft.dateOfBirth ?? ""}
-                onChange={(e) => setDraft((d) => ({ ...d, dateOfBirth: e.target.value || undefined }))}
+                onChange={(e) => {
+                  setDirty(true);
+                  setDraft((d) => ({ ...d, dateOfBirth: e.target.value || undefined }));
+                }}
                 className={profileFieldClass}
               />
             </div>
@@ -154,7 +191,10 @@ export function PersonalTab({ coachProfile, hydrated, onSave }: Props) {
               <input
                 id="nat"
                 value={draft.nationality ?? ""}
-                onChange={(e) => setDraft((d) => ({ ...d, nationality: e.target.value || undefined }))}
+                onChange={(e) => {
+                  setDirty(true);
+                  setDraft((d) => ({ ...d, nationality: e.target.value || undefined }));
+                }}
                 className={profileFieldClass}
               />
             </div>
@@ -165,7 +205,10 @@ export function PersonalTab({ coachProfile, hydrated, onSave }: Props) {
               <input
                 id="loc"
                 value={draft.location ?? ""}
-                onChange={(e) => setDraft((d) => ({ ...d, location: e.target.value || undefined }))}
+                onChange={(e) => {
+                  setDirty(true);
+                  setDraft((d) => ({ ...d, location: e.target.value || undefined }));
+                }}
                 className={profileFieldClass}
                 placeholder="Porto, Portugal"
               />
@@ -179,7 +222,10 @@ export function PersonalTab({ coachProfile, hydrated, onSave }: Props) {
             <textarea
               id="bio"
               value={draft.bio ?? ""}
-              onChange={(e) => setDraft((d) => ({ ...d, bio: e.target.value || undefined }))}
+              onChange={(e) => {
+                setDirty(true);
+                setDraft((d) => ({ ...d, bio: e.target.value || undefined }));
+              }}
               className={profileTextAreaClass}
               placeholder="A tua história, filosofia e o que te move no relvado."
               rows={4}
@@ -196,7 +242,10 @@ export function PersonalTab({ coachProfile, hydrated, onSave }: Props) {
                 <input
                   id="ig"
                   value={draft.socialInstagram ?? ""}
-                  onChange={(e) => setDraft((d) => ({ ...d, socialInstagram: e.target.value || undefined }))}
+                  onChange={(e) => {
+                    setDirty(true);
+                    setDraft((d) => ({ ...d, socialInstagram: e.target.value || undefined }));
+                  }}
                   className={profileFieldClass}
                   placeholder="@utilizador"
                 />
@@ -208,7 +257,10 @@ export function PersonalTab({ coachProfile, hydrated, onSave }: Props) {
                 <input
                   id="tw"
                   value={draft.socialTwitter ?? ""}
-                  onChange={(e) => setDraft((d) => ({ ...d, socialTwitter: e.target.value || undefined }))}
+                  onChange={(e) => {
+                    setDirty(true);
+                    setDraft((d) => ({ ...d, socialTwitter: e.target.value || undefined }));
+                  }}
                   className={profileFieldClass}
                 />
               </div>
@@ -219,7 +271,10 @@ export function PersonalTab({ coachProfile, hydrated, onSave }: Props) {
                 <input
                   id="li"
                   value={draft.socialLinkedin ?? ""}
-                  onChange={(e) => setDraft((d) => ({ ...d, socialLinkedin: e.target.value || undefined }))}
+                  onChange={(e) => {
+                    setDirty(true);
+                    setDraft((d) => ({ ...d, socialLinkedin: e.target.value || undefined }));
+                  }}
                   className={profileFieldClass}
                 />
               </div>
@@ -230,7 +285,10 @@ export function PersonalTab({ coachProfile, hydrated, onSave }: Props) {
                 <input
                   id="web"
                   value={draft.socialWebsite ?? ""}
-                  onChange={(e) => setDraft((d) => ({ ...d, socialWebsite: e.target.value || undefined }))}
+                  onChange={(e) => {
+                    setDirty(true);
+                    setDraft((d) => ({ ...d, socialWebsite: e.target.value || undefined }));
+                  }}
                   className={profileFieldClass}
                   placeholder="https://"
                 />
@@ -243,7 +301,15 @@ export function PersonalTab({ coachProfile, hydrated, onSave }: Props) {
               type="button"
               className="sm:min-w-[160px]"
               onClick={() => {
-                onSave(draft);
+                const nextAvatar: string | undefined =
+                  avatarPending === undefined
+                    ? draft.avatarDataUrl
+                    : avatarPending === null
+                      ? undefined
+                      : avatarPending;
+                onSave({ ...draft, avatarDataUrl: nextAvatar });
+                setDirty(false);
+                setAvatarPending(undefined);
                 setHint("Guardado.");
                 window.setTimeout(() => setHint(null), 2400);
               }}
