@@ -1,25 +1,29 @@
-import type { CoachCareerRoleId, CoachEmploymentStatus, CoachHonorCategory } from "@/types";
+import {
+  districtTrophyPathForId,
+  parseDistrictAssociationIdFromHonorTitle,
+} from "@/lib/coach-district-associations";
+import type { CoachCareerRoleId, CoachEmploymentStatus, CoachHonorEntry } from "@/types";
 
 /**
- * Troféu por defeito para **campeonato distrital** (ex.: AF Porto / “Boca”).
- * Coloca o ficheiro em `public/images/trophies/campeao-campeonato.png`.
- */
-export const DISTRICT_CHAMPIONSHIP_TROPHY_IMAGE_PATH = "/images/trophies/campeao-campeonato.png";
-
-/**
- * Troféu por defeito para **campeonato nacional**. Coloca `campeao-nacional.png` na mesma pasta;
- * se o ficheiro não existir, a UI mostra o ícone de troféu após erro de carregamento.
+ * Troféu por defeito para **campeonato nacional**. Coloca `campeao-nacional.png` em public/images/trophies/.
  */
 export const NATIONAL_CHAMPIONSHIP_TROPHY_IMAGE_PATH = "/images/trophies/campeao-nacional.png";
 
-/** @deprecated Usa `DISTRICT_CHAMPIONSHIP_TROPHY_IMAGE_PATH`. */
-export const CHAMPIONSHIP_TROPHY_IMAGE_PATH = DISTRICT_CHAMPIONSHIP_TROPHY_IMAGE_PATH;
+/**
+ * Troféus distritais: um PNG por AF (`afbraga.png`, `afporto.png`, …) em public/images/trophies/.
+ */
 
-export function defaultHonorTrophyImagePath(category: CoachHonorCategory): string | null {
-  switch (category) {
+export function defaultHonorTrophySrc(
+  honor: Pick<CoachHonorEntry, "category" | "districtAssociationId" | "title">
+): string | null {
+  switch (honor.category) {
     case "league_district":
-    case "league":
-      return DISTRICT_CHAMPIONSHIP_TROPHY_IMAGE_PATH;
+    case "league": {
+      const id =
+        honor.districtAssociationId ?? parseDistrictAssociationIdFromHonorTitle(honor.title ?? "");
+      if (id) return districtTrophyPathForId(id);
+      return null;
+    }
     case "league_national":
       return NATIONAL_CHAMPIONSHIP_TROPHY_IMAGE_PATH;
     default:

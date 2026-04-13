@@ -21,6 +21,7 @@ import type {
   CoachCareerSeason,
   CoachCertificationEntry,
   CoachCertificationGoal,
+  CoachDistrictAssociationId,
   CoachHonorEntry,
   CoachProfileState,
   UefaLicenseId,
@@ -29,6 +30,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { profileFieldClass, profileTextAreaClass } from "@/components/profile/field-styles";
 import { newCoachEntityId } from "@/lib/coach-entity-id";
+import { COACH_DISTRICT_ASSOCIATIONS } from "@/lib/coach-district-associations";
 import {
   CAREER_ROLE_OPTIONS,
   EMPLOYMENT_STATUS_OPTIONS,
@@ -63,7 +65,8 @@ function emptySeason(): CoachCareerSeason {
       finalPosition: undefined,
     },
     achievements: {
-      champion: false,
+      championNational: false,
+      championDistrictAfId: null,
       cupsWon: "",
       promotion: false,
       maintenance: false,
@@ -400,7 +403,7 @@ export function CareerTab({ coachProfile, hydrated, onCommit }: Props) {
                       </div>
                       <div className="text-right text-xs text-zinc-400">
                         {s.stats.played} jogos · {wr}% vit.
-                        {s.achievements.champion ? (
+                        {s.achievements.championNational || s.achievements.championDistrictAfId ? (
                           <Trophy className="ml-2 inline h-3.5 w-3.5 text-amber-400" />
                         ) : null}
                       </div>
@@ -534,22 +537,58 @@ export function CareerTab({ coachProfile, hydrated, onCommit }: Props) {
                             <label className="flex items-center gap-2 text-sm text-zinc-300">
                               <input
                                 type="checkbox"
-                                checked={s.achievements.champion}
+                                checked={s.achievements.championNational}
                                 onChange={(e) =>
                                   setSeasons((prev) =>
                                     prev.map((x) =>
                                       x.id === s.id
                                         ? {
                                             ...x,
-                                            achievements: { ...x.achievements, champion: e.target.checked },
+                                            achievements: {
+                                              ...x.achievements,
+                                              championNational: e.target.checked,
+                                            },
                                           }
                                         : x
                                     )
                                   )
                                 }
                               />
-                              Campeão
+                              Campeão Nacional
                             </label>
+                            <div className="sm:col-span-2">
+                              <label className="text-xs text-zinc-500" htmlFor={`district-af-${s.id}`}>
+                                Campeão distrital
+                              </label>
+                              <select
+                                id={`district-af-${s.id}`}
+                                className={`${profileFieldClass} mt-1`}
+                                value={s.achievements.championDistrictAfId ?? ""}
+                                onChange={(e) => {
+                                  const v = e.target.value;
+                                  setSeasons((prev) =>
+                                    prev.map((x) =>
+                                      x.id === s.id
+                                        ? {
+                                            ...x,
+                                            achievements: {
+                                              ...x.achievements,
+                                              championDistrictAfId: v ? (v as CoachDistrictAssociationId) : null,
+                                            },
+                                          }
+                                        : x
+                                    )
+                                  );
+                                }}
+                              >
+                                <option value="">— Não —</option>
+                                {COACH_DISTRICT_ASSOCIATIONS.map((af) => (
+                                  <option key={af.id} value={af.id}>
+                                    {af.label}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
                             <label className="flex items-center gap-2 text-sm text-zinc-300">
                               <input
                                 type="checkbox"

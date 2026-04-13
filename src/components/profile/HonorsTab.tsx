@@ -2,7 +2,13 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { RefreshCw, Sparkles, Trophy } from "lucide-react";
-import type { CoachHonorCategory, CoachHonorEntry, CoachProfileState } from "@/types";
+import { COACH_DISTRICT_ASSOCIATIONS } from "@/lib/coach-district-associations";
+import type {
+  CoachDistrictAssociationId,
+  CoachHonorCategory,
+  CoachHonorEntry,
+  CoachProfileState,
+} from "@/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { profileFieldClass } from "@/components/profile/field-styles";
@@ -37,13 +43,22 @@ export function HonorsTab({ coachProfile, onCommit }: Props) {
   const [hint, setHint] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [selectedHonorId, setSelectedHonorId] = useState<string | null>(null);
-  const [newHonor, setNewHonor] = useState({
-    category: "cup" as CoachHonorCategory,
+  const [newHonor, setNewHonor] = useState<{
+    category: CoachHonorCategory;
+    title: string;
+    seasonLabel: string;
+    club: string;
+    ageGroup: string;
+    createSeason: boolean;
+    districtAssociationId: CoachDistrictAssociationId | "";
+  }>({
+    category: "cup",
     title: "",
     seasonLabel: "",
     club: "",
     ageGroup: "",
     createSeason: false,
+    districtAssociationId: "",
   });
   const [conflictOpen, setConflictOpen] = useState(false);
   const [conflictLines, setConflictLines] = useState<string[]>([]);
@@ -100,6 +115,11 @@ export function HonorsTab({ coachProfile, onCommit }: Props) {
       window.setTimeout(() => setHint(null), 3000);
       return;
     }
+    if (newHonor.category === "league_district" && !newHonor.districtAssociationId) {
+      setHint("Para campeonato distrital, escolhe a associação (AF).");
+      window.setTimeout(() => setHint(null), 3500);
+      return;
+    }
     const entry: CoachHonorEntry = {
       id: newCoachEntityId("hon"),
       category: newHonor.category,
@@ -108,6 +128,9 @@ export function HonorsTab({ coachProfile, onCommit }: Props) {
       club: newHonor.club.trim(),
       ageGroup: newHonor.ageGroup.trim(),
       origin: "manual",
+      ...(newHonor.category === "league_district" && newHonor.districtAssociationId
+        ? { districtAssociationId: newHonor.districtAssociationId }
+        : {}),
     };
     let nextSeasons = seasons;
     if (newHonor.createSeason) {
@@ -130,6 +153,7 @@ export function HonorsTab({ coachProfile, onCommit }: Props) {
       club: "",
       ageGroup: "",
       createSeason: false,
+      districtAssociationId: "",
     });
     setAddOpen(false);
     setHint("Conquista adicionada.");
@@ -208,7 +232,16 @@ export function HonorsTab({ coachProfile, onCommit }: Props) {
                   onChange={(e) => {
                     const category = e.target.value as CoachHonorCategory;
                     onCommit({
-                      honors: honors.map((x) => (x.id === selectedHonor.id ? { ...x, category } : x)),
+                      honors: honors.map((x) =>
+                        x.id === selectedHonor.id
+                          ? {
+                              ...x,
+                              category,
+                              districtAssociationId:
+                                category === "league_district" ? x.districtAssociationId : undefined,
+                            }
+                          : x
+                      ),
                     });
                   }}
                 >
@@ -222,6 +255,39 @@ export function HonorsTab({ coachProfile, onCommit }: Props) {
                   ) : null}
                 </select>
               </div>
+              {selectedHonor.category === "league_district" || selectedHonor.category === "league" ? (
+                <div>
+                  <label className="text-xs text-zinc-500" htmlFor="honor-af-edit">
+                    Associação (AF) — define o troféu distrital
+                  </label>
+                  <select
+                    id="honor-af-edit"
+                    className={`${profileFieldClass} mt-1`}
+                    value={selectedHonor.districtAssociationId ?? ""}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      onCommit({
+                        honors: honors.map((x) =>
+                          x.id === selectedHonor.id
+                            ? {
+                                ...x,
+                                category: x.category === "league" ? "league_district" : x.category,
+                                districtAssociationId: v ? (v as CoachDistrictAssociationId) : undefined,
+                              }
+                            : x
+                        ),
+                      });
+                    }}
+                  >
+                    <option value="">— Escolher —</option>
+                    {COACH_DISTRICT_ASSOCIATIONS.map((af) => (
+                      <option key={af.id} value={af.id}>
+                        {af.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : null}
               <div className="flex flex-wrap gap-2">
                 <label className="cursor-pointer text-sm text-accent hover:underline">
                   Carregar imagem do troféu
@@ -334,7 +400,12 @@ export function HonorsTab({ coachProfile, onCommit }: Props) {
                 className={profileFieldClass}
                 value={newHonor.category}
                 onChange={(e) =>
-                  setNewHonor((n) => ({ ...n, category: e.target.value as CoachHonorCategory }))
+                  setNewHonor((n) => ({
+                    ...n,
+                    category: e.target.value as CoachHonorCategory,
+                    districtAssociationId:
+                      e.target.value === "league_district" ? n.districtAssociationId : "",
+                  }))
                 }
               >
                 {HONOR_CATEGORY_OPTIONS.map((o) => (
@@ -344,6 +415,28 @@ export function HonorsTab({ coachProfile, onCommit }: Props) {
                 ))}
               </select>
             </div>
+            {newHonor.category === "league_district" ? (
+              <div>
+                <label className="text-xs text-zinc-500">Associação (AF)</label>
+                <select
+                  className={profileFieldClass}
+                  value={newHonor.districtAssociationId}
+                  onChange={(e) =>
+                    setNewHonor((n) => ({
+                      ...n,
+                      districtAssociationId: e.target.value as CoachDistrictAssociationId | "",
+                    }))
+                  }
+                >
+                  <option value="">— Escolher —</option>
+                  {COACH_DISTRICT_ASSOCIATIONS.map((af) => (
+                    <option key={af.id} value={af.id}>
+                      {af.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : null}
             <div>
               <label className="text-xs text-zinc-500">Título</label>
               <input

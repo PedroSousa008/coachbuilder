@@ -1,3 +1,4 @@
+import { parseDistrictAssociationIdFromHonorTitle } from "@/lib/coach-district-associations";
 import type { CoachHonorCategory, CoachHonorEntry, CoachProfileState } from "@/types";
 
 /** Converte `league` legado: títulos com "nacional" → nacional, resto → distrital. */
@@ -8,12 +9,20 @@ export function migrateHonorEntryCategory(h: CoachHonorEntry): CoachHonorEntry {
   return { ...h, category: next };
 }
 
+function enrichDistrictOnHonor(h: CoachHonorEntry): CoachHonorEntry {
+  if (h.category !== "league_district" || h.districtAssociationId) return h;
+  const id = parseDistrictAssociationIdFromHonorTitle(h.title);
+  if (!id) return h;
+  return { ...h, districtAssociationId: id };
+}
+
 export function migrateHonorsCategories(honors: CoachHonorEntry[]): CoachHonorEntry[] {
   let changed = false;
   const out = honors.map((h) => {
-    const m = migrateHonorEntryCategory(h);
-    if (m !== h) changed = true;
-    return m;
+    const a = migrateHonorEntryCategory(h);
+    const b = enrichDistrictOnHonor(a);
+    if (b !== h) changed = true;
+    return b;
   });
   return changed ? out : honors;
 }

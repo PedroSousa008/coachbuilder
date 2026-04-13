@@ -51,7 +51,8 @@ export function aggregateCareerSeasons(seasons: CoachCareerSeason[] | undefined)
     goalsFor += st.goalsFor;
     goalsAgainst += st.goalsAgainst;
     points += st.points ?? 0;
-    if (s.achievements.champion) titles += 1;
+    if (s.achievements.championNational) titles += 1;
+    if (s.achievements.championDistrictAfId) titles += 1;
     if (s.achievements.promotion) promotions += 1;
   }
   return {

@@ -383,8 +383,33 @@ export interface CoachSeasonStats {
   finalPosition?: number;
 }
 
+/** Associação distrital quando a época marca campeonato distrital. */
+export type CoachDistrictAssociationId =
+  | "algarve"
+  | "aveiro"
+  | "acores"
+  | "beja"
+  | "braga"
+  | "braganca"
+  | "castelo_branco"
+  | "coimbra"
+  | "evora"
+  | "guarda"
+  | "leiria"
+  | "lisboa"
+  | "madeira"
+  | "portalegre"
+  | "porto"
+  | "santarem"
+  | "setubal"
+  | "viana_do_castelo"
+  | "vila_real"
+  | "viseu";
+
 export interface CoachSeasonAchievements {
-  champion: boolean;
+  championNational: boolean;
+  /** Campeão distrital: qual AF; `null` se não aplicável. */
+  championDistrictAfId: CoachDistrictAssociationId | null;
   /** Uma linha por taça ou texto livre */
   cupsWon: string;
   promotion: boolean;
@@ -463,6 +488,8 @@ export interface CoachHonorEntry {
   club: string;
   ageGroup: string;
   trophyImageDataUrl?: string;
+  /** Troféu distrital por AF (palmarés / carreira). */
+  districtAssociationId?: CoachDistrictAssociationId;
   /** Quando gerado a partir da Carreira */
   sourceSeasonId?: string;
   origin: CoachHonorOrigin;

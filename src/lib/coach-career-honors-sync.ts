@@ -1,3 +1,7 @@
+import {
+  districtChampionHonorTitle,
+  parseDistrictAssociationIdFromHonorTitle,
+} from "@/lib/coach-district-associations";
 import { newCoachEntityId } from "@/lib/coach-entity-id";
 import type { CoachCareerSeason, CoachHonorEntry } from "@/types";
 
@@ -12,14 +16,29 @@ export function honorsDerivedFromSeason(season: CoachCareerSeason): CoachHonorEn
   const out: CoachHonorEntry[] = [];
   const { achievements: a, seasonLabel, club, ageGroup, id: seasonId } = season;
 
-  if (a.champion) {
+  if (a.championNational) {
     out.push({
       id: newCoachEntityId("hon"),
       category: "league_national",
-      title: "Campeão nacional / competição principal",
+      title: "Campeão nacional",
       seasonLabel,
       club,
       ageGroup,
+      sourceSeasonId: seasonId,
+      origin: "career",
+    });
+  }
+
+  if (a.championDistrictAfId) {
+    const afId = a.championDistrictAfId;
+    out.push({
+      id: newCoachEntityId("hon"),
+      category: "league_district",
+      title: districtChampionHonorTitle(afId),
+      seasonLabel,
+      club,
+      ageGroup,
+      districtAssociationId: afId,
       sourceSeasonId: seasonId,
       origin: "career",
     });
@@ -159,10 +178,15 @@ export function minimalSeasonFromHonor(h: CoachHonorEntry): CoachCareerSeason {
     role: "head",
     stats: { played: 0, wins: 0, draws: 0, losses: 0, goalsFor: 0, goalsAgainst: 0 },
     achievements: {
-      champion:
+      championNational:
         h.category === "league_national" ||
-        h.category === "league_district" ||
-        h.category === "league",
+        (h.category === "league" && h.title.toLowerCase().includes("nacional")),
+      championDistrictAfId:
+        h.category === "league_district"
+          ? h.districtAssociationId ?? parseDistrictAssociationIdFromHonorTitle(h.title)
+          : h.category === "league" && !h.title.toLowerCase().includes("nacional")
+            ? h.districtAssociationId ?? parseDistrictAssociationIdFromHonorTitle(h.title)
+            : null,
       cupsWon: h.category === "cup" ? h.title : "",
       promotion: h.category === "special" && h.title.toLowerCase().includes("subida"),
       maintenance: h.category === "special" && h.title.toLowerCase().includes("manutenção"),
