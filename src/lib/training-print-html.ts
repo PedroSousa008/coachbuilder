@@ -1,4 +1,5 @@
 import type { AiFullTrainingSession, AiSingleDrill } from "@/lib/training-ai-types";
+import { trainingExercisePrintImageForTitle } from "@/lib/training-exercise-print-images";
 
 function esc(s: string): string {
   return s
@@ -19,10 +20,21 @@ export function buildFullSessionDocumentHtml(params: {
     .map((b, i) => {
       const phase =
         b.phase === "warmup" ? "Aquecimento" : b.phase === "cooldown" ? "Finalização" : "Bloco principal";
+      const exerciseImageSrc = trainingExercisePrintImageForTitle(b.title);
       return `
       <section class="block">
         <h2>${i + 1}. ${esc(b.title)} <span class="meta">(${esc(phase)} · ${b.durationMin} min)</span></h2>
         <p><strong>Como correr:</strong> ${esc(b.description)}</p>
+        ${
+          exerciseImageSrc
+            ? `<figure class="exercise-image-wrap">
+        <img class="exercise-image" src="${esc(exerciseImageSrc)}" alt="Imagem do exercício ${esc(
+                b.title
+              )}" onerror="this.style.display='none';" />
+        <figcaption>Imagem do exercício (para impressão)</figcaption>
+      </figure>`
+            : ""
+        }
         <p><strong>Pontos de treino:</strong> ${esc(b.coachingPoints)}</p>
         ${b.setup ? `<p><strong>Organização:</strong> ${esc(b.setup)}</p>` : ""}
         ${b.groupSplit ? `<p><strong>Grupos / focos:</strong> ${esc(b.groupSplit)}</p>` : ""}
@@ -49,6 +61,9 @@ export function buildFullSessionDocumentHtml(params: {
     .block h2 { font-size: 1.1rem; margin: 0 0 0.5rem; }
     .meta { font-weight: normal; color: #555; font-size: 0.85rem; }
     .diagram { background: #f6f6f6; padding: 8px 12px; border-radius: 6px; }
+    .exercise-image-wrap { margin: 10px 0 12px; }
+    .exercise-image { display: block; width: 100%; max-width: 560px; border-radius: 8px; border: 1px solid #ddd; }
+    .exercise-image-wrap figcaption { margin-top: 4px; font-size: 0.78rem; color: #555; }
     ul { margin: 0.25rem 0; padding-left: 1.25rem; }
     @media print { body { margin: 12px; } .block { border-color: #ccc; } }
   </style>
@@ -73,6 +88,7 @@ export function buildSingleDrillDocumentHtml(params: {
   generatedAt: string;
 }): string {
   const { drill, generatedAt } = params;
+  const exerciseImageSrc = trainingExercisePrintImageForTitle(drill.title);
   return `<!DOCTYPE html>
 <html lang="pt">
 <head>
@@ -82,6 +98,9 @@ export function buildSingleDrillDocumentHtml(params: {
     body { font-family: system-ui, sans-serif; max-width: 720px; margin: 24px auto; padding: 0 16px; color: #111; line-height: 1.45; }
     h1 { font-size: 1.35rem; }
     .meta { color: #555; font-size: 0.9rem; }
+    .exercise-image-wrap { margin: 10px 0 12px; }
+    .exercise-image { display: block; width: 100%; max-width: 560px; border-radius: 8px; border: 1px solid #ddd; }
+    .exercise-image-wrap figcaption { margin-top: 4px; font-size: 0.78rem; color: #555; }
   </style>
 </head>
 <body>
@@ -89,6 +108,16 @@ export function buildSingleDrillDocumentHtml(params: {
   <p class="meta">${drill.durationMin} min · ${esc(generatedAt)} · CoachBuilder</p>
   <p><strong>Objetivo:</strong> ${esc(drill.objective)}</p>
   <p><strong>Exercício:</strong> ${esc(drill.description)}</p>
+  ${
+    exerciseImageSrc
+      ? `<figure class="exercise-image-wrap">
+  <img class="exercise-image" src="${esc(exerciseImageSrc)}" alt="Imagem do exercício ${esc(
+          drill.title
+        )}" onerror="this.style.display='none';" />
+  <figcaption>Imagem do exercício (para impressão)</figcaption>
+</figure>`
+      : ""
+  }
   ${drill.progression ? `<p><strong>Progressão:</strong> ${esc(drill.progression)}</p>` : ""}
   ${drill.coachingCues ? `<p><strong>Cues:</strong> ${esc(drill.coachingCues)}</p>` : ""}
   ${drill.variations ? `<p><strong>Variações:</strong> ${esc(drill.variations)}</p>` : ""}
