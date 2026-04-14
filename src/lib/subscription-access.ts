@@ -93,6 +93,21 @@ export function computeSubscriptionAccess(u: UserSubscriptionFields): Subscripti
     };
   }
 
+  /** Pro oferecido pelo Owner (0 €/mês): o plano na BD pode continuar `free`, mas o acesso é Pro completo. */
+  if (isComped) {
+    return {
+      hasProAccess: true,
+      effectiveMode: "pro_monthly",
+      trialEndsAt: u.proTrialEndsAt?.toISOString() ?? null,
+      graceEndsAt: u.paymentGraceEndsAt?.toISOString() ?? null,
+      renewsAt: u.subscriptionRenewsAt?.toISOString() ?? null,
+      displayPriceEur,
+      defaultPriceEur,
+      adminMonthlyPriceEur,
+      isComped,
+    };
+  }
+
   return {
     hasProAccess: false,
     effectiveMode: "free",
