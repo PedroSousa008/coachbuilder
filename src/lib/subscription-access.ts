@@ -9,12 +9,16 @@ export type UserSubscriptionFields = {
   subscriptionRenewsAt: Date | null;
   proTrialEndsAt: Date | null;
   paymentGraceEndsAt: Date | null;
-  customMonthlyPriceEur: { toNumber?: () => number } | number | null | undefined;
+  customMonthlyPriceEur: { toNumber?: () => number } | number | string | null | undefined;
 };
 
 function toNumberPrice(v: UserSubscriptionFields["customMonthlyPriceEur"]): number | null {
   if (v == null) return null;
   if (typeof v === "number") return Number.isFinite(v) ? v : null;
+  if (typeof v === "string") {
+    const n = parseFloat(v);
+    return Number.isFinite(n) ? n : null;
+  }
   if (typeof v === "object" && typeof v.toNumber === "function") {
     const n = v.toNumber();
     return Number.isFinite(n) ? n : null;
@@ -25,6 +29,7 @@ function toNumberPrice(v: UserSubscriptionFields["customMonthlyPriceEur"]): numb
 export function computeSubscriptionAccess(u: UserSubscriptionFields): SubscriptionAccessPayload {
   const defaultPriceEur = coachProDefaultPriceEur();
   const custom = toNumberPrice(u.customMonthlyPriceEur);
+  const adminMonthlyPriceEur = custom;
   const displayPriceEur = custom != null ? custom : defaultPriceEur;
   const isComped = custom === 0;
 
@@ -38,6 +43,7 @@ export function computeSubscriptionAccess(u: UserSubscriptionFields): Subscripti
       renewsAt: u.subscriptionRenewsAt?.toISOString() ?? null,
       displayPriceEur,
       defaultPriceEur,
+      adminMonthlyPriceEur,
       isComped,
     };
   }
@@ -54,6 +60,7 @@ export function computeSubscriptionAccess(u: UserSubscriptionFields): Subscripti
       renewsAt: u.subscriptionRenewsAt?.toISOString() ?? null,
       displayPriceEur,
       defaultPriceEur,
+      adminMonthlyPriceEur,
       isComped,
     };
   }
@@ -67,6 +74,7 @@ export function computeSubscriptionAccess(u: UserSubscriptionFields): Subscripti
       renewsAt: u.subscriptionRenewsAt?.toISOString() ?? null,
       displayPriceEur,
       defaultPriceEur,
+      adminMonthlyPriceEur,
       isComped,
     };
   }
@@ -80,6 +88,7 @@ export function computeSubscriptionAccess(u: UserSubscriptionFields): Subscripti
       renewsAt: u.subscriptionRenewsAt?.toISOString() ?? null,
       displayPriceEur,
       defaultPriceEur,
+      adminMonthlyPriceEur,
       isComped,
     };
   }
@@ -92,6 +101,7 @@ export function computeSubscriptionAccess(u: UserSubscriptionFields): Subscripti
     renewsAt: u.subscriptionRenewsAt?.toISOString() ?? null,
     displayPriceEur,
     defaultPriceEur,
+    adminMonthlyPriceEur,
     isComped,
   };
 }

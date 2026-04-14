@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import { AppSidebar } from "./AppSidebar";
 import { AppHeader } from "./AppHeader";
+import { CustomPriceBanner } from "@/components/subscription/CustomPriceBanner";
 
 const titles: Record<string, string> = {
   "/app": "Dashboard",
@@ -31,7 +32,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen bg-[#0a0d10] lg:pl-64">
       <AppSidebar />
       <AppHeader title={title} />
-      <div className="px-4 py-6 lg:px-8">{children}</div>
+      <div className="px-4 py-6 lg:px-8">
+        <CustomPriceBanner />
+        {children}
+      </div>
     </div>
   );
 }

@@ -35,7 +35,14 @@ function parseSubscriptionAccessPayload(raw: unknown): SubscriptionAccessPayload
   if (typeof o.effectiveMode !== "string") return undefined;
   if (typeof o.displayPriceEur !== "number" || typeof o.defaultPriceEur !== "number") return undefined;
   if (typeof o.isComped !== "boolean") return undefined;
-  return o as SubscriptionAccessPayload;
+  let adminMonthlyPriceEur: number | null = null;
+  if ("adminMonthlyPriceEur" in o) {
+    const v = o.adminMonthlyPriceEur;
+    if (v === null) adminMonthlyPriceEur = null;
+    else if (typeof v === "number" && Number.isFinite(v)) adminMonthlyPriceEur = v;
+    else return undefined;
+  }
+  return { ...o, adminMonthlyPriceEur } as SubscriptionAccessPayload;
 }
 
 /** Respostas antigas sem `subscriptionAccess`: inferir só a partir do plano. */
@@ -49,6 +56,7 @@ function legacySubscriptionAccess(plan: string, role: string): SubscriptionAcces
       renewsAt: null,
       displayPriceEur: 6.99,
       defaultPriceEur: 6.99,
+      adminMonthlyPriceEur: null,
       isComped: false,
     };
   }
@@ -61,6 +69,7 @@ function legacySubscriptionAccess(plan: string, role: string): SubscriptionAcces
     renewsAt: null,
     displayPriceEur: 6.99,
     defaultPriceEur: 6.99,
+    adminMonthlyPriceEur: null,
     isComped: false,
   };
 }

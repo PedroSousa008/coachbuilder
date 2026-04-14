@@ -41,9 +41,22 @@ export function SubscriptionSettings() {
       <div>
         <h2 className="font-display text-lg font-semibold text-white">Subscrição</h2>
         <p className="text-sm text-zinc-500">
-          Novas contas têm <strong className="text-zinc-300">7 dias de Coach Pro grátis</strong>. Depois,{" "}
-          <strong className="text-zinc-300">{access?.defaultPriceEur?.toFixed(2) ?? "6.99"} €/mês</strong> com renovação
-          automática (quando o Stripe estiver ligado). Cancelaste? Voltas ao modo Free (só chat).
+          Novas contas têm <strong className="text-zinc-300">7 dias de Coach Pro grátis</strong>. O preço público de
+          referência do Coach Pro é{" "}
+          <strong className="text-zinc-300">{(access?.defaultPriceEur ?? 6.99).toFixed(2)} €/mês</strong>
+          {access?.adminMonthlyPriceEur != null ? (
+            <>
+              . <strong className="text-zinc-300">Para a tua conta</strong>, o valor definido é{" "}
+              <strong className="text-accent">{(access?.displayPriceEur ?? 0).toFixed(2)} €/mês</strong>.
+            </>
+          ) : (
+            <>
+              . Depois do trial,{" "}
+              <strong className="text-zinc-300">{(access?.defaultPriceEur ?? 6.99).toFixed(2)} €/mês</strong> com
+              renovação automática (quando o Stripe estiver ligado).
+            </>
+          )}{" "}
+          Cancelaste? Voltas ao modo Free (só chat).
         </p>
       </div>
 
@@ -73,8 +86,8 @@ export function SubscriptionSettings() {
             Regulariza o pagamento até: {new Date(access.graceEndsAt).toLocaleString("pt-PT")}
           </p>
         ) : null}
-        {access?.isComped && mode === "pro_monthly" ? (
-          <p className="mt-1 text-xs text-emerald-200/90">Pro activo com preço personalizado (0 €).</p>
+        {access?.isComped && mode !== "free" ? (
+          <p className="mt-1 text-xs text-emerald-200/90">Coach Pro sem preço mensal para esta conta (0 €/mês).</p>
         ) : null}
       </div>
 

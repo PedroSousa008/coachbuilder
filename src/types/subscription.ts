@@ -9,5 +9,7 @@ export type SubscriptionAccessPayload = {
   renewsAt: string | null;
   displayPriceEur: number;
   defaultPriceEur: number;
+  /** Preço mensal definido no Admin (`null` = usar preço de catálogo). */
+  adminMonthlyPriceEur: number | null;
   isComped: boolean;
 };
