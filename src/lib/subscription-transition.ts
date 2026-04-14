@@ -25,7 +25,6 @@ export async function transitionExpiredSubscriptionState(userId: string): Promis
   }
 
   if (u.subscriptionPlan === "grace" && u.paymentGraceEndsAt && u.paymentGraceEndsAt <= now) {
-    nextPlan = "free";
     data.subscriptionPlan = "free";
     data.paymentGraceEndsAt = null;
     data.lastPaymentFailedAt = null;
