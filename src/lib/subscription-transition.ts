@@ -25,6 +25,7 @@ export async function transitionExpiredSubscriptionState(userId: string): Promis
   }
 
   if (u.subscriptionPlan === "grace" && u.paymentGraceEndsAt && u.paymentGraceEndsAt <= now) {
+    // Grace expired — account returns to Free (no stray vars; must typecheck on Vercel).
     data.subscriptionPlan = "free";
     data.paymentGraceEndsAt = null;
     data.lastPaymentFailedAt = null;
