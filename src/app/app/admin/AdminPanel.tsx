@@ -36,6 +36,7 @@ type Stats = {
   cancellationsTracked: boolean;
   activeTrialsCount: number;
   trialsSupported: boolean;
+  gracePeriodUsers?: number;
   totalLoginEvents: number;
   loginsLast24h: number;
   loginsLastHour: number;
@@ -50,6 +51,10 @@ type ListedUser = {
   role: string;
   subscriptionPlan: string;
   subscriptionRenewsAt: string | null;
+  proTrialEndsAt?: string | null;
+  paymentGraceEndsAt?: string | null;
+  lastPaymentFailedAt?: string | null;
+  customMonthlyPriceEur?: unknown;
   lastSeenAt: string | null;
   loginCount: number;
   createdAt: string;
@@ -125,6 +130,8 @@ const REFRESH_REVENUE_MS = 60_000;
 
 function planLabel(plan: string): string {
   if (plan === "pro_monthly") return "Pro mensal";
+  if (plan === "pro_trial") return "Pro trial";
+  if (plan === "grace") return "Pagamento em falta";
   if (plan === "free") return "Grátis";
   return plan;
 }
@@ -178,6 +185,7 @@ export function AdminPanel() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [planDraft, setPlanDraft] = useState<Record<string, string>>({});
+  const [priceDraft, setPriceDraft] = useState<Record<string, string>>({});
 
   const load = useCallback(async () => {
     setError(null);
@@ -197,8 +205,15 @@ export function AdminPanel() {
       if (uRes.ok && uJson.ok && uJson.users) {
         setUsers(uJson.users);
         const d: Record<string, string> = {};
-        for (const u of uJson.users) d[u.id] = u.subscriptionPlan;
+        const pd: Record<string, string> = {};
+        for (const u of uJson.users) {
+          d[u.id] = u.subscriptionPlan;
+          const raw = u.customMonthlyPriceEur;
+          if (raw == null || raw === "") pd[u.id] = "";
+          else pd[u.id] = typeof raw === "object" && raw !== null && "toString" in raw ? String(raw) : String(raw);
+        }
         setPlanDraft(d);
+        setPriceDraft(pd);
       }
     } catch {
       setError("Erro de rede ao carregar o painel.");
@@ -278,7 +293,7 @@ export function AdminPanel() {
   }, [tab, loadRevenue]);
 
   const patchSubscription = useCallback(
-    async (id: string, body: { subscriptionPlan: string; subscriptionRenewsAt?: string | null }) => {
+    async (id: string, body: Record<string, unknown>) => {
       setError(null);
       const res = await fetch(`/api/cloud/admin/users/${encodeURIComponent(id)}`, {
         method: "PATCH",
@@ -291,7 +306,9 @@ export function AdminPanel() {
         setError(j.error || "Não foi possível atualizar a subscrição.");
         return false;
       }
-      setPlanDraft((d) => ({ ...d, [id]: body.subscriptionPlan }));
+      if (typeof body.subscriptionPlan === "string") {
+        setPlanDraft((d) => ({ ...d, [id]: body.subscriptionPlan }));
+      }
       await Promise.all([load(), loadRevenue()]);
       return true;
     },
@@ -302,6 +319,16 @@ export function AdminPanel() {
     const subscriptionPlan = planDraft[id];
     if (!subscriptionPlan) return;
     await patchSubscription(id, { subscriptionPlan });
+  };
+
+  const saveCustomPrice = async (id: string) => {
+    const raw = priceDraft[id]?.trim();
+    const n = raw === "" ? null : Number.parseFloat(raw.replace(",", "."));
+    if (n !== null && (!Number.isFinite(n) || n < 0)) {
+      setError("Preço mensal inválido.");
+      return;
+    }
+    await patchSubscription(id, { customMonthlyPriceEur: n });
   };
 
   if (!authReady || loading) {
@@ -360,7 +387,16 @@ export function AdminPanel() {
       ) : null}
 
       {tab === "overview" && stats ? (
-        <OverviewTabContent stats={stats} users={users} planDraft={planDraft} setPlanDraft={setPlanDraft} savePlan={savePlan} />
+        <OverviewTabContent
+          stats={stats}
+          users={users}
+          planDraft={planDraft}
+          setPlanDraft={setPlanDraft}
+          savePlan={savePlan}
+          priceDraft={priceDraft}
+          setPriceDraft={setPriceDraft}
+          saveCustomPrice={saveCustomPrice}
+        />
       ) : null}
 
       {tab === "overview" && !stats ? (
@@ -375,8 +411,23 @@ export function AdminPanel() {
           planDraft={planDraft}
           setPlanDraft={setPlanDraft}
           onApplyPlan={(id) => void savePlan(id)}
-          onCancelSubscription={(id) => void patchSubscription(id, { subscriptionPlan: "free", subscriptionRenewsAt: null })}
-          onGrantCompPro={(id) => void patchSubscription(id, { subscriptionPlan: "pro_monthly", subscriptionRenewsAt: null })}
+          onCancelSubscription={(id) =>
+            void patchSubscription(id, {
+              subscriptionPlan: "free",
+              subscriptionRenewsAt: null,
+              proTrialEndsAt: null,
+              paymentGraceEndsAt: null,
+              lastPaymentFailedAt: null,
+            })
+          }
+          onGrantCompPro={(id) =>
+            void patchSubscription(id, {
+              subscriptionPlan: "pro_monthly",
+              subscriptionRenewsAt: null,
+              paymentGraceEndsAt: null,
+              lastPaymentFailedAt: null,
+            })
+          }
           onRefresh={() => void loadRevenue()}
         />
       ) : null}
@@ -430,12 +481,18 @@ function OverviewTabContent({
   planDraft,
   setPlanDraft,
   savePlan,
+  priceDraft,
+  setPriceDraft,
+  saveCustomPrice,
 }: {
   stats: Stats;
   users: ListedUser[];
   planDraft: Record<string, string>;
   setPlanDraft: Dispatch<SetStateAction<Record<string, string>>>;
   savePlan: (id: string) => void | Promise<void>;
+  priceDraft: Record<string, string>;
+  setPriceDraft: Dispatch<SetStateAction<Record<string, string>>>;
+  saveCustomPrice: (id: string) => void | Promise<void>;
 }) {
   return (
     <div className="space-y-10">
@@ -501,11 +558,12 @@ function OverviewTabContent({
           <StatCard
             title="Trials ativos"
             value={stats.trialsSupported ? stats.activeTrialsCount : "—"}
-            hint={
-              stats.trialsSupported
-                ? "Contas em período experimental"
-                : "Ainda não implementado — quando existir trial, aparece aqui"
-            }
+            hint={stats.trialsSupported ? "Pro trial (7 dias) ainda dentro do prazo" : "—"}
+          />
+          <StatCard
+            title="Em período de graça"
+            value={stats.gracePeriodUsers ?? 0}
+            hint="Falha de pagamento: 3 dias para regularizar antes de passar a Free"
           />
           <StatCard
             title="Total na plataforma"
@@ -527,18 +585,58 @@ function OverviewTabContent({
         </details>
       </section>
 
+      {users.some(
+        (u) =>
+          u.role !== "admin" && (u.subscriptionPlan === "grace" || u.lastPaymentFailedAt)
+      ) ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Pagamentos em falta / período de graça</CardTitle>
+            <p className="text-sm text-zinc-500">
+              Tens ~3 dias para contactar o coach por email antes de a conta passar a Free (dados mantidos, acesso
+              bloqueado).
+            </p>
+          </CardHeader>
+          <CardContent className="text-sm text-zinc-300">
+            <ul className="space-y-2">
+              {users
+                .filter(
+                  (u) =>
+                    u.role !== "admin" && (u.subscriptionPlan === "grace" || u.lastPaymentFailedAt)
+                )
+                .map((u) => (
+                  <li key={u.id}>
+                    <span className="font-mono text-xs text-zinc-400">{u.email}</span>
+                    {u.paymentGraceEndsAt ? (
+                      <span className="ml-2 text-xs text-amber-200/90">
+                        graça até {new Date(u.paymentGraceEndsAt).toLocaleString("pt-PT")}
+                      </span>
+                    ) : null}
+                    {u.lastPaymentFailedAt ? (
+                      <span className="ml-2 text-xs text-zinc-500">
+                        falha: {new Date(u.lastPaymentFailedAt).toLocaleString("pt-PT")}
+                      </span>
+                    ) : null}
+                  </li>
+                ))}
+            </ul>
+          </CardContent>
+        </Card>
+      ) : null}
+
       <Card>
         <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3">
           <CardTitle>Utilizadores</CardTitle>
         </CardHeader>
         <CardContent className="overflow-x-auto p-0">
-          <table className="w-full min-w-[720px] text-left text-sm text-zinc-400">
+          <table className="w-full min-w-[960px] text-left text-sm text-zinc-400">
             <thead className="border-b border-surface-border bg-surface-raised/40 text-xs uppercase tracking-wide text-zinc-500">
               <tr>
                 <th className="px-4 py-3">Email</th>
                 <th className="px-4 py-3">Nome</th>
                 <th className="px-4 py-3">Função</th>
                 <th className="px-4 py-3">Plano</th>
+                <th className="px-4 py-3">Preço € / mês</th>
                 <th className="px-4 py-3">Logins</th>
                 <th className="px-4 py-3">Última atividade</th>
                 <th className="px-4 py-3">Criado</th>
@@ -558,11 +656,32 @@ function OverviewTabContent({
                       <select
                         value={planDraft[u.id] ?? u.subscriptionPlan}
                         onChange={(e) => setPlanDraft((d) => ({ ...d, [u.id]: e.target.value }))}
-                        className="rounded-lg border border-surface-border bg-[#0c1014] px-2 py-1 text-xs text-zinc-200"
+                        className="max-w-[140px] rounded-lg border border-surface-border bg-[#0c1014] px-2 py-1 text-xs text-zinc-200"
                       >
                         <option value="free">Grátis</option>
+                        <option value="pro_trial">Pro trial</option>
                         <option value="pro_monthly">Pro mensal</option>
+                        <option value="grace">Pagamento em falta</option>
                       </select>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    {u.role === "admin" ? (
+                      <span className="text-zinc-500">—</span>
+                    ) : (
+                      <div className="flex flex-wrap items-center gap-1">
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          placeholder="padrão"
+                          value={priceDraft[u.id] ?? ""}
+                          onChange={(e) => setPriceDraft((d) => ({ ...d, [u.id]: e.target.value }))}
+                          className="w-20 rounded border border-surface-border bg-[#0c1014] px-2 py-1 text-xs text-zinc-200"
+                        />
+                        <Button type="button" variant="secondary" className="text-[10px] px-2 py-1" onClick={() => void saveCustomPrice(u.id)}>
+                          Preço
+                        </Button>
+                      </div>
                     )}
                   </td>
                   <td className="px-4 py-3">{u.loginCount}</td>

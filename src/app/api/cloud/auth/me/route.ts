@@ -4,6 +4,8 @@ import { isCloudSyncEnabledServer } from "@/lib/cloud-config";
 import { readSessionFromCookies } from "@/lib/cloud-session";
 import { isOwnerAdminEmail, parseAdminOwnerEmailsFromEnv } from "@/lib/admin-owner";
 import { toCloudUserPublic } from "@/lib/cloud-user-public";
+import { computeSubscriptionAccess } from "@/lib/subscription-access";
+import { transitionExpiredSubscriptionState } from "@/lib/subscription-transition";
 
 export const dynamic = "force-dynamic";
 
@@ -28,10 +30,15 @@ export async function GET() {
         data: { role: "admin" },
       });
     }
+    const transitioned = await transitionExpiredSubscriptionState(user.id);
+    if (!transitioned) {
+      return NextResponse.json({ ok: false, error: "Sessão inválida." }, { status: 401 });
+    }
+    const subscriptionAccess = computeSubscriptionAccess(transitioned);
     return NextResponse.json({
       ok: true,
       cloud: true,
-      user: toCloudUserPublic(user),
+      user: { ...toCloudUserPublic(transitioned), subscriptionAccess },
       adminDiagnostics: {
         ownerEnvConfigured: parseAdminOwnerEmailsFromEnv().length > 0,
         sessionEmailListedAsOwner: listed,

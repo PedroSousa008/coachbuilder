@@ -20,6 +20,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useAppData } from "@/contexts/AppDataContext";
 import { cn } from "@/lib/utils";
 import { clientEmailShowsAdminNav } from "@/lib/bootstrap-admin-client";
+import { hasFullWorkspaceAccess } from "@/lib/subscription-client";
 
 const nav = [
   { href: "/app", label: "Dashboard", icon: LayoutDashboard },
@@ -39,6 +40,8 @@ export function AppSidebar() {
   const { user, logout } = useAuth();
   const { coachProfile } = useAppData();
 
+  const ownerListed = Boolean(user?.email && clientEmailShowsAdminNav(user.email));
+  const fullWorkspace = hasFullWorkspaceAccess(user, ownerListed);
   const showAdmin =
     user?.role === "admin" || (user?.email ? clientEmailShowsAdminNav(user.email) : false);
   const adminNav = showAdmin
@@ -86,7 +89,10 @@ export function AppSidebar() {
             </Link>
           );
         })}
-        {nav.map((item) => {
+        {(fullWorkspace
+          ? nav
+          : nav.filter((item) => item.href === "/app/messages" || item.href === "/app/settings")
+        ).map((item) => {
           const active =
             item.href === "/app" ? pathname === "/app" : pathname.startsWith(item.href);
           const Icon = item.icon;
@@ -132,7 +138,11 @@ export function AppSidebar() {
           <LogOut className="h-3.5 w-3.5" strokeWidth={2} />
           Sair
         </button>
-        <p className="mt-3 text-xs text-zinc-500">Pro unlocks tactics, training, sketch workspace &amp; team tools.</p>
+        <p className="mt-3 text-xs text-zinc-500">
+          {fullWorkspace
+            ? "Coach Pro unlocks tactics, training, sketch workspace & team tools."
+            : "Free plan: squad chat only. Upgrade in Settings to unlock the full workspace."}
+        </p>
         <Link
           href="/app/settings"
           className="mt-2 inline-flex text-xs font-medium text-accent hover:underline"

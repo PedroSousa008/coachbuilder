@@ -10,6 +10,8 @@ import {
 } from "@/lib/bootstrap-owner-account";
 import { recordUserLoginSafe } from "@/lib/server-analytics";
 import { toCloudUserPublic } from "@/lib/cloud-user-public";
+import { computeSubscriptionAccess } from "@/lib/subscription-access";
+import { transitionExpiredSubscriptionState } from "@/lib/subscription-transition";
 
 export const dynamic = "force-dynamic";
 
@@ -66,14 +68,15 @@ export async function POST(req: Request) {
     const token = await createSessionToken(user.id, user.email);
     await setSessionCookie(token);
 
-    const fresh = await prisma.user.findUnique({ where: { id: user.id } });
-    if (!fresh) {
+    const transitioned = await transitionExpiredSubscriptionState(user.id);
+    if (!transitioned) {
       return NextResponse.json({ ok: false, error: "Erro interno." }, { status: 500 });
     }
+    const subscriptionAccess = computeSubscriptionAccess(transitioned);
 
     return NextResponse.json({
       ok: true,
-      user: toCloudUserPublic(fresh),
+      user: { ...toCloudUserPublic(transitioned), subscriptionAccess },
     });
   } catch (e) {
     console.error("[cloud/login]", e);

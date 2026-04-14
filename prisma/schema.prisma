@@ -17,9 +17,16 @@ model User {
   emailVerified Boolean   @default(true)
   /// "user" | "admin" — admin definido por ADMIN_OWNER_EMAIL no servidor
   role          String    @default("user")
-  /// "free" | "pro_monthly" (pagamentos reais quando integrares Stripe)
+  /// free | pro_trial | pro_monthly | grace
   subscriptionPlan     String    @default("free")
   subscriptionRenewsAt DateTime?
+  /// Fim do trial Pro (7 dias após primeiro registo).
+  proTrialEndsAt       DateTime?
+  /// Após falha de pagamento: acesso Pro até esta data (3 dias para regularizar).
+  paymentGraceEndsAt   DateTime?
+  lastPaymentFailedAt  DateTime?
+  /// Preço mensal personalizado (€). Null = COACH_PRO_MONTHLY_PRICE_EUR; 0 = Pro oferecido.
+  customMonthlyPriceEur Decimal?  @db.Decimal(10, 2)
   lastSeenAt    DateTime?
   /// Último path da app reportado pelo cliente (heartbeat), ex. /app/calendar
   lastRoute     String?

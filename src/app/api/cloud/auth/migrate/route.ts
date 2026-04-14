@@ -7,6 +7,7 @@ import { isCoachingRoleId } from "@/types/auth";
 import { isOwnerAdminEmail } from "@/lib/admin-owner";
 import { recordAccountCreatedSafe } from "@/lib/server-analytics";
 import { toCloudUserPublic } from "@/lib/cloud-user-public";
+import { computeSubscriptionAccess, trialEndsAtFromNow } from "@/lib/subscription-access";
 import {
   emptyWorkspaceSnapshot,
   parseWorkspacePayload,
@@ -69,6 +70,7 @@ export async function POST(req: Request) {
 
     const displayName = name || "Coach";
 
+    const isOwner = isOwnerAdminEmail(norm);
     const user = await prisma.user.create({
       data: {
         email: norm,
@@ -76,7 +78,13 @@ export async function POST(req: Request) {
         coachingRole: roleOk,
         passwordHash: hash,
         salt,
-        role: isOwnerAdminEmail(norm) ? "admin" : "user",
+        role: isOwner ? "admin" : "user",
+        ...(!isOwner
+          ? {
+              subscriptionPlan: "pro_trial",
+              proTrialEndsAt: trialEndsAtFromNow(),
+            }
+          : {}),
         workspace: {
           create: { payload: workspacePayload as object },
         },
@@ -93,9 +101,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Erro interno." }, { status: 500 });
     }
 
+    const subscriptionAccess = computeSubscriptionAccess(fresh);
     return NextResponse.json({
       ok: true,
-      user: toCloudUserPublic(fresh),
+      user: { ...toCloudUserPublic(fresh), subscriptionAccess },
     });
   } catch (e) {
     console.error("[cloud/migrate]", e);

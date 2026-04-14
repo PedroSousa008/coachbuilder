@@ -1,3 +1,5 @@
+import type { SubscriptionAccessPayload } from "@/types/subscription";
+
 export const COACHING_ROLES = [
   { id: "head-coach", label: "Treinador principal" },
   { id: "assistant-coach", label: "Treinador adjunto" },
@@ -46,6 +48,8 @@ export type AuthUser = {
   /** Só preenchido com cloud + API atualizada */
   role?: "user" | "admin";
   subscriptionPlan?: string;
+  /** Calculado no servidor (GET /me, login, registo). */
+  subscriptionAccess?: SubscriptionAccessPayload;
 };
 
 export type SignUpCredentials = {

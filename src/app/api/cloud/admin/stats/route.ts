@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { CLOUD_SERVER_UNAVAILABLE_MESSAGE, isCloudSyncEnabledServer } from "@/lib/cloud-config";
 import { requireAdminSession } from "@/lib/admin-guard";
+import { coachProDefaultPriceEur } from "@/lib/subscription-env";
 
 export const dynamic = "force-dynamic";
 
@@ -60,6 +61,22 @@ export async function GET() {
       where: { subscriptionPlan: "pro_monthly", role: { not: "admin" } },
     });
 
+    const activeTrialsCount = await prisma.user.count({
+      where: {
+        role: { not: "admin" },
+        subscriptionPlan: "pro_trial",
+        proTrialEndsAt: { gt: nowDate },
+      },
+    });
+
+    const gracePeriodUsers = await prisma.user.count({
+      where: {
+        role: { not: "admin" },
+        subscriptionPlan: "grace",
+        paymentGraceEndsAt: { gt: nowDate },
+      },
+    });
+
     /** Pro “ativo”: sem data de fim ou renovação ainda no futuro. */
     const coachesWithActivePro = await prisma.user.count({
       where: {
@@ -90,10 +107,7 @@ export async function GET() {
       where: { type: { in: ["signup", "cloud_migrate"] } },
     });
 
-    const proPriceEur = Math.max(
-      0,
-      Number.parseFloat(process.env.ADMIN_PRO_MONTHLY_PRICE_EUR?.trim() || "5") || 5
-    );
+    const proPriceEur = coachProDefaultPriceEur();
     const estimatedMonthlyRevenueEur = Math.round(coachesWithActivePro * proPriceEur * 100) / 100;
 
     const generatedAt = nowDate.toISOString();
@@ -119,9 +133,9 @@ export async function GET() {
         /** Sem modelo de cancelamento na BD até integrares billing. */
         cancellationsRecentCount: 0,
         cancellationsTracked: false,
-        /** Placeholder para trial futuro. */
-        activeTrialsCount: 0,
-        trialsSupported: false,
+        activeTrialsCount,
+        trialsSupported: true,
+        gracePeriodUsers,
         totalLoginEvents,
         loginsLast24h,
         loginsLastHour,

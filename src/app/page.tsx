@@ -190,7 +190,7 @@ export default function LandingPage() {
               </h2>
               <p className="mt-4 text-zinc-400">
                 Start with free messaging. Upgrade when you want the full bench: tactics, training, sketch workspace, and
-                roster tools for €5/month.
+                roster tools for €6.99/month (7-day Pro trial on signup).
               </p>
             </div>
             <div className="mx-auto mt-14 grid max-w-4xl gap-8 md:grid-cols-2">
@@ -204,7 +204,7 @@ export default function LandingPage() {
               />
               <PricingCard
                 name="Coach Pro"
-                price="€5"
+                price="€6.99"
                 description="Full operating system for your staff."
                 features={[
                   "Everything in Free",

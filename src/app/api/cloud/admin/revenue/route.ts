@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { CLOUD_SERVER_UNAVAILABLE_MESSAGE, isCloudSyncEnabledServer } from "@/lib/cloud-config";
 import { requireAdminSession } from "@/lib/admin-guard";
+import { coachProDefaultPriceEur } from "@/lib/subscription-env";
 
 export const dynamic = "force-dynamic";
 
@@ -10,9 +11,12 @@ type SubscriberStatus = "ativo" | "gratuito" | "em_atraso";
 function subscriberStatus(
   plan: string,
   renews: Date | null,
+  graceEnds: Date | null,
   now: Date
 ): SubscriberStatus {
   if (plan === "free") return "gratuito";
+  if (plan === "grace" && graceEnds && graceEnds > now) return "em_atraso";
+  if (plan === "pro_trial") return "ativo";
   if (plan !== "pro_monthly") return "gratuito";
   if (!renews) return "ativo";
   return renews >= now ? "ativo" : "em_atraso";
@@ -29,10 +33,7 @@ export async function GET() {
     const nowMs = Date.now();
     const nowDate = new Date(nowMs);
 
-    const proPriceEur = Math.max(
-      0,
-      Number.parseFloat(process.env.ADMIN_PRO_MONTHLY_PRICE_EUR?.trim() || "5") || 5
-    );
+    const proPriceEur = coachProDefaultPriceEur();
 
     const coachesWithActivePro = await prisma.user.count({
       where: {
@@ -76,6 +77,7 @@ export async function GET() {
         name: true,
         subscriptionPlan: true,
         subscriptionRenewsAt: true,
+        paymentGraceEndsAt: true,
         createdAt: true,
       },
     });
@@ -87,7 +89,7 @@ export async function GET() {
       subscriptionPlan: u.subscriptionPlan,
       subscriptionRenewsAt: u.subscriptionRenewsAt?.toISOString() ?? null,
       createdAt: u.createdAt.toISOString(),
-      status: subscriberStatus(u.subscriptionPlan, u.subscriptionRenewsAt, nowDate),
+      status: subscriberStatus(u.subscriptionPlan, u.subscriptionRenewsAt, u.paymentGraceEndsAt, nowDate),
       totalLifetimePaidEur: null as number | null,
     }));
 

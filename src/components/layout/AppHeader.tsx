@@ -7,6 +7,7 @@ import { useMemo, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 import { clientEmailShowsAdminNav } from "@/lib/bootstrap-admin-client";
+import { hasFullWorkspaceAccess } from "@/lib/subscription-client";
 
 const mobileLinksBase = [
   { href: "/app", label: "Home" },
@@ -26,7 +27,12 @@ export function AppHeader({ title }: { title: string }) {
   const { user } = useAuth();
 
   const mobileLinks = useMemo(() => {
-    const base = mobileLinksBase.map((l) => ({ href: l.href, label: l.label }));
+    const ownerListed = Boolean(user?.email && clientEmailShowsAdminNav(user.email));
+    const full = hasFullWorkspaceAccess(user, ownerListed);
+    const baseList = full
+      ? mobileLinksBase
+      : mobileLinksBase.filter((l) => l.href === "/app/messages" || l.href === "/app/settings");
+    const base = baseList.map((l) => ({ href: l.href, label: l.label }));
     const showAdmin =
       user?.role === "admin" || (user?.email ? clientEmailShowsAdminNav(user.email) : false);
     if (showAdmin) {
@@ -37,7 +43,7 @@ export function AppHeader({ title }: { title: string }) {
       ];
     }
     return base;
-  }, [user?.role, user?.email]);
+  }, [user?.role, user?.email, user]);
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-4 border-b border-surface-border bg-[#0a0d10]/85 px-4 backdrop-blur-xl lg:px-8">

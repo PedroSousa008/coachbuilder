@@ -1,11 +1,9 @@
-import Link from "next/link";
-import { Check } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
-import { Button } from "@/components/ui/Button";
+import { Suspense } from "react";
 import { TeamAccentSettings } from "@/components/settings/TeamAccentSettings";
 import { DataPersistenceNotice } from "@/components/settings/DataPersistenceNotice";
 import { CloudAccountSettings } from "@/components/settings/CloudAccountSettings";
-import { mockCoach } from "@/data/mock";
+import { SubscriptionSettings } from "@/components/settings/SubscriptionSettings";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 
 export default function SettingsPage() {
   return (
@@ -14,61 +12,9 @@ export default function SettingsPage() {
 
       <DataPersistenceNotice />
 
-      <div>
-        <h2 className="font-display text-lg font-semibold text-white">Subscription</h2>
-        <p className="text-sm text-zinc-500">
-          Messages stay free forever. Unlock the full coaching workspace with Coach Pro at €5/month (billing not
-          connected in this MVP).
-        </p>
-      </div>
-
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Free</CardTitle>
-            <p className="text-sm text-zinc-500">€0 — squad communication</p>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <ul className="space-y-2 text-sm text-zinc-300">
-              {["Team group chat", "Direct messages"].map((f) => (
-                <li key={f} className="flex gap-2">
-                  <Check className="h-4 w-4 shrink-0 text-accent" />
-                  {f}
-                </li>
-              ))}
-            </ul>
-            <p className="text-xs text-zinc-600">You are on: {mockCoach.plan === "free" ? "Free" : "Coach Pro"}</p>
-          </CardContent>
-        </Card>
-
-        <Card className="border-accent/30 bg-accent/5">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              Coach Pro
-              <span className="rounded-md bg-accent px-2 py-0.5 text-xs font-semibold text-zinc-950">€5/mo</span>
-            </CardTitle>
-            <p className="text-sm text-zinc-500">Tactics, training, sketch workspace, roster & more</p>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <ul className="space-y-2 text-sm text-zinc-300">
-              {[
-                "Tactics board & saved ideas",
-                "Training plan builder",
-                "Sketch Area workspace",
-                "Team roster & availability",
-              ].map((f) => (
-                <li key={f} className="flex gap-2">
-                  <Check className="h-4 w-4 shrink-0 text-accent" />
-                  {f}
-                </li>
-              ))}
-            </ul>
-            <Button type="button" className="w-full">
-              Upgrade (demo — no charge)
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
+      <Suspense fallback={<p className="text-sm text-zinc-500">A carregar subscrição…</p>}>
+        <SubscriptionSettings />
+      </Suspense>
 
       <Card>
         <CardHeader>
@@ -76,11 +22,13 @@ export default function SettingsPage() {
         </CardHeader>
         <CardContent className="space-y-4 text-sm text-zinc-400">
           <CloudAccountSettings />
-          <p>Email e palavra-passe da conta estão guardados neste dispositivo. Para alterar a palavra-passe, contacta o
-            suporte ou aguarda a opção na app.</p>
-          <Link href="/app/profile" className="inline-flex text-accent hover:underline">
+          <p>
+            Email e palavra-passe da conta estão guardados neste dispositivo. Para alterar a palavra-passe, contacta o
+            suporte ou aguarda a opção na app.
+          </p>
+          <a href="/app/profile" className="inline-flex text-accent hover:underline">
             Edit profile →
-          </Link>
+          </a>
         </CardContent>
       </Card>
 

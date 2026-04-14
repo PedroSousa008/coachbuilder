@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { AppShell } from "@/components/layout/AppShell";
 import { AuthGuard } from "@/components/auth/AuthGuard";
+import { SubscriptionGate } from "@/components/subscription/SubscriptionGate";
 
 function AppShellFallback() {
   return (
@@ -14,7 +15,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <Suspense fallback={<AppShellFallback />}>
       <AuthGuard>
-        <AppShell>{children}</AppShell>
+        <SubscriptionGate>
+          <AppShell>{children}</AppShell>
+        </SubscriptionGate>
       </AuthGuard>
     </Suspense>
   );
