@@ -147,6 +147,11 @@ export function SketchAreaClient() {
   const [boardLine, setBoardLine] = useState(3);
   const [boardPitch, setBoardPitch] = useState<SketchPitchTemplate>("half");
   const [boardNote, setBoardNote] = useState("");
+  const [externalWatchForm, setExternalWatchForm] = useState({
+    name: "",
+    club: "",
+    position: "",
+  });
 
   const activeDraft = useMemo(() => {
     if (sketchArea.boardDrafts.length === 0) return null;
@@ -418,6 +423,31 @@ export function SketchAreaClient() {
     },
     [setSketchArea, sketchArea.watchlist]
   );
+
+  const addExternalWatch = useCallback(() => {
+    const name = externalWatchForm.name.trim();
+    if (!name) return;
+    const nameKey = name.toLowerCase();
+    const duplicate = sketchArea.watchlist.some(
+      (w) => !w.playerId && (w.externalPlayerName ?? "").trim().toLowerCase() === nameKey
+    );
+    if (duplicate) return;
+    const now = new Date().toISOString();
+    const row: SketchWatchlistEntry = {
+      id: sketchUid("watch"),
+      externalPlayerName: name,
+      externalClub: externalWatchForm.club.trim() || undefined,
+      externalPosition: externalWatchForm.position.trim() || undefined,
+      focusTags: [],
+      latestNote: "",
+      nextAction: "",
+      clipLinks: [],
+      createdAt: now,
+      updatedAt: now,
+    };
+    setSketchArea((s) => ({ ...s, watchlist: [row, ...s.watchlist] }));
+    setExternalWatchForm({ name: "", club: "", position: "" });
+  }, [externalWatchForm, setSketchArea, sketchArea.watchlist]);
 
   const openPicker = (mode: typeof pickerMode) => {
     setPickerMode(mode);
@@ -1121,11 +1151,39 @@ export function SketchAreaClient() {
 
       {tab === "watchlist" ? (
         <div className="no-print space-y-4">
-          <div className="flex justify-end">
-            <Button type="button" onClick={() => openPicker("watch")}>
-              <Plus className="mr-2 h-4 w-4" />
-              Add player
-            </Button>
+          <div className="grid gap-4 rounded-2xl border border-surface-border bg-surface-raised/20 p-4 md:grid-cols-2">
+            <div className="space-y-3">
+              <p className="text-sm font-medium text-zinc-200">Add from your team</p>
+              <Button type="button" onClick={() => openPicker("watch")}>
+                <Plus className="mr-2 h-4 w-4" />
+                Add team player
+              </Button>
+            </div>
+            <div className="space-y-3">
+              <p className="text-sm font-medium text-zinc-200">Add external player (other teams)</p>
+              <div className="grid gap-2">
+                <Input
+                  value={externalWatchForm.name}
+                  onChange={(e) => setExternalWatchForm((f) => ({ ...f, name: e.target.value }))}
+                  placeholder="Player name"
+                />
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <Input
+                    value={externalWatchForm.club}
+                    onChange={(e) => setExternalWatchForm((f) => ({ ...f, club: e.target.value }))}
+                    placeholder="Club (optional)"
+                  />
+                  <Input
+                    value={externalWatchForm.position}
+                    onChange={(e) => setExternalWatchForm((f) => ({ ...f, position: e.target.value }))}
+                    placeholder="Position (optional)"
+                  />
+                </div>
+                <Button type="button" variant="secondary" onClick={addExternalWatch}>
+                  Add external player
+                </Button>
+              </div>
+            </div>
           </div>
           <div className="grid gap-4 md:grid-cols-2">
             {sketchArea.watchlist.map((w) => {
@@ -1133,7 +1191,15 @@ export function SketchAreaClient() {
               return (
                 <Card key={w.id}>
                   <CardHeader className="flex flex-row items-start justify-between gap-2">
-                    <CardTitle className="text-base">{pl?.name ?? "Player"}</CardTitle>
+                    <div>
+                      <CardTitle className="text-base">{pl?.name ?? w.externalPlayerName ?? "Player"}</CardTitle>
+                      {!pl && (w.externalClub || w.externalPosition) ? (
+                        <p className="mt-1 text-xs text-zinc-500">
+                          {[w.externalClub, w.externalPosition].filter(Boolean).join(" · ")}
+                        </p>
+                      ) : null}
+                      {!pl ? <Badge variant="muted">External</Badge> : null}
+                    </div>
                     <button
                       type="button"
                       className="text-zinc-500 hover:text-red-400"

@@ -648,7 +648,12 @@ export interface SketchBoardDraft {
 
 export interface SketchWatchlistEntry {
   id: string;
-  playerId: string;
+  /** Team player id (when linked to your own squad). */
+  playerId?: string;
+  /** External player profile (when scouting players from other teams). */
+  externalPlayerName?: string;
+  externalClub?: string;
+  externalPosition?: string;
   focusTags: string[];
   latestNote: string;
   nextAction: string;
