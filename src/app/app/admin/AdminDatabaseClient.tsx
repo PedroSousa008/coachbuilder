@@ -93,6 +93,7 @@ export function AdminDatabaseClient() {
   const {
     hydrated,
     players,
+    staff,
     conversations,
     messagesByConv,
     trainingSessions,
@@ -229,6 +230,7 @@ export function AdminDatabaseClient() {
     () =>
       buildWorkspaceSnapshotV1({
         players,
+        staff,
         conversations,
         messagesByConv,
         trainingSessions,
@@ -249,6 +251,7 @@ export function AdminDatabaseClient() {
       }),
     [
       players,
+      staff,
       conversations,
       messagesByConv,
       trainingSessions,
