@@ -255,20 +255,24 @@ export function TrainingPlansClient() {
   const printFull = useCallback(() => {
     if (!fullPlan || !fullMeta) return;
     const playerLines = selectedPlayers.map((p) => `#${p.number} ${p.name} — ${formatPlayerPositions(p)}`);
+    const assetBaseUrl = window.location.origin;
     const html = buildFullSessionDocumentHtml({
       plan: fullPlan,
       durationMin: fullMeta.durationMin,
       playerLines,
       generatedAt: new Date().toLocaleString("pt-PT"),
+      assetBaseUrl,
     });
     openPrintableHtml(html);
   }, [fullPlan, fullMeta, selectedPlayers]);
 
   const printDrill = useCallback(() => {
     if (!singleDrill) return;
+    const assetBaseUrl = window.location.origin;
     const html = buildSingleDrillDocumentHtml({
       drill: singleDrill,
       generatedAt: new Date().toLocaleString("pt-PT"),
+      assetBaseUrl,
     });
     openPrintableHtml(html);
   }, [singleDrill]);

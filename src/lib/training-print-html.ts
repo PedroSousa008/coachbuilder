@@ -14,17 +14,21 @@ export function buildFullSessionDocumentHtml(params: {
   durationMin: number;
   playerLines: string[];
   generatedAt: string;
+  assetBaseUrl?: string;
 }): string {
-  const { plan, durationMin, playerLines, generatedAt } = params;
+  const { plan, durationMin, playerLines, generatedAt, assetBaseUrl } = params;
   const blocksHtml = plan.blocks
     .map((b, i) => {
       const phase =
         b.phase === "warmup" ? "Aquecimento" : b.phase === "cooldown" ? "Finalização" : "Bloco principal";
-      const exerciseImageSrc = trainingExercisePrintImageForTitle(b.title);
+      const imageRelPath = trainingExercisePrintImageForTitle(b.title);
+      const exerciseImageSrc =
+        imageRelPath && assetBaseUrl ? `${assetBaseUrl}${imageRelPath}` : imageRelPath;
       return `
       <section class="block">
         <h2>${i + 1}. ${esc(b.title)} <span class="meta">(${esc(phase)} · ${b.durationMin} min)</span></h2>
         <p><strong>Como correr:</strong> ${esc(b.description)}</p>
+        ${exerciseImageSrc ? `<p><strong>Explicação:</strong></p>` : ""}
         ${
           exerciseImageSrc
             ? `<figure class="exercise-image-wrap">
@@ -38,7 +42,6 @@ export function buildFullSessionDocumentHtml(params: {
         <p><strong>Pontos de treino:</strong> ${esc(b.coachingPoints)}</p>
         ${b.setup ? `<p><strong>Organização:</strong> ${esc(b.setup)}</p>` : ""}
         ${b.groupSplit ? `<p><strong>Grupos / focos:</strong> ${esc(b.groupSplit)}</p>` : ""}
-        ${b.videoUrl ? `<p><strong>Vídeo:</strong> ${esc(b.videoUrl)}</p>` : ""}
         ${b.diagramHint ? `<p class="diagram"><strong>Diagrama (sugestão):</strong> ${esc(b.diagramHint)}</p>` : ""}
       </section>`;
     })
@@ -86,9 +89,11 @@ export function buildFullSessionDocumentHtml(params: {
 export function buildSingleDrillDocumentHtml(params: {
   drill: AiSingleDrill;
   generatedAt: string;
+  assetBaseUrl?: string;
 }): string {
-  const { drill, generatedAt } = params;
-  const exerciseImageSrc = trainingExercisePrintImageForTitle(drill.title);
+  const { drill, generatedAt, assetBaseUrl } = params;
+  const imageRelPath = trainingExercisePrintImageForTitle(drill.title);
+  const exerciseImageSrc = imageRelPath && assetBaseUrl ? `${assetBaseUrl}${imageRelPath}` : imageRelPath;
   return `<!DOCTYPE html>
 <html lang="pt">
 <head>
@@ -108,6 +113,7 @@ export function buildSingleDrillDocumentHtml(params: {
   <p class="meta">${drill.durationMin} min · ${esc(generatedAt)} · CoachBuilder</p>
   <p><strong>Objetivo:</strong> ${esc(drill.objective)}</p>
   <p><strong>Exercício:</strong> ${esc(drill.description)}</p>
+  ${exerciseImageSrc ? `<p><strong>Explicação:</strong></p>` : ""}
   ${
     exerciseImageSrc
       ? `<figure class="exercise-image-wrap">
@@ -121,7 +127,6 @@ export function buildSingleDrillDocumentHtml(params: {
   ${drill.progression ? `<p><strong>Progressão:</strong> ${esc(drill.progression)}</p>` : ""}
   ${drill.coachingCues ? `<p><strong>Cues:</strong> ${esc(drill.coachingCues)}</p>` : ""}
   ${drill.variations ? `<p><strong>Variações:</strong> ${esc(drill.variations)}</p>` : ""}
-  ${drill.videoUrl ? `<p><strong>Vídeo:</strong> ${esc(drill.videoUrl)}</p>` : ""}
   ${drill.diagramHint ? `<p><strong>Diagrama:</strong> ${esc(drill.diagramHint)}</p>` : ""}
 </body>
 </html>`;
