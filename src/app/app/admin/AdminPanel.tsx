@@ -307,7 +307,8 @@ export function AdminPanel() {
         return false;
       }
       if (typeof body.subscriptionPlan === "string") {
-        setPlanDraft((d) => ({ ...d, [id]: body.subscriptionPlan }));
+        const plan = body.subscriptionPlan;
+        setPlanDraft((d) => ({ ...d, [id]: plan }));
       }
       await Promise.all([load(), loadRevenue()]);
       return true;
