@@ -1,14 +1,18 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
+  ArrowLeft,
   Calendar,
   CheckCircle2,
   Circle,
   ClipboardList,
   FolderOpen,
   LayoutGrid,
+  Maximize2,
+  Minimize2,
   PenLine,
   Pin,
   Plus,
@@ -47,6 +51,7 @@ import {
   NOTE_CATEGORY_LABELS,
   TASK_CATEGORY_LABELS,
 } from "./constants";
+import { cn } from "@/lib/utils";
 import { BOARD_COLORS, SketchBoardCanvas } from "./SketchBoardCanvas";
 
 type TabId = "calendar" | "notes" | "tasks" | "files" | "board" | "watchlist";
@@ -152,6 +157,7 @@ export function SketchAreaClient() {
     club: "",
     position: "",
   });
+  const [boardExpanded, setBoardExpanded] = useState(false);
 
   const activeDraft = useMemo(() => {
     if (sketchArea.boardDrafts.length === 0) return null;
@@ -474,9 +480,29 @@ export function SketchAreaClient() {
     setBoardNote(activeDraft.noteAttached ?? "");
   }, [activeDraft?.id]);
 
+  useEffect(() => {
+    if (tab !== "board") setBoardExpanded(false);
+  }, [tab]);
+
+  useEffect(() => {
+    if (!boardExpanded) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [boardExpanded]);
+
   return (
-    <div className="mx-auto max-w-6xl space-y-6 print:max-w-none">
-      <div className="no-print">
+    <div
+      className={cn(
+        "mx-auto max-w-6xl space-y-6 print:max-w-none",
+        boardExpanded &&
+          tab === "board" &&
+          "fixed inset-0 z-[100] m-0 flex max-h-[100dvh] max-w-none flex-col overflow-hidden bg-[#0a0d10] p-3 sm:p-4"
+      )}
+    >
+      <div className={cn("no-print", boardExpanded && tab === "board" && "hidden")}>
         <h2 className="font-display text-xl font-semibold text-white">Sketch Area</h2>
         <p className="mt-1 max-w-3xl text-sm text-zinc-500">
           Daily planning, quick notes, tasks, files, tactical sketches, and player watchlist — your private staff
@@ -1029,7 +1055,36 @@ export function SketchAreaClient() {
       ) : null}
 
       {tab === "board" ? (
-        <Card className="print:border-0">
+        <Card
+          className={cn(
+            "print:border-0",
+            boardExpanded &&
+              "flex min-h-0 flex-1 flex-col overflow-hidden border-0 bg-transparent shadow-none ring-0"
+          )}
+        >
+          {boardExpanded ? (
+            <div className="no-print mb-3 flex shrink-0 flex-wrap items-center gap-2 border-b border-surface-border pb-3">
+              <Link
+                href="/app"
+                className="inline-flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-zinc-300 transition-colors hover:bg-white/5 hover:text-white"
+              >
+                <ArrowLeft className="h-4 w-4 shrink-0" strokeWidth={2} />
+                Back to app
+              </Link>
+              <Button
+                type="button"
+                variant="secondary"
+                className="text-xs"
+                onClick={() => setBoardExpanded(false)}
+              >
+                <Minimize2 className="mr-1.5 h-3.5 w-3.5" strokeWidth={2} />
+                Exit fullscreen
+              </Button>
+              <p className="ml-auto hidden text-[11px] text-zinc-500 sm:block">
+                Touch-friendly drawing · pinch outside to scroll the page when not fullscreen
+              </p>
+            </div>
+          ) : null}
           <CardHeader className="no-print flex flex-row flex-wrap items-center justify-between gap-3">
             <CardTitle>Sketch board</CardTitle>
             <div className="flex flex-wrap gap-2">
@@ -1042,9 +1097,31 @@ export function SketchAreaClient() {
               <Button type="button" className="text-xs" onClick={printBoard}>
                 Print / PDF
               </Button>
+              {sketchArea.boardDrafts.length > 0 && activeDraft ? (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="text-xs"
+                  onClick={() => setBoardExpanded((v) => !v)}
+                >
+                  {boardExpanded ? (
+                    <>
+                      <Minimize2 className="mr-1.5 h-3.5 w-3.5" strokeWidth={2} />
+                      Minimize
+                    </>
+                  ) : (
+                    <>
+                      <Maximize2 className="mr-1.5 h-3.5 w-3.5" strokeWidth={2} />
+                      Fullscreen
+                    </>
+                  )}
+                </Button>
+              ) : null}
             </div>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent
+            className={cn("space-y-4", boardExpanded && "flex min-h-0 flex-1 flex-col overflow-hidden")}
+          >
             {sketchArea.boardDrafts.length > 0 && activeDraft ? (
               <>
                 <div className="no-print flex flex-wrap gap-2">
@@ -1123,7 +1200,10 @@ export function SketchAreaClient() {
                     }));
                   }}
                 />
-                <div id="sketch-print-area">
+                <div
+                  id="sketch-print-area"
+                  className={cn(boardExpanded && "flex min-h-0 flex-1 flex-col")}
+                >
                   <SketchBoardCanvas
                     pitchTemplate={boardPitch}
                     strokes={activeDraft.strokes}
@@ -1131,6 +1211,7 @@ export function SketchAreaClient() {
                     tool={boardTool}
                     color={boardColor}
                     lineWidth={boardLine}
+                    expanded={boardExpanded}
                   />
                 </div>
                 <Button

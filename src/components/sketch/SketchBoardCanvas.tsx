@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import type { SketchPitchTemplate, SketchStroke, SketchStrokeTool } from "@/types";
 export const BOARD_COLORS = ["#e4e4e7", "#22c55e", "#f59e0b", "#ef4444", "#3b82f6", "#a855f7"];
 
@@ -94,6 +94,7 @@ export function SketchBoardCanvas({
   tool,
   color,
   lineWidth,
+  expanded = false,
 }: {
   pitchTemplate: SketchPitchTemplate;
   strokes: SketchStroke[];
@@ -101,11 +102,15 @@ export function SketchBoardCanvas({
   tool: SketchStrokeTool;
   color: string;
   lineWidth: number;
+  /** Taller canvas (fullscreen / mobile drawing area). */
+  expanded?: boolean;
 }) {
   const ref = useRef<HTMLCanvasElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
-  const [drawing, setDrawing] = useState(false);
   const currentStroke = useRef<SketchStroke | null>(null);
+  const activePointerId = useRef<number | null>(null);
+  const strokesRef = useRef(strokes);
+  strokesRef.current = strokes;
 
   const redraw = useCallback(() => {
     const c = ref.current;
@@ -131,7 +136,9 @@ export function SketchBoardCanvas({
       if (!wrap || !c) return;
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       const w = Math.floor(wrap.clientWidth);
-      const h = Math.floor(Math.min(420, wrap.clientWidth * 0.58));
+      const h = expanded
+        ? Math.max(280, Math.floor(wrap.clientHeight))
+        : Math.floor(Math.min(420, wrap.clientWidth * 0.58));
       c.width = w * dpr;
       c.height = h * dpr;
       c.style.width = `${w}px`;
@@ -142,18 +149,33 @@ export function SketchBoardCanvas({
     });
     if (wrapRef.current) ro.observe(wrapRef.current);
     return () => ro.disconnect();
-  }, [redraw]);
+  }, [redraw, expanded]);
 
-  const pos = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  const pos = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const c = ref.current;
     if (!c) return { x: 0, y: 0 };
     const r = c.getBoundingClientRect();
     return { x: e.clientX - r.left, y: e.clientY - r.top };
   };
 
-  const onDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  const finishStroke = () => {
+    if (!currentStroke.current) return;
+    activePointerId.current = null;
+    const fin = currentStroke.current;
+    currentStroke.current = null;
+    if (fin.points.length >= (fin.tool === "draw" ? 2 : 1)) {
+      onStrokesChange([...strokesRef.current, fin]);
+    }
+    redraw();
+  };
+
+  const onPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (e.button !== 0 && e.pointerType === "mouse") return;
+    e.preventDefault();
+    const canvas = e.currentTarget;
+    canvas.setPointerCapture(e.pointerId);
+    activePointerId.current = e.pointerId;
     const { x, y } = pos(e);
-    setDrawing(true);
     currentStroke.current = {
       tool,
       color,
@@ -163,8 +185,10 @@ export function SketchBoardCanvas({
     redraw();
   };
 
-  const onMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!drawing || !currentStroke.current) return;
+  const onPointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (activePointerId.current !== null && e.pointerId !== activePointerId.current) return;
+    if (!currentStroke.current) return;
+    e.preventDefault();
     const { x, y } = pos(e);
     const s = currentStroke.current;
     if (tool === "draw") {
@@ -175,26 +199,42 @@ export function SketchBoardCanvas({
     redraw();
   };
 
-  const onUp = () => {
-    if (!drawing || !currentStroke.current) return;
-    setDrawing(false);
-    const fin = currentStroke.current;
-    currentStroke.current = null;
-    if (fin.points.length >= (fin.tool === "draw" ? 2 : 1)) {
-      onStrokesChange([...strokes, fin]);
+  const onPointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (activePointerId.current !== null && e.pointerId !== activePointerId.current) return;
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch {
+      /* already released */
     }
-    redraw();
+    finishStroke();
+  };
+
+  const onPointerCancel = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (activePointerId.current !== null && e.pointerId !== activePointerId.current) return;
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch {
+      /* ignore */
+    }
+    finishStroke();
   };
 
   return (
-    <div ref={wrapRef} className="w-full">
+    <div
+      ref={wrapRef}
+      className={expanded ? "flex min-h-0 w-full flex-1 flex-col" : "w-full"}
+    >
       <canvas
         ref={ref}
         className="touch-none cursor-crosshair rounded-xl border border-surface-border bg-[#0a0f0c]"
-        onMouseDown={onDown}
-        onMouseMove={onMove}
-        onMouseUp={onUp}
-        onMouseLeave={onUp}
+        style={{ touchAction: "none" }}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerCancel}
+        onPointerLeave={(e) => {
+          if (e.pointerType === "mouse" && currentStroke.current) finishStroke();
+        }}
       />
     </div>
   );
