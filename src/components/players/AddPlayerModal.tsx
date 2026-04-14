@@ -35,6 +35,7 @@ export function AddPlayerModal({
   const [age, setAge] = useState("17");
   const [heightCm, setHeightCm] = useState("");
   const [weightKg, setWeightKg] = useState("");
+  const [dateOfBirth, setDateOfBirth] = useState("");
   const [preferredFoot, setPreferredFoot] = useState<PreferredFoot | "">("");
   const [availability, setAvailability] = useState<Player["availability"]>("available");
   const [performance, setPerformance] = useState<Player["performance"]>("steady");
@@ -70,6 +71,7 @@ export function AddPlayerModal({
       preferredFoot: preferredFoot || undefined,
       availability,
       performance,
+      dateOfBirth: dateOfBirth || undefined,
     });
     setName("");
     setNumber("10");
@@ -77,6 +79,7 @@ export function AddPlayerModal({
     setAge("17");
     setHeightCm("");
     setWeightKg("");
+    setDateOfBirth("");
     setPreferredFoot("");
     setAvailability("available");
     setPerformance("steady");
@@ -165,18 +168,32 @@ export function AddPlayerModal({
               />
             </div>
           </div>
-          <div>
-            <label className="text-xs font-medium text-zinc-500">Pé preferido</label>
-            <select
-              value={preferredFoot}
-              onChange={(e) => setPreferredFoot(e.target.value as PreferredFoot | "")}
-              className="mt-1.5 h-11 w-full rounded-xl border border-surface-border bg-surface-raised px-3 text-sm text-white"
-            >
-              <option value="">—</option>
-              <option value="right">Direito</option>
-              <option value="left">Esquerdo</option>
-              <option value="both">Ambos</option>
-            </select>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-medium text-zinc-500" htmlFor="np-dob">
+                Data de nascimento
+              </label>
+              <Input
+                id="np-dob"
+                type="date"
+                value={dateOfBirth}
+                onChange={(e) => setDateOfBirth(e.target.value)}
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-zinc-500">Pé preferido</label>
+              <select
+                value={preferredFoot}
+                onChange={(e) => setPreferredFoot(e.target.value as PreferredFoot | "")}
+                className="mt-1.5 h-11 w-full rounded-xl border border-surface-border bg-surface-raised px-3 text-sm text-white"
+              >
+                <option value="">—</option>
+                <option value="right">Direito</option>
+                <option value="left">Esquerdo</option>
+                <option value="both">Ambos</option>
+              </select>
+            </div>
           </div>
           <div>
             <label className="text-xs font-medium text-zinc-500">Posição (várias)</label>

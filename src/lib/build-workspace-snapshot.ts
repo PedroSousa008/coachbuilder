@@ -9,6 +9,7 @@ import type {
   Player,
   SavedTrainingExercise,
   SketchAreaState,
+  StaffMember,
   Tactic,
   TacticMatch,
   TacticPlayerAnalysisNote,
@@ -18,6 +19,7 @@ import type {
 /** Snapshot completo alinhado com o que se persiste em cloud / localStorage (um único sítio de verdade). */
 export function buildWorkspaceSnapshotV1(params: {
   players: Player[];
+  staff: StaffMember[];
   conversations: Conversation[];
   messagesByConv: Record<string, Message[]>;
   trainingSessions: TrainingSession[];
@@ -39,6 +41,7 @@ export function buildWorkspaceSnapshotV1(params: {
   return {
     version: 1,
     players: params.players,
+    staff: params.staff,
     conversations: params.conversations,
     messages: params.messagesByConv,
     trainingSessions: params.trainingSessions,

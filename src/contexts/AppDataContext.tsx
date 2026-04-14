@@ -27,6 +27,7 @@ import type {
   TacticPlayerAnalysisNote,
   NewSavedTrainingExerciseInput,
   SavedTrainingExercise,
+  StaffMember,
   TrainingSession,
 } from "@/types";
 import { tallyForTactic } from "@/lib/tactics-match-stats";
@@ -118,6 +119,13 @@ export type NewPlayerInput = {
   preferredFoot?: PreferredFoot;
   availability: Player["availability"];
   performance: Player["performance"];
+  dateOfBirth?: string;
+};
+
+export type NewStaffInput = {
+  name: string;
+  role: string;
+  dateOfBirth?: string;
 };
 
 export type NewSessionInput = {
@@ -149,9 +157,13 @@ type LeaguePersist = {
 type AppDataContextValue = {
   hydrated: boolean;
   players: Player[];
+  staff: StaffMember[];
   addPlayer: (input: NewPlayerInput) => Player;
   updatePlayer: (id: string, patch: Partial<Omit<Player, "id">>) => void;
   removePlayer: (id: string) => void;
+  addStaff: (input: NewStaffInput) => StaffMember;
+  updateStaff: (id: string, patch: Partial<Omit<StaffMember, "id">>) => void;
+  removeStaff: (id: string) => void;
 
   conversations: Conversation[];
   messagesByConv: Record<string, Message[]>;
@@ -212,6 +224,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
   const [hydrated, setHydrated] = useState(false);
   const [players, setPlayers] = useState<Player[]>([]);
+  const [staff, setStaff] = useState<StaffMember[]>([]);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [messagesByConv, setMessagesByConv] = useState<Record<string, Message[]>>({});
   const [trainingSessions, setTrainingSessions] = useState<TrainingSession[]>([]);
@@ -251,6 +264,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
     if (!user?.id || !ks) {
       setPlayers([]);
+      setStaff([]);
       setConversations([]);
       setMessagesByConv({});
       setTrainingSessions([]);
@@ -276,6 +290,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     mergeLegacyTacticsIfUserEmpty(user.id);
 
     const loadedPlayers = loadJSON<Player[]>(ks.players, []);
+    const loadedStaff = loadJSON<StaffMember[]>(ks.staff, []);
     let loadedConvs = loadJSON<Conversation[]>(ks.conversations, []);
     if (!loadedConvs.some((c) => c.type === "group")) {
       loadedConvs = [defaultGroup(), ...loadedConvs];
@@ -285,6 +300,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       loadedMsgs[SQUAD_GROUP_ID] = [];
     }
     setPlayers(loadedPlayers);
+    setStaff(loadedStaff);
     setConversations(loadedConvs);
     setMessagesByConv(loadedMsgs);
     setTrainingSessions(loadJSON<TrainingSession[]>(ks.sessions, []));
@@ -332,6 +348,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           if (!loadedMsgs[SQUAD_GROUP_ID]) loadedMsgs[SQUAD_GROUP_ID] = [];
           const leagueMatchesDeduped = dedupeMatches(s.league.matches ?? []);
           setPlayers(s.players);
+          setStaff(s.staff ?? []);
           setConversations(loadedConvs);
           setMessagesByConv(loadedMsgs);
           setTrainingSessions(s.trainingSessions);
@@ -386,6 +403,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     if (!shouldUseCloudClientApis(user) || !cloudRemoteReady || !hydrated || !user?.id) return;
     const snap: WorkspaceSnapshotV1 = buildWorkspaceSnapshotV1({
       players,
+      staff,
       conversations,
       messagesByConv,
       trainingSessions,
@@ -418,6 +436,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     hydrated,
     user?.id,
     players,
+    staff,
     conversations,
     messagesByConv,
     trainingSessions,
@@ -441,6 +460,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     if (!hydrated || !ks) return;
     saveJSON(ks.players, players);
   }, [players, hydrated, ks]);
+
+  useEffect(() => {
+    if (!hydrated || !ks) return;
+    saveJSON(ks.staff, staff);
+  }, [staff, hydrated, ks]);
 
   useEffect(() => {
     if (!hydrated || !ks) return;
@@ -611,9 +635,29 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       preferredFoot: input.preferredFoot,
       availability: input.availability,
       performance: input.performance,
+      dateOfBirth: input.dateOfBirth,
     };
     setPlayers((prev) => [...prev, p]);
     return p;
+  }, []);
+
+  const addStaff = useCallback((input: NewStaffInput) => {
+    const s: StaffMember = {
+      id: uid("stf"),
+      name: input.name.trim(),
+      role: input.role.trim() || "Staff",
+      dateOfBirth: input.dateOfBirth,
+    };
+    setStaff((prev) => [...prev, s]);
+    return s;
+  }, []);
+
+  const updateStaff = useCallback((id: string, patch: Partial<Omit<StaffMember, "id">>) => {
+    setStaff((prev) => prev.map((x) => (x.id === id ? { ...x, ...patch } : x)));
+  }, []);
+
+  const removeStaff = useCallback((id: string) => {
+    setStaff((prev) => prev.filter((x) => x.id !== id));
   }, []);
 
   const updatePlayer = useCallback((id: string, patch: Partial<Omit<Player, "id">>) => {
@@ -858,9 +902,13 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     () => ({
       hydrated,
       players,
+      staff,
       addPlayer,
       updatePlayer,
       removePlayer,
+      addStaff,
+      updateStaff,
+      removeStaff,
       conversations,
       messagesByConv,
       createDmWithPlayer,
@@ -902,9 +950,13 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     [
       hydrated,
       players,
+      staff,
       addPlayer,
       updatePlayer,
       removePlayer,
+      addStaff,
+      updateStaff,
+      removeStaff,
       conversations,
       messagesByConv,
       createDmWithPlayer,

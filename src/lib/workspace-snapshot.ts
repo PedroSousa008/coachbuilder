@@ -7,6 +7,7 @@ import type {
   Message,
   Player,
   SavedTrainingExercise,
+  StaffMember,
   SketchAreaState,
   Tactic,
   TacticMatch,
@@ -33,6 +34,7 @@ export type LeaguePersistSnapshot = {
 export type WorkspaceSnapshotV1 = {
   version: typeof WORKSPACE_SNAPSHOT_VERSION;
   players: Player[];
+  staff: StaffMember[];
   conversations: Conversation[];
   messages: Record<string, Message[]>;
   trainingSessions: TrainingSession[];
@@ -51,6 +53,7 @@ export function emptyWorkspaceSnapshot(): WorkspaceSnapshotV1 {
   return {
     version: WORKSPACE_SNAPSHOT_VERSION,
     players: [],
+    staff: [],
     conversations: [],
     messages: {},
     trainingSessions: [],
@@ -76,6 +79,7 @@ export function emptyWorkspaceSnapshot(): WorkspaceSnapshotV1 {
 export function snapshotHasMeaningfulData(s: WorkspaceSnapshotV1 | null | undefined): boolean {
   if (!s) return false;
   if (s.players.length > 0) return true;
+  if (s.staff.length > 0) return true;
   if (s.tactics.length > 0) return true;
   if (s.tacticMatches.length > 0) return true;
   if (s.trainingSessions.length > 0) return true;
@@ -108,6 +112,7 @@ export function writeWorkspaceSnapshotToLocalStorage(userId: string, s: Workspac
   if (typeof window === "undefined") return;
   const ks = getAllUserDataKeys(userId);
   safeSaveJSON(ks.players, s.players);
+  safeSaveJSON(ks.staff, s.staff);
   safeSaveJSON(ks.conversations, s.conversations);
   safeSaveJSON(ks.messages, s.messages);
   safeSaveJSON(ks.sessions, s.trainingSessions);
@@ -129,6 +134,7 @@ export function collectWorkspaceFromLocalStorage(userId: string): WorkspaceSnaps
   return {
     version: WORKSPACE_SNAPSHOT_VERSION,
     players: safeLoadJSON<Player[]>(ks.players, []),
+    staff: safeLoadJSON<StaffMember[]>(ks.staff, []),
     conversations: safeLoadJSON<Conversation[]>(ks.conversations, []),
     messages: safeLoadJSON<Record<string, Message[]>>(ks.messages, {}),
     trainingSessions: safeLoadJSON<TrainingSession[]>(ks.sessions, []),
@@ -166,6 +172,7 @@ export function parseWorkspacePayload(raw: unknown): WorkspaceSnapshotV1 | null 
   return {
     version: WORKSPACE_SNAPSHOT_VERSION,
     players: Array.isArray(o.players) ? (o.players as Player[]) : e.players,
+    staff: Array.isArray(o.staff) ? (o.staff as StaffMember[]) : e.staff,
     conversations: Array.isArray(o.conversations) ? (o.conversations as Conversation[]) : e.conversations,
     messages:
       o.messages && typeof o.messages === "object" ? (o.messages as Record<string, Message[]>) : e.messages,

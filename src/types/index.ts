@@ -176,6 +176,16 @@ export interface Player {
   qualities?: Partial<PlayerQualities>;
   /** Testes de campo / balneário com valores e AI overall. */
   evaluationTests?: PlayerEvaluationTests;
+  /** ISO date YYYY-MM-DD */
+  dateOfBirth?: string;
+}
+
+export interface StaffMember {
+  id: string;
+  name: string;
+  role: string;
+  /** ISO date YYYY-MM-DD */
+  dateOfBirth?: string;
 }
 
 export interface TrainingSession {

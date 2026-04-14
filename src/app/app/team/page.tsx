@@ -5,6 +5,7 @@ import type { Position } from "@/types";
 import { PlayerCard } from "@/components/team/PlayerCard";
 import { AddPlayerModal } from "@/components/players/AddPlayerModal";
 import { PlayerDetailModal } from "@/components/players/PlayerDetailModal";
+import { AddStaffModal } from "@/components/team/AddStaffModal";
 import { playerHasPosition, sortSquadRoster, type SquadSortBy } from "@/lib/player-positions";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
@@ -31,12 +32,13 @@ const SORT_OPTIONS: { id: SquadSortBy; label: string }[] = [
 ];
 
 export default function TeamPage() {
-  const { players, addPlayer, removePlayer, updatePlayer } = useAppData();
+  const { players, staff, addPlayer, removePlayer, updatePlayer, addStaff, removeStaff } = useAppData();
   const [q, setQ] = useState("");
   const [pos, setPos] = useState<Position | "all">("all");
   const [sortBy, setSortBy] = useState<SquadSortBy>("number");
   const [detailId, setDetailId] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
+  const [addStaffOpen, setAddStaffOpen] = useState(false);
 
   const detailPlayer = useMemo(() => players.find((p) => p.id === detailId) ?? null, [players, detailId]);
 
@@ -59,6 +61,7 @@ export default function TeamPage() {
   return (
     <div className="mx-auto max-w-6xl space-y-8">
       <AddPlayerModal open={addOpen} onClose={() => setAddOpen(false)} onSave={handleAddPlayer} />
+      <AddStaffModal open={addStaffOpen} onClose={() => setAddStaffOpen(false)} onSave={addStaff} />
       <PlayerDetailModal
         player={detailPlayer}
         open={detailId != null}
@@ -74,14 +77,16 @@ export default function TeamPage() {
         <div>
           <h2 className="font-display text-lg font-semibold text-white">Squad roster</h2>
           <p className="text-sm text-zinc-500">
-            {players.length} player{players.length !== 1 ? "s" : ""} · same list everywhere you pick names (tactics,
-            training, messages).
+            {players.length} player{players.length !== 1 ? "s" : ""} · {staff.length} staff · same list everywhere you pick names (tactics, training, messages).
           </p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <Input placeholder="Search players…" value={q} onChange={(e) => setQ(e.target.value)} className="sm:w-56" />
           <Button type="button" onClick={() => setAddOpen(true)}>
             Add player
+          </Button>
+          <Button type="button" variant="secondary" onClick={() => setAddStaffOpen(true)}>
+            Add staff
           </Button>
         </div>
       </div>
@@ -127,6 +132,10 @@ export default function TeamPage() {
         </div>
       </div>
 
+      <section className="space-y-4">
+        <div className="flex items-end justify-between gap-2">
+          <h3 className="font-display text-base font-semibold text-white">Jogadores</h3>
+        </div>
       {players.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-surface-border p-12 text-center">
           <p className="text-zinc-400">No players yet.</p>
@@ -146,6 +155,41 @@ export default function TeamPage() {
           ))}
         </div>
       )}
+      </section>
+
+      <section className="space-y-4">
+        <div className="flex items-end justify-between gap-2">
+          <h3 className="font-display text-base font-semibold text-white">Staff</h3>
+        </div>
+        {staff.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-surface-border p-8 text-center text-zinc-500">
+            Ainda não adicionaste membros de staff.
+          </div>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {staff.map((member) => (
+              <article
+                key={member.id}
+                className="rounded-2xl border border-surface-border bg-surface-raised/50 p-4"
+              >
+                <p className="font-medium text-white">{member.name}</p>
+                <p className="mt-1 text-sm text-zinc-400">{member.role}</p>
+                <p className="mt-1 text-xs text-zinc-500">
+                  {member.dateOfBirth ? `Nascimento: ${member.dateOfBirth}` : "Sem data de nascimento"}
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="mt-4 border-red-500/40 text-red-400 hover:bg-red-500/10"
+                  onClick={() => removeStaff(member.id)}
+                >
+                  Remover
+                </Button>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
 
     </div>
   );

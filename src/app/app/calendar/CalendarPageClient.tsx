@@ -26,6 +26,15 @@ function formatKickoffShort(iso: string) {
   });
 }
 
+function monthDayKey(isoDate: string): string | null {
+  if (!isoDate) return null;
+  const d = new Date(`${isoDate}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return null;
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${m}-${day}`;
+}
+
 function outcomeForMyTeam(
   m: LeagueImportedMatch,
   profileClub: string,
@@ -107,6 +116,8 @@ export function CalendarPageClient() {
     leagueTableFetchError,
     refreshLeagueTable,
     coachProfile,
+    players,
+    staff,
     hydrated,
   } = useAppData();
 
@@ -234,6 +245,44 @@ export function CalendarPageClient() {
 
   const showFullStats = leagueTableRows.some((r) => r.played != null);
 
+  const birthdayRows = useMemo(() => {
+    const now = new Date(nowMs);
+    const today = `${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    const list: { id: string; label: string; subtitle: string; isToday: boolean }[] = [];
+    const coachBirth = monthDayKey(coachProfile.dateOfBirth ?? "");
+    if (coachBirth) {
+      list.push({
+        id: "coach",
+        label: coachProfile.name.trim() || "Treinador",
+        subtitle: "Treinador",
+        isToday: coachBirth === today,
+      });
+    }
+    for (const p of players) {
+      const key = monthDayKey(p.dateOfBirth ?? "");
+      if (!key) continue;
+      list.push({
+        id: `player-${p.id}`,
+        label: p.name,
+        subtitle: `Jogador · #${p.number}`,
+        isToday: key === today,
+      });
+    }
+    for (const s of staff) {
+      const key = monthDayKey(s.dateOfBirth ?? "");
+      if (!key) continue;
+      list.push({
+        id: `staff-${s.id}`,
+        label: s.name,
+        subtitle: `Staff · ${s.role}`,
+        isToday: key === today,
+      });
+    }
+    return list;
+  }, [coachProfile.dateOfBirth, coachProfile.name, nowMs, players, staff]);
+
+  const birthdaysToday = birthdayRows.filter((x) => x.isToday);
+
   const saveUrl = () => {
     setLeagueTableUrl(urlDraft.trim());
   };
@@ -269,6 +318,32 @@ export function CalendarPageClient() {
           </p>
         )}
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Aniversários automáticos</CardTitle>
+          <CardDescription>
+            Quando a data coincide, o calendário assinala automaticamente com mensagem de parabéns.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {birthdaysToday.length > 0 ? (
+            birthdaysToday.map((row) => (
+              <div key={row.id} className="rounded-xl border border-emerald-500/35 bg-emerald-500/10 px-4 py-3">
+                <p className="font-semibold text-emerald-200">Parabéns, {row.label}!</p>
+                <p className="text-xs text-emerald-100/90">{row.subtitle}</p>
+              </div>
+            ))
+          ) : (
+            <p className="text-sm text-zinc-400">Hoje não há aniversários registados.</p>
+          )}
+          {birthdayRows.length === 0 && (
+            <p className="text-xs text-zinc-500">
+              Para ativar, adiciona data de nascimento no Perfil, Jogadores e Staff.
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
       <FixtureFormModal
         open={fixtureModalOpen}

@@ -62,6 +62,7 @@ export function PlayerDetailModal({
   const [age, setAge] = useState("17");
   const [heightCm, setHeightCm] = useState("");
   const [weightKg, setWeightKg] = useState("");
+  const [dateOfBirth, setDateOfBirth] = useState("");
   const [preferredFoot, setPreferredFoot] = useState<PreferredFoot | "">("");
   const [selectedPos, setSelectedPos] = useState<Position[]>(["CM"]);
   const [availability, setAvailability] = useState<Player["availability"]>("available");
@@ -90,6 +91,7 @@ export function PlayerDetailModal({
     setAge(String(player.age));
     setHeightCm(player.heightCm != null ? String(player.heightCm) : "");
     setWeightKg(player.weightKg != null ? String(player.weightKg) : "");
+    setDateOfBirth(player.dateOfBirth ?? "");
     setPreferredFoot(player.preferredFoot ?? "");
     const list = player.positions?.length ? player.positions : [player.position];
     setSelectedPos(list);
@@ -233,6 +235,7 @@ export function PlayerDetailModal({
       positions: posList.length > 1 ? posList : undefined,
       heightCm: h,
       weightKg: w,
+      dateOfBirth: dateOfBirth || undefined,
       preferredFoot: preferredFoot || undefined,
       availability,
       performance,
@@ -374,18 +377,32 @@ export function PlayerDetailModal({
                   />
                 </div>
               </div>
-              <div>
-                <label className="text-xs font-medium text-zinc-500">Pé preferido</label>
-                <select
-                  value={preferredFoot}
-                  onChange={(e) => setPreferredFoot(e.target.value as PreferredFoot | "")}
-                  className="mt-1.5 h-11 w-full rounded-xl border border-surface-border bg-surface-raised px-3 text-sm text-white"
-                >
-                  <option value="">—</option>
-                  <option value="right">Direito</option>
-                  <option value="left">Esquerdo</option>
-                  <option value="both">Ambos</option>
-                </select>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-medium text-zinc-500" htmlFor="pd-dob">
+                    Data de nascimento
+                  </label>
+                  <Input
+                    id="pd-dob"
+                    type="date"
+                    value={dateOfBirth}
+                    onChange={(e) => setDateOfBirth(e.target.value)}
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-zinc-500">Pé preferido</label>
+                  <select
+                    value={preferredFoot}
+                    onChange={(e) => setPreferredFoot(e.target.value as PreferredFoot | "")}
+                    className="mt-1.5 h-11 w-full rounded-xl border border-surface-border bg-surface-raised px-3 text-sm text-white"
+                  >
+                    <option value="">—</option>
+                    <option value="right">Direito</option>
+                    <option value="left">Esquerdo</option>
+                    <option value="both">Ambos</option>
+                  </select>
+                </div>
               </div>
               <div>
                 <label className="text-xs font-medium text-zinc-500">Posição (podes escolher várias)</label>
