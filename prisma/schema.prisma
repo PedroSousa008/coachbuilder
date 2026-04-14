@@ -27,6 +27,10 @@ model User {
   lastPaymentFailedAt  DateTime?
   /// Preço mensal personalizado (€). Null = COACH_PRO_MONTHLY_PRICE_EUR; 0 = Pro oferecido.
   customMonthlyPriceEur Decimal?  @db.Decimal(10, 2)
+  /// Stripe Customer (Billing) — reutilizado em novos checkouts / portal.
+  stripeCustomerId     String?   @unique
+  /// Subscrição Stripe activa (Coach Pro).
+  stripeSubscriptionId String?   @unique
   lastSeenAt    DateTime?
   /// Último path da app reportado pelo cliente (heartbeat), ex. /app/calendar
   lastRoute     String?
