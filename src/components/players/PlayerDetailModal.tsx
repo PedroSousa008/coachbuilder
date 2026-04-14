@@ -10,7 +10,10 @@ import type {
   PlayerQualities,
   Position,
   PreferredFoot,
+  TeamDocumentsBundle,
 } from "@/types";
+import { TeamDocumentsPanel } from "@/components/team/TeamDocumentsPanel";
+import { normalizeTeamDocuments } from "@/lib/team-documents";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { cn } from "@/lib/utils";
@@ -37,7 +40,7 @@ const POSITIONS: Position[] = [
   "ST",
 ];
 
-type Tab = "dados" | "qualidades" | "avaliacao";
+type Tab = "dados" | "qualidades" | "avaliacao" | "documentos";
 
 function emptyEvaluationDraft(): Record<EvaluationTestId, string> {
   return Object.fromEntries(EVALUATION_TEST_IDS.map((id) => [id, ""])) as Record<EvaluationTestId, string>;
@@ -72,6 +75,7 @@ export function PlayerDetailModal({
   const [evaluationHelpOpenId, setEvaluationHelpOpenId] = useState<EvaluationTestId | null>(null);
   const [evaluationMediaOpenId, setEvaluationMediaOpenId] = useState<EvaluationTestId | null>(null);
   const [mediaPortalMounted, setMediaPortalMounted] = useState(false);
+  const [documentsBundle, setDocumentsBundle] = useState<TeamDocumentsBundle>(() => normalizeTeamDocuments());
 
   useEffect(() => setMediaPortalMounted(true), []);
 
@@ -103,6 +107,7 @@ export function PlayerDetailModal({
       ev[id] = player.evaluationTests?.[id]?.raw ?? "";
     }
     setEvaluationDraft(ev);
+    setDocumentsBundle(normalizeTeamDocuments(player.documents));
     setTab("dados");
     setEvaluationHelpOpenId(null);
     setEvaluationMediaOpenId(null);
@@ -241,6 +246,7 @@ export function PlayerDetailModal({
       performance,
       qualities: qualitiesDraft,
       evaluationTests,
+      documents: normalizeTeamDocuments(documentsBundle),
     });
   };
 
@@ -266,13 +272,13 @@ export function PlayerDetailModal({
           <h3 id="player-detail-title" className="font-display text-lg font-semibold text-white">
             {player.name}
           </h3>
-          <p className="mt-0.5 text-xs text-zinc-500">Editar dados e qualidades</p>
+          <p className="mt-0.5 text-xs text-zinc-500">Dados, qualidades, avaliação e documentos</p>
           {insights && (
             <div className="mt-4">
               <PlayerInsightsBox insights={insights} />
             </div>
           )}
-          <div className="mt-4 grid grid-cols-3 gap-1 rounded-xl bg-black/40 p-1">
+          <div className="mt-4 grid grid-cols-2 gap-1 rounded-xl bg-black/40 p-1 sm:grid-cols-4">
             <button
               type="button"
               onClick={() => setTab("dados")}
@@ -302,6 +308,16 @@ export function PlayerDetailModal({
               )}
             >
               Avaliação
+            </button>
+            <button
+              type="button"
+              onClick={() => setTab("documentos")}
+              className={cn(
+                "rounded-lg py-2 text-xs font-medium transition-colors sm:text-sm",
+                tab === "documentos" ? "bg-accent/20 text-accent" : "text-zinc-500 hover:text-zinc-300"
+              )}
+            >
+              Documentos
             </button>
           </div>
         </div>
@@ -499,6 +515,14 @@ export function PlayerDetailModal({
                 </div>
               ))}
             </div>
+          )}
+
+          {tab === "documentos" && (
+            <TeamDocumentsPanel
+              contractTitle="Contrato do jogador"
+              bundle={documentsBundle}
+              onChange={setDocumentsBundle}
+            />
           )}
 
           {tab === "avaliacao" && (

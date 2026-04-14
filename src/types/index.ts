@@ -157,6 +157,44 @@ export type EvaluationTestEntry = {
 
 export type PlayerEvaluationTests = Partial<Record<EvaluationTestId, EvaluationTestEntry>>;
 
+/** Tipo de documento associado a jogador ou staff (organização). */
+export type TeamDocumentKind =
+  | "contract"
+  | "medical"
+  | "identity"
+  | "authorization"
+  | "insurance"
+  | "video"
+  | "image"
+  | "pdf"
+  | "link"
+  | "other";
+
+/** Bloco do contrato (primeiro destaque na UI). */
+export interface TeamContractSlot {
+  /** Link https ou data URL (anexo pequeno). */
+  url?: string;
+  notes?: string;
+  /** Nome do ficheiro quando há anexo. */
+  fileName?: string;
+  updatedAt?: string;
+}
+
+export interface TeamAttachedDocument {
+  id: string;
+  title: string;
+  kind: TeamDocumentKind;
+  url?: string;
+  notes?: string;
+  fileName?: string;
+  addedAt: string;
+}
+
+export interface TeamDocumentsBundle {
+  contract?: TeamContractSlot;
+  items: TeamAttachedDocument[];
+}
+
 export interface Player {
   id: string;
   name: string;
@@ -178,6 +216,8 @@ export interface Player {
   evaluationTests?: PlayerEvaluationTests;
   /** ISO date YYYY-MM-DD */
   dateOfBirth?: string;
+  /** Contratos, PDFs, vídeos, links — sincronizado com o workspace. */
+  documents?: TeamDocumentsBundle;
 }
 
 export interface StaffMember {
@@ -186,6 +226,7 @@ export interface StaffMember {
   role: string;
   /** ISO date YYYY-MM-DD */
   dateOfBirth?: string;
+  documents?: TeamDocumentsBundle;
 }
 
 export interface TrainingSession {

@@ -6,6 +6,7 @@ import { PlayerCard } from "@/components/team/PlayerCard";
 import { AddPlayerModal } from "@/components/players/AddPlayerModal";
 import { PlayerDetailModal } from "@/components/players/PlayerDetailModal";
 import { AddStaffModal } from "@/components/team/AddStaffModal";
+import { StaffDetailModal } from "@/components/team/StaffDetailModal";
 import { playerHasPosition, sortSquadRoster, type SquadSortBy } from "@/lib/player-positions";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
@@ -32,15 +33,17 @@ const SORT_OPTIONS: { id: SquadSortBy; label: string }[] = [
 ];
 
 export default function TeamPage() {
-  const { players, staff, addPlayer, removePlayer, updatePlayer, addStaff, removeStaff } = useAppData();
+  const { players, staff, addPlayer, removePlayer, updatePlayer, addStaff, updateStaff, removeStaff } = useAppData();
   const [q, setQ] = useState("");
   const [pos, setPos] = useState<Position | "all">("all");
   const [sortBy, setSortBy] = useState<SquadSortBy>("number");
   const [detailId, setDetailId] = useState<string | null>(null);
+  const [detailStaffId, setDetailStaffId] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [addStaffOpen, setAddStaffOpen] = useState(false);
 
   const detailPlayer = useMemo(() => players.find((p) => p.id === detailId) ?? null, [players, detailId]);
+  const detailStaff = useMemo(() => staff.find((s) => s.id === detailStaffId) ?? null, [staff, detailStaffId]);
 
   const filtered = useMemo(() => {
     return players.filter((p) => {
@@ -70,6 +73,16 @@ export default function TeamPage() {
         onRemove={(id) => {
           removePlayer(id);
           setDetailId(null);
+        }}
+      />
+      <StaffDetailModal
+        member={detailStaff}
+        open={detailStaffId != null}
+        onClose={() => setDetailStaffId(null)}
+        onSave={(id, patch) => updateStaff(id, patch)}
+        onRemove={(id) => {
+          removeStaff(id);
+          setDetailStaffId(null);
         }}
       />
 
@@ -177,14 +190,19 @@ export default function TeamPage() {
                 <p className="mt-1 text-xs text-zinc-500">
                   {member.dateOfBirth ? `Nascimento: ${member.dateOfBirth}` : "Sem data de nascimento"}
                 </p>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="mt-4 border-red-500/40 text-red-400 hover:bg-red-500/10"
-                  onClick={() => removeStaff(member.id)}
-                >
-                  Remover
-                </Button>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <Button type="button" onClick={() => setDetailStaffId(member.id)}>
+                    Abrir
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="border-red-500/40 text-red-400 hover:bg-red-500/10"
+                    onClick={() => removeStaff(member.id)}
+                  >
+                    Remover
+                  </Button>
+                </div>
               </article>
             ))}
           </div>
