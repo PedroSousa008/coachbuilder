@@ -347,28 +347,11 @@ export function SketchAreaClient() {
   }, [fileFolder, filePlayerIds, fileReviewLater, fileUrl, fileVis, setSketchArea]);
 
   const openPrintSketchTemplate = useCallback(() => {
-    const imageUrl = `${window.location.origin}/images/sketch/printsketch.png`;
-    const w = window.open("", "_blank");
+    const pdfUrl = `${window.location.origin}/images/sketch/printsketch.pdf`;
+    const w = window.open(pdfUrl, "_blank");
     if (!w) return;
-    w.document.open();
-    w.document.write(`<!DOCTYPE html>
-<html lang="pt">
-<head>
-  <meta charset="utf-8" />
-  <title>Print and Design your Sketch</title>
-  <style>
-    body { margin: 0; padding: 24px; background: #111; display: flex; justify-content: center; }
-    img { max-width: 100%; height: auto; box-shadow: 0 0 0 1px rgba(255,255,255,0.14); background: white; }
-    @media print { body { background: white; padding: 0; } img { box-shadow: none; } }
-  </style>
-</head>
-<body>
-  <img src="${imageUrl}" alt="Print sketch template" onerror="document.body.innerHTML='<p style=&quot;color:white;font-family:sans-serif&quot;>printsketch.png not found.</p>'" />
-</body>
-</html>`);
-    w.document.close();
     w.focus();
-    window.setTimeout(() => w.print(), 280);
+    window.setTimeout(() => w.print(), 650);
   }, []);
 
   const ensureDraft = useCallback(() => {
@@ -903,7 +886,7 @@ export function SketchAreaClient() {
             <CardHeader>
               <CardTitle>Print and Design your Sketch</CardTitle>
               <p className="text-sm text-zinc-500">
-                Open and print `printsketch.png` instantly. Replace this file anytime with your own template.
+                Open and print `printsketch.pdf` instantly. Replace this file anytime with your own template.
               </p>
             </CardHeader>
             <CardContent>
