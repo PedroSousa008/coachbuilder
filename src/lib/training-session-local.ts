@@ -677,21 +677,6 @@ const MAIN_DRILLS: MainDrillDef[] = [
     }),
   },
   {
-    themes: ["possession", "balanced"],
-    title: "Rondo com pressão condicionada",
-    describe: (pl, m) => ({
-      description: `Dois quadrados ou círculos concentricos: interior com menos jogadores + 2 defesas a pressionar (${m} min). Rotação a cada 90s nas pressões.`,
-      coachingPoints:
-        "Corpo aberto na recepção; primeiro toque orientado; voz constante. Se a pressão ganhar a bola, 6 toques para voltar a estabilizar.",
-      setup: "Cones; espaço total ~25x25 m (ajusta ao número).",
-      groupSplit:
-        pl.length >= 10
-          ? "Dois grupos sem repetir jogadores: maioria no rondo + pressões; defesas em ziguezague entre estações. Troca de papéis ao intervalo."
-          : undefined,
-      diagramHint: "Quadrado exterior; quadrado interior menor; 2 coletes a pressionar no meio.",
-    }),
-  },
-  {
     themes: ["transition", "physical"],
     title: "Jogo 4+4 vs 4+4 com transição imediata",
     describe: (pl, m) => ({
@@ -702,28 +687,6 @@ const MAIN_DRILLS: MainDrillDef[] = [
       groupSplit:
         "Avançados lideram a transição ao último terço; médios fazem ligações; quem não está nesses papéis apoia e roda para todos experimentarem os dois lados.",
       diagramHint: "Dois rectângulos; setas de transição cruzadas entre campos.",
-    }),
-  },
-  {
-    themes: ["pressing"],
-    title: "Pressão alta coordenada 5v5+1",
-    describe: (pl, m) => ({
-      description: `Campo 32x24 m. Equipa com bola: GR real ou jogador em pé nas balizas. Equipa sem bola pressiona em cunha: primeiro salta ao portador, segundos fecham linhas de passe. Séries de ${Math.max(3, Math.floor(m / 4))} min.`,
-      coachingPoints: "Gatilho comum (voz ou mão); nunca saltar sozinho; canalizar para banda se for o plano.",
-      setup: "Coletes; porta grande ou dois mini-golos.",
-      diagramHint: "Cunha de pressão a partir do ponta de lança; meios tapam passes interiores.",
-    }),
-  },
-  {
-    themes: ["finishing", "wide"],
-    title: "Finalização em velocidade a partir de cruzamento",
-    describe: (pl, m) => ({
-      description: `Filas nas bandas; cruzamentos alternados; 2 pontas de lança + 2 chegadas ao segundo poste por série. ${m} min com contagem de golos limpos.`,
-      coachingPoints: "Tempo de corrida; contacto com o relvado na antevisão; decisão cabeça vs pé.",
-      setup: "Bolas nas bandas; mini-balizas ou porta reduzida.",
-      groupSplit:
-        "Largos (laterais / extremos) iniciam cruzamentos; finalizadores no eixo e segundo poste; apoios sem repetir o mesmo papel na mesma jogada.",
-      diagramHint: "Banda → cruzamento rasteiro e alto alternados; 2 filas de atacantes.",
     }),
   },
   {
@@ -752,16 +715,6 @@ const MAIN_DRILLS: MainDrillDef[] = [
         "Bloco defensivo (linha + trinco) fixo num período; atacantes a simular circulação; após recuperação, os mesmos ou um núcleo ofensivo designado ataca as 4 balizas em 3–5 toques.",
       diagramHint: "Bloco compacto (defesas + trinco); corredor central fechado; após recuperação, setas rápidas para as 4 balizas.",
       videoUrl: COMPACT_DEFENDING_TRANSITION_VIDEO_URL,
-    }),
-  },
-  {
-    themes: ["physical", "possession"],
-    title: "Possessão 8v8+2 neutros",
-    describe: (pl, m) => ({
-      description: `Retângulo 40x30 m; dois neutros nas bandas sempre com o equipa na posse; objectivo 10 passes seguidos = 1 ponto (${m} min).`,
-      coachingPoints: "Neutros só com 2 toques; interiorizações dos extremos para criar superioridade.",
-      setup: "Coletes; 1 bola principal + bolas ao redor.",
-      diagramHint: "Rectângulo; neutros fixos nas linhas laterais.",
     }),
   },
   {
