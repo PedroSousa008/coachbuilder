@@ -53,6 +53,7 @@ import {
 } from "@/lib/workspace-snapshot";
 import { buildWorkspaceSnapshotV1 } from "@/lib/build-workspace-snapshot";
 import { emptySketchAreaState } from "@/lib/sketch-area";
+import { normalizeNametagInput } from "@/lib/user-nametag";
 import { useAuth } from "@/contexts/AuthContext";
 import { withNormalizedCareerSeasonsInProfile } from "@/lib/coach-career-season-normalize";
 import { withNormalizedHonorCategories } from "@/lib/coach-honor-migration";
@@ -173,9 +174,11 @@ type AppDataContextValue = {
 
   conversations: Conversation[];
   messagesByConv: Record<string, Message[]>;
-  createDmWithPlayer: (player: Player) => string;
+  createDmWithPlayer: (player: Player) => string | null;
   addPlayerToGroupChat: (conversationId: string, player: Player) => void;
   sendChatMessage: (conversationId: string, body: string) => void;
+  /** Mescla mensagens vindas da cloud (ids do servidor) num fio DM. */
+  mergeRemoteDmMessages: (conversationId: string, messages: Message[]) => void;
 
   trainingSessions: TrainingSession[];
   addTrainingSession: (input: NewSessionInput) => TrainingSession;
@@ -756,27 +759,35 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setTeamRoles((prev) => ({ ...prev, [role]: playerIds.slice(0, 2) }));
   }, []);
 
-  const createDmWithPlayer = useCallback((player: Player) => {
-    const id = `conv-dm-${player.id}`;
-    setConversations((prev) => {
-      if (prev.some((c) => c.id === id)) return prev;
-      const conv: Conversation = {
-        id,
-        type: "dm",
-        title: player.name,
-        subtitle: `${formatPlayerPositions(player)} · #${player.number}`,
-        avatarInitials: initials(player.name),
-        lastMessagePreview: "No messages yet",
-        lastMessageAt: new Date().toISOString(),
-        participantIds: [mockCoach.id, player.id],
-      };
-      return [...prev, conv];
-    });
-    setMessagesByConv((prev) => (prev[id] ? prev : { ...prev, [id]: [] }));
-    return id;
-  }, []);
+  const createDmWithPlayer = useCallback(
+    (player: Player) => {
+      if (!normalizeNametagInput(player.linkedNametag ?? "")) return null;
+      const coachId = user?.id ?? mockCoach.id;
+      const id = `conv-dm-${player.id}`;
+      setConversations((prev) => {
+        if (prev.some((c) => c.id === id)) return prev;
+        const conv: Conversation = {
+          id,
+          type: "dm",
+          title: player.name,
+          subtitle: `${formatPlayerPositions(player)} · #${player.number}`,
+          avatarInitials: initials(player.name),
+          lastMessagePreview: "No messages yet",
+          lastMessageAt: new Date().toISOString(),
+          participantIds: [coachId, player.id],
+        };
+        return [...prev, conv];
+      });
+      setMessagesByConv((prev) => (prev[id] ? prev : { ...prev, [id]: [] }));
+      return id;
+    },
+    [user?.id]
+  );
 
   const addPlayerToGroupChat = useCallback((conversationId: string, player: Player) => {
+    if (!normalizeNametagInput(player.linkedNametag ?? "")) return;
+    const coachId = user?.id ?? mockCoach.id;
+    const coachName = user?.name?.trim() || mockCoach.name.trim() || "Coach";
     setConversations((prev) =>
       prev.map((c) => {
         if (c.id !== conversationId || c.type !== "group") return c;
@@ -795,8 +806,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     const msg: Message = {
       id: uid("m"),
       conversationId,
-      authorId: mockCoach.id,
-      authorName: mockCoach.name.trim() || "Coach",
+      authorId: coachId,
+      authorName: coachName,
       body: sysBody,
       sentAt: new Date().toISOString(),
     };
@@ -804,35 +815,72 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       ...prev,
       [conversationId]: [...(prev[conversationId] ?? []), msg],
     }));
-  }, []);
+  }, [user?.id, user?.name]);
 
-  const sendChatMessage = useCallback((conversationId: string, body: string) => {
-    const trimmed = body.trim();
-    if (!trimmed) return;
-    const msg: Message = {
-      id: uid("m"),
-      conversationId,
-      authorId: mockCoach.id,
-      authorName: mockCoach.name.trim() || "Coach",
-      body: trimmed,
-      sentAt: new Date().toISOString(),
-    };
-    setMessagesByConv((prev) => ({
-      ...prev,
-      [conversationId]: [...(prev[conversationId] ?? []), msg],
-    }));
+  const mergeRemoteDmMessages = useCallback((conversationId: string, incoming: Message[]) => {
+    if (incoming.length === 0) return;
+    setMessagesByConv((prev) => {
+      const cur = prev[conversationId] ?? [];
+      const byId = new Map(cur.map((m) => [m.id, m]));
+      for (const m of incoming) {
+        if (!byId.has(m.id)) byId.set(m.id, m);
+      }
+      const merged = [...byId.values()].sort(
+        (a, b) => new Date(a.sentAt).getTime() - new Date(b.sentAt).getTime()
+      );
+      return { ...prev, [conversationId]: merged };
+    });
+    const last = incoming[incoming.length - 1]!;
     setConversations((prev) =>
       prev.map((c) =>
         c.id === conversationId
           ? {
               ...c,
-              lastMessagePreview: trimmed.length > 72 ? `${trimmed.slice(0, 72)}…` : trimmed,
-              lastMessageAt: msg.sentAt,
+              lastMessagePreview: last.body.length > 72 ? `${last.body.slice(0, 72)}…` : last.body,
+              lastMessageAt: last.sentAt,
             }
           : c
       )
     );
   }, []);
+
+  const sendChatMessage = useCallback(
+    (conversationId: string, body: string) => {
+      const trimmed = body.trim();
+      if (!trimmed) return;
+      if (conversationId.startsWith("conv-dm-")) {
+        const pid = conversationId.slice("conv-dm-".length);
+        const pl = players.find((x) => x.id === pid);
+        if (!normalizeNametagInput(pl?.linkedNametag ?? "")) return;
+      }
+      const authorId = user?.id ?? mockCoach.id;
+      const authorName = user?.name?.trim() || mockCoach.name.trim() || "Coach";
+      const msg: Message = {
+        id: uid("m"),
+        conversationId,
+        authorId,
+        authorName,
+        body: trimmed,
+        sentAt: new Date().toISOString(),
+      };
+      setMessagesByConv((prev) => ({
+        ...prev,
+        [conversationId]: [...(prev[conversationId] ?? []), msg],
+      }));
+      setConversations((prev) =>
+        prev.map((c) =>
+          c.id === conversationId
+            ? {
+                ...c,
+                lastMessagePreview: trimmed.length > 72 ? `${trimmed.slice(0, 72)}…` : trimmed,
+                lastMessageAt: msg.sentAt,
+              }
+            : c
+        )
+      );
+    },
+    [players, user?.id, user?.name]
+  );
 
   const addTrainingSession = useCallback((input: NewSessionInput) => {
     const s: TrainingSession = {
@@ -992,6 +1040,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       createDmWithPlayer,
       addPlayerToGroupChat,
       sendChatMessage,
+      mergeRemoteDmMessages,
       trainingSessions,
       addTrainingSession,
       trainingPlayerIdsBySession,
@@ -1043,6 +1092,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       createDmWithPlayer,
       addPlayerToGroupChat,
       sendChatMessage,
+      mergeRemoteDmMessages,
       trainingSessions,
       addTrainingSession,
       trainingPlayerIdsBySession,

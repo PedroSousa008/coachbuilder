@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChatConversationItem } from "@/components/messages/ChatConversationItem";
 import { MessageBubble } from "@/components/messages/MessageBubble";
 import { PlayerPickerModal } from "@/components/players/PlayerPickerModal";
@@ -9,6 +9,12 @@ import { Button } from "@/components/ui/Button";
 import { mockCoach } from "@/data/mock";
 import { useAppData, SQUAD_GROUP_ID } from "@/contexts/AppDataContext";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { shouldUseCloudClientApis } from "@/lib/cloud-config";
+import { normalizeNametagInput } from "@/lib/user-nametag";
+import type { Message } from "@/types";
+
+const DM_POLL_MS = 6500;
 
 export function MessagesClient() {
   const {
@@ -18,10 +24,12 @@ export function MessagesClient() {
     createDmWithPlayer,
     addPlayerToGroupChat,
     sendChatMessage,
+    mergeRemoteDmMessages,
     hydrated,
   } = useAppData();
   const { language } = useLanguage();
   const isPt = language === "pt-PT";
+  const { user } = useAuth();
 
   const [tab, setTab] = useState<"group" | "dm">("group");
   const filtered = useMemo(
@@ -33,6 +41,61 @@ export function MessagesClient() {
   const [draft, setDraft] = useState("");
   const [dmPickerOpen, setDmPickerOpen] = useState(false);
   const [groupPickerOpen, setGroupPickerOpen] = useState(false);
+  const [playerCloudUserId, setPlayerCloudUserId] = useState<Record<string, string>>({});
+  const pollSinceRef = useRef<Record<string, string>>({});
+
+  const coachUserId = user?.id ?? mockCoach.id;
+
+  useEffect(() => {
+    if (!hydrated || !shouldUseCloudClientApis(user)) {
+      setPlayerCloudUserId({});
+      return;
+    }
+    const tags = [
+      ...new Set(
+        players.map((p) => normalizeNametagInput(p.linkedNametag ?? "")).filter(Boolean)
+      ),
+    ];
+    if (tags.length === 0) {
+      setPlayerCloudUserId({});
+      return;
+    }
+    let cancelled = false;
+    fetch("/api/cloud/nametag/resolve-batch", {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tags }),
+    })
+      .then((r) => r.json())
+      .then(
+        (data: {
+          ok?: boolean;
+          byTag?: Record<string, { exists: boolean; userId: string | null }>;
+        }) => {
+          if (cancelled || !data.ok || !data.byTag) return;
+          const next: Record<string, string> = {};
+          for (const p of players) {
+            const t = normalizeNametagInput(p.linkedNametag ?? "");
+            if (!t) continue;
+            const row = data.byTag[t];
+            if (row?.exists && row.userId) next[p.id] = row.userId;
+          }
+          setPlayerCloudUserId(next);
+        }
+      )
+      .catch(() => {
+        if (!cancelled) setPlayerCloudUserId({});
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [hydrated, players, user]);
+
+  const playerHasAppAccount = useCallback(
+    (playerId: string) => Boolean(playerCloudUserId[playerId]),
+    [playerCloudUserId]
+  );
 
   useEffect(() => {
     if (!hydrated) return;
@@ -47,14 +110,131 @@ export function MessagesClient() {
     (a, b) => new Date(a.sentAt).getTime() - new Date(b.sentAt).getTime()
   );
 
-  const send = () => {
-    if (!draft.trim() || !activeId) return;
-    sendChatMessage(activeId, draft);
+  const activeDmPlayerId =
+    activeConv?.type === "dm" ? activeConv.id.replace(/^conv-dm-/, "") : null;
+  const activeDmPeerCloudId = activeDmPlayerId ? playerCloudUserId[activeDmPlayerId] : null;
+
+  /** Polling DM na cloud: novas mensagens (outro lado ou outro dispositivo). */
+  useEffect(() => {
+    if (!activeConv || activeConv.type !== "dm" || !activeDmPeerCloudId || !user?.id) return;
+    if (!shouldUseCloudClientApis(user)) return;
+
+    let cancelled = false;
+    const convId = activeConv.id;
+    const poll = async () => {
+      const since = pollSinceRef.current[convId] ?? new Date(0).toISOString();
+      try {
+        const res = await fetch(
+          `/api/cloud/chat/dm?peerUserId=${encodeURIComponent(activeDmPeerCloudId)}&since=${encodeURIComponent(since)}`,
+          { credentials: "include" }
+        );
+        const data = (await res.json()) as {
+          ok?: boolean;
+          messages?: Array<{
+            id: string;
+            authorUserId: string;
+            authorName: string;
+            body: string;
+            sentAt: string;
+          }>;
+        };
+        if (cancelled || !res.ok || !data.ok || !data.messages?.length) return;
+        const mapped: Message[] = data.messages.map((m) => ({
+          id: m.id,
+          conversationId: convId,
+          authorId: m.authorUserId,
+          authorName: m.authorName,
+          body: m.body,
+          sentAt: m.sentAt,
+        }));
+        mergeRemoteDmMessages(convId, mapped);
+        const lastSent = mapped[mapped.length - 1]!.sentAt;
+        pollSinceRef.current[convId] = lastSent;
+      } catch {
+        /* offline */
+      }
+    };
+
+    void poll();
+    const id = window.setInterval(() => void poll(), DM_POLL_MS);
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
+  }, [activeConv, activeDmPeerCloudId, mergeRemoteDmMessages, user?.id]);
+
+  const canSendDm =
+    !activeConv ||
+    activeConv.type !== "dm" ||
+    (activeDmPlayerId ? playerHasAppAccount(activeDmPlayerId) : false);
+
+  const send = async () => {
+    if (!draft.trim() || !activeId || !activeConv) return;
+    const trimmed = draft.trim();
+
+    if (activeConv.type === "dm" && activeDmPlayerId && !playerHasAppAccount(activeDmPlayerId)) return;
+
+    if (activeConv.type === "dm" && activeDmPlayerId) {
+      const peerCloudId = playerCloudUserId[activeDmPlayerId];
+      if (peerCloudId && user?.id && shouldUseCloudClientApis(user)) {
+        try {
+          const res = await fetch("/api/cloud/chat/dm", {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ peerUserId: peerCloudId, body: trimmed }),
+          });
+          const data = (await res.json()) as {
+            ok?: boolean;
+            message?: {
+              id: string;
+              authorUserId: string;
+              authorName: string;
+              body: string;
+              sentAt: string;
+            };
+          };
+          if (res.ok && data.ok && data.message) {
+            const m = data.message;
+            mergeRemoteDmMessages(activeId, [
+              {
+                id: m.id,
+                conversationId: activeId,
+                authorId: m.authorUserId,
+                authorName: m.authorName,
+                body: m.body,
+                sentAt: m.sentAt,
+              },
+            ]);
+            pollSinceRef.current[activeId] = m.sentAt;
+            setDraft("");
+            return;
+          }
+        } catch {
+          /* fallback abaixo */
+        }
+      }
+      sendChatMessage(activeId, trimmed);
+      setDraft("");
+      return;
+    }
+
+    sendChatMessage(activeId, trimmed);
     setDraft("");
   };
 
   const hasConversations = conversations.length > 0;
-  const squadGroup = conversations.find((c) => c.type === "group" && c.id === SQUAD_GROUP_ID) ?? conversations.find((c) => c.type === "group");
+  const squadGroup =
+    conversations.find((c) => c.type === "group" && c.id === SQUAD_GROUP_ID) ??
+    conversations.find((c) => c.type === "group");
+
+  const groupPickerPlayers = useMemo(
+    () =>
+      squadGroup
+        ? players.filter((p) => !squadGroup.participantIds.includes(p.id))
+        : [],
+    [players, squadGroup]
+  );
 
   return (
     <div className="mx-auto max-w-6xl space-y-4">
@@ -62,18 +242,28 @@ export function MessagesClient() {
         open={dmPickerOpen}
         title={isPt ? "Mensagem a jogador" : "Message a player"}
         players={players}
+        playerDisabled={(p) => !playerHasAppAccount(p.id)}
+        disabledHint={isPt ? "Sem conta na app (associa o nametag em Equipa)" : "No app account yet (link nametag in Team)"}
         onClose={() => setDmPickerOpen(false)}
         onSelect={(p) => {
           const id = createDmWithPlayer(p);
-          setActiveId(id);
-          setTab("dm");
+          if (id) {
+            setActiveId(id);
+            setTab("dm");
+          }
         }}
-        emptyHint={isPt ? "Adiciona jogadores em Team para iniciar mensagem direta." : "Add players from Team to start a direct message."}
+        emptyHint={
+          isPt
+            ? "Adiciona jogadores em Equipa e associa o nametag de conta para mensagens."
+            : "Add players in Team and link their account nametag to message."
+        }
       />
       <PlayerPickerModal
         open={groupPickerOpen}
         title={isPt ? "Adicionar jogador ao chat do plantel" : "Add player to squad chat"}
-        players={players.filter((p) => squadGroup && !squadGroup.participantIds.includes(p.id))}
+        players={groupPickerPlayers}
+        playerDisabled={(p) => !playerHasAppAccount(p.id)}
+        disabledHint={isPt ? "Sem conta na app (associa o nametag em Equipa)" : "No app account yet (link nametag in Team)"}
         onClose={() => setGroupPickerOpen(false)}
         onSelect={(p) => {
           if (squadGroup) addPlayerToGroupChat(squadGroup.id, p);
@@ -172,7 +362,9 @@ export function MessagesClient() {
                 <p className="text-sm text-zinc-500">{isPt ? "Nenhuma conversa aberta." : "No conversation open."}</p>
               </div>
             ) : thread.length === 0 ? (
-              <p className="text-center text-sm text-zinc-500">{isPt ? "Ainda sem mensagens. Diz olá." : "No messages yet. Say hello."}</p>
+              <p className="text-center text-sm text-zinc-500">
+                {isPt ? "Ainda sem mensagens. Diz olá." : "No messages yet. Say hello."}
+              </p>
             ) : (
               thread.map((m) => (
                 <MessageBubble
@@ -180,7 +372,7 @@ export function MessagesClient() {
                   body={m.body}
                   authorName={m.authorName}
                   sentAt={m.sentAt}
-                  mine={m.authorId === mockCoach.id}
+                  mine={m.authorId === coachUserId}
                 />
               ))
             )}
@@ -192,17 +384,28 @@ export function MessagesClient() {
                   <Input
                     value={draft}
                     onChange={(e) => setDraft(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && (e.preventDefault(), send())}
+                    onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && (e.preventDefault(), void send())}
                     placeholder={isPt ? "Escreve uma mensagem…" : "Write a message…"}
                     className="flex-1"
+                    disabled={activeConv.type === "dm" && !canSendDm}
                   />
-                  <Button type="button" onClick={send}>
+                  <Button type="button" onClick={() => void send()} disabled={activeConv.type === "dm" && !canSendDm}>
                     {isPt ? "Enviar" : "Send"}
                   </Button>
                 </div>
-                <p className="mt-2 text-[11px] text-zinc-600">
-                  {isPt ? "Guardado neste browser até ligares uma inbox real." : "Stored in this browser until you connect a real inbox."}
-                </p>
+                {activeConv.type === "dm" && !canSendDm ? (
+                  <p className="mt-2 text-[11px] text-amber-500/95">
+                    {isPt
+                      ? "Este jogador ainda não tem conta na app. Associa o nametag em Equipa (conta verificada) para enviar mensagens."
+                      : "This player has no app account yet. Link a verified nametag in Team to send messages."}
+                  </p>
+                ) : (
+                  <p className="mt-2 text-[11px] text-zinc-600">
+                    {isPt
+                      ? "Mensagens directas com conta na cloud sincronizam entre dispositivos (polling). Chat de grupo continua local neste browser."
+                      : "Direct messages with a cloud account sync across devices (polling). Squad group chat stays local in this browser."}
+                  </p>
+                )}
               </>
             ) : (
               <p className="text-center text-xs text-zinc-600">

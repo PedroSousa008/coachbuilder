@@ -44,6 +44,18 @@ model User {
   appEvents     AppEvent[]
 }
 
+/// Mensagens directas entre dois utilizadores (sincronização cloud + polling).
+model DmChatMessage {
+  id           String   @id @default(cuid())
+  threadKey    String
+  authorUserId String
+  authorName   String
+  body         String
+  sentAt       DateTime @default(now())
+
+  @@index([threadKey, sentAt])
+}
+
 model FullPersonalizationRequest {
   id                String   @id @default(cuid())
   userId             String   @unique

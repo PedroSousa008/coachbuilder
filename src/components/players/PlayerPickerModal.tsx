@@ -15,6 +15,8 @@ export function PlayerPickerModal({
   onSelect,
   onClear,
   emptyHint = "Add players from Team first.",
+  playerDisabled,
+  disabledHint = "Sem conta na app",
 }: {
   open: boolean;
   title: string;
@@ -23,6 +25,9 @@ export function PlayerPickerModal({
   onSelect: (player: Player) => void;
   onClear?: () => void;
   emptyHint?: string;
+  /** Se devolver true, o jogador aparece inativo (cinzento) e não pode ser escolhido. */
+  playerDisabled?: (player: Player) => boolean;
+  disabledHint?: string;
 }) {
   const [q, setQ] = useState("");
 
@@ -66,29 +71,46 @@ export function PlayerPickerModal({
             <p className="px-3 py-10 text-center text-sm text-zinc-500">No players match.</p>
           ) : (
             <ul className="space-y-1">
-              {filtered.map((p) => (
-                <li key={p.id}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onSelect(p);
-                      setQ("");
-                      onClose();
-                    }}
-                    className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors hover:bg-white/5"
-                  >
-                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-zinc-800 text-sm font-bold text-zinc-200">
-                      {p.number}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate font-medium text-white">{p.name}</p>
-                      <Badge variant="muted" className="mt-0.5 max-w-full truncate">
-                        {formatPlayerPositions(p)}
-                      </Badge>
-                    </div>
-                  </button>
-                </li>
-              ))}
+              {filtered.map((p) => {
+                const disabled = playerDisabled?.(p) ?? false;
+                return (
+                  <li key={p.id}>
+                    <button
+                      type="button"
+                      disabled={disabled}
+                      onClick={() => {
+                        if (disabled) return;
+                        onSelect(p);
+                        setQ("");
+                        onClose();
+                      }}
+                      className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors ${
+                        disabled
+                          ? "cursor-not-allowed opacity-45"
+                          : "hover:bg-white/5"
+                      }`}
+                    >
+                      <span
+                        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-bold ${
+                          disabled ? "bg-zinc-900 text-zinc-500" : "bg-zinc-800 text-zinc-200"
+                        }`}
+                      >
+                        {p.number}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className={`truncate font-medium ${disabled ? "text-zinc-500" : "text-white"}`}>{p.name}</p>
+                        {disabled ? (
+                          <p className="mt-0.5 text-[11px] text-zinc-600">{disabledHint}</p>
+                        ) : (
+                          <Badge variant="muted" className="mt-0.5 max-w-full truncate">
+                            {formatPlayerPositions(p)}
+                          </Badge>
+                        )}
+                      </div>
+                    </button>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </div>
