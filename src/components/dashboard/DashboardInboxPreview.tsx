@@ -1,9 +1,12 @@
 "use client";
 
 import { useAppData } from "@/contexts/AppDataContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export function DashboardInboxPreview() {
   const { conversations, messagesByConv, hydrated } = useAppData();
+  const { language } = useLanguage();
+  const isPt = language === "pt-PT";
   const group = conversations.find((c) => c.type === "group");
   const preview =
     group && messagesByConv[group.id]?.length
@@ -15,9 +18,11 @@ export function DashboardInboxPreview() {
   return (
     <div className="space-y-4">
       {!hydrated ? (
-        <p className="text-sm text-zinc-500">Loading…</p>
+        <p className="text-sm text-zinc-500">{isPt ? "A carregar…" : "Loading…"}</p>
       ) : preview.length === 0 ? (
-        <p className="text-sm text-zinc-500">No messages in squad chat yet. Say hello from Messages.</p>
+        <p className="text-sm text-zinc-500">
+          {isPt ? "Ainda não há mensagens no chat do plantel. Diz olá em Mensagens." : "No messages in squad chat yet. Say hello from Messages."}
+        </p>
       ) : (
         preview.map((m) => (
           <div key={m.id} className="rounded-xl border border-surface-border/80 bg-surface-raised/30 p-3">

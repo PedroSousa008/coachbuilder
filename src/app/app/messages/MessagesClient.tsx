@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { mockCoach } from "@/data/mock";
 import { useAppData, SQUAD_GROUP_ID } from "@/contexts/AppDataContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export function MessagesClient() {
   const {
@@ -19,6 +20,8 @@ export function MessagesClient() {
     sendChatMessage,
     hydrated,
   } = useAppData();
+  const { language } = useLanguage();
+  const isPt = language === "pt-PT";
 
   const [tab, setTab] = useState<"group" | "dm">("group");
   const filtered = useMemo(
@@ -57,7 +60,7 @@ export function MessagesClient() {
     <div className="mx-auto max-w-6xl space-y-4">
       <PlayerPickerModal
         open={dmPickerOpen}
-        title="Message a player"
+        title={isPt ? "Mensagem a jogador" : "Message a player"}
         players={players}
         onClose={() => setDmPickerOpen(false)}
         onSelect={(p) => {
@@ -65,26 +68,30 @@ export function MessagesClient() {
           setActiveId(id);
           setTab("dm");
         }}
-        emptyHint="Add players from Team to start a direct message."
+        emptyHint={isPt ? "Adiciona jogadores em Team para iniciar mensagem direta." : "Add players from Team to start a direct message."}
       />
       <PlayerPickerModal
         open={groupPickerOpen}
-        title="Add player to squad chat"
+        title={isPt ? "Adicionar jogador ao chat do plantel" : "Add player to squad chat"}
         players={players.filter((p) => squadGroup && !squadGroup.participantIds.includes(p.id))}
         onClose={() => setGroupPickerOpen(false)}
         onSelect={(p) => {
           if (squadGroup) addPlayerToGroupChat(squadGroup.id, p);
         }}
-        emptyHint="Everyone on the roster is already in this channel, or you have no players yet."
+        emptyHint={
+          isPt
+            ? "Todos os jogadores já estão neste canal, ou ainda não tens jogadores."
+            : "Everyone on the roster is already in this channel, or you have no players yet."
+        }
       />
 
       <div className="flex flex-wrap gap-2">
         <Button type="button" variant="secondary" size="sm" onClick={() => setDmPickerOpen(true)}>
-          New direct message
+          {isPt ? "Nova mensagem direta" : "New direct message"}
         </Button>
         {squadGroup && (
           <Button type="button" variant="outline" size="sm" onClick={() => setGroupPickerOpen(true)}>
-            Add to squad chat
+            {isPt ? "Adicionar ao chat do plantel" : "Add to squad chat"}
           </Button>
         )}
       </div>
@@ -104,7 +111,7 @@ export function MessagesClient() {
                 tab === "group" ? "bg-accent/15 text-accent" : "text-zinc-500 hover:bg-white/5"
               }`}
             >
-              Group chat
+              {isPt ? "Chat de grupo" : "Group chat"}
             </button>
             <button
               type="button"
@@ -118,17 +125,21 @@ export function MessagesClient() {
                 tab === "dm" ? "bg-accent/15 text-accent" : "text-zinc-500 hover:bg-white/5"
               }`}
             >
-              Direct
+              {isPt ? "Direto" : "Direct"}
             </button>
           </div>
           <div className="max-h-48 space-y-0.5 overflow-y-auto p-2 lg:max-h-none lg:flex-1">
             {!hydrated ? (
-              <p className="px-3 py-8 text-center text-sm text-zinc-500">Loading…</p>
+              <p className="px-3 py-8 text-center text-sm text-zinc-500">{isPt ? "A carregar…" : "Loading…"}</p>
             ) : filtered.length === 0 ? (
               <p className="px-3 py-8 text-center text-sm text-zinc-500">
                 {tab === "group"
-                  ? "No group chat. This should not happen — try refreshing."
-                  : "No direct messages yet. Use New direct message."}
+                  ? isPt
+                    ? "Sem chat de grupo. Isto não devia acontecer — tenta atualizar."
+                    : "No group chat. This should not happen — try refreshing."
+                  : isPt
+                    ? "Ainda sem mensagens diretas. Usa Nova mensagem direta."
+                    : "No direct messages yet. Use New direct message."}
               </p>
             ) : (
               filtered.map((c) => (
@@ -151,17 +162,17 @@ export function MessagesClient() {
             </div>
           ) : (
             <div className="border-b border-surface-border px-4 py-4 lg:px-6">
-              <p className="font-display font-semibold text-white">Messages</p>
-              <p className="text-xs text-zinc-500">Pick a conversation</p>
+              <p className="font-display font-semibold text-white">{isPt ? "Mensagens" : "Messages"}</p>
+              <p className="text-xs text-zinc-500">{isPt ? "Escolhe uma conversa" : "Pick a conversation"}</p>
             </div>
           )}
           <div className="flex flex-1 flex-col gap-3 overflow-y-auto px-4 py-4 lg:px-6">
             {!activeConv ? (
               <div className="flex flex-1 flex-col items-center justify-center gap-2 text-center">
-                <p className="text-sm text-zinc-500">No conversation open.</p>
+                <p className="text-sm text-zinc-500">{isPt ? "Nenhuma conversa aberta." : "No conversation open."}</p>
               </div>
             ) : thread.length === 0 ? (
-              <p className="text-center text-sm text-zinc-500">No messages yet. Say hello.</p>
+              <p className="text-center text-sm text-zinc-500">{isPt ? "Ainda sem mensagens. Diz olá." : "No messages yet. Say hello."}</p>
             ) : (
               thread.map((m) => (
                 <MessageBubble
@@ -182,19 +193,21 @@ export function MessagesClient() {
                     value={draft}
                     onChange={(e) => setDraft(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && (e.preventDefault(), send())}
-                    placeholder="Write a message…"
+                    placeholder={isPt ? "Escreve uma mensagem…" : "Write a message…"}
                     className="flex-1"
                   />
                   <Button type="button" onClick={send}>
-                    Send
+                    {isPt ? "Enviar" : "Send"}
                   </Button>
                 </div>
                 <p className="mt-2 text-[11px] text-zinc-600">
-                  Stored in this browser until you connect a real inbox.
+                  {isPt ? "Guardado neste browser até ligares uma inbox real." : "Stored in this browser until you connect a real inbox."}
                 </p>
               </>
             ) : (
-              <p className="text-center text-xs text-zinc-600">Open a thread to send a message.</p>
+              <p className="text-center text-xs text-zinc-600">
+                {isPt ? "Abre uma conversa para enviar mensagem." : "Open a thread to send a message."}
+              </p>
             )}
           </div>
         </div>

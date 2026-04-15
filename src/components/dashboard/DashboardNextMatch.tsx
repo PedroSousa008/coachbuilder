@@ -8,9 +8,12 @@ import { useScheduleNow } from "@/hooks/useScheduleNow";
 import { formatKickoff } from "@/lib/format";
 import { resolveNextMatchForCoach } from "@/lib/next-match";
 import { collectUniqueTeamNames, pickBestTeamMatch } from "@/lib/team-match";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export function DashboardNextMatch() {
   const { fixtures, leagueMatches, leagueCompetitionName, coachProfile, leagueTableRows, hydrated } = useAppData();
+  const { language } = useLanguage();
+  const isPt = language === "pt-PT";
   const nowMs = useScheduleNow();
 
   const teamCandidateNames = useMemo(
@@ -39,18 +42,19 @@ export function DashboardNextMatch() {
   );
 
   if (!hydrated) {
-    return <p className="text-sm text-zinc-500">Loading…</p>;
+    return <p className="text-sm text-zinc-500">{isPt ? "A carregar…" : "Loading…"}</p>;
   }
 
   if (!next) {
     return (
       <>
         <p className="text-sm text-zinc-400">
-          No upcoming fixture yet. Set your club name under Profile (to match league imports), refresh the league URL on
-          Calendar, or add a manual fixture.
+          {isPt
+            ? "Ainda não existe próximo jogo. Define o nome do clube no Perfil, atualiza o URL da liga no Calendário, ou adiciona um jogo manual."
+            : "No upcoming fixture yet. Set your club name under Profile (to match league imports), refresh the league URL on Calendar, or add a manual fixture."}
         </p>
         <Link href="/app/calendar" className="mt-6 inline-block text-sm font-medium text-accent hover:underline">
-          Calendar &amp; league
+          {isPt ? "Calendário e liga" : "Calendar & league"}
         </Link>
       </>
     );
@@ -62,19 +66,19 @@ export function DashboardNextMatch() {
       <p className="mt-1 text-sm text-zinc-500">{next.competition}</p>
       <div className="mt-2 flex flex-wrap gap-2">
         {next.source === "league" && (
-          <Badge variant="muted">League sync</Badge>
+          <Badge variant="muted">{isPt ? "Sync da liga" : "League sync"}</Badge>
         )}
       </div>
       <div className="mt-4 flex flex-wrap gap-2">
-        <Badge variant="accent">{next.venue === "home" ? "Home" : "Away"}</Badge>
+        <Badge variant="accent">{next.venue === "home" ? (isPt ? "Casa" : "Home") : isPt ? "Fora" : "Away"}</Badge>
         <Badge variant="default">{formatKickoff(next.kickoff)}</Badge>
       </div>
       <div className="mt-6 flex flex-wrap gap-4 gap-y-2">
         <Link href="/app/tactics" className="text-sm font-medium text-accent hover:underline">
-          Open match tactics
+          {isPt ? "Abrir táticas de jogo" : "Open match tactics"}
         </Link>
         <Link href="/app/calendar" className="text-sm font-medium text-zinc-500 hover:text-zinc-300">
-          Calendar
+          {isPt ? "Calendário" : "Calendar"}
         </Link>
       </div>
     </>
