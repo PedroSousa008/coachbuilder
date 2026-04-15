@@ -21,24 +21,25 @@ import { useAppData } from "@/contexts/AppDataContext";
 import { cn } from "@/lib/utils";
 import { clientEmailShowsAdminNav } from "@/lib/bootstrap-admin-client";
 import { hasFullWorkspaceAccess } from "@/lib/subscription-client";
-
-const nav = [
-  { href: "/app", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/app/tactics", label: "Tactics", icon: GitBranch },
-  { href: "/app/training", label: "Training Plans", icon: CalendarDays },
-  { href: "/app/messages", label: "Messages", icon: MessageSquare },
-  { href: "/app/sketch", label: "Sketch Area", icon: PenSquare },
-  { href: "/app/team", label: "Team", icon: Users },
-  { href: "/app/calendar", label: "Calendar", icon: Calendar },
-  { href: "/app/profile", label: "Perfil", icon: UserCircle },
-  { href: "/app/settings", label: "Settings", icon: Settings },
-];
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export function AppSidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { user, logout } = useAuth();
   const { coachProfile } = useAppData();
+  const { t } = useLanguage();
+  const nav = [
+    { href: "/app", label: t("nav.dashboard"), icon: LayoutDashboard },
+    { href: "/app/tactics", label: t("nav.tactics"), icon: GitBranch },
+    { href: "/app/training", label: t("shell.trainingPlans"), icon: CalendarDays },
+    { href: "/app/messages", label: t("nav.messages"), icon: MessageSquare },
+    { href: "/app/sketch", label: t("shell.sketchArea"), icon: PenSquare },
+    { href: "/app/team", label: t("nav.team"), icon: Users },
+    { href: "/app/calendar", label: t("nav.calendar"), icon: Calendar },
+    { href: "/app/profile", label: t("nav.profile"), icon: UserCircle },
+    { href: "/app/settings", label: t("nav.settings"), icon: Settings },
+  ];
 
   const ownerListed = Boolean(user?.email && clientEmailShowsAdminNav(user.email));
   const fullWorkspace = hasFullWorkspaceAccess(user, ownerListed);
@@ -46,8 +47,8 @@ export function AppSidebar() {
     user?.role === "admin" || (user?.email ? clientEmailShowsAdminNav(user.email) : false);
   const adminNav = showAdmin
     ? ([
-        { href: "/app/admin", label: "Admin", icon: Shield },
-        { href: "/app/admin/database", label: "Base de dados", icon: Database },
+        { href: "/app/admin", label: t("nav.admin"), icon: Shield },
+        { href: "/app/admin/database", label: t("nav.database"), icon: Database },
       ] as const)
     : [];
 
@@ -63,7 +64,7 @@ export function AppSidebar() {
         </div>
         <div>
           <p className="font-display text-sm font-semibold text-white">CoachBuilder</p>
-          <p className="text-[11px] text-zinc-500">Operating system</p>
+          <p className="text-[11px] text-zinc-500">{t("sidebar.operatingSystem")}</p>
         </div>
       </div>
       <nav className="flex flex-1 flex-col gap-0.5 p-3">
@@ -136,18 +137,18 @@ export function AppSidebar() {
           className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-surface-border py-2.5 text-xs font-medium text-zinc-400 transition-colors hover:border-zinc-600 hover:text-white"
         >
           <LogOut className="h-3.5 w-3.5" strokeWidth={2} />
-          Sair
+          {t("sidebar.logout")}
         </button>
         <p className="mt-3 text-xs text-zinc-500">
           {fullWorkspace
-            ? "Coach Pro unlocks tactics, training, sketch workspace & team tools."
-            : "Free plan: squad chat only. Upgrade in Settings to unlock the full workspace."}
+            ? t("sidebar.proBlurb")
+            : t("sidebar.freeBlurb")}
         </p>
         <Link
           href="/app/settings"
           className="mt-2 inline-flex text-xs font-medium text-accent hover:underline"
         >
-          Plans &amp; team colour
+          {t("sidebar.plansAndColor")}
         </Link>
       </div>
     </aside>

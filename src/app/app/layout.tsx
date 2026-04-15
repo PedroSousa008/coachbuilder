@@ -2,11 +2,12 @@ import { Suspense } from "react";
 import { AppShell } from "@/components/layout/AppShell";
 import { AuthGuard } from "@/components/auth/AuthGuard";
 import { SubscriptionGate } from "@/components/subscription/SubscriptionGate";
+import { tFor, DEFAULT_LANGUAGE } from "@/lib/i18n";
 
 function AppShellFallback() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-[#0a0d10]">
-      <p className="text-sm text-zinc-500">A carregar…</p>
+      <p className="text-sm text-zinc-500">{tFor(DEFAULT_LANGUAGE, "app.loading")}</p>
     </div>
   );
 }

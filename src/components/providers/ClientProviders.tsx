@@ -5,6 +5,7 @@ import { AccentProvider } from "@/components/providers/AccentProvider";
 import { CloudHeartbeat } from "@/components/providers/CloudHeartbeat";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { AppDataProvider } from "@/contexts/AppDataContext";
+import { LanguageProvider } from "@/contexts/LanguageContext";
 
 /** Remount ao mudar de conta para não gravar estado vazio sobre o storage do utilizador. */
 function AppDataScoped({ children }: { children: ReactNode }) {
@@ -17,8 +18,10 @@ export function ClientProviders({ children }: { children: ReactNode }) {
   return (
     <AccentProvider>
       <AuthProvider>
-        <CloudHeartbeat />
-        <AppDataScoped>{children}</AppDataScoped>
+        <LanguageProvider>
+          <CloudHeartbeat />
+          <AppDataScoped>{children}</AppDataScoped>
+        </LanguageProvider>
       </AuthProvider>
     </AccentProvider>
   );
