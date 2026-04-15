@@ -229,6 +229,34 @@ export interface StaffMember {
   documents?: TeamDocumentsBundle;
 }
 
+export type TeamSingleRoleId =
+  | "captain"
+  | "viceCaptain"
+  | "thirdCaptain"
+  | "fourthCaptain";
+
+export type TeamDoubleRoleId =
+  | "penalties"
+  | "freeKickRight"
+  | "freeKickLeft"
+  | "cornerRight"
+  | "cornerLeft";
+
+export type TeamRoleId = TeamSingleRoleId | TeamDoubleRoleId;
+
+/** Responsáveis por funções de equipa (capitães e bolas paradas). */
+export interface TeamRoles {
+  captain: string | null;
+  viceCaptain: string | null;
+  thirdCaptain: string | null;
+  fourthCaptain: string | null;
+  penalties: string[];
+  freeKickRight: string[];
+  freeKickLeft: string[];
+  cornerRight: string[];
+  cornerLeft: string[];
+}
+
 export interface TrainingSession {
   id: string;
   title: string;

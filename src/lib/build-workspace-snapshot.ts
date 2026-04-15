@@ -10,6 +10,7 @@ import type {
   SavedTrainingExercise,
   SketchAreaState,
   StaffMember,
+  TeamRoles,
   Tactic,
   TacticMatch,
   TacticPlayerAnalysisNote,
@@ -20,6 +21,7 @@ import type {
 export function buildWorkspaceSnapshotV1(params: {
   players: Player[];
   staff: StaffMember[];
+  teamRoles: TeamRoles;
   conversations: Conversation[];
   messagesByConv: Record<string, Message[]>;
   trainingSessions: TrainingSession[];
@@ -42,6 +44,7 @@ export function buildWorkspaceSnapshotV1(params: {
     version: 1,
     players: params.players,
     staff: params.staff,
+    teamRoles: params.teamRoles,
     conversations: params.conversations,
     messages: params.messagesByConv,
     trainingSessions: params.trainingSessions,

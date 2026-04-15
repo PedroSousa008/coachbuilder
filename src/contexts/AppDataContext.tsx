@@ -28,6 +28,9 @@ import type {
   NewSavedTrainingExerciseInput,
   SavedTrainingExercise,
   StaffMember,
+  TeamDoubleRoleId,
+  TeamRoles,
+  TeamSingleRoleId,
   TrainingSession,
 } from "@/types";
 import { tallyForTactic } from "@/lib/tactics-match-stats";
@@ -158,12 +161,15 @@ type AppDataContextValue = {
   hydrated: boolean;
   players: Player[];
   staff: StaffMember[];
+  teamRoles: TeamRoles;
   addPlayer: (input: NewPlayerInput) => Player;
   updatePlayer: (id: string, patch: Partial<Omit<Player, "id">>) => void;
   removePlayer: (id: string) => void;
   addStaff: (input: NewStaffInput) => StaffMember;
   updateStaff: (id: string, patch: Partial<Omit<StaffMember, "id">>) => void;
   removeStaff: (id: string) => void;
+  setTeamSingleRole: (role: TeamSingleRoleId, playerId: string | null) => void;
+  setTeamDoubleRole: (role: TeamDoubleRoleId, playerIds: string[]) => void;
 
   conversations: Conversation[];
   messagesByConv: Record<string, Message[]>;
@@ -218,6 +224,35 @@ type AppDataContextValue = {
 
 const AppDataContext = createContext<AppDataContextValue | null>(null);
 
+function defaultTeamRoles(): TeamRoles {
+  return {
+    captain: null,
+    viceCaptain: null,
+    thirdCaptain: null,
+    fourthCaptain: null,
+    penalties: [],
+    freeKickRight: [],
+    freeKickLeft: [],
+    cornerRight: [],
+    cornerLeft: [],
+  };
+}
+
+function normalizeTeamRoles(raw: unknown): TeamRoles {
+  const base = defaultTeamRoles();
+  if (!raw || typeof raw !== "object") return base;
+  const r = raw as Partial<TeamRoles>;
+  return {
+    ...base,
+    ...r,
+    penalties: Array.isArray(r.penalties) ? r.penalties.slice(0, 2) : [],
+    freeKickRight: Array.isArray(r.freeKickRight) ? r.freeKickRight.slice(0, 2) : [],
+    freeKickLeft: Array.isArray(r.freeKickLeft) ? r.freeKickLeft.slice(0, 2) : [],
+    cornerRight: Array.isArray(r.cornerRight) ? r.cornerRight.slice(0, 2) : [],
+    cornerLeft: Array.isArray(r.cornerLeft) ? r.cornerLeft.slice(0, 2) : [],
+  };
+}
+
 export function AppDataProvider({ children }: { children: ReactNode }) {
   const { user, authReady } = useAuth();
   const ks = useMemo(() => (user?.id ? getAllUserDataKeys(user.id) : null), [user?.id]);
@@ -225,6 +260,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [hydrated, setHydrated] = useState(false);
   const [players, setPlayers] = useState<Player[]>([]);
   const [staff, setStaff] = useState<StaffMember[]>([]);
+  const [teamRoles, setTeamRoles] = useState<TeamRoles>(() => defaultTeamRoles());
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [messagesByConv, setMessagesByConv] = useState<Record<string, Message[]>>({});
   const [trainingSessions, setTrainingSessions] = useState<TrainingSession[]>([]);
@@ -265,6 +301,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     if (!user?.id || !ks) {
       setPlayers([]);
       setStaff([]);
+      setTeamRoles(defaultTeamRoles());
       setConversations([]);
       setMessagesByConv({});
       setTrainingSessions([]);
@@ -291,6 +328,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
     const loadedPlayers = loadJSON<Player[]>(ks.players, []);
     const loadedStaff = loadJSON<StaffMember[]>(ks.staff, []);
+    const loadedTeamRoles = normalizeTeamRoles(loadJSON<unknown>(ks.teamRoles, defaultTeamRoles()));
     let loadedConvs = loadJSON<Conversation[]>(ks.conversations, []);
     if (!loadedConvs.some((c) => c.type === "group")) {
       loadedConvs = [defaultGroup(), ...loadedConvs];
@@ -301,6 +339,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     }
     setPlayers(loadedPlayers);
     setStaff(loadedStaff);
+    setTeamRoles(loadedTeamRoles);
     setConversations(loadedConvs);
     setMessagesByConv(loadedMsgs);
     setTrainingSessions(loadJSON<TrainingSession[]>(ks.sessions, []));
@@ -349,6 +388,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           const leagueMatchesDeduped = dedupeMatches(s.league.matches ?? []);
           setPlayers(s.players);
           setStaff(s.staff ?? []);
+          setTeamRoles(normalizeTeamRoles(s.teamRoles));
           setConversations(loadedConvs);
           setMessagesByConv(loadedMsgs);
           setTrainingSessions(s.trainingSessions);
@@ -404,6 +444,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     const snap: WorkspaceSnapshotV1 = buildWorkspaceSnapshotV1({
       players,
       staff,
+      teamRoles,
       conversations,
       messagesByConv,
       trainingSessions,
@@ -437,6 +478,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     user?.id,
     players,
     staff,
+    teamRoles,
     conversations,
     messagesByConv,
     trainingSessions,
@@ -465,6 +507,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     if (!hydrated || !ks) return;
     saveJSON(ks.staff, staff);
   }, [staff, hydrated, ks]);
+
+  useEffect(() => {
+    if (!hydrated || !ks) return;
+    saveJSON(ks.teamRoles, teamRoles);
+  }, [teamRoles, hydrated, ks]);
 
   useEffect(() => {
     if (!hydrated || !ks) return;
@@ -679,6 +726,25 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         participantIds: c.participantIds.filter((pid) => pid !== id),
       }))
     );
+    setTeamRoles((prev) => ({
+      captain: prev.captain === id ? null : prev.captain,
+      viceCaptain: prev.viceCaptain === id ? null : prev.viceCaptain,
+      thirdCaptain: prev.thirdCaptain === id ? null : prev.thirdCaptain,
+      fourthCaptain: prev.fourthCaptain === id ? null : prev.fourthCaptain,
+      penalties: prev.penalties.filter((pid) => pid !== id),
+      freeKickRight: prev.freeKickRight.filter((pid) => pid !== id),
+      freeKickLeft: prev.freeKickLeft.filter((pid) => pid !== id),
+      cornerRight: prev.cornerRight.filter((pid) => pid !== id),
+      cornerLeft: prev.cornerLeft.filter((pid) => pid !== id),
+    }));
+  }, []);
+
+  const setTeamSingleRole = useCallback((role: TeamSingleRoleId, playerId: string | null) => {
+    setTeamRoles((prev) => ({ ...prev, [role]: playerId }));
+  }, []);
+
+  const setTeamDoubleRole = useCallback((role: TeamDoubleRoleId, playerIds: string[]) => {
+    setTeamRoles((prev) => ({ ...prev, [role]: playerIds.slice(0, 2) }));
   }, []);
 
   const createDmWithPlayer = useCallback((player: Player) => {
@@ -903,12 +969,15 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       hydrated,
       players,
       staff,
+      teamRoles,
       addPlayer,
       updatePlayer,
       removePlayer,
       addStaff,
       updateStaff,
       removeStaff,
+      setTeamSingleRole,
+      setTeamDoubleRole,
       conversations,
       messagesByConv,
       createDmWithPlayer,
@@ -951,12 +1020,15 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       hydrated,
       players,
       staff,
+      teamRoles,
       addPlayer,
       updatePlayer,
       removePlayer,
       addStaff,
       updateStaff,
       removeStaff,
+      setTeamSingleRole,
+      setTeamDoubleRole,
       conversations,
       messagesByConv,
       createDmWithPlayer,

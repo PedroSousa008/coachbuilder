@@ -17,7 +17,15 @@ const performanceColor = {
   down: "text-amber-400/90",
 };
 
-export function PlayerCard({ player, onOpen }: { player: Player; onOpen?: () => void }) {
+export function PlayerCard({
+  player,
+  onOpen,
+  roleBadge,
+}: {
+  player: Player;
+  onOpen?: () => void;
+  roleBadge?: "C" | "SC" | null;
+}) {
   const insights = useMemo(() => buildPlayerInsights(player), [player]);
 
   return (
@@ -66,6 +74,11 @@ export function PlayerCard({ player, onOpen }: { player: Player; onOpen?: () => 
           Form {player.performance === "up" ? "↑" : player.performance === "down" ? "↓" : "→"}
         </span>
       </div>
+      {roleBadge ? (
+        <span className="absolute bottom-3 right-3 rounded-md border border-accent/50 bg-accent/20 px-2 py-0.5 text-[11px] font-semibold text-accent">
+          {roleBadge}
+        </span>
+      ) : null}
     </button>
   );
 }

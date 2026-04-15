@@ -8,6 +8,7 @@ import type {
   Player,
   SavedTrainingExercise,
   StaffMember,
+  TeamRoles,
   SketchAreaState,
   Tactic,
   TacticMatch,
@@ -35,6 +36,7 @@ export type WorkspaceSnapshotV1 = {
   version: typeof WORKSPACE_SNAPSHOT_VERSION;
   players: Player[];
   staff: StaffMember[];
+  teamRoles: TeamRoles;
   conversations: Conversation[];
   messages: Record<string, Message[]>;
   trainingSessions: TrainingSession[];
@@ -54,6 +56,17 @@ export function emptyWorkspaceSnapshot(): WorkspaceSnapshotV1 {
     version: WORKSPACE_SNAPSHOT_VERSION,
     players: [],
     staff: [],
+    teamRoles: {
+      captain: null,
+      viceCaptain: null,
+      thirdCaptain: null,
+      fourthCaptain: null,
+      penalties: [],
+      freeKickRight: [],
+      freeKickLeft: [],
+      cornerRight: [],
+      cornerLeft: [],
+    },
     conversations: [],
     messages: {},
     trainingSessions: [],
@@ -80,6 +93,7 @@ export function snapshotHasMeaningfulData(s: WorkspaceSnapshotV1 | null | undefi
   if (!s) return false;
   if (s.players.length > 0) return true;
   if (s.staff.length > 0) return true;
+  if (s.teamRoles.captain || s.teamRoles.viceCaptain || s.teamRoles.penalties.length > 0) return true;
   if (s.tactics.length > 0) return true;
   if (s.tacticMatches.length > 0) return true;
   if (s.trainingSessions.length > 0) return true;
@@ -113,6 +127,7 @@ export function writeWorkspaceSnapshotToLocalStorage(userId: string, s: Workspac
   const ks = getAllUserDataKeys(userId);
   safeSaveJSON(ks.players, s.players);
   safeSaveJSON(ks.staff, s.staff);
+  safeSaveJSON(ks.teamRoles, s.teamRoles);
   safeSaveJSON(ks.conversations, s.conversations);
   safeSaveJSON(ks.messages, s.messages);
   safeSaveJSON(ks.sessions, s.trainingSessions);
@@ -129,12 +144,14 @@ export function writeWorkspaceSnapshotToLocalStorage(userId: string, s: Workspac
 
 export function collectWorkspaceFromLocalStorage(userId: string): WorkspaceSnapshotV1 {
   if (typeof window === "undefined") return emptyWorkspaceSnapshot();
+  const e = emptyWorkspaceSnapshot();
   const ks = getAllUserDataKeys(userId);
   const league = safeLoadJSON<Partial<LeaguePersistSnapshot>>(ks.league, {});
   return {
     version: WORKSPACE_SNAPSHOT_VERSION,
     players: safeLoadJSON<Player[]>(ks.players, []),
     staff: safeLoadJSON<StaffMember[]>(ks.staff, []),
+    teamRoles: safeLoadJSON<TeamRoles>(ks.teamRoles, e.teamRoles),
     conversations: safeLoadJSON<Conversation[]>(ks.conversations, []),
     messages: safeLoadJSON<Record<string, Message[]>>(ks.messages, {}),
     trainingSessions: safeLoadJSON<TrainingSession[]>(ks.sessions, []),
@@ -173,6 +190,28 @@ export function parseWorkspacePayload(raw: unknown): WorkspaceSnapshotV1 | null 
     version: WORKSPACE_SNAPSHOT_VERSION,
     players: Array.isArray(o.players) ? (o.players as Player[]) : e.players,
     staff: Array.isArray(o.staff) ? (o.staff as StaffMember[]) : e.staff,
+    teamRoles:
+      o.teamRoles && typeof o.teamRoles === "object"
+        ? ({
+            ...e.teamRoles,
+            ...(o.teamRoles as Partial<TeamRoles>),
+            penalties: Array.isArray((o.teamRoles as TeamRoles).penalties)
+              ? ((o.teamRoles as TeamRoles).penalties as string[])
+              : e.teamRoles.penalties,
+            freeKickRight: Array.isArray((o.teamRoles as TeamRoles).freeKickRight)
+              ? ((o.teamRoles as TeamRoles).freeKickRight as string[])
+              : e.teamRoles.freeKickRight,
+            freeKickLeft: Array.isArray((o.teamRoles as TeamRoles).freeKickLeft)
+              ? ((o.teamRoles as TeamRoles).freeKickLeft as string[])
+              : e.teamRoles.freeKickLeft,
+            cornerRight: Array.isArray((o.teamRoles as TeamRoles).cornerRight)
+              ? ((o.teamRoles as TeamRoles).cornerRight as string[])
+              : e.teamRoles.cornerRight,
+            cornerLeft: Array.isArray((o.teamRoles as TeamRoles).cornerLeft)
+              ? ((o.teamRoles as TeamRoles).cornerLeft as string[])
+              : e.teamRoles.cornerLeft,
+          } satisfies TeamRoles)
+        : e.teamRoles,
     conversations: Array.isArray(o.conversations) ? (o.conversations as Conversation[]) : e.conversations,
     messages:
       o.messages && typeof o.messages === "object" ? (o.messages as Record<string, Message[]>) : e.messages,
