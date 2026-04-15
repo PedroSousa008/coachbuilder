@@ -1004,6 +1004,26 @@ function pickMainDrills(
   return out;
 }
 
+/** Procura títulos de exercícios escritos no objetivo (case/acento insensitive), preservando a ordem no texto. */
+function extractExplicitDrillDefsFromObjective(objective: string): MainDrillDef[] {
+  const text = norm(objective);
+  const found = MAIN_DRILLS.map((d) => ({
+    d,
+    idx: text.indexOf(norm(d.title)),
+  }))
+    .filter((x) => x.idx >= 0)
+    .sort((a, b) => a.idx - b.idx);
+
+  const out: MainDrillDef[] = [];
+  const seen = new Set<string>();
+  for (const row of found) {
+    if (seen.has(row.d.title)) continue;
+    seen.add(row.d.title);
+    out.push(row.d);
+  }
+  return out;
+}
+
 function splitMinutes(total: number, parts: number): number[] {
   const base = Math.floor(total / parts);
   const rest = total - base * parts;
@@ -1027,6 +1047,31 @@ export function buildLocalFullTrainingSession(params: {
 }): AiFullTrainingSession {
   const { durationMin, objective, players } = params;
   const themes = detectTrainingThemes(objective);
+  const explicitDefs = extractExplicitDrillDefsFromObjective(objective);
+
+  if (explicitDefs.length > 0) {
+    const split = splitMinutes(Math.max(durationMin, explicitDefs.length), explicitDefs.length);
+    const blocks: AiTrainingBlock[] = explicitDefs.map((def, i) => {
+      const mins = Math.max(5, split[i] ?? 5);
+      const body = def.describe(players, mins);
+      return {
+        title: def.title,
+        ...body,
+        durationMin: mins,
+        phase: "main",
+      };
+    });
+
+    const listed = explicitDefs.map((d) => d.title).join(" · ");
+    return {
+      sessionTitle: `Treino orientado por exercícios escolhidos · ${durationMin} min`,
+      summary: `Plano montado com base nos exercícios que escreveste no objetivo de hoje (${listed}).`,
+      blocks,
+      closingNotes:
+        "Os exercícios foram forçados pelos nomes indicados no objetivo. Ajusta tempo e carga conforme disponibilidade do plantel.",
+    };
+  }
+
   const seed = hashSeed(objective, durationMin);
   const nMain = durationMin <= 40 ? 2 : durationMin <= 75 ? 3 : 4;
 
