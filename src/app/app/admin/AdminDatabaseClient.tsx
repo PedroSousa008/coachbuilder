@@ -94,6 +94,7 @@ export function AdminDatabaseClient() {
     hydrated,
     players,
     staff,
+    teamRoles,
     conversations,
     messagesByConv,
     trainingSessions,
@@ -231,6 +232,7 @@ export function AdminDatabaseClient() {
       buildWorkspaceSnapshotV1({
         players,
         staff,
+        teamRoles,
         conversations,
         messagesByConv,
         trainingSessions,
@@ -252,6 +254,7 @@ export function AdminDatabaseClient() {
     [
       players,
       staff,
+      teamRoles,
       conversations,
       messagesByConv,
       trainingSessions,
