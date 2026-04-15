@@ -228,6 +228,11 @@ type AppDataContextValue = {
 
   sketchArea: SketchAreaState;
   setSketchArea: Dispatch<SetStateAction<SketchAreaState>>;
+
+  /** Mensagens de outros utilizadores ainda não lidas (todas as conversas). */
+  unreadMessagesCount: number;
+  /** Marca o fio como lido até à última mensagem (ao abrir a conversa). */
+  markConversationRead: (conversationId: string) => void;
 };
 
 const AppDataContext = createContext<AppDataContextValue | null>(null);
@@ -261,6 +266,20 @@ function normalizeTeamRoles(raw: unknown): TeamRoles {
   };
 }
 
+function latestMessageSentAt(list: Message[]): string {
+  return list.reduce((a, b) => (new Date(a.sentAt) > new Date(b.sentAt) ? a : b)).sentAt;
+}
+
+/** Primeira instalação: considerar histórico como já visto para não inflar não lidas. */
+function bootstrapMessageReadAt(msgs: Record<string, Message[]>): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [cid, list] of Object.entries(msgs)) {
+    if (!list?.length) continue;
+    out[cid] = latestMessageSentAt(list);
+  }
+  return out;
+}
+
 export function AppDataProvider({ children }: { children: ReactNode }) {
   const { user, authReady } = useAuth();
   const ks = useMemo(() => (user?.id ? getAllUserDataKeys(user.id) : null), [user?.id]);
@@ -271,6 +290,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [teamRoles, setTeamRoles] = useState<TeamRoles>(() => defaultTeamRoles());
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [messagesByConv, setMessagesByConv] = useState<Record<string, Message[]>>({});
+  const [conversationLastReadAt, setConversationLastReadAt] = useState<Record<string, string>>({});
   const [trainingSessions, setTrainingSessions] = useState<TrainingSession[]>([]);
   const [trainingPlayerIdsBySession, setTrainingPlayerIdsBySession] = useState<Record<string, string[]>>({});
   const [fixtures, setFixtures] = useState<MatchFixture[]>([]);
@@ -312,6 +332,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       setTeamRoles(defaultTeamRoles());
       setConversations([]);
       setMessagesByConv({});
+      setConversationLastReadAt({});
       setTrainingSessions([]);
       setTrainingPlayerIdsBySession({});
       setFixtures([]);
@@ -345,11 +366,16 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     if (!loadedMsgs[SQUAD_GROUP_ID]) {
       loadedMsgs[SQUAD_GROUP_ID] = [];
     }
+    let loadedRead = loadJSON<Record<string, string>>(ks.messageReadAt, {});
+    if (Object.keys(loadedRead).length === 0) {
+      loadedRead = bootstrapMessageReadAt(loadedMsgs);
+    }
     setPlayers(loadedPlayers);
     setStaff(loadedStaff);
     setTeamRoles(loadedTeamRoles);
     setConversations(loadedConvs);
     setMessagesByConv(loadedMsgs);
+    setConversationLastReadAt(loadedRead);
     setTrainingSessions(loadJSON<TrainingSession[]>(ks.sessions, []));
     setTrainingPlayerIdsBySession(loadJSON<Record<string, string[]>>(ks.trainingPlayers, {}));
     setFixtures(loadJSON<MatchFixture[]>(ks.fixtures, []));
@@ -394,11 +420,19 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           const loadedMsgs = { ...s.messages };
           if (!loadedMsgs[SQUAD_GROUP_ID]) loadedMsgs[SQUAD_GROUP_ID] = [];
           const leagueMatchesDeduped = dedupeMatches(s.league.matches ?? []);
+          let readFromDisk = loadJSON<Record<string, string>>(ks.messageReadAt, {});
+          for (const [cid, list] of Object.entries(loadedMsgs)) {
+            if (!list?.length) continue;
+            if (!readFromDisk[cid]) {
+              readFromDisk[cid] = latestMessageSentAt(list);
+            }
+          }
           setPlayers(s.players);
           setStaff(s.staff ?? []);
           setTeamRoles(normalizeTeamRoles(s.teamRoles));
           setConversations(loadedConvs);
           setMessagesByConv(loadedMsgs);
+          setConversationLastReadAt(readFromDisk);
           setTrainingSessions(s.trainingSessions);
           setTrainingPlayerIdsBySession(s.trainingPlayers);
           setFixtures(s.fixtures);
@@ -530,6 +564,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     if (!hydrated || !ks) return;
     saveJSON(ks.messages, messagesByConv);
   }, [messagesByConv, hydrated, ks]);
+
+  useEffect(() => {
+    if (!hydrated || !ks) return;
+    saveJSON(ks.messageReadAt, conversationLastReadAt);
+  }, [conversationLastReadAt, hydrated, ks]);
 
   useEffect(() => {
     if (!hydrated || !ks) return;
@@ -898,6 +937,31 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     );
   }, []);
 
+  const markConversationRead = useCallback(
+    (conversationId: string) => {
+      const msgs = messagesByConv[conversationId] ?? [];
+      const latest =
+        msgs.length === 0 ? new Date().toISOString() : latestMessageSentAt(msgs);
+      setConversationLastReadAt((prev) => ({ ...prev, [conversationId]: latest }));
+    },
+    [messagesByConv]
+  );
+
+  const unreadMessagesCount = useMemo(() => {
+    const me = user?.id ?? mockCoach.id;
+    let n = 0;
+    for (const [convId, msgs] of Object.entries(messagesByConv)) {
+      if (!msgs?.length) continue;
+      const readAt = conversationLastReadAt[convId];
+      const readT = readAt ? new Date(readAt).getTime() : 0;
+      for (const m of msgs) {
+        if (m.authorId === me) continue;
+        if (new Date(m.sentAt).getTime() > readT) n++;
+      }
+    }
+    return n;
+  }, [messagesByConv, conversationLastReadAt, user?.id]);
+
   const sendChatMessage = useCallback(
     (conversationId: string, body: string) => {
       const trimmed = body.trim();
@@ -1134,6 +1198,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       setTacticPlayerAnalysisNote,
       sketchArea,
       setSketchArea,
+      unreadMessagesCount,
+      markConversationRead,
     }),
     [
       hydrated,
@@ -1187,6 +1253,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       setTacticPlayerAnalysisNote,
       sketchArea,
       setSketchArea,
+      unreadMessagesCount,
+      markConversationRead,
     ]
   );
 

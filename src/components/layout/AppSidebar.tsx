@@ -27,7 +27,7 @@ export function AppSidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { user, logout } = useAuth();
-  const { coachProfile } = useAppData();
+  const { coachProfile, unreadMessagesCount } = useAppData();
   const { t } = useLanguage();
   const nav = [
     { href: "/app", label: t("nav.dashboard"), icon: LayoutDashboard },
@@ -97,19 +97,29 @@ export function AppSidebar() {
           const active =
             item.href === "/app" ? pathname === "/app" : pathname.startsWith(item.href);
           const Icon = item.icon;
+          const showUnreadBadge = item.href === "/app/messages" && unreadMessagesCount > 0;
+          const unreadLabel = unreadMessagesCount > 9 ? "+9" : String(unreadMessagesCount);
           return (
             <Link
               key={item.href}
               href={item.href}
               className={cn(
-                "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
+                "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
                 active
                   ? "bg-accent/10 text-accent"
                   : "text-zinc-400 hover:bg-white/5 hover:text-zinc-200"
               )}
             >
               <Icon className="h-[18px] w-[18px] shrink-0 opacity-90" strokeWidth={1.75} />
-              {item.label}
+              <span className="min-w-0 flex-1 truncate text-left">{item.label}</span>
+              {showUnreadBadge ? (
+                <span
+                  className="ml-auto shrink-0 rounded-full bg-accent px-1.5 py-0.5 text-[10px] font-bold tabular-nums leading-none text-zinc-950"
+                  aria-label={`${unreadMessagesCount} não lidas`}
+                >
+                  {unreadLabel}
+                </span>
+              ) : null}
             </Link>
           );
         })}

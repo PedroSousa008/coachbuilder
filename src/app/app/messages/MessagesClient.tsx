@@ -36,6 +36,7 @@ export function MessagesClient() {
     sendChatMessage,
     mergeRemoteDmMessages,
     hydrateDmThreadsFromCloud,
+    markConversationRead,
     hydrated,
   } = useAppData();
   const { language } = useLanguage();
@@ -56,6 +57,16 @@ export function MessagesClient() {
   const streamSinceRef = useRef<Record<string, string>>({});
 
   const coachUserId = user?.id ?? mockCoach.id;
+
+  const openThreadLastId =
+    activeId && (messagesByConv[activeId]?.length ?? 0) > 0
+      ? messagesByConv[activeId]![messagesByConv[activeId]!.length - 1]!.id
+      : "";
+
+  useEffect(() => {
+    if (!activeId) return;
+    markConversationRead(activeId);
+  }, [activeId, openThreadLastId, markConversationRead]);
 
   useEffect(() => {
     if (!hydrated || !shouldUseCloudClientApis(user)) {

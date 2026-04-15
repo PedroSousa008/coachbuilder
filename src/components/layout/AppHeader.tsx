@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { Menu, Bell } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useAppData } from "@/contexts/AppDataContext";
 import { cn } from "@/lib/utils";
 import { clientEmailShowsAdminNav } from "@/lib/bootstrap-admin-client";
 import { hasFullWorkspaceAccess } from "@/lib/subscription-client";
@@ -14,6 +15,7 @@ export function AppHeader({ title }: { title: string }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
   const { user } = useAuth();
+  const { unreadMessagesCount } = useAppData();
   const { t } = useLanguage();
 
   const mobileLinks = useMemo(() => {
@@ -72,10 +74,18 @@ export function AppHeader({ title }: { title: string }) {
         <Link
           href="/app/messages"
           className={cn(
-            "hidden h-9 items-center justify-center rounded-xl border border-surface-border bg-surface-raised px-4 text-sm font-medium text-zinc-100 transition-colors hover:border-zinc-600 hover:bg-zinc-800/50 sm:inline-flex"
+            "relative hidden h-9 items-center justify-center rounded-xl border border-surface-border bg-surface-raised px-4 pr-5 text-sm font-medium text-zinc-100 transition-colors hover:border-zinc-600 hover:bg-zinc-800/50 sm:inline-flex"
           )}
         >
           {t("header.openChat")}
+          {unreadMessagesCount > 0 ? (
+            <span
+              className="absolute -right-0.5 -top-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-accent px-1 text-[10px] font-bold leading-none text-zinc-950"
+              aria-hidden
+            >
+              {unreadMessagesCount > 9 ? "+9" : unreadMessagesCount}
+            </span>
+          ) : null}
         </Link>
       </div>
 
@@ -86,23 +96,32 @@ export function AppHeader({ title }: { title: string }) {
         )}
       >
         <nav className="flex flex-col gap-1">
-          {mobileLinks.map((l) => (
-            <Link
-              key={l.href}
-              href={l.href}
-              onClick={() => setOpen(false)}
-              className={cn(
-                "rounded-xl px-3 py-2.5 text-sm font-medium",
-                l.href === "/app/admin"
-                  ? pathname === "/app/admin" || pathname === "/app/admin/"
-                  : pathname === l.href || (l.href !== "/app" && pathname.startsWith(l.href))
-                  ? "bg-accent/10 text-accent"
-                  : "text-zinc-400 hover:bg-white/5"
-              )}
-            >
-              {l.label}
-            </Link>
-          ))}
+          {mobileLinks.map((l) => {
+            const showUnread = l.href === "/app/messages" && unreadMessagesCount > 0;
+            const unreadLabel = unreadMessagesCount > 9 ? "+9" : String(unreadMessagesCount);
+            return (
+              <Link
+                key={l.href}
+                href={l.href}
+                onClick={() => setOpen(false)}
+                className={cn(
+                  "flex items-center justify-between gap-2 rounded-xl px-3 py-2.5 text-sm font-medium",
+                  l.href === "/app/admin"
+                    ? pathname === "/app/admin" || pathname === "/app/admin/"
+                    : pathname === l.href || (l.href !== "/app" && pathname.startsWith(l.href))
+                    ? "bg-accent/10 text-accent"
+                    : "text-zinc-400 hover:bg-white/5"
+                )}
+              >
+                <span className="min-w-0 flex-1 truncate">{l.label}</span>
+                {showUnread ? (
+                  <span className="shrink-0 rounded-full bg-accent px-1.5 py-0.5 text-[10px] font-bold tabular-nums leading-none text-zinc-950">
+                    {unreadLabel}
+                  </span>
+                ) : null}
+              </Link>
+            );
+          })}
         </nav>
       </div>
     </header>
