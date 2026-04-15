@@ -109,6 +109,12 @@ export type PreferredFoot = "left" | "right" | "both";
 export type QualityStatId =
   | "acceleration"
   | "sprintSpeed"
+  | "diving"
+  | "handling"
+  | "kicking"
+  | "reflexes"
+  | "positioning"
+  | "passing"
   | "attackingPosition"
   | "finishing"
   | "shotPower"

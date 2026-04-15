@@ -72,8 +72,30 @@ export const QUALITY_GROUPS: readonly {
   },
 ] as const;
 
-export const ALL_QUALITY_STAT_IDS: QualityStatId[] = QUALITY_GROUPS.flatMap((g) =>
+export const GK_QUALITY_GROUP = {
+  id: "goalkeeping",
+  label: "Goalkeeping",
+  stats: [
+    { id: "acceleration", label: "Acceleration" },
+    { id: "sprintSpeed", label: "Sprint Speed" },
+    { id: "diving", label: "Diving" },
+    { id: "handling", label: "Handling" },
+    { id: "kicking", label: "Kicking" },
+    { id: "reflexes", label: "Reflexes" },
+    { id: "positioning", label: "Positioning" },
+    { id: "passing", label: "Passing" },
+    { id: "vision", label: "Vision" },
+  ],
+} as const;
+
+export const OUTFIELD_QUALITY_STAT_IDS: QualityStatId[] = QUALITY_GROUPS.flatMap((g) =>
   g.stats.map((s) => s.id)
+);
+
+export const GK_QUALITY_STAT_IDS: QualityStatId[] = GK_QUALITY_GROUP.stats.map((s) => s.id);
+
+export const ALL_QUALITY_STAT_IDS: QualityStatId[] = Array.from(
+  new Set([...OUTFIELD_QUALITY_STAT_IDS, ...GK_QUALITY_STAT_IDS])
 );
 
 export function createDefaultQualities(value = 50): PlayerQualities {

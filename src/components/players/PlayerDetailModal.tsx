@@ -20,7 +20,7 @@ import { normalizeTeamDocuments } from "@/lib/team-documents";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { cn } from "@/lib/utils";
-import { QUALITY_GROUPS, mergeQualities } from "@/lib/player-qualities";
+import { GK_QUALITY_GROUP, QUALITY_GROUPS, mergeQualities } from "@/lib/player-qualities";
 import { buildPlayerInsights } from "@/lib/player-insights";
 import { PlayerInsightsBox } from "@/components/team/PlayerInsightsBox";
 import { Badge } from "@/components/ui/Badge";
@@ -253,6 +253,10 @@ export function PlayerDetailModal({
       : null;
 
   if (!open || !player) return <>{mediaOverlay}</>;
+
+  const primaryForQualities = selectedPos[0] ?? player.position;
+  const qualityGroupsToRender =
+    primaryForQualities === "GK" ? [GK_QUALITY_GROUP] : QUALITY_GROUPS;
 
   const togglePos = (p: Position) => {
     setSelectedPos((prev) => {
@@ -559,7 +563,7 @@ export function PlayerDetailModal({
               <p className="text-xs text-zinc-500">
                 Avalia cada atributo de 0 a 100 (estilo atributos de jogo).
               </p>
-              {QUALITY_GROUPS.map((group) => (
+              {qualityGroupsToRender.map((group) => (
                 <div key={group.id}>
                   <h4 className="mb-3 text-xs font-semibold uppercase tracking-wider text-accent">{group.label}</h4>
                   <div className="overflow-x-auto rounded-xl border border-surface-border">
