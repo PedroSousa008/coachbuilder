@@ -31,8 +31,41 @@ const TRAINING_EXERCISE_PRINT_IMAGE_BY_TITLE: Record<string, string> = {
 
 export const TRAINING_EXERCISE_PRINT_IMAGE_FOLDER = "/images/training-exercises";
 
+function normalizeExerciseTitle(title: string): string {
+  return title
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+const NORMALIZED_TITLE_TO_IMAGE: Record<string, string> = Object.fromEntries(
+  Object.entries(TRAINING_EXERCISE_PRINT_IMAGE_BY_TITLE).map(([title, image]) => [
+    normalizeExerciseTitle(title),
+    image,
+  ])
+);
+
+/** Alias úteis para títulos com pequenas variações (hífens, espaços, etc.). */
+const TITLE_ALIASES_TO_IMAGE: Record<string, string> = {
+  "full back overlap winger": "full-back-overlap-winger.png",
+  "full back overlap striker": "full-back-overlap-striker.png",
+};
+
 export function trainingExercisePrintImageForTitle(title: string): string | null {
-  const fileName = TRAINING_EXERCISE_PRINT_IMAGE_BY_TITLE[title];
+  const exact = TRAINING_EXERCISE_PRINT_IMAGE_BY_TITLE[title];
+  if (exact) return `${TRAINING_EXERCISE_PRINT_IMAGE_FOLDER}/${exact}`;
+
+  const normalized = normalizeExerciseTitle(title);
+  const fileName =
+    NORMALIZED_TITLE_TO_IMAGE[normalized] ??
+    TITLE_ALIASES_TO_IMAGE[normalized] ??
+    (normalized.includes("full back overlap") && normalized.includes("winger")
+      ? "full-back-overlap-winger.png"
+      : normalized.includes("full back overlap") && normalized.includes("striker")
+        ? "full-back-overlap-striker.png"
+        : undefined);
   if (!fileName) return null;
   return `${TRAINING_EXERCISE_PRINT_IMAGE_FOLDER}/${fileName}`;
 }
