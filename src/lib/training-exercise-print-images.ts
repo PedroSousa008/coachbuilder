@@ -21,6 +21,7 @@ const TRAINING_EXERCISE_PRINT_IMAGE_BY_TITLE: Record<string, string> = {
   "4 Finishing Drills": "4-finishing-drills.png",
   "Rondo 9v3": "rondo-9v3.png",
   "Rondo 5v3": "rondo-5v3.png",
+  "Breakout Rondo": "breakout-rondo.png",
   "Goal Kick 1": "goal-kick-1.png",
   "Goal Kick 2": "goal-kick-2.png",
   "Midfielder Run Behind Defense": "midfielder-run-behind-defense.png",

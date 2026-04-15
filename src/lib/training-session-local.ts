@@ -92,6 +92,12 @@ export const RONDO_9V3_VIDEO_URL = "/videos/training/rondo-9v3.mp4";
 export const RONDO_5V3_VIDEO_URL = "/videos/training/rondo-5v3.mp4";
 
 /**
+ * Vídeo do exercício "Breakout Rondo".
+ * Coloca o ficheiro em `public/videos/training/breakout-rondo.mp4` ou substitui por um link YouTube.
+ */
+export const BREAKOUT_RONDO_VIDEO_URL = "/videos/training/breakout-rondo.mp4";
+
+/**
  * Vídeo do exercício "Goal Kick 1".
  * Coloca o ficheiro em `public/videos/training/goal-kick-1.mp4` ou substitui por um link YouTube.
  */
@@ -227,6 +233,23 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
     "2 toques",
     "comunicação no rondo",
     "comunicacao no rondo",
+    "breakout rondo",
+    "breakout",
+    "rondo breakout",
+    "dois quadrados",
+    "quadrado interior",
+    "quadrado exterior",
+    "6 passes",
+    "seis passes",
+    "9v6",
+    "reação à perda",
+    "reacao a perda",
+    "finalização em poucos segundos",
+    "finalizacao em poucos segundos",
+    "tempo de decisão",
+    "tempo de decisao",
+    "inteligência de jogo",
+    "inteligencia de jogo",
     "movimentação após passe",
     "movimentacao apos passe",
     "variar o jogo rapidamente",
@@ -333,6 +356,8 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
     "cruzamento medio para medio",
     "rondo 5v3",
     "5v3",
+    "breakout rondo",
+    "9v6",
     "3v2 fast break",
     "3x2 fast break",
     "3x2 fast breaks",
@@ -372,6 +397,8 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
     "recuperacao na perda",
     "rondo 5v3",
     "5v3",
+    "breakout rondo",
+    "6v3",
     "pressão alta",
     "pressao alta",
     "pressão sobre o portador",
@@ -873,6 +900,26 @@ const MAIN_DRILLS: MainDrillDef[] = [
     }),
   },
   {
+    themes: ["possession", "pressing", "transition", "finishing"],
+    title: "Breakout Rondo",
+    describe: (pl, m) => ({
+      description: `O exercício decorre em dois quadrados (interior e exterior). No quadrado interior, a equipa preta joga em superioridade numérica (6v3), com o objetivo de realizar 6 passes consecutivos para poder sair para o quadrado exterior e finalizar o mais rápido possível. Se a equipa branca recuperar a bola: joga imediatamente para os jogadores do quadrado exterior; fica numa situação de 9v6 em superioridade; após 10 passes, pode finalizar nas balizas. Se a equipa preta voltar a recuperar a bola: pode finalizar imediatamente numa das balizas. O foco está na manutenção da posse, reação à perda/ganho de bola e rapidez na transição para finalização. (${m} min)`,
+      coachingPoints:
+        "Equipa preta em posse: triângulos curtos, corpo aberto e voz para pedir linha de passe antes dos 6 passes; ao cumprir a meta, saída rápida para o exterior com primeiro olhar à finalização. Equipa branca na pressão: fechar canto e canal ao portador; ao roubar, primeiro passe para o exterior e ocupar espaço para explorar a 9v6. Transições: pouca hesitação — recuperou ou perdeu, reage em 1–2 toques.",
+      setup:
+        "Dois rectângulos concêntricos ou adjacentes (interior ~18×18 m e anel exterior proporcional, ajusta ao espaço); balizas regulamentares ou reduzidas no exterior; coletes (preto/branco); bolas extra para repor ritmo.",
+      groupSplit:
+        pl.length >= 18
+          ? "Rotação de papéis entre interior e exterior a cada 4–5 min; GR nas balizas ou mini-balizas com jogadores a simular."
+          : pl.length >= 14
+            ? "Reduz ligeiramente o anel exterior ou usa 5v2+1 no interior com a mesma lógica de passes para saída."
+            : "Espaço mais compacto; mantém a regra de 6 passes no interior e 10 no exterior com números proporcionais (ex. 4v2 + apoios exteriores).",
+      diagramHint:
+        "Quadrado interior 6v3; setas de 6 passes → saída para anel exterior → finalização rápida; se roubo branco: bola ao exterior → 9v6 → após 10 passes remate à baliza; se preta recupera no exterior: remate imediato.",
+      videoUrl: BREAKOUT_RONDO_VIDEO_URL,
+    }),
+  },
+  {
     themes: ["possession", "transition", "wide"],
     title: "Goal Kick 1",
     describe: (_pl, m) => ({
@@ -1199,6 +1246,7 @@ const SINGLE_DRILL_10_MIN_TITLES = new Set<string>([
   "Goal Kick 2",
   "Midfielder Run Behind Defense",
   "Rondo 5v3",
+  "Breakout Rondo",
   "Full Back Overlap - Winger",
   "Full Back Overlap - Striker",
   "Pressing Exercise",
@@ -1230,6 +1278,7 @@ function singleDrillProgressionVariationsForTitle(title: string): {
   const is9v9Plus2Game = title === "9v9 + 2 Game";
   const isRondo9v3 = title === "Rondo 9v3";
   const isRondo5v3 = title === "Rondo 5v3";
+  const isBreakoutRondo = title === "Breakout Rondo";
   const isGoalKick1 = title === "Goal Kick 1";
   const isGoalKick2 = title === "Goal Kick 2";
   const isMidfielderRunBehindDefense = title === "Midfielder Run Behind Defense";
@@ -1263,7 +1312,9 @@ function singleDrillProgressionVariationsForTitle(title: string): {
                     ? "Sobe a meta a 12 passes por ponto; ou os 3 têm no máximo 4 toques para marcar após recuperação; ou meiinho só pode tocar com 1 toque."
                     : isRondo5v3
                       ? "Meta de 7 passes antes da viragem; ou máximo 6 s para o grupo de 3 roubar; ou zona central com 1 toque obrigatório para os 2 fixos."
-                      : isGoalKick1
+                      : isBreakoutRondo
+                        ? "Sobe a meta para 8 passes no interior; ou após recuperação da equipa branca exige remate em ≤4 toques; ou interior só com 1 toque até à saída para o exterior."
+                        : isGoalKick1
                         ? "Adversário com linha mais alta para forçar timing do overlap; ou máximo 8 s desde a reposição até ao passe em profundidade; ou lateral obrigado a cruzar com o pé interior na primeira série."
                         : isGoalKick2
                           ? "Avançado adversário com pressão dobrada (salto + sombra ao GR); ou GR com máximo 5 s para jogar; ou extremo obrigado a iniciar o movimento de pressão antes do passe ao lateral."
@@ -1307,7 +1358,9 @@ function singleDrillProgressionVariationsForTitle(title: string): {
                     ? "Golo dos 3 após recuperação vale duplo se vier em ≤3 toques; ou só uma baliza 'viva' de cada vez; ou equipa de 9 perde 1 ponto se o meiinho perder a bola."
                     : isRondo5v3
                       ? "Quadrados mais estreitos para forçar viragem longa; ou quarto jogador a saltar à pressão no último minuto; ou viragem obrigatória só após combinação triangular."
-                      : isGoalKick1
+                      : isBreakoutRondo
+                        ? "Anel exterior mais estreito para decisão mais rápida; ou golo após roubo branco vale duplo se vier em ≤3 passes; ou neutro no interior que só pode orientar com 1 toque."
+                        : isGoalKick1
                         ? "Espelhar toda a sequência pelo lado esquerdo; ou falso 9 a descair antes do passe ao trinco; ou profundidade obrigatoriamente em passe rasteiro (sem elevação)."
                         : isGoalKick2
                           ? "Espelhar padrão no lado esquerdo; ou trinco com 1 toque obrigatório nas duas primeiras saídas; ou lateral adversário com 'permissão' de contacto leve no duelo com o extremo."
