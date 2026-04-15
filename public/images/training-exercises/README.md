@@ -26,4 +26,5 @@ Expected file names:
 - `goal-kick-1.png`
 - `goal-kick-2.png`
 - `midfielder-run-behind-defense.png`
+- `full-back-overlap-striker.png`
 - `3v2-fast-break.png`

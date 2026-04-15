@@ -115,6 +115,12 @@ export const MIDFIELDER_RUN_BEHIND_DEFENSE_VIDEO_URL = "/videos/training/behind-
  */
 export const THREE_V_TWO_FAST_BREAK_VIDEO_URL = "/videos/training/3x2-fast-breaks.mp4";
 
+/**
+ * Vídeo do exercício "Full Back Overlap - Striker".
+ * Coloca o ficheiro em `public/videos/training/full-back-overlap-2.mp4` ou substitui por um link YouTube.
+ */
+export const FULL_BACK_OVERLAP_STRIKER_VIDEO_URL = "/videos/training/full-back-overlap-2.mp4";
+
 export type TrainingThemeId =
   | "possession"
   | "transition"
@@ -904,6 +910,22 @@ const MAIN_DRILLS: MainDrillDef[] = [
     }),
   },
   {
+    themes: ["possession", "wide", "transition", "finishing"],
+    title: "Full Back Overlap - Striker",
+    describe: (_pl, m) => ({
+      description: `Saída de bola iniciada num central de um dos lados, com apoio do trinco para variar para o outro central e manter linhas de passe constantes. O central em posse tem várias opções: extremo a vir buscar, lateral a preparar overlap nas costas, médio-centro a abrir para expor linha ao avançado e trinco a recuar para segurança. A bola entra no avançado a jogar de costas para a baliza e a tocar de frente com 3 apoios frontais. A partir desse apoio: se entra no médio-centro do lado da bola, ativa-se o overlap do lateral e cobertura defensiva do extremo que recuou; se entra no médio do lado oposto, o extremo oposto ataca a rotura; se volta no trinco, ficam disponíveis os dois lados para decidir. Foco em futebol curto/apoiado, 1–2 toques e leitura de opções entre linhas. (${m} min)`,
+      coachingPoints:
+        "Avançado de costas deve fixar e jogar de frente em 1–2 toques; médio-centro abre cedo para mostrar linha entre linhas; lateral só acelera o overlap quando a bola entra no corredor interior; extremo coordena aproximação/rotura com timing; trinco garante equilíbrio para reagir à perda.",
+      setup:
+        "Meio-campo ofensivo (~50×40 m), baliza com GR, 2 centrais + trinco + 2 médios + 2 extremos + avançado + laterais; oposição semi-activa para condicionar linhas de passe; bolas extra com os centrais.",
+      groupSplit:
+        "Mantém estrutura base (linha de saída + apoios frontais) e roda funções a cada 4–5 repetições: avançado, extremos e médios-centro alternam para treinar diferentes leituras de apoio e rotura.",
+      diagramHint:
+        "Central (lado A) → trinco → central (lado B) → passe no avançado de costas → apoio frontal. Ramificação: lado da bola (overlap lateral) ou lado oposto (rotura do extremo); opção de reset no trinco para mudar corredor.",
+      videoUrl: FULL_BACK_OVERLAP_STRIKER_VIDEO_URL,
+    }),
+  },
+  {
     themes: ["transition", "finishing", "wide"],
     title: "3v2 Fast Break",
     describe: (pl, m) => ({
@@ -1086,6 +1108,7 @@ const SINGLE_DRILL_10_MIN_TITLES = new Set<string>([
   "Goal Kick 2",
   "Midfielder Run Behind Defense",
   "Rondo 5v3",
+  "Full Back Overlap - Striker",
 ]);
 const SINGLE_DRILL_8_MIN_TITLES = new Set<string>(["Passing Activation", "Dual Passing"]);
 const SINGLE_DRILL_5_MIN_TITLES = new Set<string>(["Rondo 9v3", "Warm Up with Ball"]);
@@ -1117,6 +1140,7 @@ function singleDrillProgressionVariationsForTitle(title: string): {
   const isGoalKick1 = title === "Goal Kick 1";
   const isGoalKick2 = title === "Goal Kick 2";
   const isMidfielderRunBehindDefense = title === "Midfielder Run Behind Defense";
+  const isFullBackOverlapStriker = title === "Full Back Overlap - Striker";
   const is3v2FastBreak = title === "3v2 Fast Break";
   const isWarmUpWithBall = title === "Warm Up with Ball";
   const isPassingActivation = title === "Passing Activation";
@@ -1148,6 +1172,8 @@ function singleDrillProgressionVariationsForTitle(title: string): {
                           ? "Avançado adversário com pressão dobrada (salto + sombra ao GR); ou GR com máximo 5 s para jogar; ou extremo obrigado a iniciar o movimento de pressão antes do passe ao lateral."
                           : isMidfielderRunBehindDefense
                             ? "Linha defensiva mais alta e viva; ou máximo 2 toques na combinação médio–extremo–avançado; ou cruzamento obrigatório com o pé interior na primeira série."
+                            : isFullBackOverlapStriker
+                              ? "Aumenta a pressão no primeiro central para acelerar a circulação; ou obriga o avançado a jogar sempre de primeira; ou limita os médios a 2 toques para forçar decisão rápida no lado a atacar."
                             : is3v2FastBreak
                               ? "Encurta o eixo a ~24 m para decisões ainda mais rápidas; ou extremo com máximo 2 toques antes do cruzamento na 1.ª fase; ou defesa pode sair ao cruzamento com contacto leve."
                               : isWarmUpWithBall
@@ -1186,6 +1212,8 @@ function singleDrillProgressionVariationsForTitle(title: string): {
                           ? "Espelhar padrão no lado esquerdo; ou trinco com 1 toque obrigatório nas duas primeiras saídas; ou lateral adversário com 'permissão' de contacto leve no duelo com o extremo."
                           : isMidfielderRunBehindDefense
                             ? "Espelhar sequência completa pelo lado esquerdo; ou defensor vivo a acompanhar uma das corridas nas costas; ou golo vale duplo se a finalização for de cabeça no 2.º poste."
+                            : isFullBackOverlapStriker
+                              ? "Definir gatilhos de decisão: apoio no médio do lado da bola = obrigatório overlap; apoio no médio oposto = obrigatória rotura do extremo. Alternar corredor inicial dos centrais a cada série."
                             : is3v2FastBreak
                               ? "1.ª fase só cruzamento rasteiro; ou médio/treinador serve a 2.ª bola em profundidade para o extremo entrar ao eixo; ou GR activo nas duas fases com saída ao primeiro passe."
                               : isWarmUpWithBall
