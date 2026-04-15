@@ -122,6 +122,9 @@ export const THREE_V_TWO_FAST_BREAK_VIDEO_URL = "/videos/training/3x2-fast-break
 export const FULL_BACK_OVERLAP_STRIKER_VIDEO_URL = "/videos/training/full-back-overlap-2.mp4";
 export const FULL_BACK_OVERLAP_WINGER_VIDEO_URL = "/videos/training/full-back-overlap-1.mp4";
 
+/** Vídeo do exercício "Pressing Exercise". Coloca o ficheiro em `public/videos/training/pressing-exercise.mp4`. */
+export const PRESSING_EXERCISE_VIDEO_URL = "/videos/training/pressing-exercise.mp4";
+
 export type TrainingThemeId =
   | "possession"
   | "transition"
@@ -377,6 +380,13 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
     "forte pressao",
     "pressão no quadrado",
     "pressao no quadrado",
+    "pressing exercise",
+    "segunda bola",
+    "2ª bola",
+    "2a bola",
+    "saída adversária",
+    "saida adversaria",
+    "jogo longo",
   ],
   finishing: [
     "finaliza",
@@ -962,6 +972,25 @@ const MAIN_DRILLS: MainDrillDef[] = [
       videoUrl: THREE_V_TWO_FAST_BREAK_VIDEO_URL,
     }),
   },
+  {
+    themes: ["pressing", "defensive", "transition"],
+    title: "Pressing Exercise",
+    describe: (_pl, m) => ({
+      description: `Pressão alta em 4-4-2 na saída adversária. A equipa organiza-se em 4-4-2, com o médio ofensivo ao lado do avançado, permitindo saída curta do adversário mas fechando sempre os espaços entre linhas. O objetivo é identificar o central com menor qualidade e direcionar o jogo para esse lado.
+Quando a bola entra no lateral, surge o gatilho de pressão: o extremo aproxima para pressionar e toda a equipa desliza para esse lado, fechando linhas de passe interiores e profundidade. O objetivo é forçar o lateral a devolver ao central.
+Quando a bola volta ao central: o nosso 10 bloqueia o trinco e o médio (8); o avançado posiciona-se para pressionar guarda-redes ou central; o extremo continua a fechar opções por dentro. Assim, o portador fica sem soluções seguras: guarda-redes pressionado pelo avançado; virar jogo fechado pelo extremo; passe interior em risco (superioridade nossa - avançado e 2 médios centro); bola longa como opção mais provável e desejada.
+Ao forçar jogo longo, garante-se vantagem numérica no meio-campo (4v2), aumentando a probabilidade de ganhar a segunda bola (7v5). O foco está na coordenação da pressão, fecho de linhas e indução do erro adversário. (${m} min)`,
+      coachingPoints:
+        "Coordenação do bloco: salto do extremo ao trigger lateral e deslize colectivo sem buracos entre linhas. 10 e 8 a fechar eixo e trinco; avançado a escolher pressão ao GR vs central conforme a linha de passe. Aceitar curto para forçar devolução ao lado fraco; celebrar recuperação na 2ª bola com superioridade no meio.",
+      setup:
+        "Meio-campo adversário ou ~55×45 m; equipa em 4-4-2 vs saída (4+2 ou 3+2 simulados); coletes; bolas extra nas linhas laterais para repor rápido.",
+      groupSplit:
+        "Alternar o lado da pressão a cada 6–8 repetições; rolar funções (10, 8, extremos e avançado) para todos lerem o gatilho lateral.",
+      diagramHint:
+        "4-4-2; seta de pressão ao lateral; deslize da equipa; devolução ao central; 10+8 no eixo; 2ª bola 4v2 no meio.",
+      videoUrl: PRESSING_EXERCISE_VIDEO_URL,
+    }),
+  },
 ];
 
 function scoreDrill(themes: TrainingThemeId[], def: MainDrillDef): number {
@@ -1172,6 +1201,7 @@ const SINGLE_DRILL_10_MIN_TITLES = new Set<string>([
   "Rondo 5v3",
   "Full Back Overlap - Winger",
   "Full Back Overlap - Striker",
+  "Pressing Exercise",
 ]);
 const SINGLE_DRILL_8_MIN_TITLES = new Set<string>(["Passing Activation", "Dual Passing"]);
 const SINGLE_DRILL_5_MIN_TITLES = new Set<string>(["Rondo 9v3", "Warm Up with Ball"]);
@@ -1209,8 +1239,11 @@ function singleDrillProgressionVariationsForTitle(title: string): {
   const isWarmUpWithBall = title === "Warm Up with Ball";
   const isPassingActivation = title === "Passing Activation";
   const isDualPassing = title === "Dual Passing";
+  const isPressingExercise = title === "Pressing Exercise";
 
-  const progression = isBetweenLines
+  const progression = isPressingExercise
+    ? "Aumenta a exigência no último terço rival (menos tempo para sair); ou reduz o espaço para a 2ª bola; ou força viragem obrigatória sempre ao lado do central identificado como mais fraco."
+    : isBetweenLines
     ? "Aperta o meio-campo (menos espaço entre linhas) ou exige 2 toques máx. depois do passe interior; aumenta largura para forçar mais metros percorridos após a rotação."
     : isBackFourShifting
       ? "Encurta o espaço entre defesa e meio para forçar linha mais alta; ou acrescenta terceiro atacante a fixar o último defesa; ou alterna quem inicia a pressão a cada 90 s."
@@ -1252,7 +1285,9 @@ function singleDrillProgressionVariationsForTitle(title: string): {
 
   if (isDualPassing) return { progression };
 
-  const variations = isBetweenLines
+  const variations = isPressingExercise
+    ? "Jogo condicionado: recuperação na faixa lateral vale ponto extra; ou adversário com máximo 3 toques na saída; ou acrescenta 2º avançado a simular pressão ao GR em alternância."
+    : isBetweenLines
     ? "Terceira equipa de 8 a rodar; ou zona obrigatória de 'pé em campo' nos médios; ou golo vale duplo se vier de passe rasteiro entre linhas."
     : isBackFourShifting
       ? "Atacante obrigado a receber de costas; ou passe filtrado simulado com linha a subir no timing; ou capitão da linha só ele dá ordem de pressão."
