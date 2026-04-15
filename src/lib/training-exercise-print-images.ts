@@ -24,6 +24,7 @@ const TRAINING_EXERCISE_PRINT_IMAGE_BY_TITLE: Record<string, string> = {
   "Goal Kick 1": "goal-kick-1.png",
   "Goal Kick 2": "goal-kick-2.png",
   "Midfielder Run Behind Defense": "midfielder-run-behind-defense.png",
+  "Full Back Overlap - Winger": "full-back-overlap-winger.png",
   "Full Back Overlap - Striker": "full-back-overlap-striker.png",
   "3v2 Fast Break": "3v2-fast-break.png",
 };
