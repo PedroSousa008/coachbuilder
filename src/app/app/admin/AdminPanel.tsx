@@ -122,11 +122,39 @@ type RevenuePayload = {
   subscribers?: RevenueSubscriber[];
 };
 
-type AdminTab = "overview" | "online" | "revenue";
+type PersonalizationStatus = "requested" | "approved" | "declined";
+
+type PersonalizationRow = {
+  id: string;
+  userId: string;
+  userName: string;
+  userEmail: string;
+  userRole: string;
+  userSubscriptionPlan: string;
+  status: PersonalizationStatus;
+  requestedAt: string;
+  approvedAt: string | null;
+  declinedAt: string | null;
+  scheduledFor: string | null;
+  contactEmail: string;
+  notesFromCoach: string | null;
+  preferredDateNotes: string | null;
+  adminNotes: string | null;
+};
+
+type PersonalizationPayload = {
+  ok?: boolean;
+  generatedAt?: string;
+  rows?: PersonalizationRow[];
+  error?: string;
+};
+
+type AdminTab = "overview" | "online" | "revenue" | "personalization";
 
 const REFRESH_OVERVIEW_MS = 45_000;
 const REFRESH_ONLINE_MS = 15_000;
 const REFRESH_REVENUE_MS = 60_000;
+const REFRESH_PERSONALIZATION_MS = 45_000;
 
 function planLabel(plan: string): string {
   if (plan === "pro_monthly") return "Pro mensal";
@@ -174,6 +202,12 @@ function formatGrowthPct(p: number): string {
   return `${sign}${p}%`;
 }
 
+function personalizationStatusLabel(s: PersonalizationStatus): string {
+  if (s === "approved") return "Aprovado";
+  if (s === "declined") return "Recusado";
+  return "Pedido";
+}
+
 export function AdminPanel() {
   const { user, authReady, refreshUserFromCloud } = useAuth();
   const router = useRouter();
@@ -182,6 +216,7 @@ export function AdminPanel() {
   const [users, setUsers] = useState<ListedUser[]>([]);
   const [online, setOnline] = useState<OnlinePayload | null>(null);
   const [revenue, setRevenue] = useState<RevenuePayload | null>(null);
+  const [personalization, setPersonalization] = useState<PersonalizationPayload | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [planDraft, setPlanDraft] = useState<Record<string, string>>({});
@@ -253,6 +288,38 @@ export function AdminPanel() {
     }
   }, []);
 
+  const loadPersonalization = useCallback(async () => {
+    try {
+      const res = await fetch("/api/cloud/admin/personalization", { credentials: "include" });
+      const j = (await res.json()) as PersonalizationPayload;
+      if (res.ok && j.ok && j.rows) {
+        setPersonalization(j);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  const patchPersonalization = useCallback(
+    async (id: string, body: Record<string, unknown>) => {
+      setError(null);
+      const res = await fetch(`/api/cloud/admin/personalization/${encodeURIComponent(id)}`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const j = (await res.json()) as { ok?: boolean; error?: string };
+      if (!res.ok || !j.ok) {
+        setError(j.error || "Não foi possível atualizar o pedido de personalização.");
+        return false;
+      }
+      await loadPersonalization();
+      return true;
+    },
+    [loadPersonalization]
+  );
+
   useEffect(() => {
     if (!authReady) return;
     const allowed =
@@ -291,6 +358,13 @@ export function AdminPanel() {
     const t = window.setInterval(() => void loadRevenue(), REFRESH_REVENUE_MS);
     return () => window.clearInterval(t);
   }, [tab, loadRevenue]);
+
+  useEffect(() => {
+    if (tab !== "personalization") return;
+    void loadPersonalization();
+    const t = window.setInterval(() => void loadPersonalization(), REFRESH_PERSONALIZATION_MS);
+    return () => window.clearInterval(t);
+  }, [tab, loadPersonalization]);
 
   const patchSubscription = useCallback(
     async (id: string, body: Record<string, unknown>) => {
@@ -361,6 +435,7 @@ export function AdminPanel() {
             void load();
             if (tab === "online") void loadOnline();
             if (tab === "revenue") void loadRevenue();
+            if (tab === "personalization") void loadPersonalization();
           }}
         >
           Atualizar agora
@@ -380,6 +455,13 @@ export function AdminPanel() {
         </TabButton>
         <TabButton id="revenue" selected={tab === "revenue"} onClick={() => setTab("revenue")}>
           Revenue Center
+        </TabButton>
+        <TabButton
+          id="personalization"
+          selected={tab === "personalization"}
+          onClick={() => setTab("personalization")}
+        >
+          Full Personalization Process
         </TabButton>
       </div>
 
@@ -430,6 +512,14 @@ export function AdminPanel() {
             })
           }
           onRefresh={() => void loadRevenue()}
+        />
+      ) : null}
+
+      {tab === "personalization" ? (
+        <PersonalizationTabContent
+          payload={personalization}
+          onRefresh={() => void loadPersonalization()}
+          onPatch={(id, body) => void patchPersonalization(id, body)}
         />
       ) : null}
 
@@ -979,6 +1069,139 @@ function RevenueTabContent({
           </CardContent>
         </Card>
       </div>
+    </section>
+  );
+}
+
+function PersonalizationTabContent({
+  payload,
+  onRefresh,
+  onPatch,
+}: {
+  payload: PersonalizationPayload | null;
+  onRefresh: () => void;
+  onPatch: (id: string, body: Record<string, unknown>) => void;
+}) {
+  const rows = payload?.rows ?? [];
+
+  return (
+    <section className="space-y-5" role="tabpanel" aria-labelledby="tab-personalization">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="font-display text-xl font-semibold text-white">Full Personalization Process</h2>
+          <p className="mt-1 max-w-3xl text-sm text-zinc-500">
+            Pedidos para sessão premium de onboarding (50 € / 2 horas). Aprova/recusa, agenda data e deixa notas para
+            acompanhamento por email.
+          </p>
+        </div>
+        <Button type="button" variant="secondary" className="text-xs" onClick={onRefresh}>
+          Atualizar pedidos
+        </Button>
+      </div>
+
+      {payload?.generatedAt ? (
+        <p className="text-xs text-zinc-600">Última atualização: {new Date(payload.generatedAt).toLocaleString("pt-PT")}</p>
+      ) : null}
+
+      <Card>
+        <CardContent className="overflow-x-auto p-0">
+          <table className="w-full min-w-[1260px] text-left text-sm text-zinc-400">
+            <thead className="border-b border-surface-border bg-surface-raised/40 text-xs uppercase tracking-wide text-zinc-500">
+              <tr>
+                <th className="px-3 py-3">Coach</th>
+                <th className="px-3 py-3">Estado</th>
+                <th className="px-3 py-3">Pedido</th>
+                <th className="px-3 py-3">Data da sessão</th>
+                <th className="px-3 py-3">Contacto</th>
+                <th className="px-3 py-3">Preferência do coach</th>
+                <th className="px-3 py-3">Objetivo do onboarding</th>
+                <th className="px-3 py-3">Notas internas</th>
+                <th className="px-3 py-3">Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.id} className="border-b border-surface-border/60 align-top">
+                  <td className="px-3 py-3">
+                    <p className="font-medium text-zinc-200">{r.userName || "Coach"}</p>
+                    <p className="font-mono text-[11px] text-zinc-500">{r.userEmail}</p>
+                    <p className="text-[11px] text-zinc-600">{planLabel(r.userSubscriptionPlan)}</p>
+                  </td>
+                  <td className="px-3 py-3">
+                    <select
+                      defaultValue={r.status}
+                      onChange={(e) => onPatch(r.id, { status: e.target.value })}
+                      className="w-[140px] rounded-lg border border-surface-border bg-[#0c1014] px-2 py-1 text-xs text-zinc-200"
+                    >
+                      <option value="requested">Requested</option>
+                      <option value="approved">Approved</option>
+                      <option value="declined">Declined</option>
+                    </select>
+                    <p className="mt-1 text-[11px] text-zinc-500">{personalizationStatusLabel(r.status)}</p>
+                  </td>
+                  <td className="px-3 py-3 text-xs text-zinc-500">
+                    {new Date(r.requestedAt).toLocaleString("pt-PT")}
+                  </td>
+                  <td className="px-3 py-3">
+                    <input
+                      type="datetime-local"
+                      defaultValue={r.scheduledFor ? r.scheduledFor.slice(0, 16) : ""}
+                      className="w-[180px] rounded border border-surface-border bg-[#0c1014] px-2 py-1 text-xs text-zinc-200"
+                      onBlur={(e) => onPatch(r.id, { scheduledFor: e.target.value || null })}
+                    />
+                    {r.scheduledFor ? (
+                      <p className="mt-1 text-[11px] text-emerald-300">
+                        {new Date(r.scheduledFor).toLocaleString("pt-PT")}
+                      </p>
+                    ) : (
+                      <p className="mt-1 text-[11px] text-zinc-600">Sem data definida</p>
+                    )}
+                  </td>
+                  <td className="px-3 py-3">
+                    <p className="font-mono text-[11px] text-zinc-400">{r.contactEmail}</p>
+                  </td>
+                  <td className="px-3 py-3 text-xs text-zinc-300">{r.preferredDateNotes || "—"}</td>
+                  <td className="px-3 py-3 text-xs text-zinc-300">{r.notesFromCoach || "—"}</td>
+                  <td className="px-3 py-3">
+                    <textarea
+                      rows={2}
+                      defaultValue={r.adminNotes ?? ""}
+                      className="w-[220px] rounded border border-surface-border bg-[#0c1014] px-2 py-1 text-xs text-zinc-200"
+                      placeholder="Notas para follow-up por email"
+                      onBlur={(e) => onPatch(r.id, { adminNotes: e.target.value })}
+                    />
+                  </td>
+                  <td className="px-3 py-3">
+                    <div className="flex flex-wrap gap-1">
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        className="px-2 py-1 text-[10px]"
+                        onClick={() => onPatch(r.id, { status: "approved" })}
+                      >
+                        Aprovar
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        className="px-2 py-1 text-[10px]"
+                        onClick={() => onPatch(r.id, { status: "declined" })}
+                      >
+                        Recusar
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {rows.length === 0 ? (
+            <p className="px-4 py-8 text-center text-sm text-zinc-500">
+              Ainda não há pedidos de Full Personalization.
+            </p>
+          ) : null}
+        </CardContent>
+      </Card>
     </section>
   );
 }
