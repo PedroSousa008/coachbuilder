@@ -4,6 +4,7 @@ import { useCallback, useMemo } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { Activity, Briefcase, Sparkles, User } from "lucide-react";
 import { useAppData } from "@/contexts/AppDataContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { mockCoach } from "@/data/mock";
 import { Badge } from "@/components/ui/Badge";
 import { PerformanceTab } from "@/components/profile/PerformanceTab";
@@ -44,6 +45,7 @@ export function CoachProfileApp() {
     [pathname, router, searchParams]
   );
 
+  const { user } = useAuth();
   const { coachProfile, setCoachProfile, hydrated, savedTactics, tacticMatches, trainingSessions, players } =
     useAppData();
 
@@ -63,8 +65,12 @@ export function CoachProfileApp() {
       coachProfile.club?.trim(),
       coachProfile.profession?.trim() || coachProfile.role?.trim(),
     ].filter(Boolean);
-    return parts.join(" · ") || "Perfil de treinador";
-  }, [coachProfile.club, coachProfile.profession, coachProfile.role]);
+    const tag = user?.nametag?.trim();
+    if (tag) {
+      parts.push(`"${tag}"`);
+    }
+    return parts.length > 0 ? parts.join(" · ") : "Perfil de treinador";
+  }, [coachProfile.club, coachProfile.profession, coachProfile.role, user?.nametag]);
   const letters = useMemo(() => initialsFromName(coachProfile.name), [coachProfile.name]);
 
   const tabBar = (
