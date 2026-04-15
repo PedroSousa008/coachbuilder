@@ -11,6 +11,7 @@ import { playerHasPosition, sortSquadRoster, type SquadSortBy } from "@/lib/play
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { useAppData } from "@/contexts/AppDataContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const positions: (Position | "all")[] = [
   "all",
@@ -61,6 +62,8 @@ export default function TeamPage() {
     updateStaff,
     removeStaff,
   } = useAppData();
+  const { language } = useLanguage();
+  const isPt = language === "pt-PT";
   const [q, setQ] = useState("");
   const [pos, setPos] = useState<Position | "all">("all");
   const [sortBy, setSortBy] = useState<SquadSortBy>("number");
@@ -119,23 +122,26 @@ export default function TeamPage() {
         <div>
           <h2 className="font-display text-lg font-semibold text-white">Squad roster</h2>
           <p className="text-sm text-zinc-500">
-            {players.length} player{players.length !== 1 ? "s" : ""} · {staff.length} staff · same list everywhere you pick names (tactics, training, messages).
+            {isPt
+              ? `${players.length} jogador${players.length !== 1 ? "es" : ""} · ${staff.length} staff · mesma lista em toda a app (táticas, treino, mensagens).`
+              : `${players.length} player${players.length !== 1 ? "s" : ""} · ${staff.length} staff · same list everywhere you pick names (tactics, training, messages).`}
           </p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           {tab === "players" ? (
             <Input
               placeholder="Search players…"
+              placeholder={isPt ? "Procurar jogadores…" : "Search players…"}
               value={q}
               onChange={(e) => setQ(e.target.value)}
               className="sm:w-56"
             />
           ) : null}
           <Button type="button" onClick={() => setAddOpen(true)}>
-            Add player
+            {isPt ? "Adicionar jogador" : "Add player"}
           </Button>
           <Button type="button" variant="secondary" onClick={() => setAddStaffOpen(true)}>
-            Add staff
+            {isPt ? "Adicionar staff" : "Add staff"}
           </Button>
         </div>
       </div>
@@ -174,7 +180,9 @@ export default function TeamPage() {
         <>
           <div className="space-y-3">
             <div>
-              <p className="mb-2 text-xs font-medium uppercase tracking-wide text-zinc-500">Filter by position</p>
+              <p className="mb-2 text-xs font-medium uppercase tracking-wide text-zinc-500">
+                {isPt ? "Filtrar por posição" : "Filter by position"}
+              </p>
               <div className="flex flex-wrap gap-2">
                 {positions.map((p) => (
                   <button
@@ -185,13 +193,15 @@ export default function TeamPage() {
                       pos === p ? "bg-accent/15 text-accent" : "bg-surface-raised text-zinc-400 hover:text-zinc-200"
                     }`}
                   >
-                    {p === "all" ? "All positions" : p}
+                    {p === "all" ? (isPt ? "Todas as posições" : "All positions") : p}
                   </button>
                 ))}
               </div>
             </div>
             <div>
-              <p className="mb-2 text-xs font-medium uppercase tracking-wide text-zinc-500">Sort by</p>
+              <p className="mb-2 text-xs font-medium uppercase tracking-wide text-zinc-500">
+                {isPt ? "Ordenar por" : "Sort by"}
+              </p>
               <div className="flex flex-wrap gap-2">
                 {SORT_OPTIONS.map((s) => (
                   <button
@@ -209,8 +219,9 @@ export default function TeamPage() {
                 ))}
               </div>
               <p className="mt-2 text-xs text-zinc-600">
-                Position order: GK → CB → LB → RB → CDM → CM → CAM → LW → RW → ST. Multi-position players sort by their
-                earliest role in that list.
+                {isPt
+                  ? "Ordem: GK → CB → LB → RB → CDM → CM → CAM → LW → RW → ST. Jogadores multi-posição são ordenados pela primeira posição dessa lista."
+                  : "Position order: GK → CB → LB → RB → CDM → CM → CAM → LW → RW → ST. Multi-position players sort by their earliest role in that list."}
               </p>
             </div>
           </div>
@@ -220,15 +231,19 @@ export default function TeamPage() {
             </div>
             {players.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-surface-border p-12 text-center">
-                <p className="text-zinc-400">No players yet.</p>
-                <p className="mt-2 text-sm text-zinc-500">Add your squad — they’ll be available on tactics, training, and chat.</p>
+                <p className="text-zinc-400">{isPt ? "Ainda sem jogadores." : "No players yet."}</p>
+                <p className="mt-2 text-sm text-zinc-500">
+                  {isPt
+                    ? "Adiciona o plantel — ficará disponível nas táticas, treino e chat."
+                    : "Add your squad — they’ll be available on tactics, training, and chat."}
+                </p>
                 <Button type="button" className="mt-6" onClick={() => setAddOpen(true)}>
-                  Add your first player
+                  {isPt ? "Adicionar primeiro jogador" : "Add your first player"}
                 </Button>
               </div>
             ) : filtered.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-surface-border p-12 text-center text-zinc-500">
-                No players match your filters.
+                {isPt ? "Nenhum jogador corresponde aos filtros." : "No players match your filters."}
               </div>
             ) : (
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -255,7 +270,7 @@ export default function TeamPage() {
           </div>
           {staff.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-surface-border p-8 text-center text-zinc-500">
-              Ainda não adicionaste membros de staff.
+              {isPt ? "Ainda não adicionaste membros de staff." : "No staff members added yet."}
             </div>
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -264,11 +279,17 @@ export default function TeamPage() {
                   <p className="font-medium text-white">{member.name}</p>
                   <p className="mt-1 text-sm text-zinc-400">{member.role}</p>
                   <p className="mt-1 text-xs text-zinc-500">
-                    {member.dateOfBirth ? `Nascimento: ${member.dateOfBirth}` : "Sem data de nascimento"}
+                    {member.dateOfBirth
+                      ? isPt
+                        ? `Nascimento: ${member.dateOfBirth}`
+                        : `Birth date: ${member.dateOfBirth}`
+                      : isPt
+                        ? "Sem data de nascimento"
+                        : "No birth date"}
                   </p>
                   <div className="mt-4 flex flex-wrap gap-2">
                     <Button type="button" onClick={() => setDetailStaffId(member.id)}>
-                      Abrir
+                      {isPt ? "Abrir" : "Open"}
                     </Button>
                     <Button
                       type="button"
@@ -276,7 +297,7 @@ export default function TeamPage() {
                       className="border-red-500/40 text-red-400 hover:bg-red-500/10"
                       onClick={() => removeStaff(member.id)}
                     >
-                      Remover
+                      {isPt ? "Remover" : "Remove"}
                     </Button>
                   </div>
                 </article>
@@ -290,8 +311,10 @@ export default function TeamPage() {
         <section className="space-y-6">
           <div className="grid gap-6 lg:grid-cols-2">
             <article className="rounded-2xl border border-surface-border bg-surface-raised/50 p-4">
-              <h3 className="font-display text-base font-semibold text-white">Capitania</h3>
-              <p className="mt-1 text-sm text-zinc-500">Escolhe um jogador para cada função.</p>
+              <h3 className="font-display text-base font-semibold text-white">{isPt ? "Capitania" : "Captaincy"}</h3>
+              <p className="mt-1 text-sm text-zinc-500">
+                {isPt ? "Escolhe um jogador para cada função." : "Choose one player for each role."}
+              </p>
               <div className="mt-4 space-y-4">
                 {SINGLE_ROLE_LABELS.map((role) => (
                   <label key={role.id} className="block space-y-1">
@@ -301,7 +324,7 @@ export default function TeamPage() {
                       onChange={(e) => setTeamSingleRole(role.id, e.target.value || null)}
                       className="h-10 w-full rounded-xl border border-surface-border bg-surface px-3 text-sm text-zinc-200"
                     >
-                      <option value="">Sem jogador</option>
+                      <option value="">{isPt ? "Sem jogador" : "No player"}</option>
                       {sortedAllPlayers.map((p) => (
                         <option key={p.id} value={p.id}>
                           #{p.number} {p.name}
@@ -313,8 +336,10 @@ export default function TeamPage() {
               </div>
             </article>
             <article className="rounded-2xl border border-surface-border bg-surface-raised/50 p-4">
-              <h3 className="font-display text-base font-semibold text-white">Bolas paradas</h3>
-              <p className="mt-1 text-sm text-zinc-500">Podes escolher até 2 jogadores por função.</p>
+              <h3 className="font-display text-base font-semibold text-white">{isPt ? "Bolas paradas" : "Set pieces"}</h3>
+              <p className="mt-1 text-sm text-zinc-500">
+                {isPt ? "Podes escolher até 2 jogadores por função." : "You can choose up to 2 players per role."}
+              </p>
               <div className="mt-4 space-y-4">
                 {DOUBLE_ROLE_LABELS.map((role) => (
                   <div key={role.id} className="space-y-2">
@@ -334,7 +359,7 @@ export default function TeamPage() {
                             }}
                             className="h-10 w-full rounded-xl border border-surface-border bg-surface px-3 text-sm text-zinc-200"
                           >
-                            <option value="">Sem jogador</option>
+                            <option value="">{isPt ? "Sem jogador" : "No player"}</option>
                             {sortedAllPlayers.map((p) => (
                               <option key={p.id} value={p.id}>
                                 #{p.number} {p.name}
