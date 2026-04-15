@@ -14,7 +14,7 @@ import { Badge } from "@/components/ui/Badge";
 import { AddTrainingSessionModal } from "@/components/training/AddTrainingSessionModal";
 import { useAppData } from "@/contexts/AppDataContext";
 import { cn } from "@/lib/utils";
-import { formatPlayerPositions } from "@/lib/player-positions";
+import { formatPlayerPositions, sortSquadRoster } from "@/lib/player-positions";
 import {
   buildFullSessionDocumentHtml,
   buildSingleDrillDocumentHtml,
@@ -254,7 +254,8 @@ export function TrainingPlansClient() {
 
   const printFull = useCallback(() => {
     if (!fullPlan || !fullMeta) return;
-    const playerLines = selectedPlayers.map((p) => `#${p.number} ${p.name} — ${formatPlayerPositions(p)}`);
+    const sortedForPrint = sortSquadRoster(selectedPlayers, "position");
+    const playerLines = sortedForPrint.map((p) => `#${p.number} ${p.name} — ${formatPlayerPositions(p)}`);
     const assetBaseUrl = window.location.origin;
     const html = buildFullSessionDocumentHtml({
       plan: fullPlan,
