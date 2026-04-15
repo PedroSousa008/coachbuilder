@@ -13,6 +13,8 @@ model User {
   passwordHash  String
   salt          String
   name          String
+  /// Identificador curto único, gerado no registo a partir do nome (imutável).
+  nametag       String?   @unique
   coachingRole  String
   emailVerified Boolean   @default(true)
   /// "user" | "admin" — admin definido por ADMIN_OWNER_EMAIL no servidor

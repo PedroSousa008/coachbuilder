@@ -14,6 +14,7 @@ import {
   snapshotHasMeaningfulData,
   type WorkspaceSnapshotV1,
 } from "@/lib/workspace-snapshot";
+import { allocateUniqueNametag, isPrismaNametagConflict } from "@/lib/user-nametag";
 
 export const dynamic = "force-dynamic";
 
@@ -71,25 +72,40 @@ export async function POST(req: Request) {
     const displayName = name || "Coach";
 
     const isOwner = isOwnerAdminEmail(norm);
-    const user = await prisma.user.create({
-      data: {
-        email: norm,
-        name: displayName,
-        coachingRole: roleOk,
-        passwordHash: hash,
-        salt,
-        role: isOwner ? "admin" : "user",
-        ...(!isOwner
-          ? {
-              subscriptionPlan: "pro_trial",
-              proTrialEndsAt: trialEndsAtFromNow(),
-            }
-          : {}),
-        workspace: {
-          create: { payload: workspacePayload as object },
-        },
-      },
-    });
+
+    let user = null as Awaited<ReturnType<typeof prisma.user.create>> | null;
+    for (let attempt = 0; attempt < 20; attempt++) {
+      const nametag = await allocateUniqueNametag(prisma, { name: displayName, email: norm });
+      try {
+        user = await prisma.user.create({
+          data: {
+            email: norm,
+            name: displayName,
+            nametag,
+            coachingRole: roleOk,
+            passwordHash: hash,
+            salt,
+            role: isOwner ? "admin" : "user",
+            ...(!isOwner
+              ? {
+                  subscriptionPlan: "pro_trial",
+                  proTrialEndsAt: trialEndsAtFromNow(),
+                }
+              : {}),
+            workspace: {
+              create: { payload: workspacePayload as object },
+            },
+          },
+        });
+        break;
+      } catch (e) {
+        if (isPrismaNametagConflict(e)) continue;
+        throw e;
+      }
+    }
+    if (!user) {
+      return NextResponse.json({ ok: false, error: "Não foi possível migrar a conta." }, { status: 500 });
+    }
 
     await recordAccountCreatedSafe(user.id, norm, "cloud_migrate");
 

@@ -6,6 +6,7 @@ import { isOwnerAdminEmail, parseAdminOwnerEmailsFromEnv } from "@/lib/admin-own
 import { toCloudUserPublic } from "@/lib/cloud-user-public";
 import { computeSubscriptionAccess } from "@/lib/subscription-access";
 import { transitionExpiredSubscriptionState } from "@/lib/subscription-transition";
+import { ensureUserNametagIfMissing } from "@/lib/user-nametag";
 
 export const dynamic = "force-dynamic";
 
@@ -34,11 +35,12 @@ export async function GET() {
     if (!transitioned) {
       return NextResponse.json({ ok: false, error: "Sessão inválida." }, { status: 401 });
     }
-    const subscriptionAccess = computeSubscriptionAccess(transitioned);
+    const withNametag = (await ensureUserNametagIfMissing(prisma, transitioned.id)) ?? transitioned;
+    const subscriptionAccess = computeSubscriptionAccess(withNametag);
     return NextResponse.json({
       ok: true,
       cloud: true,
-      user: { ...toCloudUserPublic(transitioned), subscriptionAccess },
+      user: { ...toCloudUserPublic(withNametag), subscriptionAccess },
       adminDiagnostics: {
         ownerEnvConfigured: parseAdminOwnerEmailsFromEnv().length > 0,
         sessionEmailListedAsOwner: listed,

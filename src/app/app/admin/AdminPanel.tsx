@@ -47,6 +47,7 @@ type ListedUser = {
   id: string;
   email: string;
   name: string;
+  nametag: string | null;
   coachingRole: string;
   role: string;
   subscriptionPlan: string;
@@ -720,11 +721,12 @@ function OverviewTabContent({
           <CardTitle>Utilizadores</CardTitle>
         </CardHeader>
         <CardContent className="overflow-x-auto p-0">
-          <table className="w-full min-w-[960px] text-left text-sm text-zinc-400">
+          <table className="w-full min-w-[1080px] text-left text-sm text-zinc-400">
             <thead className="border-b border-surface-border bg-surface-raised/40 text-xs uppercase tracking-wide text-zinc-500">
               <tr>
                 <th className="px-4 py-3">Email</th>
                 <th className="px-4 py-3">Nome</th>
+                <th className="px-4 py-3">Nametag</th>
                 <th className="px-4 py-3">Função</th>
                 <th className="px-4 py-3">Plano</th>
                 <th className="px-4 py-3">Preço € / mês</th>
@@ -739,6 +741,9 @@ function OverviewTabContent({
                 <tr key={u.id} className="border-b border-surface-border/60">
                   <td className="px-4 py-3 font-mono text-xs text-zinc-300">{u.email}</td>
                   <td className="px-4 py-3 text-zinc-300">{u.name}</td>
+                  <td className="px-4 py-3 font-mono text-xs text-emerald-200/90">
+                    {u.nametag ?? "—"}
+                  </td>
                   <td className="px-4 py-3">{u.role === "admin" ? "Admin" : "Utilizador"}</td>
                   <td className="px-4 py-3">
                     {u.role === "admin" ? (

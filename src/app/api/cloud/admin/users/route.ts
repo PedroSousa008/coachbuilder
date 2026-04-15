@@ -19,6 +19,7 @@ export async function GET() {
         id: true,
         email: true,
         name: true,
+        nametag: true,
         coachingRole: true,
         role: true,
         subscriptionPlan: true,

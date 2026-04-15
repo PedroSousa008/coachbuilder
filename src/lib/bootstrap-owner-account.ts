@@ -4,6 +4,7 @@ import { hashPasswordNode } from "@/lib/password-node";
 import { emptyWorkspaceSnapshot } from "@/lib/workspace-snapshot";
 import { getBuiltinBootstrapOwnerEmails, isOwnerAdminEmail, normalizeAdminEmail } from "@/lib/admin-owner";
 import { isCoachingRoleId } from "@/types/auth";
+import { allocateUniqueNametag, isPrismaNametagConflict } from "@/lib/user-nametag";
 
 const DEFAULT_NAME = "Pedro Sousa";
 const DEFAULT_COACHING_ROLE = "head-coach";
@@ -38,19 +39,31 @@ export function canProvisionBootstrapOwner(normEmail: string, password: string):
 export async function provisionBootstrapOwnerUser(normEmail: string, password: string) {
   const { salt, hash } = hashPasswordNode(password);
   const payload = emptyWorkspaceSnapshot() as object;
-  return prisma.user.create({
-    data: {
-      email: normEmail,
-      name: resolveBootstrapName(),
-      coachingRole: resolveBootstrapCoachingRole(),
-      passwordHash: hash,
-      salt,
-      role: "admin",
-      workspace: {
-        create: { payload },
-      },
-    },
-  });
+  const name = resolveBootstrapName();
+  const coachingRole = resolveBootstrapCoachingRole();
+  for (let attempt = 0; attempt < 20; attempt++) {
+    const nametag = await allocateUniqueNametag(prisma, { name, email: normEmail });
+    try {
+      return await prisma.user.create({
+        data: {
+          email: normEmail,
+          name,
+          nametag,
+          coachingRole,
+          passwordHash: hash,
+          salt,
+          role: "admin",
+          workspace: {
+            create: { payload },
+          },
+        },
+      });
+    } catch (e) {
+      if (isPrismaNametagConflict(e)) continue;
+      throw e;
+    }
+  }
+  throw new Error("provisionBootstrapOwnerUser: falha ao criar conta");
 }
 
 /**
@@ -69,17 +82,33 @@ export async function ensureBootstrapOwnersSeeded(db: PrismaClient): Promise<voi
 
     const { salt, hash } = hashPasswordNode(pwd);
     const payload = emptyWorkspaceSnapshot() as object;
-    await db.user.create({
-      data: {
-        email: norm,
-        name,
-        coachingRole,
-        passwordHash: hash,
-        salt,
-        role: "admin",
-        workspace: { create: { payload } },
-      },
-    });
+    let created = false;
+    for (let attempt = 0; attempt < 20; attempt++) {
+      const nametag = await allocateUniqueNametag(db, { name, email: norm });
+      try {
+        await db.user.create({
+          data: {
+            email: norm,
+            name,
+            nametag,
+            coachingRole,
+            passwordHash: hash,
+            salt,
+            role: "admin",
+            workspace: { create: { payload } },
+          },
+        });
+        created = true;
+        break;
+      } catch (e) {
+        if (isPrismaNametagConflict(e)) continue;
+        throw e;
+      }
+    }
+    if (!created) {
+      console.error(`[bootstrap-seed] Falha ao criar dono: ${norm}`);
+      continue;
+    }
     console.log(`[bootstrap-seed] Utilizador dono criado: ${norm}`);
   }
 }

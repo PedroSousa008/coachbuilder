@@ -12,6 +12,7 @@ import { recordUserLoginSafe } from "@/lib/server-analytics";
 import { toCloudUserPublic } from "@/lib/cloud-user-public";
 import { computeSubscriptionAccess } from "@/lib/subscription-access";
 import { transitionExpiredSubscriptionState } from "@/lib/subscription-transition";
+import { ensureUserNametagIfMissing } from "@/lib/user-nametag";
 
 export const dynamic = "force-dynamic";
 
@@ -72,11 +73,12 @@ export async function POST(req: Request) {
     if (!transitioned) {
       return NextResponse.json({ ok: false, error: "Erro interno." }, { status: 500 });
     }
-    const subscriptionAccess = computeSubscriptionAccess(transitioned);
+    const withNametag = (await ensureUserNametagIfMissing(prisma, transitioned.id)) ?? transitioned;
+    const subscriptionAccess = computeSubscriptionAccess(withNametag);
 
     return NextResponse.json({
       ok: true,
-      user: { ...toCloudUserPublic(transitioned), subscriptionAccess },
+      user: { ...toCloudUserPublic(withNametag), subscriptionAccess },
     });
   } catch (e) {
     console.error("[cloud/login]", e);

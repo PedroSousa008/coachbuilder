@@ -44,6 +44,8 @@ export type AuthUser = {
   id: string;
   email: string;
   name: string;
+  /** Cloud: gerado no registo, único, não editável pelo utilizador. */
+  nametag?: string;
   coachingRole: CoachingRoleId;
   /** Só preenchido com cloud + API atualizada */
   role?: "user" | "admin";

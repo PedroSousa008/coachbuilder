@@ -12,16 +12,19 @@ export function toCloudUserPublic(u: {
   id: string;
   email: string;
   name?: string | null;
+  nametag?: string | null;
   coachingRole?: string | null;
   role?: string | null;
   subscriptionPlan?: string | null;
 }): CloudUserPublic {
   const cr = typeof u.coachingRole === "string" ? u.coachingRole : "head-coach";
   const r = typeof u.role === "string" ? u.role.trim().toLowerCase() : "user";
+  const tag = typeof u.nametag === "string" && u.nametag.trim() !== "" ? u.nametag.trim() : undefined;
   return {
     id: u.id,
     email: u.email,
     name: typeof u.name === "string" ? u.name : "",
+    ...(tag ? { nametag: tag } : {}),
     coachingRole: isCoachingRoleId(cr) ? cr : "head-coach",
     role: r === "admin" ? "admin" : "user",
     subscriptionPlan: (typeof u.subscriptionPlan === "string" && u.subscriptionPlan) || "free",
@@ -87,6 +90,7 @@ export function parseCloudUserFromApi(raw: unknown): CloudUserPublic | null {
     id: o.id,
     email: o.email,
     name: typeof o.name === "string" ? o.name : "",
+    nametag: typeof o.nametag === "string" ? o.nametag : null,
     coachingRole: typeof o.coachingRole === "string" ? o.coachingRole : "head-coach",
     role: roleLower,
     subscriptionPlan,

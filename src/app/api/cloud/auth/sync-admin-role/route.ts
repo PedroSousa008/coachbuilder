@@ -4,6 +4,7 @@ import { CLOUD_SERVER_UNAVAILABLE_MESSAGE, isCloudSyncEnabledServer } from "@/li
 import { readSessionFromCookies } from "@/lib/cloud-session";
 import { isOwnerAdminEmail } from "@/lib/admin-owner";
 import { toCloudUserPublic } from "@/lib/cloud-user-public";
+import { ensureUserNametagIfMissing } from "@/lib/user-nametag";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +30,8 @@ export async function POST() {
         data: { role: "admin" },
       });
     }
-    return NextResponse.json({ ok: true, user: toCloudUserPublic(user) });
+    const withNametag = (await ensureUserNametagIfMissing(prisma, user.id)) ?? user;
+    return NextResponse.json({ ok: true, user: toCloudUserPublic(withNametag) });
   } catch (e) {
     console.error("[cloud/sync-admin-role]", e);
     return NextResponse.json({ ok: false, error: "Erro interno." }, { status: 500 });
