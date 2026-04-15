@@ -708,7 +708,16 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const updatePlayer = useCallback((id: string, patch: Partial<Omit<Player, "id">>) => {
-    setPlayers((prev) => prev.map((x) => (x.id === id ? { ...x, ...patch } : x)));
+    setPlayers((prev) =>
+      prev.map((x) => {
+        if (x.id !== id) return x;
+        const next = { ...x, ...patch } as Player;
+        if ("linkedNametag" in patch && patch.linkedNametag === undefined) {
+          delete next.linkedNametag;
+        }
+        return next;
+      })
+    );
   }, []);
 
   const removePlayer = useCallback((id: string) => {

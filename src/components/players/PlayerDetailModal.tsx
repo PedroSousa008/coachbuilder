@@ -1,8 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Search, X } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { shouldUseCloudClientApis } from "@/lib/cloud-config";
+import { normalizeNametagInput } from "@/lib/user-nametag";
 import type {
   EvaluationTestId,
   Player,
@@ -76,6 +79,12 @@ export function PlayerDetailModal({
   const [evaluationMediaOpenId, setEvaluationMediaOpenId] = useState<EvaluationTestId | null>(null);
   const [mediaPortalMounted, setMediaPortalMounted] = useState(false);
   const [documentsBundle, setDocumentsBundle] = useState<TeamDocumentsBundle>(() => normalizeTeamDocuments());
+  const { user } = useAuth();
+  const [linkedNametagDraft, setLinkedNametagDraft] = useState("");
+  const [nametagLookup, setNametagLookup] = useState<
+    "idle" | "loading" | "linked" | "unlinked" | "need_auth" | "server_off" | "error"
+  >("idle");
+  const lookupGen = useRef(0);
 
   useEffect(() => setMediaPortalMounted(true), []);
 
@@ -108,10 +117,49 @@ export function PlayerDetailModal({
     }
     setEvaluationDraft(ev);
     setDocumentsBundle(normalizeTeamDocuments(player.documents));
+    setLinkedNametagDraft(player.linkedNametag ?? "");
+    setNametagLookup("idle");
     setTab("dados");
     setEvaluationHelpOpenId(null);
     setEvaluationMediaOpenId(null);
   }, [player]);
+
+  useEffect(() => {
+    if (!open || !player) return;
+    const norm = normalizeNametagInput(linkedNametagDraft);
+    if (!norm) {
+      setNametagLookup("idle");
+      return;
+    }
+    if (!shouldUseCloudClientApis(user)) {
+      setNametagLookup("need_auth");
+      return;
+    }
+    setNametagLookup("loading");
+    const gen = ++lookupGen.current;
+    const t = window.setTimeout(() => {
+      fetch(`/api/cloud/nametag/lookup?tag=${encodeURIComponent(norm)}`, { credentials: "include" })
+        .then(async (res) => {
+          if (lookupGen.current !== gen) return;
+          const data = (await res.json()) as { ok?: boolean; exists?: boolean };
+          if (!res.ok) {
+            if (res.status === 401) setNametagLookup("need_auth");
+            else if (res.status === 503) setNametagLookup("server_off");
+            else setNametagLookup("error");
+            return;
+          }
+          if (data.ok && data.exists) setNametagLookup("linked");
+          else if (data.ok && data.exists === false) setNametagLookup("unlinked");
+          else setNametagLookup("idle");
+        })
+        .catch(() => {
+          if (lookupGen.current === gen) setNametagLookup("error");
+        });
+    }, 380);
+    return () => {
+      window.clearTimeout(t);
+    };
+  }, [linkedNametagDraft, open, player?.id, user?.id]);
 
   useEffect(() => {
     if (tab !== "avaliacao") {
@@ -232,6 +280,7 @@ export function PlayerDetailModal({
       evaluationTests[id] = { raw, ...(ai != null ? { aiOverall: ai } : {}) };
     }
 
+    const ln = normalizeNametagInput(linkedNametagDraft);
     onSave(player.id, {
       name: n,
       number: num,
@@ -247,6 +296,7 @@ export function PlayerDetailModal({
       qualities: qualitiesDraft,
       evaluationTests,
       documents: normalizeTeamDocuments(documentsBundle),
+      ...(ln ? { linkedNametag: ln } : { linkedNametag: undefined }),
     });
   };
 
@@ -272,7 +322,44 @@ export function PlayerDetailModal({
           <h3 id="player-detail-title" className="font-display text-lg font-semibold text-white">
             {player.name}
           </h3>
-          <p className="mt-0.5 text-xs text-zinc-500">Dados, qualidades, avaliação e documentos</p>
+          <div className="mt-3 max-w-sm">
+            <label htmlFor="player-linked-nametag" className="block text-[11px] font-medium uppercase tracking-wide text-zinc-500">
+              Nametag (conta CoachBuilder)
+            </label>
+            <div className="mt-1.5 flex items-center gap-0.5 rounded-xl border border-surface-border bg-black/30 px-2 py-1.5 focus-within:border-accent/40 focus-within:ring-1 focus-within:ring-accent/25">
+              <span className="shrink-0 pl-0.5 font-mono text-sm text-zinc-500" aria-hidden>
+                @
+              </span>
+              <input
+                id="player-linked-nametag"
+                type="text"
+                autoComplete="off"
+                spellCheck={false}
+                placeholder="ex. pedrosousa"
+                value={linkedNametagDraft}
+                onChange={(e) => setLinkedNametagDraft(e.target.value)}
+                className="min-w-0 flex-1 bg-transparent font-mono text-sm text-zinc-100 outline-none placeholder:text-zinc-600"
+              />
+            </div>
+            {normalizeNametagInput(linkedNametagDraft) ? (
+              <p className="mt-1.5 text-xs" role="status">
+                {nametagLookup === "loading" ? (
+                  <span className="text-zinc-500">A verificar…</span>
+                ) : nametagLookup === "linked" ? (
+                  <span className="text-emerald-400/95">Conta encontrada — associação válida.</span>
+                ) : nametagLookup === "unlinked" ? (
+                  <span className="text-amber-400/95">Ainda não existe conta com este nametag.</span>
+                ) : nametagLookup === "need_auth" ? (
+                  <span className="text-zinc-500">Inicia sessão na cloud para verificar o nametag.</span>
+                ) : nametagLookup === "server_off" ? (
+                  <span className="text-zinc-500">Verificação indisponível (servidor).</span>
+                ) : (
+                  <span className="text-zinc-600">Não foi possível verificar.</span>
+                )}
+              </p>
+            ) : null}
+          </div>
+          <p className="mt-3 text-xs text-zinc-500">Dados, qualidades, avaliação e documentos</p>
           {insights && (
             <div className="mt-4">
               <PlayerInsightsBox insights={insights} />

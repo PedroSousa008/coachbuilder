@@ -6,6 +6,14 @@ function stripDiacritics(s: string): string {
   return s.normalize("NFD").replace(/\p{M}/gu, "");
 }
 
+/** Normaliza o texto introduzido pelo treinador para comparar com `User.nametag` na BD. */
+export function normalizeNametagInput(raw: string): string {
+  return stripDiacritics(raw.trim())
+    .toLowerCase()
+    .replace(/^@+/, "")
+    .replace(/[^a-z0-9]+/g, "");
+}
+
 /** Base slug a partir do nome no registo; fallback para a parte local do email. */
 export function nameEmailToNametagBase(name: string, email: string): string {
   const fromName = stripDiacritics(name.trim().toLowerCase()).replace(/[^a-z0-9]+/g, "");

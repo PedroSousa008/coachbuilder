@@ -218,6 +218,11 @@ export interface Player {
   dateOfBirth?: string;
   /** Contratos, PDFs, vídeos, links — sincronizado com o workspace. */
   documents?: TeamDocumentsBundle;
+  /**
+   * Nametag de conta CoachBuilder associado pelo treinador (normalizado, sem @).
+   * A “aceitação” é verificada na cloud: existe utilizador com esse `nametag`.
+   */
+  linkedNametag?: string;
 }
 
 export interface StaffMember {
