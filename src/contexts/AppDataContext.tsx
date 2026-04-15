@@ -53,6 +53,7 @@ import {
 } from "@/lib/workspace-snapshot";
 import { buildWorkspaceSnapshotV1 } from "@/lib/build-workspace-snapshot";
 import { emptySketchAreaState } from "@/lib/sketch-area";
+import { cloudDmConversationId, parseCloudDmConversationId } from "@/lib/dm-conversation-id";
 import { normalizeNametagInput } from "@/lib/user-nametag";
 import { useAuth } from "@/contexts/AuthContext";
 import { withNormalizedCareerSeasonsInProfile } from "@/lib/coach-career-season-normalize";
@@ -174,11 +175,15 @@ type AppDataContextValue = {
 
   conversations: Conversation[];
   messagesByConv: Record<string, Message[]>;
-  createDmWithPlayer: (player: Player) => string | null;
+  createDmWithPlayer: (player: Player, options?: { peerCloudUserId?: string | null }) => string | null;
   addPlayerToGroupChat: (conversationId: string, player: Player) => void;
   sendChatMessage: (conversationId: string, body: string) => void;
   /** Mescla mensagens vindas da cloud (ids do servidor) num fio DM. */
   mergeRemoteDmMessages: (conversationId: string, messages: Message[]) => void;
+  /** Sincroniza a lista de DMs a partir do servidor (outro utilizador vê conversas). */
+  hydrateDmThreadsFromCloud: (
+    threads: Array<{ peerUserId: string; peerName: string; lastBody: string; lastAt: string }>
+  ) => void;
 
   trainingSessions: TrainingSession[];
   addTrainingSession: (input: NewSessionInput) => TrainingSession;
@@ -760,10 +765,12 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const createDmWithPlayer = useCallback(
-    (player: Player) => {
+    (player: Player, options?: { peerCloudUserId?: string | null }) => {
       if (!normalizeNametagInput(player.linkedNametag ?? "")) return null;
       const coachId = user?.id ?? mockCoach.id;
-      const id = `conv-dm-${player.id}`;
+      const peerCloud = options?.peerCloudUserId?.trim();
+      const id =
+        peerCloud && user?.id ? cloudDmConversationId(user.id, peerCloud) : `conv-dm-${player.id}`;
       setConversations((prev) => {
         if (prev.some((c) => c.id === id)) return prev;
         const conv: Conversation = {
@@ -774,12 +781,59 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           avatarInitials: initials(player.name),
           lastMessagePreview: "No messages yet",
           lastMessageAt: new Date().toISOString(),
-          participantIds: [coachId, player.id],
+          participantIds: peerCloud && user?.id ? [user.id, peerCloud] : [coachId, player.id],
         };
         return [...prev, conv];
       });
       setMessagesByConv((prev) => (prev[id] ? prev : { ...prev, [id]: [] }));
       return id;
+    },
+    [user?.id]
+  );
+
+  const hydrateDmThreadsFromCloud = useCallback(
+    (threads: Array<{ peerUserId: string; peerName: string; lastBody: string; lastAt: string }>) => {
+      if (!user?.id) return;
+      setConversations((prev) => {
+        const next = [...prev];
+        const indexById = new Map(next.map((c, i) => [c.id, i]));
+        for (const t of threads) {
+          const id = cloudDmConversationId(user.id, t.peerUserId);
+          const lastPreview =
+            t.lastBody.length > 72 ? `${t.lastBody.slice(0, 72)}…` : t.lastBody;
+          const existingIdx = indexById.get(id);
+          if (existingIdx != null) {
+            const cur = next[existingIdx]!;
+            next[existingIdx] = {
+              ...cur,
+              lastMessagePreview: lastPreview,
+              lastMessageAt: t.lastAt,
+              title: cur.title || t.peerName,
+            };
+            continue;
+          }
+          next.push({
+            id,
+            type: "dm",
+            title: t.peerName,
+            subtitle: "Mensagem direta",
+            avatarInitials: initials(t.peerName),
+            lastMessagePreview: lastPreview,
+            lastMessageAt: t.lastAt,
+            participantIds: [user.id, t.peerUserId],
+          });
+          indexById.set(id, next.length - 1);
+        }
+        return next;
+      });
+      setMessagesByConv((prev) => {
+        const o = { ...prev };
+        for (const t of threads) {
+          const id = cloudDmConversationId(user.id, t.peerUserId);
+          if (o[id] === undefined) o[id] = [];
+        }
+        return o;
+      });
     },
     [user?.id]
   );
@@ -849,9 +903,15 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       const trimmed = body.trim();
       if (!trimmed) return;
       if (conversationId.startsWith("conv-dm-")) {
-        const pid = conversationId.slice("conv-dm-".length);
-        const pl = players.find((x) => x.id === pid);
-        if (!normalizeNametagInput(pl?.linkedNametag ?? "")) return;
+        const cloud = parseCloudDmConversationId(conversationId);
+        if (cloud) {
+          const me = user?.id ?? mockCoach.id;
+          if (cloud.userIdA !== me && cloud.userIdB !== me) return;
+        } else {
+          const pid = conversationId.slice("conv-dm-".length);
+          const pl = players.find((x) => x.id === pid);
+          if (!normalizeNametagInput(pl?.linkedNametag ?? "")) return;
+        }
       }
       const authorId = user?.id ?? mockCoach.id;
       const authorName = user?.name?.trim() || mockCoach.name.trim() || "Coach";
@@ -1041,6 +1101,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       addPlayerToGroupChat,
       sendChatMessage,
       mergeRemoteDmMessages,
+      hydrateDmThreadsFromCloud,
       trainingSessions,
       addTrainingSession,
       trainingPlayerIdsBySession,
@@ -1093,6 +1154,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       addPlayerToGroupChat,
       sendChatMessage,
       mergeRemoteDmMessages,
+      hydrateDmThreadsFromCloud,
       trainingSessions,
       addTrainingSession,
       trainingPlayerIdsBySession,

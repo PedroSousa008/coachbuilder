@@ -11,10 +11,20 @@ import { useAppData, SQUAD_GROUP_ID } from "@/contexts/AppDataContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { shouldUseCloudClientApis } from "@/lib/cloud-config";
+import { parseCloudDmConversationId } from "@/lib/dm-conversation-id";
 import { normalizeNametagInput } from "@/lib/user-nametag";
 import type { Message } from "@/types";
 
-const DM_POLL_MS = 6500;
+function mapApiMessage(convId: string, m: { id: string; authorUserId: string; authorName: string; body: string; sentAt: string }): Message {
+  return {
+    id: m.id,
+    conversationId: convId,
+    authorId: m.authorUserId,
+    authorName: m.authorName,
+    body: m.body,
+    sentAt: m.sentAt,
+  };
+}
 
 export function MessagesClient() {
   const {
@@ -25,6 +35,7 @@ export function MessagesClient() {
     addPlayerToGroupChat,
     sendChatMessage,
     mergeRemoteDmMessages,
+    hydrateDmThreadsFromCloud,
     hydrated,
   } = useAppData();
   const { language } = useLanguage();
@@ -42,7 +53,7 @@ export function MessagesClient() {
   const [dmPickerOpen, setDmPickerOpen] = useState(false);
   const [groupPickerOpen, setGroupPickerOpen] = useState(false);
   const [playerCloudUserId, setPlayerCloudUserId] = useState<Record<string, string>>({});
-  const pollSinceRef = useRef<Record<string, string>>({});
+  const streamSinceRef = useRef<Record<string, string>>({});
 
   const coachUserId = user?.id ?? mockCoach.id;
 
@@ -52,9 +63,7 @@ export function MessagesClient() {
       return;
     }
     const tags = [
-      ...new Set(
-        players.map((p) => normalizeNametagInput(p.linkedNametag ?? "")).filter(Boolean)
-      ),
+      ...new Set(players.map((p) => normalizeNametagInput(p.linkedNametag ?? "")).filter(Boolean)),
     ];
     if (tags.length === 0) {
       setPlayerCloudUserId({});
@@ -92,6 +101,27 @@ export function MessagesClient() {
     };
   }, [hydrated, players, user]);
 
+  /** Qualquer utilizador com sessão cloud: lista DMs a partir do servidor (o outro lado passa a ver o fio). */
+  useEffect(() => {
+    if (!hydrated || !user?.id || !shouldUseCloudClientApis(user)) return;
+    let cancelled = false;
+    fetch("/api/cloud/chat/dm/threads", { credentials: "include" })
+      .then((r) => r.json())
+      .then(
+        (data: {
+          ok?: boolean;
+          threads?: Array<{ peerUserId: string; peerName: string; lastBody: string; lastAt: string }>;
+        }) => {
+          if (cancelled || !data.ok || !data.threads?.length) return;
+          hydrateDmThreadsFromCloud(data.threads);
+        }
+      )
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [hydrated, user?.id, hydrateDmThreadsFromCloud]);
+
   const playerHasAppAccount = useCallback(
     (playerId: string) => Boolean(playerCloudUserId[playerId]),
     [playerCloudUserId]
@@ -110,19 +140,70 @@ export function MessagesClient() {
     (a, b) => new Date(a.sentAt).getTime() - new Date(b.sentAt).getTime()
   );
 
-  const activeDmPlayerId =
-    activeConv?.type === "dm" ? activeConv.id.replace(/^conv-dm-/, "") : null;
-  const activeDmPeerCloudId = activeDmPlayerId ? playerCloudUserId[activeDmPlayerId] : null;
+  const activeDmPeerCloudId = useMemo(() => {
+    if (!activeConv || activeConv.type !== "dm" || !user?.id) return null;
+    const parsed = parseCloudDmConversationId(activeConv.id);
+    if (parsed) {
+      return parsed.userIdA === user.id ? parsed.userIdB : parsed.userIdA;
+    }
+    const legacyPlayerId = activeConv.id.startsWith("conv-dm-") ? activeConv.id.slice("conv-dm-".length) : "";
+    if (legacyPlayerId && !legacyPlayerId.includes("__")) {
+      return playerCloudUserId[legacyPlayerId] ?? null;
+    }
+    return null;
+  }, [activeConv, user?.id, playerCloudUserId]);
 
-  /** Polling DM na cloud: novas mensagens (outro lado ou outro dispositivo). */
+  const activeDmLegacyRosterId =
+    activeConv?.type === "dm" && !parseCloudDmConversationId(activeConv.id)
+      ? activeConv.id.replace(/^conv-dm-/, "")
+      : null;
+
+  /** Histórico completo ao abrir DM cloud (ambos os lados usam o mesmo id de conversa). */
+  useEffect(() => {
+    if (!activeConv || activeConv.type !== "dm" || !activeDmPeerCloudId) return;
+    if (!parseCloudDmConversationId(activeConv.id)) return;
+    if (!shouldUseCloudClientApis(user)) return;
+
+    const convId = activeConv.id;
+    let cancelled = false;
+    fetch(
+      `/api/cloud/chat/dm?peerUserId=${encodeURIComponent(activeDmPeerCloudId)}&since=${encodeURIComponent(new Date(0).toISOString())}`,
+      { credentials: "include" }
+    )
+      .then((r) => r.json())
+      .then(
+        (data: {
+          ok?: boolean;
+          messages?: Array<{ id: string; authorUserId: string; authorName: string; body: string; sentAt: string }>;
+        }) => {
+          if (cancelled) return;
+          if (!data.ok || !data.messages?.length) return;
+          const mapped = data.messages.map((m) => mapApiMessage(convId, m));
+          mergeRemoteDmMessages(convId, mapped);
+          const last = mapped[mapped.length - 1]!;
+          streamSinceRef.current[convId] = last.sentAt;
+        }
+      )
+      .catch(() => {});
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeConv?.id, activeDmPeerCloudId, mergeRemoteDmMessages, user]);
+
+  /**
+   * Polling curto (~550 ms): no serverless o mesmo URL SSE não renova o `since` ao reconectar;
+   * aqui o `since` vem sempre do ref — o destinatário vê mensagens novas quase de imediato.
+   */
   useEffect(() => {
     if (!activeConv || activeConv.type !== "dm" || !activeDmPeerCloudId || !user?.id) return;
     if (!shouldUseCloudClientApis(user)) return;
 
-    let cancelled = false;
     const convId = activeConv.id;
+    let cancelled = false;
     const poll = async () => {
-      const since = pollSinceRef.current[convId] ?? new Date(0).toISOString();
+      if (cancelled) return;
+      const since = streamSinceRef.current[convId] ?? new Date(0).toISOString();
       try {
         const res = await fetch(
           `/api/cloud/chat/dm?peerUserId=${encodeURIComponent(activeDmPeerCloudId)}&since=${encodeURIComponent(since)}`,
@@ -130,93 +211,60 @@ export function MessagesClient() {
         );
         const data = (await res.json()) as {
           ok?: boolean;
-          messages?: Array<{
-            id: string;
-            authorUserId: string;
-            authorName: string;
-            body: string;
-            sentAt: string;
-          }>;
+          messages?: Array<{ id: string; authorUserId: string; authorName: string; body: string; sentAt: string }>;
         };
-        if (cancelled || !res.ok || !data.ok || !data.messages?.length) return;
-        const mapped: Message[] = data.messages.map((m) => ({
-          id: m.id,
-          conversationId: convId,
-          authorId: m.authorUserId,
-          authorName: m.authorName,
-          body: m.body,
-          sentAt: m.sentAt,
-        }));
+        if (!res.ok || !data.ok || !data.messages?.length) return;
+        const mapped = data.messages.map((m) => mapApiMessage(convId, m));
         mergeRemoteDmMessages(convId, mapped);
-        const lastSent = mapped[mapped.length - 1]!.sentAt;
-        pollSinceRef.current[convId] = lastSent;
+        streamSinceRef.current[convId] = mapped[mapped.length - 1]!.sentAt;
       } catch {
         /* offline */
       }
     };
 
+    const id = window.setInterval(() => void poll(), 550);
     void poll();
-    const id = window.setInterval(() => void poll(), DM_POLL_MS);
     return () => {
       cancelled = true;
       window.clearInterval(id);
     };
-  }, [activeConv, activeDmPeerCloudId, mergeRemoteDmMessages, user?.id]);
+  }, [activeConv?.id, activeDmPeerCloudId, mergeRemoteDmMessages, user?.id]);
 
-  const canSendDm =
-    !activeConv ||
-    activeConv.type !== "dm" ||
-    (activeDmPlayerId ? playerHasAppAccount(activeDmPlayerId) : false);
+  const canSendDm = useMemo(() => {
+    if (!activeConv || activeConv.type !== "dm") return true;
+    if (parseCloudDmConversationId(activeConv.id)) return Boolean(activeDmPeerCloudId);
+    return activeDmLegacyRosterId ? playerHasAppAccount(activeDmLegacyRosterId) : false;
+  }, [activeConv, activeDmPeerCloudId, activeDmLegacyRosterId, playerHasAppAccount]);
 
   const send = async () => {
     if (!draft.trim() || !activeId || !activeConv) return;
     const trimmed = draft.trim();
 
-    if (activeConv.type === "dm" && activeDmPlayerId && !playerHasAppAccount(activeDmPlayerId)) return;
+    if (activeConv.type === "dm" && !canSendDm) return;
 
-    if (activeConv.type === "dm" && activeDmPlayerId) {
-      const peerCloudId = playerCloudUserId[activeDmPlayerId];
-      if (peerCloudId && user?.id && shouldUseCloudClientApis(user)) {
-        try {
-          const res = await fetch("/api/cloud/chat/dm", {
-            method: "POST",
-            credentials: "include",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ peerUserId: peerCloudId, body: trimmed }),
-          });
-          const data = (await res.json()) as {
-            ok?: boolean;
-            message?: {
-              id: string;
-              authorUserId: string;
-              authorName: string;
-              body: string;
-              sentAt: string;
-            };
-          };
-          if (res.ok && data.ok && data.message) {
-            const m = data.message;
-            mergeRemoteDmMessages(activeId, [
-              {
-                id: m.id,
-                conversationId: activeId,
-                authorId: m.authorUserId,
-                authorName: m.authorName,
-                body: m.body,
-                sentAt: m.sentAt,
-              },
-            ]);
-            pollSinceRef.current[activeId] = m.sentAt;
-            setDraft("");
-            return;
-          }
-        } catch {
-          /* fallback abaixo */
+    if (activeConv.type === "dm" && activeDmLegacyRosterId && !playerHasAppAccount(activeDmLegacyRosterId)) return;
+
+    if (activeConv.type === "dm" && activeDmPeerCloudId && user?.id && shouldUseCloudClientApis(user)) {
+      try {
+        const res = await fetch("/api/cloud/chat/dm", {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ peerUserId: activeDmPeerCloudId, body: trimmed }),
+        });
+        const data = (await res.json()) as {
+          ok?: boolean;
+          message?: { id: string; authorUserId: string; authorName: string; body: string; sentAt: string };
+        };
+        if (res.ok && data.ok && data.message) {
+          mergeRemoteDmMessages(activeConv.id, [mapApiMessage(activeConv.id, data.message)]);
+          streamSinceRef.current[activeConv.id] = data.message.sentAt;
+          setDraft("");
+          return;
         }
+      } catch {
+        /* local fallback */
       }
-      sendChatMessage(activeId, trimmed);
-      setDraft("");
-      return;
     }
 
     sendChatMessage(activeId, trimmed);
@@ -246,7 +294,8 @@ export function MessagesClient() {
         disabledHint={isPt ? "Sem conta na app (associa o nametag em Equipa)" : "No app account yet (link nametag in Team)"}
         onClose={() => setDmPickerOpen(false)}
         onSelect={(p) => {
-          const id = createDmWithPlayer(p);
+          const peer = playerCloudUserId[p.id];
+          const id = createDmWithPlayer(p, { peerCloudUserId: peer ?? null });
           if (id) {
             setActiveId(id);
             setTab("dm");
@@ -402,8 +451,8 @@ export function MessagesClient() {
                 ) : (
                   <p className="mt-2 text-[11px] text-zinc-600">
                     {isPt
-                      ? "Mensagens directas com conta na cloud sincronizam entre dispositivos (polling). Chat de grupo continua local neste browser."
-                      : "Direct messages with a cloud account sync across devices (polling). Squad group chat stays local in this browser."}
+                      ? "DM na cloud: sincronização frequente entre contas (~½ s). Chat de grupo continua só neste browser."
+                      : "Cloud DMs sync between accounts about every ½ s. Squad group chat stays local in this browser."}
                   </p>
                 )}
               </>
