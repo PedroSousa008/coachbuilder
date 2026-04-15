@@ -130,7 +130,6 @@ export default function TeamPage() {
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           {tab === "players" ? (
             <Input
-              placeholder="Search players…"
               placeholder={isPt ? "Procurar jogadores…" : "Search players…"}
               value={q}
               onChange={(e) => setQ(e.target.value)}
