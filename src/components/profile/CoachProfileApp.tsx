@@ -67,7 +67,7 @@ export function CoachProfileApp() {
     ].filter(Boolean);
     const tag = user?.nametag?.trim();
     if (tag) {
-      parts.push(`"${tag}"`);
+      parts.push(`@${tag}`);
     }
     return parts.length > 0 ? parts.join(" · ") : "Perfil de treinador";
   }, [coachProfile.club, coachProfile.profession, coachProfile.role, user?.nametag]);
