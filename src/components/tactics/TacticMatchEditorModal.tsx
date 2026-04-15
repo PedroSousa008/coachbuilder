@@ -21,6 +21,14 @@ type Props = {
   roster: Player[];
   suggestedPlayerIds: string[];
   existing: TacticMatch | null;
+  quickImportMatches?: Array<{
+    id: string;
+    label: string;
+    dateIso: string;
+    opponent: string;
+    teamGoals: number;
+    opponentGoals: number;
+  }>;
   onClose: () => void;
   onSave: (match: TacticMatch) => void;
   onDelete?: (matchId: string) => void;
@@ -32,6 +40,7 @@ export function TacticMatchEditorModal({
   roster,
   suggestedPlayerIds,
   existing,
+  quickImportMatches = [],
   onClose,
   onSave,
   onDelete,
@@ -76,6 +85,15 @@ export function TacticMatchEditorModal({
 
   const updateLine = (index: number, patch: Partial<TacticMatchPlayerLine>) => {
     setLines((prev) => prev.map((l, i) => (i === index ? { ...l, ...patch } : l)));
+  };
+
+  const applyQuickImport = (id: string) => {
+    const pick = quickImportMatches.find((m) => m.id === id);
+    if (!pick) return;
+    setDate(pick.dateIso.slice(0, 10));
+    setOpponent(pick.opponent);
+    setTeamGoals(pick.teamGoals);
+    setOpponentGoals(pick.opponentGoals);
   };
 
   const removeLine = (index: number) => {
@@ -147,6 +165,29 @@ export function TacticMatchEditorModal({
               <Input value={opponent} onChange={(e) => setOpponent(e.target.value)} placeholder="Equipa" className="mt-1" />
             </div>
           </div>
+          {!existing && quickImportMatches.length > 0 ? (
+            <div>
+              <label className="text-xs text-zinc-500">Importar jogo do Calendário</label>
+              <select
+                defaultValue=""
+                onChange={(e) => {
+                  applyQuickImport(e.target.value);
+                  e.currentTarget.value = "";
+                }}
+                className="mt-1 h-10 w-full rounded-xl border border-surface-border bg-zinc-900 px-3 text-sm text-white"
+              >
+                <option value="">Escolher jogo já disputado...</option>
+                {quickImportMatches.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.label}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1 text-[11px] text-zinc-500">
+                Preenche automaticamente adversário + resultado. Depois podes editar estatísticas individuais.
+              </p>
+            </div>
+          ) : null}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs text-zinc-500">Golos (nós)</label>

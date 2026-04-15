@@ -20,6 +20,7 @@ import { PlayerTacticInsightModal } from "@/components/tactics/PlayerTacticInsig
 import { TacticMatchEditorModal } from "@/components/tactics/TacticMatchEditorModal";
 import { StyleOfPlayHelperModal } from "@/components/tactics/StyleOfPlayHelperModal";
 import { Sparkles } from "lucide-react";
+import { collectUniqueTeamNames, pickBestTeamMatch, userClubMatchesOfficialTeam } from "@/lib/team-match";
 
 const DRAFT_ID = "draft";
 
@@ -79,6 +80,9 @@ export function TacticsBoard() {
     removeTacticMatch,
     tacticPlayerNotes,
     setTacticPlayerAnalysisNote,
+    leagueTableRows,
+    leagueMatches,
+    coachProfile,
   } = useAppData();
   const draftTactic = useMemo(() => buildDraftTactic(), []);
   const [activeId, setActiveId] = useState<string>(() => DRAFT_ID);
@@ -272,6 +276,43 @@ export function TacticsBoard() {
   );
 
   const insightPlayer = insightSlot?.playerId ? roster.find((p) => p.id === insightSlot.playerId) ?? null : null;
+  const quickImportMatches = useMemo(() => {
+    const club = coachProfile.club.trim();
+    if (!club || leagueMatches.length === 0) return [];
+    const candidates = collectUniqueTeamNames({ tableRows: leagueTableRows, matches: leagueMatches });
+    const resolved = pickBestTeamMatch(club, candidates);
+    const label = (resolved?.name ?? club).trim();
+    const isMyTeam = (team: string) =>
+      userClubMatchesOfficialTeam(label, team, candidates) || userClubMatchesOfficialTeam(club, team, candidates);
+    const rows: Array<{
+      id: string;
+      label: string;
+      dateIso: string;
+      opponent: string;
+      teamGoals: number;
+      opponentGoals: number;
+    }> = [];
+    for (const m of leagueMatches) {
+      if (m.homeScore == null || m.awayScore == null) continue;
+        const homeHit = isMyTeam(m.homeTeam);
+        const awayHit = isMyTeam(m.awayTeam);
+        if (!homeHit && !awayHit) continue;
+        const teamGoals = homeHit ? m.homeScore : m.awayScore;
+        const opponentGoals = homeHit ? m.awayScore : m.homeScore;
+        const opponent = homeHit ? m.awayTeam : m.homeTeam;
+        const labelText = `${new Date(m.kickoff).toLocaleDateString("pt-PT")} · ${club} ${teamGoals}-${opponentGoals} ${opponent}`;
+        rows.push({
+          id: m.id,
+          label: labelText,
+          dateIso: m.kickoff,
+          opponent,
+          teamGoals,
+          opponentGoals,
+        });
+    }
+    rows.sort((a, b) => new Date(b.dateIso).getTime() - new Date(a.dateIso).getTime());
+    return rows;
+  }, [coachProfile.club, leagueTableRows, leagueMatches]);
   const insightTacticId = !isDraft ? active.id : null;
   const insightNotesInitial =
     insightTacticId && insightSlot?.playerId
@@ -333,6 +374,7 @@ export function TacticsBoard() {
           roster={roster}
           suggestedPlayerIds={lineupPlayerIds}
           existing={editingMatch}
+          quickImportMatches={quickImportMatches}
           onClose={() => {
             setMatchEditorOpen(false);
             setEditingMatch(null);
