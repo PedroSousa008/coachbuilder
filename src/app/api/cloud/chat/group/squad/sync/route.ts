@@ -4,6 +4,7 @@ import { CLOUD_SERVER_UNAVAILABLE_MESSAGE, isCloudSyncEnabledServer } from "@/li
 import { readSessionFromCookies } from "@/lib/cloud-session";
 import { emptyWorkspaceSnapshot, parseWorkspacePayload } from "@/lib/workspace-snapshot";
 import type { Conversation, Message } from "@/types";
+import { ptMemberCountSubtitle } from "@/lib/group-chat-messages-pt";
 
 export const dynamic = "force-dynamic";
 
@@ -72,7 +73,7 @@ export async function POST(req: Request) {
         const mergedConversation: Conversation = {
           ...conversation,
           participantIds: Array.from(new Set(conversation.participantIds)),
-          subtitle: `${Array.from(new Set(conversation.participantIds)).length} members`,
+          subtitle: ptMemberCountSubtitle(Array.from(new Set(conversation.participantIds)).length),
         };
         const next = {
           ...current,

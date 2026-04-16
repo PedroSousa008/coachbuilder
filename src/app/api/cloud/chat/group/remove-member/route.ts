@@ -4,6 +4,11 @@ import { CLOUD_SERVER_UNAVAILABLE_MESSAGE, isCloudSyncEnabledServer } from "@/li
 import { readSessionFromCookies } from "@/lib/cloud-session";
 import { emptyWorkspaceSnapshot, parseWorkspacePayload } from "@/lib/workspace-snapshot";
 import type { Conversation, Message } from "@/types";
+import {
+  ptMemberCountSubtitle,
+  ptMemberRemovedBody,
+  ptMemberRemovedPreview,
+} from "@/lib/group-chat-messages-pt";
 
 export const dynamic = "force-dynamic";
 
@@ -62,6 +67,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Sem permissão para expulsar." }, { status: 403 });
     }
 
+    const actorRow = await prisma.user.findUnique({
+      where: { id: claims.sub },
+      select: { name: true, email: true },
+    });
+    const actorLabel = actorRow?.name?.trim() || actorRow?.email || claims.email;
+
     const now = new Date().toISOString();
     const nextParticipantIds = group.participantIds.filter((id) => id !== participantId);
     const nextMemberMeta = { ...(group.groupMemberMeta ?? {}) };
@@ -76,16 +87,16 @@ export async function POST(req: Request) {
       groupMemberMeta: nextMemberMeta,
       groupAdminIds: nextAdminIds,
       groupPrimaryAdminId: nextPrimaryAdminId,
-      subtitle: `${nextParticipantIds.length} members`,
+      subtitle: ptMemberCountSubtitle(nextParticipantIds.length),
       lastMessageAt: now,
-      lastMessagePreview: "Member removed from group",
+      lastMessagePreview: ptMemberRemovedPreview(actorLabel),
     };
     const systemMessage: Message = {
       id: `m-${crypto.randomUUID()}`,
       conversationId,
       authorId: claims.sub,
-      authorName: claims.email,
-      body: `A member was removed from the group.`,
+      authorName: actorLabel,
+      body: ptMemberRemovedBody(),
       sentAt: now,
       system: true,
     };

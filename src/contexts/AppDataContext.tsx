@@ -33,6 +33,16 @@ import type {
   TeamSingleRoleId,
   TrainingSession,
 } from "@/types";
+import {
+  ptGroupCreatedBody,
+  ptGroupRenameBody,
+  ptGroupRenamePreview,
+  ptMemberCountSubtitle,
+  ptMemberRemovedBody,
+  ptMemberRemovedPreview,
+  ptMembersAddedBody,
+  ptMembersAddedPreview,
+} from "@/lib/group-chat-messages-pt";
 import { isChannelSystemMessage } from "@/lib/message-display";
 import { tallyForTactic } from "@/lib/tactics-match-stats";
 import { mockCoach } from "@/data/mock";
@@ -107,9 +117,9 @@ function defaultGroup(ownerId?: string): Conversation {
     title: "Squad",
     titleUpdatedAt: now,
     createdById: ownerId ?? mockCoach.id,
-    subtitle: "Team channel",
+    subtitle: "Canal da equipa",
     avatarInitials: "TM",
-    lastMessagePreview: "Welcome your players when they join.",
+    lastMessagePreview: "Dá as boas-vindas aos jogadores quando entrarem.",
     lastMessageAt: now,
     participantIds: [mockCoach.id],
     unread: 0,
@@ -154,7 +164,7 @@ function normalizeGroupConversation(conversation: Conversation, userId?: string 
     groupAdminIds: normalizedAdminIds,
     groupMemberMeta: normalizedMeta,
     participantIds: ensuredIds,
-    subtitle: `${ensuredIds.length} members`,
+    subtitle: ptMemberCountSubtitle(ensuredIds.length),
   };
 }
 
@@ -616,7 +626,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
               conversation: {
                 ...group,
                 participantIds,
-                subtitle: `${participantIds.length} members`,
+                subtitle: ptMemberCountSubtitle(participantIds.length),
               },
               messages: messagesByConv[group.id] ?? [],
             }),
@@ -962,7 +972,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           title: player.name,
           subtitle: `${formatPlayerPositions(player)} · #${player.number}`,
           avatarInitials: initials(player.name),
-          lastMessagePreview: "No messages yet",
+          lastMessagePreview: "Ainda sem mensagens",
           lastMessageAt: new Date().toISOString(),
           participantIds: peerCloud && user?.id ? [user.id, peerCloud] : [coachId, player.id],
         };
@@ -1031,17 +1041,17 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       const conversationId = uid("conv-group");
       const participantIds = [me, ...uniqueMembers.map((m) => m.participantId)];
       const now = new Date().toISOString();
-      const createdBody =
-        uniqueMembers.length > 0
-          ? `${groupTitle} created. Members added: ${uniqueMembers.map((m) => m.name).join(", ")}.`
-          : `${groupTitle} created.`;
+      const createdBody = ptGroupCreatedBody(
+        groupTitle,
+        uniqueMembers.map((m) => m.name)
+      );
       const conversation: Conversation = {
         id: conversationId,
         type: "group",
         title: groupTitle,
         titleUpdatedAt: now,
         createdById: me,
-        subtitle: `${participantIds.length} members`,
+        subtitle: ptMemberCountSubtitle(participantIds.length),
         avatarInitials: initials(groupTitle),
         lastMessagePreview: createdBody,
         lastMessageAt: now,
@@ -1113,7 +1123,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           titleUpdatedAt: now,
           avatarInitials: initials(nextTitle),
           lastMessageAt: now,
-          lastMessagePreview: `Group renamed to ${nextTitle}`,
+          lastMessagePreview: ptGroupRenamePreview(nextTitle),
         };
       })
     );
@@ -1123,7 +1133,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       conversationId,
       authorId: me,
       authorName: meName,
-      body: `Group renamed to ${nextTitle}.`,
+        body: ptGroupRenameBody(nextTitle),
       sentAt: now,
       system: true,
     };
@@ -1159,15 +1169,12 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
             addedNames.push(member.name);
           }
           if (addedNames.length === 0) return c;
-          const label =
-            addedNames.length === 1
-              ? `${addedNames[0]} added to the channel`
-              : `${addedNames.length} people added to the channel`;
+          const label = ptMembersAddedPreview(addedNames);
           return {
             ...c,
             participantIds: nextIds,
             groupMemberMeta: nextMeta,
-            subtitle: `${nextIds.length} members`,
+            subtitle: ptMemberCountSubtitle(nextIds.length),
             lastMessagePreview: label,
             lastMessageAt: now,
           };
@@ -1179,10 +1186,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         conversationId,
         authorId: coachId,
         authorName: coachName,
-        body:
-          addedNames.length === 1
-            ? `${addedNames[0]} was added to the group.`
-            : `${addedNames.join(", ")} were added to the group.`,
+        body: ptMembersAddedBody(addedNames),
         sentAt: now,
         system: true,
       };
@@ -1227,7 +1231,6 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         }
       }
       let removed = false;
-      const removedName = "Member";
       const now = new Date().toISOString();
       setConversations((prev) =>
         prev.map((c) => {
@@ -1250,8 +1253,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
             groupMemberMeta: nextMeta,
             groupAdminIds: nextAdmins,
             groupPrimaryAdminId: nextPrimary,
-            subtitle: `${nextIds.length} members`,
-            lastMessagePreview: `${actorName} removed a member`,
+            subtitle: ptMemberCountSubtitle(nextIds.length),
+            lastMessagePreview: ptMemberRemovedPreview(actorName),
             lastMessageAt: now,
           };
         })
@@ -1262,7 +1265,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         conversationId,
         authorId: actorId,
         authorName: actorName,
-        body: `${removedName} was removed from the group.`,
+        body: ptMemberRemovedBody(),
         sentAt: now,
         system: true,
       };

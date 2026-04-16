@@ -4,6 +4,7 @@ import { CLOUD_SERVER_UNAVAILABLE_MESSAGE, isCloudSyncEnabledServer } from "@/li
 import { readSessionFromCookies } from "@/lib/cloud-session";
 import { emptyWorkspaceSnapshot, parseWorkspacePayload } from "@/lib/workspace-snapshot";
 import type { Conversation, Message } from "@/types";
+import { ptGroupRenameBody, ptGroupRenamePreview } from "@/lib/group-chat-messages-pt";
 
 export const dynamic = "force-dynamic";
 
@@ -61,6 +62,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true, conversation: group });
     }
 
+    const actorRow = await prisma.user.findUnique({
+      where: { id: claims.sub },
+      select: { name: true, email: true },
+    });
+    const authorLabel = actorRow?.name?.trim() || actorRow?.email || claims.email;
+
     const now = new Date().toISOString();
     const updatedConversation: Conversation = {
       ...group,
@@ -68,15 +75,15 @@ export async function POST(req: Request) {
       titleUpdatedAt: now,
       avatarInitials: initials(title),
       lastMessageAt: now,
-      lastMessagePreview: `Group renamed to ${title}`,
+      lastMessagePreview: ptGroupRenamePreview(title),
       createdById: group.createdById ?? claims.sub,
     };
     const renameMessage: Message = {
       id: `m-${crypto.randomUUID()}`,
       conversationId,
       authorId: claims.sub,
-      authorName: claims.email,
-      body: `Group renamed to ${title}.`,
+      authorName: authorLabel,
+      body: ptGroupRenameBody(title),
       sentAt: now,
       system: true,
     };
