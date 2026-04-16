@@ -14,6 +14,7 @@ const TRAINING_EXERCISE_PRINT_IMAGE_BY_TITLE: Record<string, string> = {
   "Compact Defending Transition": "compact-defending-transition.png",
   "Possessão 8v8+2 neutros": "possessao-8v8-2-neutros.png",
   "Offensive Between Lines": "offensive-between-lines.png",
+  "Between the Lines": "between-the-lines.png",
   "9v9 + 2 Game": "9v9-2-game.png",
   "Double Finishing Drill": "double-finishing-drill.png",
   "Finishing Transition": "finishing-transition.png",

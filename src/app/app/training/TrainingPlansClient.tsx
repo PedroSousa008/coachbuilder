@@ -539,6 +539,15 @@ export function TrainingPlansClient() {
                               Sem vídeo de demonstração para este exercício.
                             </p>
                           )}
+                          {item.diagramImageUrl ? (
+                            <div className="mt-3 overflow-hidden rounded-xl border border-surface-border bg-black/15">
+                              <img
+                                src={item.diagramImageUrl}
+                                alt={`Diagrama do exercício ${item.title}`}
+                                className="h-auto w-full object-contain"
+                              />
+                            </div>
+                          ) : null}
                         </div>
                         <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-start">
                           <button

@@ -16,6 +16,7 @@ Expected file names:
 - `compact-defending-transition.png`
 - `possessao-8v8-2-neutros.png`
 - `offensive-between-lines.png`
+- `between-the-lines.png`
 - `9v9-2-game.png`
 - `double-finishing-drill.png`
 - `finishing-transition.png`
