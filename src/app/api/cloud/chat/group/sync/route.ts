@@ -13,11 +13,16 @@ function timeMs(iso: string | undefined): number {
   return Number.isFinite(t) ? t : 0;
 }
 
+function titleTime(conv: Conversation): number {
+  return timeMs(conv.titleUpdatedAt ?? conv.lastMessageAt);
+}
+
 function mergeConversation(existing: Conversation[], incoming: Conversation, actorId: string): Conversation[] {
   const idx = existing.findIndex((c) => c.id === incoming.id);
   if (idx < 0) return [...existing, incoming];
   const current = existing[idx]!;
   const ownerId = current.createdById ?? incoming.createdById;
+  const incomingHasNewerTitle = titleTime(incoming) >= titleTime(current);
   const incomingIsNewer = timeMs(incoming.lastMessageAt) >= timeMs(current.lastMessageAt);
   const next = [...existing];
   next[idx] = {
@@ -27,13 +32,16 @@ function mergeConversation(existing: Conversation[], incoming: Conversation, act
     title:
       ownerId && actorId !== ownerId
         ? current.title
-        : incomingIsNewer
+        : incomingHasNewerTitle
           ? incoming.title
           : current.title,
+    titleUpdatedAt: incomingHasNewerTitle
+      ? (incoming.titleUpdatedAt ?? incoming.lastMessageAt)
+      : (current.titleUpdatedAt ?? current.lastMessageAt),
     avatarInitials:
       ownerId && actorId !== ownerId
         ? current.avatarInitials
-        : incomingIsNewer
+        : incomingHasNewerTitle
           ? incoming.avatarInitials
           : current.avatarInitials,
     lastMessageAt: incomingIsNewer ? incoming.lastMessageAt : current.lastMessageAt,

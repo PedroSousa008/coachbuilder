@@ -99,15 +99,17 @@ function initials(name: string) {
 }
 
 function defaultGroup(ownerId?: string): Conversation {
+  const now = new Date().toISOString();
   return {
     id: SQUAD_GROUP_ID,
     type: "group",
     title: "Squad",
+    titleUpdatedAt: now,
     createdById: ownerId ?? mockCoach.id,
     subtitle: "Team channel",
     avatarInitials: "TM",
     lastMessagePreview: "Welcome your players when they join.",
-    lastMessageAt: new Date().toISOString(),
+    lastMessageAt: now,
     participantIds: [mockCoach.id],
     unread: 0,
   };
@@ -130,6 +132,7 @@ function normalizeGroupConversation(conversation: Conversation, userId?: string 
       : conversation.createdById;
   return {
     ...conversation,
+    titleUpdatedAt: conversation.titleUpdatedAt ?? conversation.lastMessageAt,
     createdById: normalizedOwnerId,
     participantIds: ensuredIds,
     subtitle: `${ensuredIds.length} members`,
@@ -1015,6 +1018,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         id: conversationId,
         type: "group",
         title: groupTitle,
+        titleUpdatedAt: now,
         createdById: me,
         subtitle: `${participantIds.length} members`,
         avatarInitials: initials(groupTitle),
@@ -1050,6 +1054,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           ? {
               ...c,
               title: nextTitle,
+              titleUpdatedAt: now,
               avatarInitials: initials(nextTitle),
               lastMessageAt: now,
               lastMessagePreview: `Group renamed to ${nextTitle}`,

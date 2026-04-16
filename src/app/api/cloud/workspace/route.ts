@@ -13,6 +13,11 @@ function timeMs(iso: string | undefined): number {
   return Number.isFinite(t) ? t : 0;
 }
 
+function titleTime(conv: Conversation | undefined): number {
+  if (!conv) return 0;
+  return timeMs(conv.titleUpdatedAt ?? conv.lastMessageAt);
+}
+
 function mergeConversationLists(
   incoming: Conversation[],
   existing: Conversation[],
@@ -30,6 +35,7 @@ function mergeConversationLists(
     const incomingGroup = incoming.find((c) => c.id === groupId && c.type === "group");
     if (!existingGroup) continue;
     const incomingIsNewer = timeMs(incomingGroup?.lastMessageAt) >= timeMs(existingGroup.lastMessageAt);
+    const incomingHasNewerTitle = titleTime(incomingGroup) >= titleTime(existingGroup);
     byId.set(groupId, {
       ...existingGroup,
       ...(incomingGroup ?? {}),
@@ -38,14 +44,17 @@ function mergeConversationLists(
         (existingGroup.createdById ?? incomingGroup?.createdById) &&
         actorUserId !== (existingGroup.createdById ?? incomingGroup?.createdById)
           ? existingGroup.title
-          : incomingIsNewer
+          : incomingHasNewerTitle
             ? (incomingGroup?.title ?? existingGroup.title)
             : existingGroup.title,
+      titleUpdatedAt: incomingHasNewerTitle
+        ? (incomingGroup?.titleUpdatedAt ?? incomingGroup?.lastMessageAt ?? existingGroup.titleUpdatedAt ?? existingGroup.lastMessageAt)
+        : (existingGroup.titleUpdatedAt ?? existingGroup.lastMessageAt),
       avatarInitials:
         (existingGroup.createdById ?? incomingGroup?.createdById) &&
         actorUserId !== (existingGroup.createdById ?? incomingGroup?.createdById)
           ? existingGroup.avatarInitials
-          : incomingIsNewer
+          : incomingHasNewerTitle
             ? (incomingGroup?.avatarInitials ?? existingGroup.avatarInitials)
             : existingGroup.avatarInitials,
       lastMessageAt: incomingIsNewer
