@@ -344,6 +344,8 @@ export interface Message {
   authorName: string;
   body: string;
   sentAt: string;
+  /** True for automated channel events (add/remove/rename); not shown as a user chat bubble. */
+  system?: boolean;
 }
 
 export interface Conversation {

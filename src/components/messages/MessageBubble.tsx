@@ -10,12 +10,26 @@ export function MessageBubble({
   authorName,
   sentAt,
   mine,
+  system,
 }: {
   body: string;
   authorName: string;
   sentAt: string;
   mine: boolean;
+  /** Channel events (member added, removed, rename) — compact, no chat bubble. */
+  system?: boolean;
 }) {
+  if (system) {
+    return (
+      <div className="flex w-full justify-center px-2 py-0.5">
+        <p className="max-w-[min(100%,42rem)] text-center text-[11px] leading-snug text-zinc-500">
+          <span>{body}</span>
+          <span className="ml-1.5 whitespace-nowrap tabular-nums text-zinc-600">{formatTime(sentAt)}</span>
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className={cn("flex w-full", mine ? "justify-end" : "justify-start")}>
       <div

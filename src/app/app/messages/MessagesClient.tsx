@@ -15,6 +15,7 @@ import { shouldUseCloudClientApis } from "@/lib/cloud-config";
 import { parseCloudDmConversationId } from "@/lib/dm-conversation-id";
 import { normalizeNametagInput } from "@/lib/user-nametag";
 import type { Message } from "@/types";
+import { isChannelSystemMessage } from "@/lib/message-display";
 
 function mapApiMessage(convId: string, m: { id: string; authorUserId: string; authorName: string; body: string; sentAt: string }): Message {
   return {
@@ -719,7 +720,8 @@ export function MessagesClient() {
                   body={m.body}
                   authorName={m.authorName}
                   sentAt={m.sentAt}
-                  mine={m.authorId === coachUserId}
+                  mine={!isChannelSystemMessage(m) && m.authorId === coachUserId}
+                  system={isChannelSystemMessage(m)}
                 />
               ))
             )}

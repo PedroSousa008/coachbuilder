@@ -78,6 +78,7 @@ export async function POST(req: Request) {
       authorName: claims.email,
       body: `Group renamed to ${title}.`,
       sentAt: now,
+      system: true,
     };
 
     const participantIds = Array.from(new Set(group.participantIds));

@@ -33,6 +33,7 @@ import type {
   TeamSingleRoleId,
   TrainingSession,
 } from "@/types";
+import { isChannelSystemMessage } from "@/lib/message-display";
 import { tallyForTactic } from "@/lib/tactics-match-stats";
 import { mockCoach } from "@/data/mock";
 import { dedupeMatches } from "@/lib/league-match-dedupe";
@@ -1054,6 +1055,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         authorName: user?.name?.trim() || mockCoach.name.trim() || "Coach",
         body: createdBody,
         sentAt: now,
+        system: true,
       };
       setConversations((prev) => [...prev, conversation]);
       setMessagesByConv((prev) => ({ ...prev, [conversationId]: [msg] }));
@@ -1123,6 +1125,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       authorName: meName,
       body: `Group renamed to ${nextTitle}.`,
       sentAt: now,
+      system: true,
     };
     setMessagesByConv((prev) => ({
       ...prev,
@@ -1181,6 +1184,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
             ? `${addedNames[0]} was added to the group.`
             : `${addedNames.join(", ")} were added to the group.`,
         sentAt: now,
+        system: true,
       };
       setMessagesByConv((prev) => ({
         ...prev,
@@ -1260,6 +1264,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         authorName: actorName,
         body: `${removedName} was removed from the group.`,
         sentAt: now,
+        system: true,
       };
       setMessagesByConv((prev) => ({
         ...prev,
@@ -1335,6 +1340,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       const readAt = conversationLastReadAt[convId];
       const readT = readAt ? new Date(readAt).getTime() : 0;
       for (const m of msgs) {
+        if (isChannelSystemMessage(m)) continue;
         if (m.authorId === me) continue;
         if (new Date(m.sentAt).getTime() > readT) n++;
       }

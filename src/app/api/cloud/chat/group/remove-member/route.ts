@@ -87,6 +87,7 @@ export async function POST(req: Request) {
       authorName: claims.email,
       body: `A member was removed from the group.`,
       sentAt: now,
+      system: true,
     };
 
     const allTouchedUserIds = Array.from(new Set([...group.participantIds, participantId]));
