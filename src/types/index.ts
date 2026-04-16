@@ -337,7 +337,12 @@ export type DrillCategory =
   | "Pressing"
   | "Recovery";
 
-export type ChatAttachmentKind = "file" | "training_session" | "saved_exercise" | "sketch_board";
+export type ChatAttachmentKind =
+  | "file"
+  | "training_session"
+  | "saved_exercise"
+  | "training_catalog"
+  | "sketch_board";
 
 export interface ChatAttachment {
   id: string;
@@ -345,8 +350,13 @@ export interface ChatAttachment {
   name?: string;
   mimeType?: string;
   sizeBytes?: number;
-  /** Inline file (images); keep small — validated in `chat-attachments`. */
+  /** Inline file (images, vídeos carregados como ficheiro); validado em `chat-attachments`. */
   dataUrl?: string;
+  /**
+   * URL pública do vídeo (ex. `/videos/training/9v9+2.mp4` ou YouTube).
+   * Preferível a dataUrl para o catálogo — todos na app veem o mesmo MP4.
+   */
+  videoUrl?: string;
   /** Structured snapshot (training block, sketch JSON, etc.). */
   payloadJson?: string;
 }

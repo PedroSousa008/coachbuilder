@@ -1,3 +1,18 @@
+import type { ChatAttachment } from "@/types";
+
+/** URL reproduzível (campo directo ou dentro de `payloadJson`). */
+export function resolveAttachmentVideoUrl(a: ChatAttachment): string | undefined {
+  if (a.videoUrl?.trim()) return a.videoUrl.trim();
+  if (!a.payloadJson) return undefined;
+  try {
+    const p = JSON.parse(a.payloadJson) as { videoUrl?: string };
+    if (typeof p.videoUrl === "string" && p.videoUrl.trim()) return p.videoUrl.trim();
+  } catch {
+    /* ignore */
+  }
+  return undefined;
+}
+
 /** Nome seguro para o atributo `download` (evita path traversal). */
 export function sanitizeDownloadFileName(name: string | undefined): string {
   const n = (name ?? "document")
@@ -15,6 +30,10 @@ export function isLikelyPdf(mime: string | undefined, name: string | undefined):
 
 export function isImageMime(mime: string | undefined): boolean {
   return Boolean(mime?.toLowerCase().startsWith("image/"));
+}
+
+export function isVideoMime(mime: string | undefined): boolean {
+  return Boolean(mime?.toLowerCase().startsWith("video/"));
 }
 
 export function parseTrainingSessionPayload(

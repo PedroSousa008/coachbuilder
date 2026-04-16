@@ -11,6 +11,7 @@ function estimateAttachmentSize(a: ChatAttachment): number {
   let n = 0;
   if (a.dataUrl) n += a.dataUrl.length * 2;
   if (a.payloadJson) n += a.payloadJson.length * 2;
+  if (a.videoUrl) n += a.videoUrl.length * 2;
   if (a.name) n += a.name.length * 2;
   if (a.mimeType) n += a.mimeType.length * 2;
   return n;
@@ -30,6 +31,9 @@ export function validateAttachmentPayload(attachments: ChatAttachment[] | undefi
     if (a.payloadJson && a.payloadJson.length > CHAT_ATTACHMENTS_MAX_JSON_CHARS) {
       return "Dados do anexo demasiado grandes.";
     }
+    if (a.videoUrl && a.videoUrl.length > 4096) {
+      return "URL de vídeo inválida.";
+    }
   }
   return null;
 }
@@ -39,7 +43,13 @@ export function messagePreviewLine(body: string, attachments?: ChatAttachment[] 
   if (t) return t;
   if (!attachments?.length) return "";
   if (attachments.length === 1) {
-    const n = attachments[0]!.name?.trim();
+    const a = attachments[0]!;
+    const n = a.name?.trim();
+    const hasVideo =
+      Boolean(a.videoUrl?.trim()) ||
+      a.kind === "training_catalog" ||
+      (a.kind === "saved_exercise" && a.payloadJson?.includes('"videoUrl"'));
+    if (hasVideo) return n ? `▶ ${n}` : "▶ Video";
     return n ? `📎 ${n}` : "📎 Anexo";
   }
   return `📎 ${attachments.length} anexos`;
@@ -67,6 +77,7 @@ export function parseChatAttachmentsFromApi(raw: unknown): ChatAttachment[] | un
       mimeType: typeof o.mimeType === "string" ? o.mimeType : undefined,
       sizeBytes: typeof o.sizeBytes === "number" && Number.isFinite(o.sizeBytes) ? o.sizeBytes : undefined,
       dataUrl: typeof o.dataUrl === "string" ? o.dataUrl : undefined,
+      videoUrl: typeof o.videoUrl === "string" ? o.videoUrl : undefined,
       payloadJson: typeof o.payloadJson === "string" ? o.payloadJson : undefined,
     });
   }
@@ -74,7 +85,13 @@ export function parseChatAttachmentsFromApi(raw: unknown): ChatAttachment[] | un
 }
 
 function isChatAttachmentKind(k: unknown): k is ChatAttachmentKind {
-  return k === "file" || k === "training_session" || k === "saved_exercise" || k === "sketch_board";
+  return (
+    k === "file" ||
+    k === "training_session" ||
+    k === "saved_exercise" ||
+    k === "training_catalog" ||
+    k === "sketch_board"
+  );
 }
 
 export async function buildChatAttachmentFromFile(file: File): Promise<ChatAttachment | null> {

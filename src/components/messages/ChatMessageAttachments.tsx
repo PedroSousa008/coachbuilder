@@ -5,11 +5,14 @@ import { FileText, ExternalLink, Download } from "lucide-react";
 import type { ChatAttachment } from "@/types";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { TrainingVideoEmbed } from "@/components/training/TrainingVideoEmbed";
 import {
   isImageMime,
   isLikelyPdf,
+  isVideoMime,
   parseSavedExercisePayload,
   parseTrainingSessionPayload,
+  resolveAttachmentVideoUrl,
   sanitizeDownloadFileName,
 } from "@/lib/chat-attachment-ui";
 
@@ -20,6 +23,8 @@ function labelFor(a: ChatAttachment, isPt: boolean): string {
       return isPt ? "Treino" : "Training";
     case "saved_exercise":
       return isPt ? "Exercício" : "Exercise";
+    case "training_catalog":
+      return isPt ? "Vídeo do catálogo" : "Catalog video";
     case "sketch_board":
       return "Sketch";
     default:
@@ -102,6 +107,72 @@ function AttachmentRow({
   );
   const name = label(a);
   const sizeStr = formatBytes(a.sizeBytes, isPt);
+
+  /** MP4/YouTube via URL pública (catálogo, exercício guardado com vídeo) — todos veem o mesmo stream. */
+  const playUrl = resolveAttachmentVideoUrl(a);
+  if (playUrl) {
+    return (
+      <div className={card}>
+        <p className="font-medium text-zinc-200">{name}</p>
+        <div className="mt-2">
+          <TrainingVideoEmbed videoUrl={playUrl} title={name} />
+        </div>
+        {a.kind === "training_catalog" || a.kind === "saved_exercise" || a.kind === "training_session" ? (
+          <Link
+            href="/app/training"
+            className="mt-2 inline-flex items-center gap-1 text-[11px] font-medium text-accent hover:underline"
+          >
+            <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+            {trainingCta}
+          </Link>
+        ) : null}
+      </div>
+    );
+  }
+
+  /** Vídeo carregado como ficheiro (data URL). */
+  if (a.kind === "file" && a.dataUrl && isVideoMime(a.mimeType)) {
+    const safe = sanitizeDownloadFileName(a.name);
+    return (
+      <div className={card}>
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0 flex-1">
+            <p className="truncate font-medium text-zinc-200">{name}</p>
+            {sizeStr ? <p className="mt-0.5 text-[10px] text-zinc-500">{sizeStr}</p> : null}
+          </div>
+          <FileText className="h-4 w-4 shrink-0 text-zinc-500" aria-hidden />
+        </div>
+        <video
+          className="mt-2 w-full max-h-[min(360px,50vh)] rounded-lg bg-black"
+          controls
+          playsInline
+          preload="metadata"
+          title={name}
+        >
+          <source src={a.dataUrl} type={a.mimeType || "video/mp4"} />
+        </video>
+        <div className="mt-2 flex flex-wrap gap-2">
+          <a
+            href={a.dataUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 rounded-lg border border-zinc-600/60 bg-zinc-900/50 px-2.5 py-1 text-[11px] font-medium text-accent transition-colors hover:bg-zinc-800/80"
+          >
+            <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+            {openLabel}
+          </a>
+          <a
+            href={a.dataUrl}
+            download={safe.endsWith(".mp4") ? safe : `${safe}.mp4`}
+            className="inline-flex items-center gap-1 rounded-lg border border-zinc-600/60 bg-zinc-900/50 px-2.5 py-1 text-[11px] font-medium text-zinc-200 transition-colors hover:bg-zinc-800/80"
+          >
+            <Download className="h-3.5 w-3.5" aria-hidden />
+            {downloadLabel}
+          </a>
+        </div>
+      </div>
+    );
+  }
 
   if (a.kind === "file" && a.dataUrl) {
     const safe = sanitizeDownloadFileName(a.name);
@@ -191,6 +262,24 @@ function AttachmentRow({
             {p.category}
           </p>
         ) : null}
+        <Link
+          href="/app/training"
+          className="mt-2 inline-flex items-center gap-1 text-[11px] font-medium text-accent hover:underline"
+        >
+          <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+          {trainingCta}
+        </Link>
+      </div>
+    );
+  }
+
+  if (a.kind === "training_catalog") {
+    return (
+      <div className={card}>
+        <p className="font-medium text-zinc-200">{name}</p>
+        <p className="mt-1 text-[11px] text-zinc-500">
+          {isPt ? "Vídeo do catálogo sem URL (mensagem antiga)." : "Catalog video URL missing (old message)."}
+        </p>
         <Link
           href="/app/training"
           className="mt-2 inline-flex items-center gap-1 text-[11px] font-medium text-accent hover:underline"

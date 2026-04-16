@@ -23,6 +23,7 @@ import {
   uidAttachment,
   validateAttachmentPayload,
 } from "@/lib/chat-attachments";
+import { getTrainingCatalogItems } from "@/lib/training-session-local";
 
 function mapApiMessage(
   convId: string,
@@ -69,6 +70,11 @@ export function MessagesClient() {
   const { language } = useLanguage();
   const isPt = language === "pt-PT";
   const { user } = useAuth();
+
+  const catalogItemsWithVideo = useMemo(
+    () => getTrainingCatalogItems(players).filter((i) => Boolean(i.videoUrl?.trim())),
+    [players]
+  );
 
   const [tab, setTab] = useState<"group" | "dm">("group");
   const filtered = useMemo(
@@ -363,7 +369,13 @@ export function MessagesClient() {
         id: uidAttachment(),
         kind: "saved_exercise",
         name: ex.title,
-        payloadJson: JSON.stringify({ exerciseId: ex.id, title: ex.title, category: ex.category }),
+        ...(ex.videoUrl?.trim() ? { videoUrl: ex.videoUrl.trim() } : {}),
+        payloadJson: JSON.stringify({
+          exerciseId: ex.id,
+          title: ex.title,
+          category: ex.category,
+          ...(ex.videoUrl?.trim() ? { videoUrl: ex.videoUrl.trim() } : {}),
+        }),
       };
       const next = [...pendingAttachments, att];
       if (validateAttachmentPayload(next)) return;
@@ -371,6 +383,31 @@ export function MessagesClient() {
       setAttachMenuOpen(false);
     },
     [pendingAttachments, savedTrainingExercises]
+  );
+
+  const addCatalogVideoAttachment = useCallback(
+    (catalogId: string) => {
+      const item = catalogItemsWithVideo.find((x) => x.catalogId === catalogId);
+      if (!item?.videoUrl?.trim()) return;
+      const att: ChatAttachment = {
+        id: uidAttachment(),
+        kind: "training_catalog",
+        name: item.title,
+        videoUrl: item.videoUrl.trim(),
+        payloadJson: JSON.stringify({
+          catalogId: item.catalogId,
+          title: item.title,
+          videoUrl: item.videoUrl.trim(),
+          phase: item.phase,
+          durationMin: item.durationMin,
+        }),
+      };
+      const next = [...pendingAttachments, att];
+      if (validateAttachmentPayload(next)) return;
+      setPendingAttachments(next);
+      setAttachMenuOpen(false);
+    },
+    [pendingAttachments, catalogItemsWithVideo]
   );
 
   const addSketchAttachment = useCallback(() => {
@@ -878,6 +915,7 @@ export function MessagesClient() {
                       ref={fileAttachRef}
                       type="file"
                       className="hidden"
+                      accept="image/*,video/*,application/pdf,.pdf,.doc,.docx"
                       onChange={(e) => void onAttachFiles(e)}
                     />
                     <Button
@@ -935,6 +973,26 @@ export function MessagesClient() {
                             {savedTrainingExercises.map((s) => (
                               <option key={s.id} value={s.id}>
                                 {s.title}
+                              </option>
+                            ))}
+                          </select>
+                        ) : null}
+                        {catalogItemsWithVideo.length > 0 ? (
+                          <select
+                            className="mt-1 max-h-32 w-full rounded-lg border border-surface-border bg-surface-raised px-2 py-1.5 text-xs text-white"
+                            defaultValue=""
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              e.currentTarget.value = "";
+                              if (v) addCatalogVideoAttachment(v);
+                            }}
+                          >
+                            <option value="">
+                              {isPt ? "Vídeo do catálogo (MP4)…" : "Catalog video (MP4)…"}
+                            </option>
+                            {catalogItemsWithVideo.map((item) => (
+                              <option key={item.catalogId} value={item.catalogId}>
+                                {item.title}
                               </option>
                             ))}
                           </select>
