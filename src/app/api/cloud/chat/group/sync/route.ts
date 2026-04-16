@@ -14,7 +14,7 @@ function timeMs(iso: string | undefined): number {
 }
 
 function titleTime(conv: Conversation): number {
-  return timeMs(conv.titleUpdatedAt ?? conv.lastMessageAt);
+  return timeMs(conv.titleUpdatedAt);
 }
 
 function mergeConversation(existing: Conversation[], incoming: Conversation, actorId: string): Conversation[] {

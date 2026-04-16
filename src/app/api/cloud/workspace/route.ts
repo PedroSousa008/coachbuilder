@@ -15,7 +15,7 @@ function timeMs(iso: string | undefined): number {
 
 function titleTime(conv: Conversation | undefined): number {
   if (!conv) return 0;
-  return timeMs(conv.titleUpdatedAt ?? conv.lastMessageAt);
+  return timeMs(conv.titleUpdatedAt);
 }
 
 function mergeConversationLists(

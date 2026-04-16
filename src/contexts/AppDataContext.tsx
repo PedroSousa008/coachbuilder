@@ -116,7 +116,7 @@ function defaultGroup(ownerId?: string): Conversation {
 }
 
 function normalizeGroupConversation(conversation: Conversation, userId?: string | null): Conversation {
-  if (conversation.type !== "group" || conversation.id !== SQUAD_GROUP_ID) return conversation;
+  if (conversation.type !== "group") return conversation;
   const normalizedIds = Array.from(
     new Set(
       conversation.participantIds.map((id) =>
@@ -126,14 +126,21 @@ function normalizeGroupConversation(conversation: Conversation, userId?: string 
   );
   const ensuredIds =
     userId && !normalizedIds.includes(userId) ? [userId, ...normalizedIds] : normalizedIds;
-  const normalizedOwnerId =
-    userId && (!conversation.createdById || conversation.createdById === mockCoach.id)
+  const normalizedOwnerId = conversation.createdById
+    ? userId && conversation.createdById === mockCoach.id
       ? userId
-      : conversation.createdById;
+      : conversation.createdById
+    : (userId ?? mockCoach.id);
+  const normalizedPrimaryAdminId = conversation.groupPrimaryAdminId ?? normalizedOwnerId;
+  const normalizedAdminIds = Array.from(
+    new Set((conversation.groupAdminIds ?? []).filter((id) => id !== normalizedPrimaryAdminId))
+  );
   return {
     ...conversation,
-    titleUpdatedAt: conversation.titleUpdatedAt ?? conversation.lastMessageAt,
+    titleUpdatedAt: conversation.titleUpdatedAt ?? conversation.lastMessageAt ?? new Date().toISOString(),
     createdById: normalizedOwnerId,
+    groupPrimaryAdminId: normalizedPrimaryAdminId,
+    groupAdminIds: normalizedAdminIds,
     participantIds: ensuredIds,
     subtitle: `${ensuredIds.length} members`,
   };

@@ -352,6 +352,9 @@ export interface Conversation {
   title: string;
   titleUpdatedAt?: string;
   createdById?: string;
+  groupPrimaryAdminId?: string;
+  groupAdminIds?: string[];
+  groupMemberMeta?: Record<string, { addedById: string; joinedAt: string }>;
   subtitle?: string;
   avatarInitials: string;
   lastMessagePreview: string;
