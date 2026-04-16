@@ -33,6 +33,7 @@ const TRAINING_EXERCISE_PRINT_IMAGE_BY_TITLE: Record<string, string> = {
   "Full Back Overlap - Striker": "full-back-overlap-striker.png",
   "Pressing Exercise": "pressing-exercise.png",
   "3v2 Fast Break": "3v2-fast-break.png",
+  "Defensive Recovery on Counter Attack": "defensive-recovery.png",
 };
 
 export const TRAINING_EXERCISE_PRINT_IMAGE_FOLDER = "/images/training-exercises";

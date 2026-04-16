@@ -24,6 +24,13 @@ export const OFFENSIVE_BETWEEN_LINES_VIDEO_URL = "/videos/training/offensive-bet
 export const BETWEEN_THE_LINES_VIDEO_URL = "/videos/training/between-the-lines.mp4";
 
 /**
+ * Vídeo do exercício "Defensive Recovery on Counter Attack" (2v1 + recuperação).
+ * Coloca o ficheiro em `public/videos/training/defensive-recovery.mp4`.
+ */
+export const DEFENSIVE_RECOVERY_ON_COUNTER_ATTACK_VIDEO_URL =
+  "/videos/training/defensive-recovery.mp4";
+
+/**
  * Vídeo do exercício "Passing Activation".
  * Coloca o ficheiro em `public/videos/training/passing-activation.mp4` ou substitui por um link YouTube.
  */
@@ -825,6 +832,26 @@ const MAIN_DRILLS: MainDrillDef[] = [
     }),
   },
   {
+    themes: ["transition", "finishing", "pressing", "possession", "defensive"],
+    title: "Defensive Recovery on Counter Attack",
+    describe: (pl, m) => ({
+      description: `O exercício (${m} min) começa com a bola num defesa junto à linha de fundo. À frente estão 2 jogadores ofensivos (preferencialmente avançados, extremos ou médios) prontos para receber, com 1 defesa atrás deles (lateral ou trinco). O central coloca a bola num dos atacantes e inicia-se uma situação de 2v1 em direção à baliza. Ao mesmo tempo, o jogador que estava atrás arranca em sprint para recuperar posição e condicionar a jogada. Os atacantes devem aproveitar a superioridade numérica e finalizar o mais rápido possível, antes da chegada do segundo defensor. O foco está na decisão rápida, eficácia no último passe e na finalização, e na recuperação defensiva em velocidade.`,
+      coachingPoints:
+        "Atacantes: primeiro toque orientado ao golo ou ao espaço livre; não prolongar o 2v1 — remate ou último passe limpo em poucos toques. Defensor inicial: atrasar sem faltar; escolher momento para pressionar ou fechar linha de passe. Recuperador: trajetória directa ao eixo da jogada, cabeça levantada para não cometer falta ao cortar; comunicar 'vai' ou 'segura' ao colega.",
+      setup:
+        "Corredor ou meio último terço ~28–36 m de profundidade até à baliza; baliza ou GR; cones para linha de fundo e zona de arranque do recuperador; bolas junto ao central que serve.",
+      groupSplit:
+        pl.length >= 12
+          ? "Filas: centrais a servir; pares ofensivos a rodar; defensor do 2v1 e recuperador a alternar a cada 4–6 repetições."
+          : pl.length >= 8
+            ? "Mesma lógica com grupos mais curtos; coach como servidor na linha de fundo se faltarem defesas."
+            : "Reduz a largura; 1 atacante + neutro de apoio no 2v1 ou recuperador parte mais tarde para manter desafio.",
+      diagramHint:
+        "Defesa com bola na linha de fundo; central a jogar num dos 2 atacantes à frente; 1 defesa atrás deles; seta 2v1 à baliza; em paralelo seta de sprint do recuperador a fechar; finalização rápida.",
+      videoUrl: DEFENSIVE_RECOVERY_ON_COUNTER_ATTACK_VIDEO_URL,
+    }),
+  },
+  {
     themes: ["transition", "finishing", "possession"],
     title: "Offensive Between Lines",
     describe: (pl, m) => ({
@@ -1376,7 +1403,11 @@ const SINGLE_DRILL_20_MIN_TITLES = new Set<string>([
 ]);
 /** Valor médio quando o treinador indica ~15–20 min (ex.: bloco final). */
 const SINGLE_DRILL_18_MIN_TITLES = new Set<string>(["Double Finishing Drill"]);
-const SINGLE_DRILL_15_MIN_TITLES = new Set<string>(["3v2 Fast Break", "Between the Lines"]);
+const SINGLE_DRILL_15_MIN_TITLES = new Set<string>([
+  "3v2 Fast Break",
+  "Between the Lines",
+  "Defensive Recovery on Counter Attack",
+]);
 const SINGLE_DRILL_10_MIN_TITLES = new Set<string>([
   "Back Four Shifting",
   "Compact Defending Transition",
@@ -1412,6 +1443,7 @@ function singleDrillProgressionVariationsForTitle(title: string): {
 } {
   const isOffensiveBetweenLines = title === "Offensive Between Lines";
   const isBetweenTheLines = title === "Between the Lines";
+  const isDefensiveRecoveryOnCounterAttack = title === "Defensive Recovery on Counter Attack";
   const isBackFourShifting = title === "Back Four Shifting";
   const isCompactDefendingTransition = title === "Compact Defending Transition";
   const isFinishingTransition = title === "Finishing Transition";
@@ -1440,53 +1472,55 @@ function singleDrillProgressionVariationsForTitle(title: string): {
     ? "Aumenta a exigência no último terço rival (menos tempo para sair); ou reduz o espaço para a 2ª bola; ou força viragem obrigatória sempre ao lado do central identificado como mais fraco."
     : isBetweenTheLines
       ? "Encurta o rectângulo para forçar decisão mais rápida; ou obriga 3 toques máx. à equipa de 7; ou os 3 defensores só podem recuperar com 2 toques; ou neutro só pode jogar em 1 toque."
-      : isOffensiveBetweenLines
-        ? "Aperta o meio-campo (menos espaço entre linhas) ou exige 2 toques máx. depois do passe interior; aumenta largura para forçar mais metros percorridos após a rotação."
-        : isBackFourShifting
-          ? "Encurta o espaço entre defesa e meio para forçar linha mais alta; ou acrescenta terceiro atacante a fixar o último defesa; ou alterna quem inicia a pressão a cada 90 s."
-      : isCompactDefendingTransition
-        ? "Reduz o tempo máximo após recuperação (ex.: 4 toques para remate); ou acrescenta quinta baliza no eixo para forçar ainda mais fecho do meio; ou exige que só o trinco fale na reorganização durante 3 min."
-        : isFinishingTransition
-          ? "Encurta o tempo entre fases (apito ou grito a cada 10–15 s); ou na 1v1 obriga remate em 2 toques; ou na fase 3v3 exige que o golo venha sempre de cruzamento de extremo."
-          : isCrossAndStrike
-            ? "Exige cruzamento só com o pé 'fraco'; ou máximo 3 toques antes do cruzamento; ou acrescenta defensor a fechar o primeiro poste com contacto leve."
-            : isFourFinishingDrills
-              ? "Apito a cada 5 s entre estímulos; ou GR a sair ao jogador no 1v1; ou últimos dois remates da sequência obrigatoriamente com o pé esquerdo numa série e direito na seguinte."
-              : isDoubleFinishing
-                ? "Aumenta a exigência no primeiro remate (vértice mais fechado); ou obriga cruzamento só com o pé interior; ou acrescenta defensor na área com contacto leve."
-                : is9v9Plus2Game
-                  ? "Encosta o campo para forçar decisões mais rápidas no extremo; ou permite 3 toques no extremo em fase inicial; ou golo vale duplo se a jogada tiver mudança de corredor antes do cruzamento."
-                  : isRondo9v3
-                    ? "Sobe a meta a 12 passes por ponto; ou os 3 têm no máximo 4 toques para marcar após recuperação; ou meiinho só pode tocar com 1 toque."
-                    : isRondo5v3
-                      ? "Meta de 7 passes antes da viragem; ou máximo 6 s para o grupo de 3 roubar; ou zona central com 1 toque obrigatório para os 2 fixos."
-                      : isBreakoutRondo
-                        ? "Sobe a meta para 8 passes no interior; ou após recuperação da equipa branca exige remate em ≤4 toques; ou interior só com 1 toque até à saída para o exterior."
-                        : isBuildUpIntoCounterAttack
-                          ? "Reduz o tempo de ligação entre setores (ex.: 6 s); ou limita a saída a 2 toques por jogador; ou no 3v2 ofensivo obriga remate em ≤5 s após receção."
-                        : isRondoToCounterAttack
-                          ? "Sobe a meta para 12 passes antes da equipa em posse poder finalizar; ou limita a saída do 4v2 a 6 s; ou obriga a equipa que recupera a jogar de primeira no primeiro passe do contra-ataque."
-                        : isFitnessRondoIntoFinishing
-                          ? "Reduz o espaço em cada setor; ou limita a equipa em posse a 2 toques; ou no 2v1 final obriga remate em ≤4 s para contar o bónus de tempo."
-                        : isGoalKick1
-                        ? "Adversário com linha mais alta para forçar timing do overlap; ou máximo 8 s desde a reposição até ao passe em profundidade; ou lateral obrigado a cruzar com o pé interior na primeira série."
-                        : isGoalKick2
-                          ? "Avançado adversário com pressão dobrada (salto + sombra ao GR); ou GR com máximo 5 s para jogar; ou extremo obrigado a iniciar o movimento de pressão antes do passe ao lateral."
-                          : isMidfielderRunBehindDefense
-                            ? "Linha defensiva mais alta e viva; ou máximo 2 toques na combinação médio–extremo–avançado; ou cruzamento obrigatório com o pé interior na primeira série."
-                            : isFullBackOverlapWinger
-                              ? "Força variação de corredor em 2 passes (central-trinco-central) e obriga o extremo de apoio a jogar de primeira no corredor interior; limita a última ação na área a 2 toques."
-                            : isFullBackOverlapStriker
-                              ? "Aumenta a pressão no primeiro central para acelerar a circulação; ou obriga o avançado a jogar sempre de primeira; ou limita os médios a 2 toques para forçar decisão rápida no lado a atacar."
-                            : is3v2FastBreak
-                              ? "Encurta o eixo a ~24 m para decisões ainda mais rápidas; ou extremo com máximo 2 toques antes do cruzamento na 1.ª fase; ou defesa pode sair ao cruzamento com contacto leve."
-                              : isWarmUpWithBall
-                                ? "Acrescenta um 3.º cone no slalom; ou exige passe com o pé interior; ou sprint com mudança de direcção obrigatória ao desmarcar."
-                                : isPassingActivation
-                              ? "Aperta distâncias entre postes para exigir passes mais curtos e reacção mais rápida; ou fixa 2 toques máx.; ou alterna o pé obrigatório em cada série."
-                              : isDualPassing
-                                ? "Encolhe o hexágono para forçar primeiro toque ainda mais limpo; ou acrescenta um defensor ligeiro no centro por 45 s; ou exige só combinações com o pé não dominante."
-                                : "Aumenta espaço (mais difícil defender) ou reduz toques permitidos no rondo. Alterna pé fraco em passes fixos.";
+      : isDefensiveRecoveryOnCounterAttack
+        ? "Encurta distância até à baliza; ou atacantes com máximo 3 toques no 2v1; ou recuperador parte 0,5–1 s mais tarde para premiar rapidez ofensiva; ou obriga remate só com o pé interior na primeira série."
+        : isOffensiveBetweenLines
+          ? "Aperta o meio-campo (menos espaço entre linhas) ou exige 2 toques máx. depois do passe interior; aumenta largura para forçar mais metros percorridos após a rotação."
+          : isBackFourShifting
+            ? "Encurta o espaço entre defesa e meio para forçar linha mais alta; ou acrescenta terceiro atacante a fixar o último defesa; ou alterna quem inicia a pressão a cada 90 s."
+            : isCompactDefendingTransition
+              ? "Reduz o tempo máximo após recuperação (ex.: 4 toques para remate); ou acrescenta quinta baliza no eixo para forçar ainda mais fecho do meio; ou exige que só o trinco fale na reorganização durante 3 min."
+              : isFinishingTransition
+                ? "Encurta o tempo entre fases (apito ou grito a cada 10–15 s); ou na 1v1 obriga remate em 2 toques; ou na fase 3v3 exige que o golo venha sempre de cruzamento de extremo."
+                : isCrossAndStrike
+                  ? "Exige cruzamento só com o pé 'fraco'; ou máximo 3 toques antes do cruzamento; ou acrescenta defensor a fechar o primeiro poste com contacto leve."
+                  : isFourFinishingDrills
+                    ? "Apito a cada 5 s entre estímulos; ou GR a sair ao jogador no 1v1; ou últimos dois remates da sequência obrigatoriamente com o pé esquerdo numa série e direito na seguinte."
+                    : isDoubleFinishing
+                      ? "Aumenta a exigência no primeiro remate (vértice mais fechado); ou obriga cruzamento só com o pé interior; ou acrescenta defensor na área com contacto leve."
+                      : is9v9Plus2Game
+                        ? "Encosta o campo para forçar decisões mais rápidas no extremo; ou permite 3 toques no extremo em fase inicial; ou golo vale duplo se a jogada tiver mudança de corredor antes do cruzamento."
+                        : isRondo9v3
+                          ? "Sobe a meta a 12 passes por ponto; ou os 3 têm no máximo 4 toques para marcar após recuperação; ou meiinho só pode tocar com 1 toque."
+                          : isRondo5v3
+                            ? "Meta de 7 passes antes da viragem; ou máximo 6 s para o grupo de 3 roubar; ou zona central com 1 toque obrigatório para os 2 fixos."
+                            : isBreakoutRondo
+                              ? "Sobe a meta para 8 passes no interior; ou após recuperação da equipa branca exige remate em ≤4 toques; ou interior só com 1 toque até à saída para o exterior."
+                              : isBuildUpIntoCounterAttack
+                                ? "Reduz o tempo de ligação entre setores (ex.: 6 s); ou limita a saída a 2 toques por jogador; ou no 3v2 ofensivo obriga remate em ≤5 s após receção."
+                                : isRondoToCounterAttack
+                                  ? "Sobe a meta para 12 passes antes da equipa em posse poder finalizar; ou limita a saída do 4v2 a 6 s; ou obriga a equipa que recupera a jogar de primeira no primeiro passe do contra-ataque."
+                                  : isFitnessRondoIntoFinishing
+                                    ? "Reduz o espaço em cada setor; ou limita a equipa em posse a 2 toques; ou no 2v1 final obriga remate em ≤4 s para contar o bónus de tempo."
+                                    : isGoalKick1
+                                      ? "Adversário com linha mais alta para forçar timing do overlap; ou máximo 8 s desde a reposição até ao passe em profundidade; ou lateral obrigado a cruzar com o pé interior na primeira série."
+                                      : isGoalKick2
+                                        ? "Avançado adversário com pressão dobrada (salto + sombra ao GR); ou GR com máximo 5 s para jogar; ou extremo obrigado a iniciar o movimento de pressão antes do passe ao lateral."
+                                        : isMidfielderRunBehindDefense
+                                          ? "Linha defensiva mais alta e viva; ou máximo 2 toques na combinação médio–extremo–avançado; ou cruzamento obrigatório com o pé interior na primeira série."
+                                          : isFullBackOverlapWinger
+                                            ? "Força variação de corredor em 2 passes (central-trinco-central) e obriga o extremo de apoio a jogar de primeira no corredor interior; limita a última ação na área a 2 toques."
+                                            : isFullBackOverlapStriker
+                                              ? "Aumenta a pressão no primeiro central para acelerar a circulação; ou obriga o avançado a jogar sempre de primeira; ou limita os médios a 2 toques para forçar decisão rápida no lado a atacar."
+                                              : is3v2FastBreak
+                                                ? "Encurta o eixo a ~24 m para decisões ainda mais rápidas; ou extremo com máximo 2 toques antes do cruzamento na 1.ª fase; ou defesa pode sair ao cruzamento com contacto leve."
+                                                : isWarmUpWithBall
+                                                  ? "Acrescenta um 3.º cone no slalom; ou exige passe com o pé interior; ou sprint com mudança de direcção obrigatória ao desmarcar."
+                                                  : isPassingActivation
+                                                    ? "Aperta distâncias entre postes para exigir passes mais curtos e reacção mais rápida; ou fixa 2 toques máx.; ou alterna o pé obrigatório em cada série."
+                                                    : isDualPassing
+                                                      ? "Encolhe o hexágono para forçar primeiro toque ainda mais limpo; ou acrescenta um defensor ligeiro no centro por 45 s; ou exige só combinações com o pé não dominante."
+                                                      : "Aumenta espaço (mais difícil defender) ou reduz toques permitidos no rondo. Alterna pé fraco em passes fixos.";
 
   if (isDualPassing) return { progression };
 
@@ -1494,15 +1528,17 @@ function singleDrillProgressionVariationsForTitle(title: string): {
     ? "Jogo condicionado: recuperação na faixa lateral vale ponto extra; ou adversário com máximo 3 toques na saída; ou acrescenta 2º avançado a simular pressão ao GR em alternância."
     : isBetweenTheLines
       ? "Mini-balizas mais largas ou mais estreitas; ou golo de primeiro toque na zona de finalização vale duplo; ou rotação do bloco de 7 a cada 2 golos marcados."
-      : isOffensiveBetweenLines
-        ? "Terceira equipa de 8 a rodar; ou zona obrigatória de 'pé em campo' nos médios; ou golo vale duplo se vier de passe rasteiro entre linhas."
-        : isBackFourShifting
-          ? "Atacante obrigado a receber de costas; ou passe filtrado simulado com linha a subir no timing; ou capitão da linha só ele dá ordem de pressão."
-          : isCompactDefendingTransition
-            ? "Só duas balizas activas de cada vez (rotação a cada 90 s); ou adversário com passe obrigatório ao pivô antes de finalizar contra o bloco; ou golo na transição vale duplo se vier de passe vertical do trinco."
-            : isFinishingTransition
-              ? "Começar o ciclo pelo 2v1 ou 2v2; ou extremos neutros que só podem cruzar com o pé interior; ou golo nas fases 1v1 e 2v1 vale duplo."
-              : isCrossAndStrike
+      : isDefensiveRecoveryOnCounterAttack
+        ? "Quem serve na linha de fundo alterna entre central e lateral; ou golo vale duplo se o remate sair em ≤4 s após o passe inicial; ou recuperador só pode interceptar (sem duelo de corpo) numa série."
+        : isOffensiveBetweenLines
+          ? "Terceira equipa de 8 a rodar; ou zona obrigatória de 'pé em campo' nos médios; ou golo vale duplo se vier de passe rasteiro entre linhas."
+          : isBackFourShifting
+            ? "Atacante obrigado a receber de costas; ou passe filtrado simulado com linha a subir no timing; ou capitão da linha só ele dá ordem de pressão."
+            : isCompactDefendingTransition
+              ? "Só duas balizas activas de cada vez (rotação a cada 90 s); ou adversário com passe obrigatório ao pivô antes de finalizar contra o bloco; ou golo na transição vale duplo se vier de passe vertical do trinco."
+              : isFinishingTransition
+                ? "Começar o ciclo pelo 2v1 ou 2v2; ou extremos neutros que só podem cruzar com o pé interior; ou golo nas fases 1v1 e 2v1 vale duplo."
+                : isCrossAndStrike
                 ? "Primeira fase só cruzamento à altura do segundo poste; ou remate de fora da área após lay-off obrigatório com o pé não dominante; ou médio e lateral trocam de papel a cada 3 repetições."
                 : isFourFinishingDrills
                   ? "Cone substituído por mini-baliza com GR; ou defensor leve nas costas na fase de profundidade; ou 6.º remate de cabeça após cruzamento lateral."

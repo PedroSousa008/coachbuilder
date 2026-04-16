@@ -35,3 +35,4 @@ Expected file names:
 - `full-back-overlap-striker.png`
 - `3v2-fast-break.png`
 - `pressing-exercise.png`
+- `defensive-recovery.png`
