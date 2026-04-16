@@ -110,6 +110,12 @@ export const BUILD_UP_INTO_COUNTER_ATTACK_VIDEO_URL = "/videos/training/build-up
 export const FITNESS_RONDO_INTO_FINISHING_VIDEO_URL = "/videos/training/fitness-rondo-finishing.mp4";
 
 /**
+ * Vídeo do exercício "Rondo to Counter Attack".
+ * Coloca o ficheiro em `public/videos/training/rondo-to-counter.mp4` ou substitui por um link YouTube.
+ */
+export const RONDO_TO_COUNTER_ATTACK_VIDEO_URL = "/videos/training/rondo-to-counter.mp4";
+
+/**
  * Vídeo do exercício "Goal Kick 1".
  * Coloca o ficheiro em `public/videos/training/goal-kick-1.mp4` ou substitui por um link YouTube.
  */
@@ -256,6 +262,8 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
     "superioridade numérica no ataque",
     "superioridade numerica no ataque",
     "fitness rondo into finishing",
+    "rondo to counter attack",
+    "rondo to counter",
     "fitness rondo",
     "rondo com finalização",
     "rondo com finalizacao",
@@ -390,7 +398,11 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
     "breakout rondo",
     "build up into counter attack",
     "fitness rondo into finishing",
+    "rondo to counter attack",
+    "4v2",
     "contra ataque",
+    "recuperação rápida",
+    "recuperacao rapida",
     "resistência",
     "resistencia",
     "2v1",
@@ -438,6 +450,7 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
     "breakout rondo",
     "build up into counter attack",
     "fitness rondo into finishing",
+    "rondo to counter attack",
     "6v3",
     "3v2",
     "3 setores",
@@ -1005,6 +1018,22 @@ const MAIN_DRILLS: MainDrillDef[] = [
     }),
   },
   {
+    themes: ["possession", "pressing", "transition", "finishing"],
+    title: "Rondo to Counter Attack",
+    describe: (_pl, m) => ({
+      description: `O exercício inicia com uma equipa de 5 jogadores a realizar posse de bola dentro de um retângulo curto, sendo pressionada por 3 defensores. A equipa em posse tem como objetivo manter a bola e completar 10 passes consecutivos, podendo depois finalizar nas balizas pequenas. A equipa defensora procura recuperar a bola o mais rápido possível e sair imediatamente em contra-ataque numa situação de 4v2. O segundo jogador que recua para defender será o que estiver mais próximo da baliza no momento da perda. O foco está na posse em espaço reduzido, reação à perda, transição ofensiva rápida e eficácia na finalização. (${m} min)`,
+      coachingPoints:
+        "Na posse: controlar orientado, apoio curto e circulação rápida para fugir à pressão dos 3. Na recuperação: primeiro passe para acelerar o 4v2 e atacar cedo a baliza. Quem perde a bola deve reagir de imediato, com o jogador mais próximo da baliza a baixar rápido para formar a defesa 4v2.",
+      setup:
+        "Retângulo curto para o rondo + espaço de saída para contra-ataque e balizas pequenas; 5 em posse vs 3 pressão; bolas extra junto ao retângulo e às balizas para manter intensidade alta.",
+      groupSplit:
+        "Bloco principal 5v3 no rondo; após recuperação, abrir em 4v2 para finalização rápida. Alterna os 2 que recuam para defender conforme a proximidade à baliza no momento da perda.",
+      diagramHint:
+        "Retângulo curto 5v3; após 10 passes, equipa em posse pode finalizar em mini-balizas; se defesa recupera, seta de saída imediata para 4v2; um defensor recua por proximidade à baliza para recompor a transição defensiva.",
+      videoUrl: RONDO_TO_COUNTER_ATTACK_VIDEO_URL,
+    }),
+  },
+  {
     themes: ["possession", "transition", "wide"],
     title: "Goal Kick 1",
     describe: (_pl, m) => ({
@@ -1334,6 +1363,7 @@ const SINGLE_DRILL_10_MIN_TITLES = new Set<string>([
   "Rondo 5v3",
   "Breakout Rondo",
   "Build up into Counter Attack",
+  "Rondo to Counter Attack",
   "Full Back Overlap - Winger",
   "Full Back Overlap - Striker",
   "Pressing Exercise",
@@ -1367,6 +1397,7 @@ function singleDrillProgressionVariationsForTitle(title: string): {
   const isRondo5v3 = title === "Rondo 5v3";
   const isBreakoutRondo = title === "Breakout Rondo";
   const isBuildUpIntoCounterAttack = title === "Build up into Counter Attack";
+  const isRondoToCounterAttack = title === "Rondo to Counter Attack";
   const isFitnessRondoIntoFinishing = title === "Fitness Rondo into Finishing";
   const isGoalKick1 = title === "Goal Kick 1";
   const isGoalKick2 = title === "Goal Kick 2";
@@ -1405,6 +1436,8 @@ function singleDrillProgressionVariationsForTitle(title: string): {
                         ? "Sobe a meta para 8 passes no interior; ou após recuperação da equipa branca exige remate em ≤4 toques; ou interior só com 1 toque até à saída para o exterior."
                         : isBuildUpIntoCounterAttack
                           ? "Reduz o tempo de ligação entre setores (ex.: 6 s); ou limita a saída a 2 toques por jogador; ou no 3v2 ofensivo obriga remate em ≤5 s após receção."
+                        : isRondoToCounterAttack
+                          ? "Sobe a meta para 12 passes antes da equipa em posse poder finalizar; ou limita a saída do 4v2 a 6 s; ou obriga a equipa que recupera a jogar de primeira no primeiro passe do contra-ataque."
                         : isFitnessRondoIntoFinishing
                           ? "Reduz o espaço em cada setor; ou limita a equipa em posse a 2 toques; ou no 2v1 final obriga remate em ≤4 s para contar o bónus de tempo."
                         : isGoalKick1
@@ -1455,6 +1488,8 @@ function singleDrillProgressionVariationsForTitle(title: string): {
                         ? "Anel exterior mais estreito para decisão mais rápida; ou golo após roubo branco vale duplo se vier em ≤3 passes; ou neutro no interior que só pode orientar com 1 toque."
                         : isBuildUpIntoCounterAttack
                           ? "Aumenta pressão para 3+1 no setor de saída por blocos curtos; ou no setor ofensivo troca para 3v3 com golo a valer apenas após passe extra; ou equipa que recupera deve finalizar em ≤4 s para contar."
+                        : isRondoToCounterAttack
+                          ? "Troca o 4v2 por 4v3 com recuperação defensiva atrasada; ou golo após 10 passes vale duplo para a equipa em posse; ou só conta o contra-ataque se houver remate em ≤5 s após o roubo."
                         : isFitnessRondoIntoFinishing
                           ? "Troca o 2v1 final por 2v2 com perseguição atrasada; ou cada perda da equipa em posse soma penalização de +5 s; ou obriga a dupla a recuperar em todos os 3 setores antes de poder finalizar."
                         : isGoalKick1
