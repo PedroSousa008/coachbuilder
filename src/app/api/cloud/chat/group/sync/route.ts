@@ -21,6 +21,7 @@ function mergeConversation(existing: Conversation[], incoming: Conversation, act
   const idx = existing.findIndex((c) => c.id === incoming.id);
   if (idx < 0) return [...existing, incoming];
   const current = existing[idx]!;
+  if (!current.participantIds.includes(actorId)) return existing;
   const ownerId = current.createdById ?? incoming.createdById;
   const incomingHasNewerTitle = titleTime(incoming) >= titleTime(current);
   const incomingIsNewer = timeMs(incoming.lastMessageAt) >= timeMs(current.lastMessageAt);

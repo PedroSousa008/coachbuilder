@@ -229,7 +229,7 @@ type AppDataContextValue = {
   createGroupConversation: (title: string, members?: GroupChatMemberInput[]) => string;
   updateGroupConversation: (conversationId: string, patch: { title?: string }) => Promise<boolean>;
   addParticipantsToGroupChat: (conversationId: string, members: GroupChatMemberInput[]) => void;
-  removeParticipantFromGroupChat: (conversationId: string, participantId: string) => void;
+  removeParticipantFromGroupChat: (conversationId: string, participantId: string) => Promise<boolean>;
   setGroupAdmin: (conversationId: string, participantId: string, makeAdmin: boolean) => void;
   sendChatMessage: (conversationId: string, body: string) => void;
   /** Mescla mensagens vindas da cloud (ids do servidor) num fio DM. */
@@ -1191,9 +1191,37 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   );
 
   const removeParticipantFromGroupChat = useCallback(
-    (conversationId: string, participantId: string) => {
+    async (conversationId: string, participantId: string) => {
       const actorId = user?.id ?? mockCoach.id;
       const actorName = user?.name?.trim() || mockCoach.name.trim() || "Coach";
+      if (shouldUseCloudClientApis(user) && user?.id) {
+        try {
+          const res = await fetch("/api/cloud/chat/group/remove-member", {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ conversationId, participantId }),
+          });
+          const data = (await res.json()) as { ok?: boolean; conversation?: Conversation; message?: Message };
+          if (res.ok && data.ok && data.conversation) {
+            setConversations((prev) =>
+              prev.map((c) =>
+                c.id === conversationId && c.type === "group" ? { ...c, ...data.conversation } : c
+              )
+            );
+            if (data.message) {
+              setMessagesByConv((prev) => {
+                const cur = prev[conversationId] ?? [];
+                if (cur.some((m) => m.id === data.message!.id)) return prev;
+                return { ...prev, [conversationId]: [...cur, data.message!] };
+              });
+            }
+            return true;
+          }
+        } catch {
+          /* fallback local */
+        }
+      }
       let removed = false;
       const removedName = "Member";
       const now = new Date().toISOString();
@@ -1224,7 +1252,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           };
         })
       );
-      if (!removed) return;
+      if (!removed) return false;
       const msg: Message = {
         id: uid("m"),
         conversationId,
@@ -1237,8 +1265,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         ...prev,
         [conversationId]: [...(prev[conversationId] ?? []), msg],
       }));
+      return true;
     },
-    [user?.id, user?.name]
+    [user?.id, user?.name, user]
   );
 
   const setGroupAdmin = useCallback(
