@@ -12,6 +12,7 @@ import {
   type SetStateAction,
 } from "react";
 import type {
+  ChatAttachment,
   CoachProfileState,
   Conversation,
   LeagueImportedMatch,
@@ -33,19 +34,17 @@ import type {
   TeamSingleRoleId,
   TrainingSession,
 } from "@/types";
-import {
-  ptGroupCreatedBody,
-  ptGroupRenameBody,
-  ptGroupRenamePreview,
-  ptMemberCountSubtitle,
-  ptMemberRemovedBody,
-  ptMemberRemovedPreview,
-  ptMembersAddedBody,
-  ptMembersAddedPreview,
-} from "@/lib/group-chat-messages-pt";
-import { isChannelSystemMessage } from "@/lib/message-display";
 import { tallyForTactic } from "@/lib/tactics-match-stats";
 import { mockCoach } from "@/data/mock";
+import { clipPreviewLine, messagePreviewLine } from "@/lib/chat-attachments";
+import { cloudDmConversationId } from "@/lib/dm-conversation-id";
+import {
+  ptGroupCreatedBody,
+  ptGroupRenamePreview,
+  ptMembersAddedBody,
+  ptMembersAddedPreview,
+  ptMemberCountSubtitle,
+} from "@/lib/group-chat-messages-pt";
 import { dedupeMatches } from "@/lib/league-match-dedupe";
 import { formatPlayerPositions } from "@/lib/player-positions";
 import {
@@ -64,8 +63,6 @@ import {
 } from "@/lib/workspace-snapshot";
 import { buildWorkspaceSnapshotV1 } from "@/lib/build-workspace-snapshot";
 import { emptySketchAreaState } from "@/lib/sketch-area";
-import { cloudDmConversationId, parseCloudDmConversationId } from "@/lib/dm-conversation-id";
-import { normalizeNametagInput } from "@/lib/user-nametag";
 import { useAuth } from "@/contexts/AuthContext";
 import { withNormalizedCareerSeasonsInProfile } from "@/lib/coach-career-season-normalize";
 import { withNormalizedHonorCategories } from "@/lib/coach-honor-migration";
@@ -100,6 +97,16 @@ function uid(prefix: string) {
   return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
+function mergeMessages(a: Message[], b: Message[]): Message[] {
+  const byId = new Map(a.map((m) => [m.id, m]));
+  for (const m of b) {
+    if (!byId.has(m.id)) byId.set(m.id, m);
+  }
+  return [...byId.values()].sort(
+    (x, y) => new Date(x.sentAt).getTime() - new Date(y.sentAt).getTime()
+  );
+}
+
 function initials(name: string) {
   const p = name.trim().split(/\s+/).filter(Boolean);
   if (p.length === 0) return "?";
@@ -109,62 +116,17 @@ function initials(name: string) {
     .slice(0, 2);
 }
 
-function defaultGroup(ownerId?: string): Conversation {
-  const now = new Date().toISOString();
+function defaultGroup(actorId: string): Conversation {
   return {
     id: SQUAD_GROUP_ID,
     type: "group",
     title: "Squad",
-    titleUpdatedAt: now,
-    createdById: ownerId ?? mockCoach.id,
-    subtitle: "Canal da equipa",
+    subtitle: "Team channel",
     avatarInitials: "TM",
-    lastMessagePreview: "Dá as boas-vindas aos jogadores quando entrarem.",
-    lastMessageAt: now,
-    participantIds: [mockCoach.id],
+    lastMessagePreview: "Welcome your players when they join.",
+    lastMessageAt: new Date().toISOString(),
+    participantIds: [actorId],
     unread: 0,
-  };
-}
-
-function normalizeGroupConversation(conversation: Conversation, userId?: string | null): Conversation {
-  if (conversation.type !== "group") return conversation;
-  const normalizedIds = Array.from(
-    new Set(
-      conversation.participantIds.map((id) =>
-        userId && id === mockCoach.id ? userId : id
-      )
-    )
-  );
-  const ensuredIds =
-    userId && !normalizedIds.includes(userId) ? [userId, ...normalizedIds] : normalizedIds;
-  const normalizedOwnerId = conversation.createdById
-    ? userId && conversation.createdById === mockCoach.id
-      ? userId
-      : conversation.createdById
-    : (userId ?? mockCoach.id);
-  const normalizedPrimaryAdminId = conversation.groupPrimaryAdminId ?? normalizedOwnerId;
-  const normalizedAdminIds = Array.from(
-    new Set((conversation.groupAdminIds ?? []).filter((id) => id !== normalizedPrimaryAdminId))
-  );
-  const baseJoinedAt = conversation.lastMessageAt ?? new Date().toISOString();
-  const currentMeta = conversation.groupMemberMeta ?? {};
-  const normalizedMeta: Record<string, { addedById: string; joinedAt: string }> = {};
-  for (const pid of ensuredIds) {
-    const row = currentMeta[pid];
-    normalizedMeta[pid] = {
-      addedById: row?.addedById ?? normalizedOwnerId,
-      joinedAt: row?.joinedAt ?? baseJoinedAt,
-    };
-  }
-  return {
-    ...conversation,
-    titleUpdatedAt: conversation.titleUpdatedAt ?? conversation.lastMessageAt ?? new Date().toISOString(),
-    createdById: normalizedOwnerId,
-    groupPrimaryAdminId: normalizedPrimaryAdminId,
-    groupAdminIds: normalizedAdminIds,
-    groupMemberMeta: normalizedMeta,
-    participantIds: ensuredIds,
-    subtitle: ptMemberCountSubtitle(ensuredIds.length),
   };
 }
 
@@ -206,11 +168,6 @@ export type NewFixtureInput = {
   notes?: string;
 };
 
-export type GroupChatMemberInput = {
-  participantId: string;
-  name: string;
-};
-
 type LeaguePersist = {
   url: string;
   rows: LeagueTableRow[];
@@ -236,19 +193,19 @@ type AppDataContextValue = {
 
   conversations: Conversation[];
   messagesByConv: Record<string, Message[]>;
-  createDmWithPlayer: (player: Player, options?: { peerCloudUserId?: string | null }) => string | null;
-  createGroupConversation: (title: string, members?: GroupChatMemberInput[]) => string;
-  updateGroupConversation: (conversationId: string, patch: { title?: string }) => Promise<boolean>;
-  addParticipantsToGroupChat: (conversationId: string, members: GroupChatMemberInput[]) => void;
-  removeParticipantFromGroupChat: (conversationId: string, participantId: string) => Promise<boolean>;
-  setGroupAdmin: (conversationId: string, participantId: string, makeAdmin: boolean) => void;
-  sendChatMessage: (conversationId: string, body: string) => void;
-  /** Mescla mensagens vindas da cloud (ids do servidor) num fio DM. */
-  mergeRemoteDmMessages: (conversationId: string, messages: Message[]) => void;
-  /** Sincroniza a lista de DMs a partir do servidor (outro utilizador vê conversas). */
+  createDmWithPlayer: (player: Player, opts?: { peerCloudUserId: string | null }) => string | null;
+  addPlayerToGroupChat: (conversationId: string, player: Player) => void;
+  createGroupConversation: (title: string, members: { participantId: string; name: string }[]) => string;
+  updateGroupConversation: (conversationId: string, patch: { title?: string }) => Promise<void>;
+  addParticipantsToGroupChat: (conversationId: string, members: { participantId: string; name: string }[]) => void;
+  removeParticipantFromGroupChat: (conversationId: string, participantCloudId: string) => Promise<void>;
+  setGroupAdmin: (conversationId: string, participantCloudId: string, isAdmin: boolean) => void;
+  sendChatMessage: (conversationId: string, body: string, attachments?: ChatAttachment[]) => void;
+  mergeRemoteDmMessages: (conversationId: string, incoming: Message[]) => void;
   hydrateDmThreadsFromCloud: (
     threads: Array<{ peerUserId: string; peerName: string; lastBody: string; lastAt: string }>
   ) => void;
+  markConversationRead: (conversationId: string) => void;
 
   trainingSessions: TrainingSession[];
   addTrainingSession: (input: NewSessionInput) => TrainingSession;
@@ -293,11 +250,6 @@ type AppDataContextValue = {
 
   sketchArea: SketchAreaState;
   setSketchArea: Dispatch<SetStateAction<SketchAreaState>>;
-
-  /** Mensagens de outros utilizadores ainda não lidas (todas as conversas). */
-  unreadMessagesCount: number;
-  /** Marca o fio como lido até à última mensagem (ao abrir a conversa). */
-  markConversationRead: (conversationId: string) => void;
 };
 
 const AppDataContext = createContext<AppDataContextValue | null>(null);
@@ -331,20 +283,6 @@ function normalizeTeamRoles(raw: unknown): TeamRoles {
   };
 }
 
-function latestMessageSentAt(list: Message[]): string {
-  return list.reduce((a, b) => (new Date(a.sentAt) > new Date(b.sentAt) ? a : b)).sentAt;
-}
-
-/** Primeira instalação: considerar histórico como já visto para não inflar não lidas. */
-function bootstrapMessageReadAt(msgs: Record<string, Message[]>): Record<string, string> {
-  const out: Record<string, string> = {};
-  for (const [cid, list] of Object.entries(msgs)) {
-    if (!list?.length) continue;
-    out[cid] = latestMessageSentAt(list);
-  }
-  return out;
-}
-
 export function AppDataProvider({ children }: { children: ReactNode }) {
   const { user, authReady } = useAuth();
   const ks = useMemo(() => (user?.id ? getAllUserDataKeys(user.id) : null), [user?.id]);
@@ -355,7 +293,6 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [teamRoles, setTeamRoles] = useState<TeamRoles>(() => defaultTeamRoles());
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [messagesByConv, setMessagesByConv] = useState<Record<string, Message[]>>({});
-  const [conversationLastReadAt, setConversationLastReadAt] = useState<Record<string, string>>({});
   const [trainingSessions, setTrainingSessions] = useState<TrainingSession[]>([]);
   const [trainingPlayerIdsBySession, setTrainingPlayerIdsBySession] = useState<Record<string, string[]>>({});
   const [fixtures, setFixtures] = useState<MatchFixture[]>([]);
@@ -397,7 +334,6 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       setTeamRoles(defaultTeamRoles());
       setConversations([]);
       setMessagesByConv({});
-      setConversationLastReadAt({});
       setTrainingSessions([]);
       setTrainingPlayerIdsBySession({});
       setFixtures([]);
@@ -423,25 +359,20 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     const loadedPlayers = loadJSON<Player[]>(ks.players, []);
     const loadedStaff = loadJSON<StaffMember[]>(ks.staff, []);
     const loadedTeamRoles = normalizeTeamRoles(loadJSON<unknown>(ks.teamRoles, defaultTeamRoles()));
+    const actorId = user?.id ?? mockCoach.id;
     let loadedConvs = loadJSON<Conversation[]>(ks.conversations, []);
     if (!loadedConvs.some((c) => c.type === "group")) {
-      loadedConvs = [defaultGroup(user.id), ...loadedConvs];
+      loadedConvs = [defaultGroup(actorId), ...loadedConvs];
     }
-    loadedConvs = loadedConvs.map((c) => normalizeGroupConversation(c, user.id));
     const loadedMsgs = loadJSON<Record<string, Message[]>>(ks.messages, {});
     if (!loadedMsgs[SQUAD_GROUP_ID]) {
       loadedMsgs[SQUAD_GROUP_ID] = [];
-    }
-    let loadedRead = loadJSON<Record<string, string>>(ks.messageReadAt, {});
-    if (Object.keys(loadedRead).length === 0) {
-      loadedRead = bootstrapMessageReadAt(loadedMsgs);
     }
     setPlayers(loadedPlayers);
     setStaff(loadedStaff);
     setTeamRoles(loadedTeamRoles);
     setConversations(loadedConvs);
     setMessagesByConv(loadedMsgs);
-    setConversationLastReadAt(loadedRead);
     setTrainingSessions(loadJSON<TrainingSession[]>(ks.sessions, []));
     setTrainingPlayerIdsBySession(loadJSON<Record<string, string[]>>(ks.trainingPlayers, {}));
     setFixtures(loadJSON<MatchFixture[]>(ks.fixtures, []));
@@ -479,27 +410,19 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         if (cancelled) return;
         if (res.ok && data.ok && data.payload && snapshotHasMeaningfulData(data.payload)) {
           const s = data.payload;
+          const actorIdCloud = user?.id ?? mockCoach.id;
           let loadedConvs = s.conversations;
           if (!loadedConvs.some((c) => c.type === "group")) {
-            loadedConvs = [defaultGroup(user.id), ...loadedConvs];
+            loadedConvs = [defaultGroup(actorIdCloud), ...loadedConvs];
           }
-          loadedConvs = loadedConvs.map((c) => normalizeGroupConversation(c, user.id));
           const loadedMsgs = { ...s.messages };
           if (!loadedMsgs[SQUAD_GROUP_ID]) loadedMsgs[SQUAD_GROUP_ID] = [];
           const leagueMatchesDeduped = dedupeMatches(s.league.matches ?? []);
-          let readFromDisk = loadJSON<Record<string, string>>(ks.messageReadAt, {});
-          for (const [cid, list] of Object.entries(loadedMsgs)) {
-            if (!list?.length) continue;
-            if (!readFromDisk[cid]) {
-              readFromDisk[cid] = latestMessageSentAt(list);
-            }
-          }
           setPlayers(s.players);
           setStaff(s.staff ?? []);
           setTeamRoles(normalizeTeamRoles(s.teamRoles));
           setConversations(loadedConvs);
           setMessagesByConv(loadedMsgs);
-          setConversationLastReadAt(readFromDisk);
           setTrainingSessions(s.trainingSessions);
           setTrainingPlayerIdsBySession(s.trainingPlayers);
           setFixtures(s.fixtures);
@@ -579,7 +502,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ payload: snap }),
       });
-    }, 900);
+    }, 2200);
     return () => window.clearTimeout(t);
   }, [
     cloudRemoteReady,
@@ -608,93 +531,6 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   ]);
 
   useEffect(() => {
-    if (!shouldUseCloudClientApis(user) || !cloudRemoteReady || !hydrated || !user?.id) return;
-    const groups = conversations.filter((c) => c.type === "group");
-    if (groups.length === 0) return;
-    const t = window.setTimeout(() => {
-      void Promise.all(
-        groups.map((group) => {
-          const participantIds = Array.from(
-            new Set(group.participantIds.map((id) => (id === mockCoach.id ? user.id! : id)))
-          );
-          if (!participantIds.includes(user.id!)) participantIds.unshift(user.id!);
-          return fetch("/api/cloud/chat/group/sync", {
-            method: "POST",
-            credentials: "include",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              conversation: {
-                ...group,
-                participantIds,
-                subtitle: ptMemberCountSubtitle(participantIds.length),
-              },
-              messages: messagesByConv[group.id] ?? [],
-            }),
-          });
-        })
-      );
-    }, 300);
-    return () => window.clearTimeout(t);
-  }, [cloudRemoteReady, conversations, hydrated, messagesByConv, user?.id, user]);
-
-  useEffect(() => {
-    if (!shouldUseCloudClientApis(user) || !cloudRemoteReady || !hydrated || !user?.id) return;
-    let cancelled = false;
-    const poll = async () => {
-      try {
-        const res = await fetch("/api/cloud/workspace", { credentials: "include" });
-        const data = (await res.json()) as {
-          ok?: boolean;
-          payload?: WorkspaceSnapshotV1 | null;
-        };
-        if (cancelled || !res.ok || !data.ok || !data.payload) return;
-        const remoteGroups = data.payload.conversations.filter((c) => c.type === "group");
-        if (remoteGroups.length === 0) return;
-        setConversations((prev) => {
-          const next = [...prev];
-          for (const remote of remoteGroups) {
-            const normalized =
-              remote.id === SQUAD_GROUP_ID ? normalizeGroupConversation(remote, user.id) : remote;
-            const idx = next.findIndex((c) => c.id === normalized.id);
-            if (idx < 0) {
-              next.push(normalized);
-              continue;
-            }
-            next[idx] = { ...next[idx], ...normalized };
-          }
-          return next;
-        });
-        setMessagesByConv((prev) => {
-          const mergedByConv = { ...prev };
-          let changed = false;
-          for (const remote of remoteGroups) {
-            const current = mergedByConv[remote.id] ?? [];
-            const byId = new Map(current.map((m) => [m.id, m]));
-            for (const msg of data.payload!.messages[remote.id] ?? []) {
-              if (!byId.has(msg.id)) {
-                byId.set(msg.id, msg);
-                changed = true;
-              }
-            }
-            mergedByConv[remote.id] = [...byId.values()].sort(
-              (a, b) => new Date(a.sentAt).getTime() - new Date(b.sentAt).getTime()
-            );
-          }
-          return changed ? mergedByConv : prev;
-        });
-      } catch {
-        /* ignore transient cloud errors */
-      }
-    };
-    const id = window.setInterval(() => void poll(), 1200);
-    void poll();
-    return () => {
-      cancelled = true;
-      window.clearInterval(id);
-    };
-  }, [cloudRemoteReady, hydrated, user?.id, user]);
-
-  useEffect(() => {
     if (!hydrated || !ks) return;
     saveJSON(ks.players, players);
   }, [players, hydrated, ks]);
@@ -718,11 +554,6 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     if (!hydrated || !ks) return;
     saveJSON(ks.messages, messagesByConv);
   }, [messagesByConv, hydrated, ks]);
-
-  useEffect(() => {
-    if (!hydrated || !ks) return;
-    saveJSON(ks.messageReadAt, conversationLastReadAt);
-  }, [conversationLastReadAt, hydrated, ks]);
 
   useEffect(() => {
     if (!hydrated || !ks) return;
@@ -817,7 +648,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       }
       return [...prev, tactic];
     });
-  }, [user?.id]);
+  }, []);
 
   const deleteTactic = useCallback((id: string) => {
     setSavedTactics((prev) => prev.filter((t) => t.id !== id));
@@ -909,16 +740,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const updatePlayer = useCallback((id: string, patch: Partial<Omit<Player, "id">>) => {
-    setPlayers((prev) =>
-      prev.map((x) => {
-        if (x.id !== id) return x;
-        const next = { ...x, ...patch } as Player;
-        if ("linkedNametag" in patch && patch.linkedNametag === undefined) {
-          delete next.linkedNametag;
-        }
-        return next;
-      })
-    );
+    setPlayers((prev) => prev.map((x) => (x.id === id ? { ...x, ...patch } : x)));
   }, []);
 
   const removePlayer = useCallback((id: string) => {
@@ -957,13 +779,383 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setTeamRoles((prev) => ({ ...prev, [role]: playerIds.slice(0, 2) }));
   }, []);
 
+  const mergeRemoteDmMessages = useCallback((conversationId: string, incoming: Message[]) => {
+    if (incoming.length === 0) return;
+    setMessagesByConv((prev) => {
+      const cur = prev[conversationId] ?? [];
+      return { ...prev, [conversationId]: mergeMessages(cur, incoming) };
+    });
+    const last = incoming[incoming.length - 1]!;
+    const preview = clipPreviewLine(messagePreviewLine(last.body, last.attachments));
+    setConversations((prev) =>
+      prev.map((c) =>
+        c.id === conversationId
+          ? {
+              ...c,
+              lastMessagePreview: preview,
+              lastMessageAt: last.sentAt,
+            }
+          : c
+      )
+    );
+  }, []);
+
+  const hydrateDmThreadsFromCloud = useCallback(
+    (threads: Array<{ peerUserId: string; peerName: string; lastBody: string; lastAt: string }>) => {
+      const uidSelf = user?.id;
+      if (!uidSelf) return;
+      setConversations((prev) => {
+        let next = [...prev];
+        for (const t of threads) {
+          const id = cloudDmConversationId(uidSelf, t.peerUserId);
+          const idx = next.findIndex((c) => c.id === id);
+          const conv: Conversation = {
+            id,
+            type: "dm",
+            title: t.peerName,
+            avatarInitials: initials(t.peerName),
+            lastMessagePreview: t.lastBody.length > 72 ? `${t.lastBody.slice(0, 72)}…` : t.lastBody,
+            lastMessageAt: t.lastAt,
+            participantIds: [uidSelf, t.peerUserId],
+          };
+          if (idx < 0) next.push(conv);
+          else {
+            const cur = next[idx]!;
+            if (new Date(t.lastAt).getTime() >= new Date(cur.lastMessageAt).getTime()) {
+              next[idx] = { ...cur, ...conv };
+            }
+          }
+        }
+        return next;
+      });
+      setMessagesByConv((prev) => {
+        const next = { ...prev };
+        for (const t of threads) {
+          const id = cloudDmConversationId(uidSelf, t.peerUserId);
+          if (!next[id]) next[id] = [];
+        }
+        return next;
+      });
+    },
+    [user?.id]
+  );
+
+  const markConversationRead = useCallback((conversationId: string) => {
+    setConversations((prev) =>
+      prev.map((c) => (c.id === conversationId ? { ...c, unread: 0 } : c))
+    );
+  }, []);
+
+  const createGroupConversation = useCallback(
+    (titleRaw: string, members: { participantId: string; name: string }[]) => {
+      const id = uid("conv-group");
+      const actorId = user?.id ?? mockCoach.id;
+      const title = titleRaw.trim() || "Grupo";
+      const now = new Date().toISOString();
+      const names = members.map((m) => m.name);
+      const participantIds = Array.from(new Set([actorId, ...members.map((m) => m.participantId)]));
+      const memberMeta: Record<string, { addedById: string; joinedAt: string }> = {};
+      for (const m of members) {
+        memberMeta[m.participantId] = { addedById: actorId, joinedAt: now };
+      }
+      const createdBody = ptGroupCreatedBody(title, names);
+      const conv: Conversation = {
+        id,
+        type: "group",
+        title,
+        createdById: actorId,
+        groupPrimaryAdminId: actorId,
+        groupAdminIds: [actorId],
+        groupMemberMeta: memberMeta,
+        subtitle: ptMemberCountSubtitle(participantIds.length),
+        avatarInitials: initials(title),
+        lastMessagePreview: clipPreviewLine(createdBody),
+        lastMessageAt: now,
+        participantIds,
+        titleUpdatedAt: now,
+        unread: 0,
+      };
+      const systemMsg: Message = {
+        id: uid("m"),
+        conversationId: id,
+        authorId: actorId,
+        authorName: coachProfile.name.trim() || mockCoach.name || "Coach",
+        body: createdBody,
+        sentAt: now,
+        system: true,
+      };
+      setConversations((prev) => [...prev, conv]);
+      setMessagesByConv((prev) => ({ ...prev, [id]: [systemMsg] }));
+
+      if (shouldUseCloudClientApis(user) && members.length > 0) {
+        queueMicrotask(() => {
+          void fetch("/api/cloud/chat/group/sync", {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ conversation: conv, messages: [systemMsg] }),
+          });
+        });
+      }
+      return id;
+    },
+    [coachProfile.name, user, user?.id]
+  );
+
+  const updateGroupConversation = useCallback(
+    async (conversationId: string, patch: { title?: string }) => {
+      const title = patch.title?.trim();
+      if (!title) return;
+      const actorId = user?.id ?? mockCoach.id;
+      if (shouldUseCloudClientApis(user)) {
+        try {
+          const res = await fetch("/api/cloud/chat/group/rename", {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ conversationId, title }),
+          });
+          const data = (await res.json()) as {
+            ok?: boolean;
+            conversation?: Conversation;
+            message?: Message;
+          };
+          if (res.ok && data.ok && data.conversation) {
+            setConversations((prev) => prev.map((c) => (c.id === conversationId ? data.conversation! : c)));
+            if (data.message) {
+              setMessagesByConv((prev) => ({
+                ...prev,
+                [conversationId]: mergeMessages(prev[conversationId] ?? [], [data.message!]),
+              }));
+            }
+            return;
+          }
+        } catch {
+          /* local fallback */
+        }
+      }
+      const now = new Date().toISOString();
+      setConversations((prev) =>
+        prev.map((c) =>
+          c.id === conversationId && c.type === "group"
+            ? {
+                ...c,
+                title,
+                titleUpdatedAt: now,
+                avatarInitials: initials(title),
+                lastMessageAt: now,
+                lastMessagePreview: ptGroupRenamePreview(title),
+              }
+            : c
+        )
+      );
+      const msg: Message = {
+        id: uid("m"),
+        conversationId,
+        authorId: actorId,
+        authorName: coachProfile.name.trim() || mockCoach.name || "Coach",
+        body: `O grupo foi renomeado para «${title}».`,
+        sentAt: now,
+        system: true,
+      };
+      setMessagesByConv((prev) => ({
+        ...prev,
+        [conversationId]: mergeMessages(prev[conversationId] ?? [], [msg]),
+      }));
+    },
+    [coachProfile.name, user, user?.id]
+  );
+
+  const addParticipantsToGroupChat = useCallback(
+    (conversationId: string, members: { participantId: string; name: string }[]) => {
+      if (members.length === 0) return;
+      const actorId = user?.id ?? mockCoach.id;
+      const now = new Date().toISOString();
+      const addedNames = members.map((m) => m.name);
+      const sys: Message = {
+        id: uid("m"),
+        conversationId,
+        authorId: actorId,
+        authorName: coachProfile.name.trim() || mockCoach.name || "Coach",
+        body: ptMembersAddedBody(addedNames),
+        sentAt: now,
+        system: true,
+      };
+
+      setConversations((prev) => {
+        const idx = prev.findIndex((c) => c.id === conversationId && c.type === "group");
+        if (idx < 0) return prev;
+        const c = prev[idx]!;
+        const nextIds = Array.from(new Set([...c.participantIds, ...members.map((m) => m.participantId)]));
+        const meta = { ...(c.groupMemberMeta ?? {}) };
+        for (const m of members) {
+          meta[m.participantId] = { addedById: actorId, joinedAt: now };
+        }
+        const nextConv: Conversation = {
+          ...c,
+          participantIds: nextIds,
+          groupMemberMeta: meta,
+          subtitle: ptMemberCountSubtitle(nextIds.length),
+          lastMessageAt: now,
+          lastMessagePreview: clipPreviewLine(ptMembersAddedPreview(addedNames)),
+        };
+        if (shouldUseCloudClientApis(user)) {
+          queueMicrotask(() => {
+            void fetch("/api/cloud/chat/group/sync", {
+              method: "POST",
+              credentials: "include",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ conversation: nextConv, messages: [sys] }),
+            });
+          });
+        }
+        const next = [...prev];
+        next[idx] = nextConv;
+        return next;
+      });
+
+      setMessagesByConv((prev) => ({
+        ...prev,
+        [conversationId]: mergeMessages(prev[conversationId] ?? [], [sys]),
+      }));
+    },
+    [coachProfile.name, user, user?.id]
+  );
+
+  const removeParticipantFromGroupChat = useCallback(
+    async (conversationId: string, participantCloudId: string) => {
+      if (shouldUseCloudClientApis(user)) {
+        try {
+          const res = await fetch("/api/cloud/chat/group/remove-member", {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ conversationId, participantId: participantCloudId }),
+          });
+          const data = (await res.json()) as {
+            ok?: boolean;
+            conversation?: Conversation;
+            message?: Message;
+          };
+          if (res.ok && data.ok && data.conversation) {
+            setConversations((prev) => prev.map((c) => (c.id === conversationId ? data.conversation! : c)));
+            if (data.message) {
+              setMessagesByConv((prev) => ({
+                ...prev,
+                [conversationId]: mergeMessages(prev[conversationId] ?? [], [data.message!]),
+              }));
+            }
+            return;
+          }
+        } catch {
+          /* local fallback */
+        }
+      }
+      const now = new Date().toISOString();
+      const actorId = user?.id ?? mockCoach.id;
+      setConversations((prev) =>
+        prev
+          .map((c) => {
+            if (c.id !== conversationId || c.type !== "group") return c;
+            if (!c.participantIds.includes(participantCloudId)) return c;
+            const nextIds = c.participantIds.filter((id) => id !== participantCloudId);
+            const meta = { ...(c.groupMemberMeta ?? {}) };
+            delete meta[participantCloudId];
+            const nextAdmins = (c.groupAdminIds ?? []).filter((id) => id !== participantCloudId);
+            const nextPrimary =
+              c.groupPrimaryAdminId === participantCloudId
+                ? (nextIds[0] ?? actorId)
+                : c.groupPrimaryAdminId;
+            return {
+              ...c,
+              participantIds: nextIds,
+              groupMemberMeta: meta,
+              groupAdminIds: nextAdmins,
+              groupPrimaryAdminId: nextPrimary,
+              subtitle: ptMemberCountSubtitle(nextIds.length),
+              lastMessageAt: now,
+              lastMessagePreview: "Um membro foi removido do grupo.",
+            };
+          })
+          .filter((c) => {
+            if (c.id !== conversationId || c.type !== "group") return true;
+            return c.participantIds.length > 0;
+          })
+      );
+      const msg: Message = {
+        id: uid("m"),
+        conversationId,
+        authorId: actorId,
+        authorName: coachProfile.name.trim() || mockCoach.name || "Coach",
+        body: "Um membro foi removido do grupo.",
+        sentAt: now,
+        system: true,
+      };
+      setMessagesByConv((prev) => ({
+        ...prev,
+        [conversationId]: mergeMessages(prev[conversationId] ?? [], [msg]),
+      }));
+    },
+    [coachProfile.name, user, user?.id]
+  );
+
+  const setGroupAdmin = useCallback(
+    (conversationId: string, participantCloudId: string, isAdmin: boolean) => {
+      setConversations((prev) => {
+        const idx = prev.findIndex((c) => c.id === conversationId && c.type === "group");
+        if (idx < 0) return prev;
+        const c = prev[idx]!;
+        if (c.groupPrimaryAdminId === participantCloudId && !isAdmin) return prev;
+        let nextAdmins = [...(c.groupAdminIds ?? [])];
+        if (isAdmin) {
+          if (!nextAdmins.includes(participantCloudId)) nextAdmins.push(participantCloudId);
+        } else {
+          nextAdmins = nextAdmins.filter((id) => id !== participantCloudId);
+        }
+        const nextConv: Conversation = { ...c, groupAdminIds: nextAdmins };
+        if (shouldUseCloudClientApis(user)) {
+          queueMicrotask(() => {
+            void fetch("/api/cloud/chat/group/sync", {
+              method: "POST",
+              credentials: "include",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ conversation: nextConv, messages: [] }),
+            });
+          });
+        }
+        const next = [...prev];
+        next[idx] = nextConv;
+        return next;
+      });
+    },
+    [user, user?.id]
+  );
+
   const createDmWithPlayer = useCallback(
-    (player: Player, options?: { peerCloudUserId?: string | null }) => {
-      if (!normalizeNametagInput(player.linkedNametag ?? "")) return null;
-      const coachId = user?.id ?? mockCoach.id;
-      const peerCloud = options?.peerCloudUserId?.trim();
-      const id =
-        peerCloud && user?.id ? cloudDmConversationId(user.id, peerCloud) : `conv-dm-${player.id}`;
+    (player: Player, opts?: { peerCloudUserId: string | null }) => {
+      const peer = opts?.peerCloudUserId ?? null;
+      const actorId = user?.id ?? mockCoach.id;
+      if (shouldUseCloudClientApis(user) && user?.id) {
+        if (!peer) return null;
+        const id = cloudDmConversationId(user.id, peer);
+        setConversations((prev) => {
+          if (prev.some((c) => c.id === id)) return prev;
+          const conv: Conversation = {
+            id,
+            type: "dm",
+            title: player.name,
+            subtitle: `${formatPlayerPositions(player)} · #${player.number}`,
+            avatarInitials: initials(player.name),
+            lastMessagePreview: "No messages yet",
+            lastMessageAt: new Date().toISOString(),
+            participantIds: [user.id, peer],
+          };
+          return [...prev, conv];
+        });
+        setMessagesByConv((prev) => (prev[id] ? prev : { ...prev, [id]: [] }));
+        return id;
+      }
+      const id = `conv-dm-${player.id}`;
       setConversations((prev) => {
         if (prev.some((c) => c.id === id)) return prev;
         const conv: Conversation = {
@@ -972,427 +1164,102 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           title: player.name,
           subtitle: `${formatPlayerPositions(player)} · #${player.number}`,
           avatarInitials: initials(player.name),
-          lastMessagePreview: "Ainda sem mensagens",
+          lastMessagePreview: "No messages yet",
           lastMessageAt: new Date().toISOString(),
-          participantIds: peerCloud && user?.id ? [user.id, peerCloud] : [coachId, player.id],
+          participantIds: [actorId, player.id],
         };
         return [...prev, conv];
       });
       setMessagesByConv((prev) => (prev[id] ? prev : { ...prev, [id]: [] }));
       return id;
     },
-    [user?.id]
+    [user, user?.id]
   );
 
-  const hydrateDmThreadsFromCloud = useCallback(
-    (threads: Array<{ peerUserId: string; peerName: string; lastBody: string; lastAt: string }>) => {
-      if (!user?.id) return;
-      setConversations((prev) => {
-        const next = [...prev];
-        const indexById = new Map(next.map((c, i) => [c.id, i]));
-        for (const t of threads) {
-          const id = cloudDmConversationId(user.id, t.peerUserId);
-          const lastPreview =
-            t.lastBody.length > 72 ? `${t.lastBody.slice(0, 72)}…` : t.lastBody;
-          const existingIdx = indexById.get(id);
-          if (existingIdx != null) {
-            const cur = next[existingIdx]!;
-            next[existingIdx] = {
-              ...cur,
-              lastMessagePreview: lastPreview,
-              lastMessageAt: t.lastAt,
-              title: cur.title || t.peerName,
-            };
-            continue;
-          }
-          next.push({
-            id,
-            type: "dm",
-            title: t.peerName,
-            subtitle: "Mensagem direta",
-            avatarInitials: initials(t.peerName),
-            lastMessagePreview: lastPreview,
-            lastMessageAt: t.lastAt,
-            participantIds: [user.id, t.peerUserId],
-          });
-          indexById.set(id, next.length - 1);
-        }
-        return next;
-      });
-      setMessagesByConv((prev) => {
-        const o = { ...prev };
-        for (const t of threads) {
-          const id = cloudDmConversationId(user.id, t.peerUserId);
-          if (o[id] === undefined) o[id] = [];
-        }
-        return o;
-      });
-    },
-    [user?.id]
-  );
-
-  const createGroupConversation = useCallback(
-    (title: string, members: GroupChatMemberInput[] = []) => {
-      const groupTitle = title.trim() || "New group";
-      const me = user?.id ?? mockCoach.id;
-      const uniqueMembers = Array.from(
-        new Map(members.map((m) => [m.participantId, m])).values()
-      ).filter((m) => m.participantId !== me);
-      const conversationId = uid("conv-group");
-      const participantIds = [me, ...uniqueMembers.map((m) => m.participantId)];
-      const now = new Date().toISOString();
-      const createdBody = ptGroupCreatedBody(
-        groupTitle,
-        uniqueMembers.map((m) => m.name)
-      );
-      const conversation: Conversation = {
-        id: conversationId,
-        type: "group",
-        title: groupTitle,
-        titleUpdatedAt: now,
-        createdById: me,
-        subtitle: ptMemberCountSubtitle(participantIds.length),
-        avatarInitials: initials(groupTitle),
-        lastMessagePreview: createdBody,
-        lastMessageAt: now,
-        participantIds,
-        unread: 0,
-      };
-      const msg: Message = {
-        id: uid("m"),
-        conversationId,
-        authorId: me,
-        authorName: user?.name?.trim() || mockCoach.name.trim() || "Coach",
-        body: createdBody,
-        sentAt: now,
-        system: true,
-      };
-      setConversations((prev) => [...prev, conversation]);
-      setMessagesByConv((prev) => ({ ...prev, [conversationId]: [msg] }));
-      return conversationId;
-    },
-    [user?.id, user?.name]
-  );
-
-  const updateGroupConversation = useCallback(async (conversationId: string, patch: { title?: string }) => {
-    const nextTitle = patch.title?.trim();
-    if (!nextTitle) return false;
-    const now = new Date().toISOString();
-    const me = user?.id ?? mockCoach.id;
-    const meName = user?.name?.trim() || mockCoach.name.trim() || "Coach";
-
-    if (shouldUseCloudClientApis(user) && user?.id) {
-      try {
-        const res = await fetch("/api/cloud/chat/group/rename", {
-          method: "POST",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ conversationId, title: nextTitle }),
-        });
-        const data = (await res.json()) as { ok?: boolean; conversation?: Conversation; message?: Message };
-        if (res.ok && data.ok && data.conversation) {
-          setConversations((prev) =>
-            prev.map((c) =>
-              c.id === conversationId && c.type === "group" ? { ...c, ...data.conversation } : c
-            )
-          );
-          if (data.message) {
-            setMessagesByConv((prev) => {
-              const cur = prev[conversationId] ?? [];
-              if (cur.some((m) => m.id === data.message!.id)) return prev;
-              return { ...prev, [conversationId]: [...cur, data.message!] };
-            });
-          }
-          return true;
-        }
-      } catch {
-        /* fallback local */
-      }
-    }
-
-    let didRename = false;
+  const addPlayerToGroupChat = useCallback((conversationId: string, player: Player) => {
+    const actorId = user?.id ?? mockCoach.id;
     setConversations((prev) =>
       prev.map((c) => {
         if (c.id !== conversationId || c.type !== "group") return c;
-        if (c.title === nextTitle) return c;
-        didRename = true;
+        if (c.participantIds.includes(player.id)) return c;
+        const nextIds = [...c.participantIds, player.id];
         return {
           ...c,
-          createdById: c.createdById ?? me,
-          title: nextTitle,
-          titleUpdatedAt: now,
-          avatarInitials: initials(nextTitle),
-          lastMessageAt: now,
-          lastMessagePreview: ptGroupRenamePreview(nextTitle),
+          participantIds: nextIds,
+          subtitle: `${nextIds.length} members`,
+          lastMessagePreview: `${player.name} added to the channel`,
+          lastMessageAt: new Date().toISOString(),
         };
       })
     );
-    if (!didRename) return false;
-    const renameMsg: Message = {
+    const sysBody = `${player.name} was added to the squad channel.`;
+    const msg: Message = {
       id: uid("m"),
       conversationId,
-      authorId: me,
-      authorName: meName,
-        body: ptGroupRenameBody(nextTitle),
-      sentAt: now,
-      system: true,
+      authorId: actorId,
+      authorName: mockCoach.name.trim() || "Coach",
+      body: sysBody,
+      sentAt: new Date().toISOString(),
     };
     setMessagesByConv((prev) => ({
       ...prev,
-      [conversationId]: [...(prev[conversationId] ?? []), renameMsg],
+      [conversationId]: [...(prev[conversationId] ?? []), msg],
     }));
-    return true;
-  }, [user?.id, user?.name, user]);
+  }, [user?.id]);
 
-  const addParticipantsToGroupChat = useCallback(
-    (conversationId: string, members: GroupChatMemberInput[]) => {
-      if (members.length === 0) return;
-      const coachId = user?.id ?? mockCoach.id;
-      const coachName = user?.name?.trim() || mockCoach.name.trim() || "Coach";
-      const uniqueMembers = Array.from(
-        new Map(members.map((m) => [m.participantId, m])).values()
-      );
-      const addedNames: string[] = [];
-      const now = new Date().toISOString();
-      setConversations((prev) =>
-        prev.map((c) => {
-          if (c.id !== conversationId || c.type !== "group") return c;
-          const nextIds = [...c.participantIds];
-          const nextMeta = { ...(c.groupMemberMeta ?? {}) };
-          for (const member of uniqueMembers) {
-            if (nextIds.includes(member.participantId)) continue;
-            nextIds.push(member.participantId);
-            nextMeta[member.participantId] = {
-              addedById: coachId,
-              joinedAt: now,
-            };
-            addedNames.push(member.name);
-          }
-          if (addedNames.length === 0) return c;
-          const label = ptMembersAddedPreview(addedNames);
-          return {
-            ...c,
-            participantIds: nextIds,
-            groupMemberMeta: nextMeta,
-            subtitle: ptMemberCountSubtitle(nextIds.length),
-            lastMessagePreview: label,
-            lastMessageAt: now,
-          };
-        })
-      );
-      if (addedNames.length === 0) return;
-      const msg: Message = {
-        id: uid("m"),
-        conversationId,
-        authorId: coachId,
-        authorName: coachName,
-        body: ptMembersAddedBody(addedNames),
-        sentAt: now,
-        system: true,
-      };
-      setMessagesByConv((prev) => ({
-        ...prev,
-        [conversationId]: [...(prev[conversationId] ?? []), msg],
-      }));
-    },
-    [user?.id, user?.name]
-  );
-
-  const removeParticipantFromGroupChat = useCallback(
-    async (conversationId: string, participantId: string) => {
+  const sendChatMessage = useCallback(
+    (conversationId: string, body: string, attachments?: ChatAttachment[]) => {
+      const trimmed = body.trim();
+      const hasAttach = Boolean(attachments?.length);
+      if (!trimmed && !hasAttach) return;
       const actorId = user?.id ?? mockCoach.id;
-      const actorName = user?.name?.trim() || mockCoach.name.trim() || "Coach";
-      if (shouldUseCloudClientApis(user) && user?.id) {
-        try {
-          const res = await fetch("/api/cloud/chat/group/remove-member", {
-            method: "POST",
-            credentials: "include",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ conversationId, participantId }),
-          });
-          const data = (await res.json()) as { ok?: boolean; conversation?: Conversation; message?: Message };
-          if (res.ok && data.ok && data.conversation) {
-            setConversations((prev) =>
-              prev.map((c) =>
-                c.id === conversationId && c.type === "group" ? { ...c, ...data.conversation } : c
-              )
-            );
-            if (data.message) {
-              setMessagesByConv((prev) => {
-                const cur = prev[conversationId] ?? [];
-                if (cur.some((m) => m.id === data.message!.id)) return prev;
-                return { ...prev, [conversationId]: [...cur, data.message!] };
-              });
-            }
-            return true;
-          }
-        } catch {
-          /* fallback local */
-        }
-      }
-      let removed = false;
-      const now = new Date().toISOString();
-      setConversations((prev) =>
-        prev.map((c) => {
-          if (c.id !== conversationId || c.type !== "group") return c;
-          if (!c.participantIds.includes(participantId)) return c;
-          const isAdmin =
-            actorId === c.groupPrimaryAdminId || Boolean(c.groupAdminIds?.includes(actorId));
-          const addedByActor = c.groupMemberMeta?.[participantId]?.addedById === actorId;
-          if (!isAdmin && !addedByActor) return c;
-          removed = true;
-          const nextIds = c.participantIds.filter((id) => id !== participantId);
-          const nextMeta = { ...(c.groupMemberMeta ?? {}) };
-          delete nextMeta[participantId];
-          const nextAdmins = (c.groupAdminIds ?? []).filter((id) => id !== participantId);
-          const nextPrimary =
-            c.groupPrimaryAdminId === participantId ? nextIds[0] ?? actorId : c.groupPrimaryAdminId;
-          return {
-            ...c,
-            participantIds: nextIds,
-            groupMemberMeta: nextMeta,
-            groupAdminIds: nextAdmins,
-            groupPrimaryAdminId: nextPrimary,
-            subtitle: ptMemberCountSubtitle(nextIds.length),
-            lastMessagePreview: ptMemberRemovedPreview(actorName),
-            lastMessageAt: now,
-          };
-        })
-      );
-      if (!removed) return false;
+      const authorName = coachProfile.name.trim() || mockCoach.name || "Coach";
+      const preview = clipPreviewLine(messagePreviewLine(trimmed, attachments));
       const msg: Message = {
         id: uid("m"),
         conversationId,
         authorId: actorId,
-        authorName: actorName,
-        body: ptMemberRemovedBody(),
-        sentAt: now,
-        system: true,
-      };
-      setMessagesByConv((prev) => ({
-        ...prev,
-        [conversationId]: [...(prev[conversationId] ?? []), msg],
-      }));
-      return true;
-    },
-    [user?.id, user?.name, user]
-  );
-
-  const setGroupAdmin = useCallback(
-    (conversationId: string, participantId: string, makeAdmin: boolean) => {
-      const actorId = user?.id ?? mockCoach.id;
-      setConversations((prev) =>
-        prev.map((c) => {
-          if (c.id !== conversationId || c.type !== "group") return c;
-          const isAdmin =
-            actorId === c.groupPrimaryAdminId || Boolean(c.groupAdminIds?.includes(actorId));
-          if (!isAdmin || !c.participantIds.includes(participantId)) return c;
-          const base = new Set(c.groupAdminIds ?? []);
-          if (participantId === c.groupPrimaryAdminId) return c;
-          if (makeAdmin) base.add(participantId);
-          else base.delete(participantId);
-          return { ...c, groupAdminIds: Array.from(base) };
-        })
-      );
-    },
-    [user?.id]
-  );
-
-  const mergeRemoteDmMessages = useCallback((conversationId: string, incoming: Message[]) => {
-    if (incoming.length === 0) return;
-    setMessagesByConv((prev) => {
-      const cur = prev[conversationId] ?? [];
-      const byId = new Map(cur.map((m) => [m.id, m]));
-      for (const m of incoming) {
-        if (!byId.has(m.id)) byId.set(m.id, m);
-      }
-      const merged = [...byId.values()].sort(
-        (a, b) => new Date(a.sentAt).getTime() - new Date(b.sentAt).getTime()
-      );
-      return { ...prev, [conversationId]: merged };
-    });
-    const last = incoming[incoming.length - 1]!;
-    setConversations((prev) =>
-      prev.map((c) =>
-        c.id === conversationId
-          ? {
-              ...c,
-              lastMessagePreview: last.body.length > 72 ? `${last.body.slice(0, 72)}…` : last.body,
-              lastMessageAt: last.sentAt,
-            }
-          : c
-      )
-    );
-  }, []);
-
-  const markConversationRead = useCallback(
-    (conversationId: string) => {
-      const msgs = messagesByConv[conversationId] ?? [];
-      const latest =
-        msgs.length === 0 ? new Date().toISOString() : latestMessageSentAt(msgs);
-      setConversationLastReadAt((prev) => ({ ...prev, [conversationId]: latest }));
-    },
-    [messagesByConv]
-  );
-
-  const unreadMessagesCount = useMemo(() => {
-    const me = user?.id ?? mockCoach.id;
-    let n = 0;
-    for (const [convId, msgs] of Object.entries(messagesByConv)) {
-      if (!msgs?.length) continue;
-      const readAt = conversationLastReadAt[convId];
-      const readT = readAt ? new Date(readAt).getTime() : 0;
-      for (const m of msgs) {
-        if (isChannelSystemMessage(m)) continue;
-        if (m.authorId === me) continue;
-        if (new Date(m.sentAt).getTime() > readT) n++;
-      }
-    }
-    return n;
-  }, [messagesByConv, conversationLastReadAt, user?.id]);
-
-  const sendChatMessage = useCallback(
-    (conversationId: string, body: string) => {
-      const trimmed = body.trim();
-      if (!trimmed) return;
-      if (conversationId.startsWith("conv-dm-")) {
-        const cloud = parseCloudDmConversationId(conversationId);
-        if (cloud) {
-          const me = user?.id ?? mockCoach.id;
-          if (cloud.userIdA !== me && cloud.userIdB !== me) return;
-        } else {
-          const pid = conversationId.slice("conv-dm-".length);
-          const pl = players.find((x) => x.id === pid);
-          if (!normalizeNametagInput(pl?.linkedNametag ?? "")) return;
-        }
-      }
-      const authorId = user?.id ?? mockCoach.id;
-      const authorName = user?.name?.trim() || mockCoach.name.trim() || "Coach";
-      const msg: Message = {
-        id: uid("m"),
-        conversationId,
-        authorId,
         authorName,
         body: trimmed,
         sentAt: new Date().toISOString(),
+        ...(attachments?.length ? { attachments } : {}),
       };
+
       setMessagesByConv((prev) => ({
         ...prev,
         [conversationId]: [...(prev[conversationId] ?? []), msg],
       }));
-      setConversations((prev) =>
-        prev.map((c) =>
+
+      setConversations((prev) => {
+        const idx = prev.findIndex((c) => c.id === conversationId);
+        const cur = idx >= 0 ? prev[idx] : undefined;
+        if (cur?.type === "group" && shouldUseCloudClientApis(user)) {
+          const nextConv: Conversation = {
+            ...cur,
+            lastMessagePreview: preview,
+            lastMessageAt: msg.sentAt,
+          };
+          queueMicrotask(() => {
+            void fetch("/api/cloud/chat/group/sync", {
+              method: "POST",
+              credentials: "include",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ conversation: nextConv, messages: [msg] }),
+            });
+          });
+        }
+        return prev.map((c) =>
           c.id === conversationId
             ? {
                 ...c,
-                lastMessagePreview: trimmed.length > 72 ? `${trimmed.slice(0, 72)}…` : trimmed,
+                lastMessagePreview: preview,
                 lastMessageAt: msg.sentAt,
               }
             : c
-        )
-      );
+        );
+      });
     },
-    [players, user?.id, user?.name]
+    [coachProfile.name, user, user?.id]
   );
 
   const addTrainingSession = useCallback((input: NewSessionInput) => {
@@ -1551,6 +1418,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       conversations,
       messagesByConv,
       createDmWithPlayer,
+      addPlayerToGroupChat,
       createGroupConversation,
       updateGroupConversation,
       addParticipantsToGroupChat,
@@ -1559,6 +1427,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       sendChatMessage,
       mergeRemoteDmMessages,
       hydrateDmThreadsFromCloud,
+      markConversationRead,
       trainingSessions,
       addTrainingSession,
       trainingPlayerIdsBySession,
@@ -1591,8 +1460,6 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       setTacticPlayerAnalysisNote,
       sketchArea,
       setSketchArea,
-      unreadMessagesCount,
-      markConversationRead,
     }),
     [
       hydrated,
@@ -1610,6 +1477,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       conversations,
       messagesByConv,
       createDmWithPlayer,
+      addPlayerToGroupChat,
       createGroupConversation,
       updateGroupConversation,
       addParticipantsToGroupChat,
@@ -1618,6 +1486,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       sendChatMessage,
       mergeRemoteDmMessages,
       hydrateDmThreadsFromCloud,
+      markConversationRead,
       trainingSessions,
       addTrainingSession,
       trainingPlayerIdsBySession,
@@ -1650,8 +1519,6 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       setTacticPlayerAnalysisNote,
       sketchArea,
       setSketchArea,
-      unreadMessagesCount,
-      markConversationRead,
     ]
   );
 

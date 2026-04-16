@@ -337,6 +337,20 @@ export type DrillCategory =
   | "Pressing"
   | "Recovery";
 
+export type ChatAttachmentKind = "file" | "training_session" | "saved_exercise" | "sketch_board";
+
+export interface ChatAttachment {
+  id: string;
+  kind: ChatAttachmentKind;
+  name?: string;
+  mimeType?: string;
+  sizeBytes?: number;
+  /** Inline file (images); keep small — validated in `chat-attachments`. */
+  dataUrl?: string;
+  /** Structured snapshot (training block, sketch JSON, etc.). */
+  payloadJson?: string;
+}
+
 export interface Message {
   id: string;
   conversationId: string;
@@ -346,6 +360,7 @@ export interface Message {
   sentAt: string;
   /** True for automated channel events (add/remove/rename); not shown as a user chat bubble. */
   system?: boolean;
+  attachments?: ChatAttachment[];
 }
 
 export interface Conversation {

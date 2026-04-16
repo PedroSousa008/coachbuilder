@@ -14,3 +14,18 @@ export function parseCloudDmConversationId(
   if (!m) return null;
   return { userIdA: m[1], userIdB: m[2] };
 }
+
+/** Chave estável na BD (`DmChatMessage.threadKey`) — dois user ids ordenados com `__`. */
+export function dmThreadKey(userIdA: string, userIdB: string): string {
+  const [a, b] = [userIdA, userIdB].sort();
+  return `${a}__${b}`;
+}
+
+export function peerUserIdFromThreadKey(threadKey: string, meUserId: string): string | null {
+  const parts = threadKey.split("__");
+  if (parts.length !== 2) return null;
+  const [a, b] = parts;
+  if (a === meUserId) return b;
+  if (b === meUserId) return a;
+  return null;
+}

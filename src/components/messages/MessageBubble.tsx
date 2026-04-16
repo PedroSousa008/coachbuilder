@@ -1,4 +1,6 @@
 import { cn } from "@/lib/utils";
+import type { ChatAttachment } from "@/types";
+import { ChatMessageAttachments } from "@/components/messages/ChatMessageAttachments";
 
 function formatTime(iso: string) {
   const d = new Date(iso);
@@ -11,6 +13,7 @@ export function MessageBubble({
   sentAt,
   mine,
   system,
+  attachments,
 }: {
   body: string;
   authorName: string;
@@ -18,6 +21,7 @@ export function MessageBubble({
   mine: boolean;
   /** Channel events (member added, removed, rename) — compact, no chat bubble. */
   system?: boolean;
+  attachments?: ChatAttachment[];
 }) {
   if (system) {
     return (
@@ -39,7 +43,10 @@ export function MessageBubble({
         )}
       >
         {!mine && <p className="text-[11px] font-medium text-accent/90">{authorName}</p>}
-        <p className={cn("text-sm leading-relaxed", !mine && "mt-0.5")}>{body}</p>
+        {body.trim() ? (
+          <p className={cn("text-sm leading-relaxed", !mine && "mt-0.5")}>{body}</p>
+        ) : null}
+        {attachments?.length ? <ChatMessageAttachments attachments={attachments} mine={mine} /> : null}
         <p
           className={cn(
             "mt-1 text-[10px] tabular-nums",

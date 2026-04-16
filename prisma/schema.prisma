@@ -8,71 +8,32 @@ datasource db {
 }
 
 model User {
-  id            String    @id @default(cuid())
-  email         String    @unique
-  passwordHash  String
-  salt          String
-  name          String
-  /// Identificador curto único, gerado no registo a partir do nome (imutável).
-  nametag       String?   @unique
-  coachingRole  String
-  emailVerified Boolean   @default(true)
-  /// "user" | "admin" — admin definido por ADMIN_OWNER_EMAIL no servidor
-  role          String    @default("user")
-  /// free | pro_trial | pro_monthly | grace
-  subscriptionPlan     String    @default("free")
-  subscriptionRenewsAt DateTime?
-  /// Fim do trial Pro (7 dias após primeiro registo).
-  proTrialEndsAt       DateTime?
-  /// Após falha de pagamento: acesso Pro até esta data (3 dias para regularizar).
-  paymentGraceEndsAt   DateTime?
-  lastPaymentFailedAt  DateTime?
-  /// Preço mensal personalizado (€). Null = COACH_PRO_MONTHLY_PRICE_EUR; 0 = Pro oferecido.
-  customMonthlyPriceEur Decimal?  @db.Decimal(10, 2)
-  /// Stripe Customer (Billing) — reutilizado em novos checkouts / portal.
-  stripeCustomerId     String?   @unique
-  /// Subscrição Stripe activa (Coach Pro).
-  stripeSubscriptionId String?   @unique
-  personalizationRequest FullPersonalizationRequest?
-  lastSeenAt    DateTime?
-  /// Último path da app reportado pelo cliente (heartbeat), ex. /app/calendar
-  lastRoute     String?
-  loginCount    Int       @default(0)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  workspace     Workspace?
-  appEvents     AppEvent[]
-}
+  id                      String    @id @default(cuid())
+  email                   String    @unique
+  passwordHash            String
+  salt                    String
+  name                    String
+  coachingRole            String
+  emailVerified           Boolean   @default(true)
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+  lastRoute               String?
+  role                    String    @default("user")
+  subscriptionPlan        String    @default("free")
+  subscriptionRenewsAt    DateTime?
+  lastSeenAt              DateTime?
+  loginCount              Int       @default(0)
+  proTrialEndsAt          DateTime?
+  paymentGraceEndsAt      DateTime?
+  lastPaymentFailedAt     DateTime?
+  customMonthlyPriceEur   Decimal?  @db.Decimal(10, 2)
+  stripeCustomerId        String?   @unique
+  stripeSubscriptionId    String?   @unique
+  nametag                 String?   @unique
 
-/// Mensagens directas entre dois utilizadores (sincronização cloud + polling).
-model DmChatMessage {
-  id           String   @id @default(cuid())
-  threadKey    String
-  authorUserId String
-  authorName   String
-  body         String
-  sentAt       DateTime @default(now())
-
-  @@index([threadKey, sentAt])
-}
-
-model FullPersonalizationRequest {
-  id                String   @id @default(cuid())
-  userId             String   @unique
-  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  status             String   @default("requested")
-  requestedAt        DateTime @default(now())
-  approvedAt         DateTime?
-  declinedAt         DateTime?
-  scheduledFor       DateTime?
-  contactEmail       String
-  notesFromCoach     String?
-  preferredDateNotes String?
-  adminNotes         String?
-  updatedAt          DateTime @updatedAt
-
-  @@index([status, requestedAt])
-  @@index([scheduledFor])
+  workspace                     Workspace?
+  appEvents                     AppEvent[]
+  fullPersonalizationRequests   FullPersonalizationRequest[]
 }
 
 model Workspace {
@@ -83,7 +44,6 @@ model Workspace {
   updatedAt DateTime @updatedAt
 }
 
-/// Eventos agregados para estatísticas (RGPD: sem IP em claro; opcionalmente hashes no futuro)
 model AppEvent {
   id        String   @id @default(cuid())
   userId    String?
@@ -93,4 +53,35 @@ model AppEvent {
 
   @@index([userId, createdAt])
   @@index([type, createdAt])
+}
+
+model FullPersonalizationRequest {
+  id               String    @id @default(cuid())
+  userId           String    @unique
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status           String    @default("requested")
+  requestedAt      DateTime  @default(now())
+  approvedAt       DateTime?
+  declinedAt       DateTime?
+  scheduledFor     DateTime?
+  contactEmail     String
+  notesFromCoach   String?
+  preferredDateNotes String?
+  adminNotes       String?
+  updatedAt        DateTime  @updatedAt
+
+  @@index([status, requestedAt])
+  @@index([scheduledFor])
+}
+
+model DmChatMessage {
+  id           String   @id
+  threadKey    String
+  authorUserId String
+  authorName   String
+  body         String
+  sentAt       DateTime @default(now())
+  attachments  Json?
+
+  @@index([threadKey, sentAt])
 }

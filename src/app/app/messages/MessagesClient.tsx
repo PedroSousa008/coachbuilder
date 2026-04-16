@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Paperclip } from "lucide-react";
 import { ChatConversationItem } from "@/components/messages/ChatConversationItem";
 import { GroupEditorModal } from "@/components/messages/GroupEditorModal";
 import { MessageBubble } from "@/components/messages/MessageBubble";
@@ -14,10 +15,26 @@ import { useAuth } from "@/contexts/AuthContext";
 import { shouldUseCloudClientApis } from "@/lib/cloud-config";
 import { parseCloudDmConversationId } from "@/lib/dm-conversation-id";
 import { normalizeNametagInput } from "@/lib/user-nametag";
-import type { Message } from "@/types";
+import type { ChatAttachment, Message } from "@/types";
 import { isChannelSystemMessage } from "@/lib/message-display";
+import {
+  buildChatAttachmentFromFile,
+  parseChatAttachmentsFromApi,
+  uidAttachment,
+  validateAttachmentPayload,
+} from "@/lib/chat-attachments";
 
-function mapApiMessage(convId: string, m: { id: string; authorUserId: string; authorName: string; body: string; sentAt: string }): Message {
+function mapApiMessage(
+  convId: string,
+  m: {
+    id: string;
+    authorUserId: string;
+    authorName: string;
+    body: string;
+    sentAt: string;
+    attachments?: unknown;
+  }
+): Message {
   return {
     id: m.id,
     conversationId: convId,
@@ -25,6 +42,7 @@ function mapApiMessage(convId: string, m: { id: string; authorUserId: string; au
     authorName: m.authorName,
     body: m.body,
     sentAt: m.sentAt,
+    attachments: parseChatAttachmentsFromApi(m.attachments),
   };
 }
 
@@ -44,6 +62,9 @@ export function MessagesClient() {
     hydrateDmThreadsFromCloud,
     markConversationRead,
     hydrated,
+    trainingSessions,
+    savedTrainingExercises,
+    sketchArea,
   } = useAppData();
   const { language } = useLanguage();
   const isPt = language === "pt-PT";
@@ -57,6 +78,9 @@ export function MessagesClient() {
 
   const [activeId, setActiveId] = useState("");
   const [draft, setDraft] = useState("");
+  const [pendingAttachments, setPendingAttachments] = useState<ChatAttachment[]>([]);
+  const [attachMenuOpen, setAttachMenuOpen] = useState(false);
+  const fileAttachRef = useRef<HTMLInputElement>(null);
   const [dmPickerOpen, setDmPickerOpen] = useState(false);
   const [createGroupOpen, setCreateGroupOpen] = useState(false);
   const [manageGroupOpen, setManageGroupOpen] = useState(false);
@@ -220,7 +244,14 @@ export function MessagesClient() {
       .then(
         (data: {
           ok?: boolean;
-          messages?: Array<{ id: string; authorUserId: string; authorName: string; body: string; sentAt: string }>;
+          messages?: Array<{
+            id: string;
+            authorUserId: string;
+            authorName: string;
+            body: string;
+            sentAt: string;
+            attachments?: unknown;
+          }>;
         }) => {
           if (cancelled) return;
           if (!data.ok || !data.messages?.length) return;
@@ -257,7 +288,14 @@ export function MessagesClient() {
         );
         const data = (await res.json()) as {
           ok?: boolean;
-          messages?: Array<{ id: string; authorUserId: string; authorName: string; body: string; sentAt: string }>;
+          messages?: Array<{
+            id: string;
+            authorUserId: string;
+            authorName: string;
+            body: string;
+            sentAt: string;
+            attachments?: unknown;
+          }>;
         };
         if (!res.ok || !data.ok || !data.messages?.length) return;
         const mapped = data.messages.map((m) => mapApiMessage(convId, m));
@@ -282,13 +320,84 @@ export function MessagesClient() {
     return activeDmLegacyRosterId ? playerHasAppAccount(activeDmLegacyRosterId) : false;
   }, [activeConv, activeDmPeerCloudId, activeDmLegacyRosterId, playerHasAppAccount]);
 
+  const onAttachFiles = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    const att = await buildChatAttachmentFromFile(file);
+    if (!att) return;
+    const next = [...pendingAttachments, att];
+    const err = validateAttachmentPayload(next);
+    if (err) return;
+    setPendingAttachments(next);
+  }, [pendingAttachments]);
+
+  const addTrainingAttachment = useCallback(
+    (sessionId: string) => {
+      const s = trainingSessions.find((x) => x.id === sessionId);
+      if (!s) return;
+      const att: ChatAttachment = {
+        id: uidAttachment(),
+        kind: "training_session",
+        name: s.title,
+        payloadJson: JSON.stringify({
+          sessionId: s.id,
+          title: s.title,
+          date: s.date,
+          durationMin: s.durationMin,
+        }),
+      };
+      const next = [...pendingAttachments, att];
+      if (validateAttachmentPayload(next)) return;
+      setPendingAttachments(next);
+      setAttachMenuOpen(false);
+    },
+    [pendingAttachments, trainingSessions]
+  );
+
+  const addExerciseAttachment = useCallback(
+    (exerciseId: string) => {
+      const ex = savedTrainingExercises.find((x) => x.id === exerciseId);
+      if (!ex) return;
+      const att: ChatAttachment = {
+        id: uidAttachment(),
+        kind: "saved_exercise",
+        name: ex.title,
+        payloadJson: JSON.stringify({ exerciseId: ex.id, title: ex.title, category: ex.category }),
+      };
+      const next = [...pendingAttachments, att];
+      if (validateAttachmentPayload(next)) return;
+      setPendingAttachments(next);
+      setAttachMenuOpen(false);
+    },
+    [pendingAttachments, savedTrainingExercises]
+  );
+
+  const addSketchAttachment = useCallback(() => {
+    const att: ChatAttachment = {
+      id: uidAttachment(),
+      kind: "sketch_board",
+      name: "Sketch",
+      payloadJson: JSON.stringify(sketchArea),
+    };
+    const next = [...pendingAttachments, att];
+    const err = validateAttachmentPayload(next);
+    if (err) return;
+    setPendingAttachments(next);
+    setAttachMenuOpen(false);
+  }, [pendingAttachments, sketchArea]);
+
   const send = async () => {
-    if (!draft.trim() || !activeId || !activeConv) return;
     const trimmed = draft.trim();
+    if ((!trimmed && pendingAttachments.length === 0) || !activeId || !activeConv) return;
 
     if (activeConv.type === "dm" && !canSendDm) return;
 
     if (activeConv.type === "dm" && activeDmLegacyRosterId && !playerHasAppAccount(activeDmLegacyRosterId)) return;
+
+    const attachPayload = pendingAttachments.length ? pendingAttachments : undefined;
+    const attErr = validateAttachmentPayload(attachPayload);
+    if (attErr) return;
 
     if (activeConv.type === "dm" && activeDmPeerCloudId && user?.id && shouldUseCloudClientApis(user)) {
       try {
@@ -296,16 +405,28 @@ export function MessagesClient() {
           method: "POST",
           credentials: "include",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ peerUserId: activeDmPeerCloudId, body: trimmed }),
+          body: JSON.stringify({
+            peerUserId: activeDmPeerCloudId,
+            body: trimmed,
+            attachments: attachPayload,
+          }),
         });
         const data = (await res.json()) as {
           ok?: boolean;
-          message?: { id: string; authorUserId: string; authorName: string; body: string; sentAt: string };
+          message?: {
+            id: string;
+            authorUserId: string;
+            authorName: string;
+            body: string;
+            sentAt: string;
+            attachments?: unknown;
+          };
         };
         if (res.ok && data.ok && data.message) {
           mergeRemoteDmMessages(activeConv.id, [mapApiMessage(activeConv.id, data.message)]);
           streamSinceRef.current[activeConv.id] = data.message.sentAt;
           setDraft("");
+          setPendingAttachments([]);
           return;
         }
       } catch {
@@ -313,8 +434,9 @@ export function MessagesClient() {
       }
     }
 
-    sendChatMessage(activeId, trimmed);
+    sendChatMessage(activeId, trimmed, attachPayload);
     setDraft("");
+    setPendingAttachments([]);
   };
 
   const hasConversations = conversations.length > 0;
@@ -722,6 +844,7 @@ export function MessagesClient() {
                   sentAt={m.sentAt}
                   mine={!isChannelSystemMessage(m) && m.authorId === coachUserId}
                   system={isChannelSystemMessage(m)}
+                  attachments={m.attachments}
                 />
               ))
             )}
@@ -729,7 +852,103 @@ export function MessagesClient() {
           <div className="border-t border-surface-border p-4 lg:p-6">
             {hasConversations && activeConv ? (
               <>
+                {pendingAttachments.length > 0 ? (
+                  <div className="mb-2 flex flex-wrap gap-1">
+                    {pendingAttachments.map((a) => (
+                      <span
+                        key={a.id}
+                        className="inline-flex items-center gap-1 rounded-full bg-zinc-800 px-2 py-0.5 text-[11px] text-zinc-300"
+                      >
+                        {a.name ?? a.kind}
+                        <button
+                          type="button"
+                          className="text-zinc-500 hover:text-white"
+                          aria-label={isPt ? "Remover anexo" : "Remove attachment"}
+                          onClick={() => setPendingAttachments((p) => p.filter((x) => x.id !== a.id))}
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
                 <div className="flex gap-2">
+                  <div className="relative flex shrink-0">
+                    <input
+                      ref={fileAttachRef}
+                      type="file"
+                      className="hidden"
+                      onChange={(e) => void onAttachFiles(e)}
+                    />
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      className="px-2.5"
+                      disabled={activeConv.type === "dm" && !canSendDm}
+                      aria-label={isPt ? "Anexar" : "Attach"}
+                      onClick={() => setAttachMenuOpen((o) => !o)}
+                    >
+                      <Paperclip className="h-4 w-4" />
+                    </Button>
+                    {attachMenuOpen ? (
+                      <div className="absolute bottom-full left-0 z-30 mb-1 w-60 rounded-xl border border-surface-border bg-surface p-2 shadow-xl">
+                        <button
+                          type="button"
+                          className="block w-full rounded-lg px-2 py-1.5 text-left text-xs text-zinc-200 hover:bg-white/10"
+                          onClick={() => {
+                            fileAttachRef.current?.click();
+                            setAttachMenuOpen(false);
+                          }}
+                        >
+                          {isPt ? "Ficheiro do dispositivo" : "File from device"}
+                        </button>
+                        {trainingSessions.length > 0 ? (
+                          <select
+                            className="mt-1 w-full rounded-lg border border-surface-border bg-surface-raised px-2 py-1.5 text-xs text-white"
+                            defaultValue=""
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              e.currentTarget.value = "";
+                              if (v) addTrainingAttachment(v);
+                            }}
+                          >
+                            <option value="">{isPt ? "Treino guardado…" : "Saved training…"}</option>
+                            {trainingSessions.map((s) => (
+                              <option key={s.id} value={s.id}>
+                                {s.title}
+                              </option>
+                            ))}
+                          </select>
+                        ) : null}
+                        {savedTrainingExercises.length > 0 ? (
+                          <select
+                            className="mt-1 w-full rounded-lg border border-surface-border bg-surface-raised px-2 py-1.5 text-xs text-white"
+                            defaultValue=""
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              e.currentTarget.value = "";
+                              if (v) addExerciseAttachment(v);
+                            }}
+                          >
+                            <option value="">{isPt ? "Exercício guardado…" : "Saved exercise…"}</option>
+                            {savedTrainingExercises.map((s) => (
+                              <option key={s.id} value={s.id}>
+                                {s.title}
+                              </option>
+                            ))}
+                          </select>
+                        ) : null}
+                        <button
+                          type="button"
+                          className="mt-1 block w-full rounded-lg px-2 py-1.5 text-left text-xs text-zinc-200 hover:bg-white/10"
+                          onClick={() => addSketchAttachment()}
+                        >
+                          {isPt ? "Sketch (táctica)" : "Sketch (tactics board)"}
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
                   <Input
                     ref={draftInputRef}
                     value={draft}
@@ -739,7 +958,14 @@ export function MessagesClient() {
                     className="flex-1"
                     disabled={activeConv.type === "dm" && !canSendDm}
                   />
-                  <Button type="button" onClick={() => void send()} disabled={activeConv.type === "dm" && !canSendDm}>
+                  <Button
+                    type="button"
+                    onClick={() => void send()}
+                    disabled={
+                      (activeConv.type === "dm" && !canSendDm) ||
+                      (!draft.trim() && pendingAttachments.length === 0)
+                    }
+                  >
                     {isPt ? "Enviar" : "Send"}
                   </Button>
                 </div>
