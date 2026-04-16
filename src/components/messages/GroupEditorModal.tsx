@@ -19,6 +19,7 @@ export function GroupEditorModal({
   onClose,
   onSubmit,
   emptyHint,
+  canEditName = true,
 }: {
   open: boolean;
   mode: "create" | "add";
@@ -31,6 +32,7 @@ export function GroupEditorModal({
   onClose: () => void;
   onSubmit: () => void;
   emptyHint: string;
+  canEditName?: boolean;
 }) {
   const [query, setQuery] = useState("");
 
@@ -65,6 +67,7 @@ export function GroupEditorModal({
             onChange={(e) => onGroupNameChange(e.target.value)}
             placeholder="Nome do grupo"
             className="mt-3"
+            disabled={!canEditName}
           />
           {mode === "create" || players.length > 0 ? (
             <Input

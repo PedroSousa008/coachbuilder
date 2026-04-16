@@ -103,6 +103,7 @@ function defaultGroup(): Conversation {
     id: SQUAD_GROUP_ID,
     type: "group",
     title: "Squad",
+    createdById: mockCoach.id,
     subtitle: "Team channel",
     avatarInitials: "TM",
     lastMessagePreview: "Welcome your players when they join.",
@@ -125,6 +126,7 @@ function normalizeGroupConversation(conversation: Conversation, userId?: string 
     userId && !normalizedIds.includes(userId) ? [userId, ...normalizedIds] : normalizedIds;
   return {
     ...conversation,
+    createdById: conversation.createdById ?? (conversation.id === SQUAD_GROUP_ID ? userId ?? mockCoach.id : undefined),
     participantIds: ensuredIds,
     subtitle: `${ensuredIds.length} members`,
   };
@@ -777,7 +779,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       }
       return [...prev, tactic];
     });
-  }, []);
+  }, [user?.id]);
 
   const deleteTactic = useCallback((id: string) => {
     setSavedTactics((prev) => prev.filter((t) => t.id !== id));
@@ -1009,6 +1011,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         id: conversationId,
         type: "group",
         title: groupTitle,
+        createdById: me,
         subtitle: `${participantIds.length} members`,
         avatarInitials: initials(groupTitle),
         lastMessagePreview: createdBody,
@@ -1036,7 +1039,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     if (!nextTitle) return;
     setConversations((prev) =>
       prev.map((c) =>
-        c.id === conversationId && c.type === "group"
+        c.id === conversationId && c.type === "group" && (c.createdById ?? user?.id ?? mockCoach.id) === (user?.id ?? mockCoach.id)
           ? {
               ...c,
               title: nextTitle,

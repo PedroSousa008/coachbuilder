@@ -7,7 +7,11 @@ import { readSessionFromCookies } from "@/lib/cloud-session";
 import { emptyWorkspaceSnapshot, parseWorkspacePayload, type WorkspaceSnapshotV1 } from "@/lib/workspace-snapshot";
 import type { Conversation, Message } from "@/types";
 
-function mergeConversationLists(incoming: Conversation[], existing: Conversation[]): Conversation[] {
+function mergeConversationLists(
+  incoming: Conversation[],
+  existing: Conversation[],
+  actorUserId: string
+): Conversation[] {
   const byId = new Map(existing.map((c) => [c.id, c]));
   for (const conv of incoming) {
     byId.set(conv.id, conv);
@@ -22,6 +26,17 @@ function mergeConversationLists(incoming: Conversation[], existing: Conversation
     byId.set(groupId, {
       ...existingGroup,
       ...(incomingGroup ?? {}),
+      createdById: existingGroup.createdById ?? incomingGroup?.createdById,
+      title:
+        (existingGroup.createdById ?? incomingGroup?.createdById) &&
+        actorUserId !== (existingGroup.createdById ?? incomingGroup?.createdById)
+          ? existingGroup.title
+          : (incomingGroup?.title ?? existingGroup.title),
+      avatarInitials:
+        (existingGroup.createdById ?? incomingGroup?.createdById) &&
+        actorUserId !== (existingGroup.createdById ?? incomingGroup?.createdById)
+          ? existingGroup.avatarInitials
+          : (incomingGroup?.avatarInitials ?? existingGroup.avatarInitials),
       participantIds: Array.from(
         new Set([
           ...existingGroup.participantIds,
@@ -43,8 +58,12 @@ function mergeMessageLists(incoming: Message[], existing: Message[]): Message[] 
   );
 }
 
-function mergeWorkspacePayload(incoming: WorkspaceSnapshotV1, existing: WorkspaceSnapshotV1): WorkspaceSnapshotV1 {
-  const mergedConversations = mergeConversationLists(incoming.conversations, existing.conversations);
+function mergeWorkspacePayload(
+  incoming: WorkspaceSnapshotV1,
+  existing: WorkspaceSnapshotV1,
+  actorUserId: string
+): WorkspaceSnapshotV1 {
+  const mergedConversations = mergeConversationLists(incoming.conversations, existing.conversations, actorUserId);
   const mergedMessages = { ...existing.messages, ...incoming.messages };
   for (const group of mergedConversations.filter((c) => c.type === "group")) {
     mergedMessages[group.id] = mergeMessageLists(
@@ -119,7 +138,7 @@ export async function PUT(req: Request) {
     const incomingPayload: WorkspaceSnapshotV1 = { ...parsed, version: 1 };
     const existingRow = await prisma.workspace.findUnique({ where: { userId } });
     const existingPayload = parseWorkspacePayload(existingRow?.payload) ?? emptyWorkspaceSnapshot();
-    const payload = mergeWorkspacePayload(incomingPayload, existingPayload);
+    const payload = mergeWorkspacePayload(incomingPayload, existingPayload, userId);
 
     await prisma.workspace.upsert({
       where: { userId },

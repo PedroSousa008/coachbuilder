@@ -350,6 +350,7 @@ export interface Conversation {
   id: string;
   type: "group" | "dm";
   title: string;
+  createdById?: string;
   subtitle?: string;
   avatarInitials: string;
   lastMessagePreview: string;

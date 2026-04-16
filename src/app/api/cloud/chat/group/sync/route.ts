@@ -7,13 +7,19 @@ import type { Conversation, Message } from "@/types";
 
 export const dynamic = "force-dynamic";
 
-function mergeConversation(existing: Conversation[], incoming: Conversation): Conversation[] {
+function mergeConversation(existing: Conversation[], incoming: Conversation, actorId: string): Conversation[] {
   const idx = existing.findIndex((c) => c.id === incoming.id);
   if (idx < 0) return [...existing, incoming];
+  const current = existing[idx]!;
+  const ownerId = current.createdById ?? incoming.createdById;
   const next = [...existing];
   next[idx] = {
-    ...next[idx],
+    ...current,
     ...incoming,
+    createdById: ownerId,
+    title: ownerId && actorId !== ownerId ? current.title : incoming.title,
+    avatarInitials:
+      ownerId && actorId !== ownerId ? current.avatarInitials : incoming.avatarInitials,
     participantIds: Array.from(new Set(incoming.participantIds)),
   };
   return next;
@@ -76,7 +82,7 @@ export async function POST(req: Request) {
         };
         const next = {
           ...current,
-          conversations: mergeConversation(current.conversations, mergedConversation),
+          conversations: mergeConversation(current.conversations, mergedConversation, claims.sub),
           messages: {
             ...current.messages,
             [conversation.id]: mergeMessages(current.messages[conversation.id] ?? [], messages),
