@@ -24,7 +24,6 @@ import {
   validateAttachmentPayload,
 } from "@/lib/chat-attachments";
 import { getTrainingCatalogItems } from "@/lib/training-session-local";
-import { getScrollTargetMessageId } from "@/lib/chat-scroll-read";
 
 function mapApiMessage(
   convId: string,
@@ -87,7 +86,6 @@ export function MessagesClient() {
     mergeRemoteDmMessages,
     hydrateDmThreadsFromCloud,
     markConversationRead,
-    lastReadMessageByConv,
     hydrated,
     trainingSessions,
     savedTrainingExercises,
@@ -283,7 +281,7 @@ export function MessagesClient() {
   useLayoutEffect(() => {
     if (!activeId || !scrollThreadPendingRef.current) return;
     if (thread.length === 0) return;
-    const targetId = getScrollTargetMessageId(thread, lastReadMessageByConv[activeId]);
+    const targetId = thread[thread.length - 1]?.id ?? null;
     if (!targetId) {
       scrollThreadPendingRef.current = false;
       return;
@@ -291,7 +289,7 @@ export function MessagesClient() {
     const run = () => {
       const el = document.getElementById(`chat-msg-${targetId}`);
       if (el) {
-        el.scrollIntoView({ block: "nearest", behavior: "auto" });
+        el.scrollIntoView({ block: "end", behavior: "auto" });
         scrollThreadPendingRef.current = false;
         return true;
       }
@@ -302,7 +300,7 @@ export function MessagesClient() {
         if (!run()) scrollThreadPendingRef.current = false;
       });
     }
-  }, [activeId, thread, lastReadMessageByConv]);
+  }, [activeId, thread]);
 
   const activeDmPeerCloudId = useMemo(() => {
     if (!activeConv || activeConv.type !== "dm" || !user?.id) return null;
