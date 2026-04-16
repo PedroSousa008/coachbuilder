@@ -34,6 +34,7 @@ export function MessagesClient() {
     players,
     createDmWithPlayer,
     createGroupConversation,
+    updateGroupConversation,
     addParticipantsToGroupChat,
     sendChatMessage,
     mergeRemoteDmMessages,
@@ -57,6 +58,7 @@ export function MessagesClient() {
   const [createGroupOpen, setCreateGroupOpen] = useState(false);
   const [manageGroupOpen, setManageGroupOpen] = useState(false);
   const [groupNameDraft, setGroupNameDraft] = useState("");
+  const [manageGroupNameDraft, setManageGroupNameDraft] = useState("");
   const [selectedCreatePlayerIds, setSelectedCreatePlayerIds] = useState<string[]>([]);
   const [selectedManagePlayerIds, setSelectedManagePlayerIds] = useState<string[]>([]);
   const [playerCloudUserId, setPlayerCloudUserId] = useState<Record<string, string>>({});
@@ -302,6 +304,10 @@ export function MessagesClient() {
     });
   }, [accountPlayers, activeConv, playerCloudUserId]);
 
+  useEffect(() => {
+    if (activeConv?.type === "group") setManageGroupNameDraft(activeConv.title);
+  }, [activeConv?.id, activeConv?.title, activeConv?.type]);
+
   const toggleCreatePlayer = (playerId: string) => {
     setSelectedCreatePlayerIds((prev) =>
       prev.includes(playerId) ? prev.filter((id) => id !== playerId) : [...prev, playerId]
@@ -379,15 +385,19 @@ export function MessagesClient() {
         title={isPt ? "Adicionar pessoas ao grupo" : "Add people to group"}
         players={activeGroupPlayers}
         selectedIds={selectedManagePlayerIds}
-        groupName=""
-        onGroupNameChange={() => {}}
+        groupName={manageGroupNameDraft}
+        onGroupNameChange={setManageGroupNameDraft}
         onTogglePlayer={toggleManagePlayer}
         onClose={() => {
           setManageGroupOpen(false);
           setSelectedManagePlayerIds([]);
+          setManageGroupNameDraft(activeConv?.type === "group" ? activeConv.title : "");
         }}
         onSubmit={() => {
           if (!activeConv || activeConv.type !== "group") return;
+          if (manageGroupNameDraft.trim() && manageGroupNameDraft.trim() !== activeConv.title) {
+            updateGroupConversation(activeConv.id, { title: manageGroupNameDraft });
+          }
           const members = selectedManagePlayerIds
             .map((id) => {
               const player = players.find((p) => p.id === id);
@@ -399,6 +409,7 @@ export function MessagesClient() {
           addParticipantsToGroupChat(activeConv.id, members);
           setManageGroupOpen(false);
           setSelectedManagePlayerIds([]);
+          setManageGroupNameDraft("");
         }}
         emptyHint={
           isPt

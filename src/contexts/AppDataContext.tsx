@@ -200,6 +200,7 @@ type AppDataContextValue = {
   messagesByConv: Record<string, Message[]>;
   createDmWithPlayer: (player: Player, options?: { peerCloudUserId?: string | null }) => string | null;
   createGroupConversation: (title: string, members?: GroupChatMemberInput[]) => string;
+  updateGroupConversation: (conversationId: string, patch: { title?: string }) => void;
   addParticipantsToGroupChat: (conversationId: string, members: GroupChatMemberInput[]) => void;
   sendChatMessage: (conversationId: string, body: string) => void;
   /** Mescla mensagens vindas da cloud (ids do servidor) num fio DM. */
@@ -1030,6 +1031,22 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     [user?.id, user?.name]
   );
 
+  const updateGroupConversation = useCallback((conversationId: string, patch: { title?: string }) => {
+    const nextTitle = patch.title?.trim();
+    if (!nextTitle) return;
+    setConversations((prev) =>
+      prev.map((c) =>
+        c.id === conversationId && c.type === "group"
+          ? {
+              ...c,
+              title: nextTitle,
+              avatarInitials: initials(nextTitle),
+            }
+          : c
+      )
+    );
+  }, []);
+
   const addParticipantsToGroupChat = useCallback(
     (conversationId: string, members: GroupChatMemberInput[]) => {
       if (members.length === 0) return;
@@ -1336,6 +1353,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       messagesByConv,
       createDmWithPlayer,
       createGroupConversation,
+      updateGroupConversation,
       addParticipantsToGroupChat,
       sendChatMessage,
       mergeRemoteDmMessages,
@@ -1392,6 +1410,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       messagesByConv,
       createDmWithPlayer,
       createGroupConversation,
+      updateGroupConversation,
       addParticipantsToGroupChat,
       sendChatMessage,
       mergeRemoteDmMessages,

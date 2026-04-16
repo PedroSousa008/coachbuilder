@@ -60,20 +60,20 @@ export function GroupEditorModal({
       >
         <div className="border-b border-surface-border p-5">
           <h3 className="font-display text-lg font-semibold text-white">{title}</h3>
-          {mode === "create" ? (
+          <Input
+            value={groupName}
+            onChange={(e) => onGroupNameChange(e.target.value)}
+            placeholder="Nome do grupo"
+            className="mt-3"
+          />
+          {mode === "create" || players.length > 0 ? (
             <Input
-              value={groupName}
-              onChange={(e) => onGroupNameChange(e.target.value)}
-              placeholder="Nome do grupo"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search name, #, position…"
               className="mt-3"
             />
           ) : null}
-          <Input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search name, #, position…"
-            className="mt-3"
-          />
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto p-2">
           {players.length === 0 ? (
@@ -119,9 +119,9 @@ export function GroupEditorModal({
             <Button
               type="button"
               onClick={onSubmit}
-              disabled={mode === "create" ? !groupName.trim() : selectedIds.length === 0}
+              disabled={mode === "create" ? !groupName.trim() : !groupName.trim() && selectedIds.length === 0}
             >
-              {mode === "create" ? "Create group" : "Add people"}
+              {mode === "create" ? "Create group" : "Save changes"}
             </Button>
           </div>
         </div>
