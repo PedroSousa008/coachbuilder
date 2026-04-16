@@ -199,6 +199,7 @@ type AppDataContextValue = {
   /** Id da última mensagem lida por conversa (local); usado para abrir no primeiro não lido. */
   lastReadMessageByConv: Record<string, string>;
   createDmWithPlayer: (player: Player, opts?: { peerCloudUserId: string | null }) => string | null;
+  createDmWithStaff: (member: StaffMember, opts?: { peerCloudUserId: string | null }) => string | null;
   addPlayerToGroupChat: (conversationId: string, player: Player) => void;
   createGroupConversation: (title: string, members: { participantId: string; name: string }[]) => string;
   updateGroupConversation: (conversationId: string, patch: { title?: string }) => Promise<void>;
@@ -1198,6 +1199,52 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     [user, user?.id]
   );
 
+  const createDmWithStaff = useCallback(
+    (member: StaffMember, opts?: { peerCloudUserId: string | null }) => {
+      const peer = opts?.peerCloudUserId ?? null;
+      const actorId = user?.id ?? mockCoach.id;
+      const roleLine = member.role.trim() || "Staff";
+      if (shouldUseCloudClientApis(user) && user?.id) {
+        if (!peer) return null;
+        const id = cloudDmConversationId(user.id, peer);
+        setConversations((prev) => {
+          if (prev.some((c) => c.id === id)) return prev;
+          const conv: Conversation = {
+            id,
+            type: "dm",
+            title: member.name,
+            subtitle: roleLine,
+            avatarInitials: initials(member.name),
+            lastMessagePreview: "No messages yet",
+            lastMessageAt: new Date().toISOString(),
+            participantIds: [user.id, peer],
+          };
+          return [...prev, conv];
+        });
+        setMessagesByConv((prev) => (prev[id] ? prev : { ...prev, [id]: [] }));
+        return id;
+      }
+      const id = `conv-dm-${member.id}`;
+      setConversations((prev) => {
+        if (prev.some((c) => c.id === id)) return prev;
+        const conv: Conversation = {
+          id,
+          type: "dm",
+          title: member.name,
+          subtitle: roleLine,
+          avatarInitials: initials(member.name),
+          lastMessagePreview: "No messages yet",
+          lastMessageAt: new Date().toISOString(),
+          participantIds: [actorId, member.id],
+        };
+        return [...prev, conv];
+      });
+      setMessagesByConv((prev) => (prev[id] ? prev : { ...prev, [id]: [] }));
+      return id;
+    },
+    [user, user?.id]
+  );
+
   const addPlayerToGroupChat = useCallback((conversationId: string, player: Player) => {
     const actorId = user?.id ?? mockCoach.id;
     setConversations((prev) =>
@@ -1447,6 +1494,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       messagesByConv,
       lastReadMessageByConv,
       createDmWithPlayer,
+      createDmWithStaff,
       addPlayerToGroupChat,
       createGroupConversation,
       updateGroupConversation,
@@ -1508,6 +1556,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       messagesByConv,
       lastReadMessageByConv,
       createDmWithPlayer,
+      createDmWithStaff,
       addPlayerToGroupChat,
       createGroupConversation,
       updateGroupConversation,

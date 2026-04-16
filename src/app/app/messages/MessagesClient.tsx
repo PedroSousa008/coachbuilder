@@ -53,7 +53,9 @@ export function MessagesClient() {
     conversations,
     messagesByConv,
     players,
+    staff,
     createDmWithPlayer,
+    createDmWithStaff,
     createGroupConversation,
     updateGroupConversation,
     addParticipantsToGroupChat,
@@ -95,10 +97,13 @@ export function MessagesClient() {
   const [groupNameDraft, setGroupNameDraft] = useState("");
   const [manageGroupNameDraft, setManageGroupNameDraft] = useState("");
   const [selectedCreatePlayerIds, setSelectedCreatePlayerIds] = useState<string[]>([]);
+  const [selectedCreateStaffIds, setSelectedCreateStaffIds] = useState<string[]>([]);
   const [selectedManagePlayerIds, setSelectedManagePlayerIds] = useState<string[]>([]);
+  const [selectedManageStaffIds, setSelectedManageStaffIds] = useState<string[]>([]);
   const [selectedMemberCloudId, setSelectedMemberCloudId] = useState<string | null>(null);
   const [savingGroupSettings, setSavingGroupSettings] = useState(false);
   const [playerCloudUserId, setPlayerCloudUserId] = useState<Record<string, string>>({});
+  const [staffCloudUserId, setStaffCloudUserId] = useState<Record<string, string>>({});
   const streamSinceRef = useRef<Record<string, string>>({});
   const draftInputRef = useRef<HTMLInputElement>(null);
   /** After opening a DM, focus the composer once that conversation is active. */
@@ -140,13 +145,18 @@ export function MessagesClient() {
   useEffect(() => {
     if (!hydrated || !shouldUseCloudClientApis(user)) {
       setPlayerCloudUserId({});
+      setStaffCloudUserId({});
       return;
     }
     const tags = [
-      ...new Set(players.map((p) => normalizeNametagInput(p.linkedNametag ?? "")).filter(Boolean)),
+      ...new Set([
+        ...players.map((p) => normalizeNametagInput(p.linkedNametag ?? "")),
+        ...staff.map((s) => normalizeNametagInput(s.linkedNametag ?? "")),
+      ].filter(Boolean)),
     ];
     if (tags.length === 0) {
       setPlayerCloudUserId({});
+      setStaffCloudUserId({});
       return;
     }
     let cancelled = false;
@@ -163,23 +173,34 @@ export function MessagesClient() {
           byTag?: Record<string, { exists: boolean; userId: string | null }>;
         }) => {
           if (cancelled || !data.ok || !data.byTag) return;
-          const next: Record<string, string> = {};
+          const nextPlayers: Record<string, string> = {};
           for (const p of players) {
             const t = normalizeNametagInput(p.linkedNametag ?? "");
             if (!t) continue;
             const row = data.byTag[t];
-            if (row?.exists && row.userId) next[p.id] = row.userId;
+            if (row?.exists && row.userId) nextPlayers[p.id] = row.userId;
           }
-          setPlayerCloudUserId(next);
+          const nextStaff: Record<string, string> = {};
+          for (const s of staff) {
+            const t = normalizeNametagInput(s.linkedNametag ?? "");
+            if (!t) continue;
+            const row = data.byTag[t];
+            if (row?.exists && row.userId) nextStaff[s.id] = row.userId;
+          }
+          setPlayerCloudUserId(nextPlayers);
+          setStaffCloudUserId(nextStaff);
         }
       )
       .catch(() => {
-        if (!cancelled) setPlayerCloudUserId({});
+        if (!cancelled) {
+          setPlayerCloudUserId({});
+          setStaffCloudUserId({});
+        }
       });
     return () => {
       cancelled = true;
     };
-  }, [hydrated, players, user]);
+  }, [hydrated, players, staff, user]);
 
   /** Qualquer utilizador com sessão cloud: lista DMs a partir do servidor (o outro lado passa a ver o fio). */
   useEffect(() => {
@@ -205,6 +226,15 @@ export function MessagesClient() {
   const playerHasAppAccount = useCallback(
     (playerId: string) => Boolean(playerCloudUserId[playerId]),
     [playerCloudUserId]
+  );
+  const staffHasAppAccount = useCallback(
+    (staffId: string) => Boolean(staffCloudUserId[staffId]),
+    [staffCloudUserId]
+  );
+  const rosterIdHasCloudAccount = useCallback(
+    (rosterId: string) =>
+      Boolean(playerCloudUserId[rosterId] ?? staffCloudUserId[rosterId]),
+    [playerCloudUserId, staffCloudUserId]
   );
 
   useEffect(() => {
@@ -258,12 +288,12 @@ export function MessagesClient() {
     if (parsed) {
       return parsed.userIdA === user.id ? parsed.userIdB : parsed.userIdA;
     }
-    const legacyPlayerId = activeConv.id.startsWith("conv-dm-") ? activeConv.id.slice("conv-dm-".length) : "";
-    if (legacyPlayerId && !legacyPlayerId.includes("__")) {
-      return playerCloudUserId[legacyPlayerId] ?? null;
+    const legacyRosterId = activeConv.id.startsWith("conv-dm-") ? activeConv.id.slice("conv-dm-".length) : "";
+    if (legacyRosterId && !legacyRosterId.includes("__")) {
+      return playerCloudUserId[legacyRosterId] ?? staffCloudUserId[legacyRosterId] ?? null;
     }
     return null;
-  }, [activeConv, user?.id, playerCloudUserId]);
+  }, [activeConv, user?.id, playerCloudUserId, staffCloudUserId]);
 
   const activeDmLegacyRosterId =
     activeConv?.type === "dm" && !parseCloudDmConversationId(activeConv.id)
@@ -359,8 +389,8 @@ export function MessagesClient() {
   const canSendDm = useMemo(() => {
     if (!activeConv || activeConv.type !== "dm") return true;
     if (parseCloudDmConversationId(activeConv.id)) return Boolean(activeDmPeerCloudId);
-    return activeDmLegacyRosterId ? playerHasAppAccount(activeDmLegacyRosterId) : false;
-  }, [activeConv, activeDmPeerCloudId, activeDmLegacyRosterId, playerHasAppAccount]);
+    return activeDmLegacyRosterId ? rosterIdHasCloudAccount(activeDmLegacyRosterId) : false;
+  }, [activeConv, activeDmPeerCloudId, activeDmLegacyRosterId, rosterIdHasCloudAccount]);
 
   const onAttachFiles = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -466,7 +496,7 @@ export function MessagesClient() {
 
     if (activeConv.type === "dm" && !canSendDm) return;
 
-    if (activeConv.type === "dm" && activeDmLegacyRosterId && !playerHasAppAccount(activeDmLegacyRosterId)) return;
+    if (activeConv.type === "dm" && activeDmLegacyRosterId && !rosterIdHasCloudAccount(activeDmLegacyRosterId)) return;
 
     const attachPayload = pendingAttachments.length ? pendingAttachments : undefined;
     const attErr = validateAttachmentPayload(attachPayload);
@@ -517,11 +547,20 @@ export function MessagesClient() {
     () => players.filter((p) => playerHasAppAccount(p.id)),
     [playerHasAppAccount, players]
   );
+  const accountStaff = useMemo(
+    () => staff.filter((s) => staffHasAppAccount(s.id)),
+    [staff, staffHasAppAccount]
+  );
   const playerIdByCloudUserId = useMemo(() => {
     const out: Record<string, string> = {};
     for (const [playerId, cloudId] of Object.entries(playerCloudUserId)) out[cloudId] = playerId;
     return out;
   }, [playerCloudUserId]);
+  const staffIdByCloudUserId = useMemo(() => {
+    const out: Record<string, string> = {};
+    for (const [sid, cloudId] of Object.entries(staffCloudUserId)) out[cloudId] = sid;
+    return out;
+  }, [staffCloudUserId]);
 
   const activeGroupPlayers = useMemo(() => {
     if (!activeConv || activeConv.type !== "group") return [];
@@ -531,17 +570,28 @@ export function MessagesClient() {
       return !activeConv.participantIds.includes(peerId);
     });
   }, [accountPlayers, activeConv, playerCloudUserId]);
+  const activeGroupStaff = useMemo(() => {
+    if (!activeConv || activeConv.type !== "group") return [];
+    return accountStaff.filter((s) => {
+      const peerId = staffCloudUserId[s.id];
+      if (!peerId) return false;
+      return !activeConv.participantIds.includes(peerId);
+    });
+  }, [accountStaff, activeConv, staffCloudUserId]);
   const activeGroupMembers = useMemo(() => {
     if (!activeConv || activeConv.type !== "group") return [];
     return activeConv.participantIds.map((participantCloudId) => {
       const playerId = playerIdByCloudUserId[participantCloudId];
+      const staffId = staffIdByCloudUserId[participantCloudId];
       const player = playerId ? players.find((p) => p.id === playerId) : null;
+      const staffMember = staffId ? staff.find((s) => s.id === staffId) : null;
       return {
         participantCloudId,
         player,
+        staffMember,
       };
     });
-  }, [activeConv, playerIdByCloudUserId, players]);
+  }, [activeConv, playerIdByCloudUserId, staffIdByCloudUserId, players, staff]);
 
   useEffect(() => {
     if (activeConv?.type === "group") setManageGroupNameDraft(activeConv.title);
@@ -559,13 +609,27 @@ export function MessagesClient() {
     );
   };
 
+  const toggleCreateStaff = (staffId: string) => {
+    setSelectedCreateStaffIds((prev) =>
+      prev.includes(staffId) ? prev.filter((id) => id !== staffId) : [...prev, staffId]
+    );
+  };
+
+  const toggleManageStaff = (staffId: string) => {
+    setSelectedManageStaffIds((prev) =>
+      prev.includes(staffId) ? prev.filter((id) => id !== staffId) : [...prev, staffId]
+    );
+  };
+
   return (
     <div className="mx-auto max-w-6xl space-y-4">
       <PlayerPickerModal
         open={dmPickerOpen}
-        title={isPt ? "Mensagem a jogador" : "Message a player"}
+        title={isPt ? "Mensagem direta" : "Direct message"}
         players={players}
+        staff={staff}
         playerDisabled={(p) => !playerHasAppAccount(p.id)}
+        staffDisabled={(s) => !staffHasAppAccount(s.id)}
         disabledHint={isPt ? "Sem conta na app (associa o nametag em Equipa)" : "No app account yet (link nametag in Team)"}
         onClose={() => setDmPickerOpen(false)}
         onSelect={(p) => {
@@ -578,10 +642,20 @@ export function MessagesClient() {
             setDmPickerOpen(false);
           }
         }}
+        onSelectStaff={(s) => {
+          const peer = staffCloudUserId[s.id];
+          const id = createDmWithStaff(s, { peerCloudUserId: peer ?? null });
+          if (id) {
+            focusDraftAfterConvIdRef.current = id;
+            setActiveId(id);
+            setTab("dm");
+            setDmPickerOpen(false);
+          }
+        }}
         emptyHint={
           isPt
-            ? "Adiciona jogadores em Equipa e associa o nametag de conta para mensagens."
-            : "Add players in Team and link their account nametag to message."
+            ? "Adiciona jogadores ou staff em Equipa e associa o nametag de conta."
+            : "Add players or staff in Team and link their account nametag."
         }
       />
       <GroupEditorModal
@@ -589,17 +663,21 @@ export function MessagesClient() {
         mode="create"
         title={isPt ? "Criar novo grupo" : "Create new group"}
         players={accountPlayers}
+        staff={accountStaff}
         selectedIds={selectedCreatePlayerIds}
+        selectedStaffIds={selectedCreateStaffIds}
         groupName={groupNameDraft}
         onGroupNameChange={setGroupNameDraft}
         onTogglePlayer={toggleCreatePlayer}
+        onToggleStaff={toggleCreateStaff}
         onClose={() => {
           setCreateGroupOpen(false);
           setGroupNameDraft("");
           setSelectedCreatePlayerIds([]);
+          setSelectedCreateStaffIds([]);
         }}
         onSubmit={() => {
-          const members = selectedCreatePlayerIds
+          const fromPlayers = selectedCreatePlayerIds
             .map((id) => {
               const player = players.find((p) => p.id === id);
               const peerId = playerCloudUserId[id];
@@ -607,17 +685,27 @@ export function MessagesClient() {
               return { participantId: peerId, name: player.name };
             })
             .filter((m): m is { participantId: string; name: string } => Boolean(m));
+          const fromStaff = selectedCreateStaffIds
+            .map((id) => {
+              const sm = staff.find((s) => s.id === id);
+              const peerId = staffCloudUserId[id];
+              if (!sm || !peerId) return null;
+              return { participantId: peerId, name: sm.name };
+            })
+            .filter((m): m is { participantId: string; name: string } => Boolean(m));
+          const members = [...fromPlayers, ...fromStaff];
           const id = createGroupConversation(groupNameDraft, members);
           setActiveId(id);
           setTab("group");
           setCreateGroupOpen(false);
           setGroupNameDraft("");
           setSelectedCreatePlayerIds([]);
+          setSelectedCreateStaffIds([]);
         }}
         emptyHint={
           isPt
-            ? "Ainda não tens jogadores com conta na app para adicionar a um grupo."
-            : "You have no players with app accounts to add to a group yet."
+            ? "Ainda não tens jogadores nem staff com conta na app para grupos."
+            : "No players or staff with app accounts to add to a group yet."
         }
         canEditName
       />
@@ -631,9 +719,13 @@ export function MessagesClient() {
               {activeConv.participantIds.length} {isPt ? "membros" : "members"}
             </p>
             <div className="mt-3 max-h-60 space-y-2 overflow-y-auto">
-              {activeGroupMembers.map(({ participantCloudId, player }) => {
+              {activeGroupMembers.map(({ participantCloudId, player, staffMember }) => {
                 const isPrimaryAdmin = activeConv.groupPrimaryAdminId === participantCloudId;
                 const isSecondaryAdmin = Boolean(activeConv.groupAdminIds?.includes(participantCloudId));
+                const displayName =
+                  player?.name ??
+                  staffMember?.name ??
+                  (participantCloudId === coachUserId ? (isPt ? "Tu" : "You") : "Unknown user");
                 return (
                   <button
                     key={participantCloudId}
@@ -643,9 +735,7 @@ export function MessagesClient() {
                       setSelectedMemberCloudId((prev) => (prev === participantCloudId ? null : participantCloudId))
                     }
                   >
-                    <span className="text-sm text-white">
-                      {player?.name ?? (participantCloudId === coachUserId ? (isPt ? "Tu" : "You") : "Unknown user")}
-                    </span>
+                    <span className="text-sm text-white">{displayName}</span>
                     <span className="text-[11px] text-zinc-400">
                       {isPrimaryAdmin ? (isPt ? "Admin principal" : "Primary admin") : isSecondaryAdmin ? "Admin" : ""}
                     </span>
@@ -662,24 +752,46 @@ export function MessagesClient() {
                 placeholder={isPt ? "Ex.: Dumiense 2025/26" : "E.g. Dumiense 2025/26"}
               />
               <p className="mt-3 text-sm font-semibold text-white">{isPt ? "Adicionar pessoas" : "Add people"}</p>
-              <div className="mt-2 max-h-28 space-y-1 overflow-y-auto">
-                {activeGroupPlayers.length === 0 ? (
+              <div className="mt-2 max-h-40 space-y-2 overflow-y-auto">
+                {activeGroupPlayers.length === 0 && activeGroupStaff.length === 0 ? (
                   <p className="text-xs text-zinc-400">
                     {isPt
                       ? "Todas as pessoas com conta já estão neste grupo."
                       : "Everyone with an app account is already in this group."}
                   </p>
                 ) : (
-                  activeGroupPlayers.map((p) => (
-                    <label key={p.id} className="flex items-center gap-2 text-sm text-zinc-200">
-                      <input
-                        type="checkbox"
-                        checked={selectedManagePlayerIds.includes(p.id)}
-                        onChange={() => toggleManagePlayer(p.id)}
-                      />
-                      <span>{p.name}</span>
-                    </label>
-                  ))
+                  <>
+                    {activeGroupPlayers.length > 0 ? (
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+                        {isPt ? "Jogadores" : "Players"}
+                      </p>
+                    ) : null}
+                    {activeGroupPlayers.map((p) => (
+                      <label key={p.id} className="flex items-center gap-2 text-sm text-zinc-200">
+                        <input
+                          type="checkbox"
+                          checked={selectedManagePlayerIds.includes(p.id)}
+                          onChange={() => toggleManagePlayer(p.id)}
+                        />
+                        <span>{p.name}</span>
+                      </label>
+                    ))}
+                    {activeGroupStaff.length > 0 ? (
+                      <p className="pt-1 text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+                        Staff
+                      </p>
+                    ) : null}
+                    {activeGroupStaff.map((s) => (
+                      <label key={s.id} className="flex items-center gap-2 text-sm text-zinc-200">
+                        <input
+                          type="checkbox"
+                          checked={selectedManageStaffIds.includes(s.id)}
+                          onChange={() => toggleManageStaff(s.id)}
+                        />
+                        <span>{s.name}</span>
+                      </label>
+                    ))}
+                  </>
                 )}
               </div>
             </div>
@@ -687,7 +799,9 @@ export function MessagesClient() {
               <div className="mt-3 rounded-xl border border-surface-border p-3">
                 {(() => {
                   const memberPlayerId = playerIdByCloudUserId[selectedMemberCloudId];
+                  const memberStaffId = staffIdByCloudUserId[selectedMemberCloudId];
                   const memberPlayer = memberPlayerId ? players.find((p) => p.id === memberPlayerId) : null;
+                  const memberStaff = memberStaffId ? staff.find((s) => s.id === memberStaffId) : null;
                   const isMe = selectedMemberCloudId === coachUserId;
                   const actorIsAdmin =
                     activeConv.groupPrimaryAdminId === coachUserId ||
@@ -697,13 +811,17 @@ export function MessagesClient() {
                   const selectedIsAdmin =
                     activeConv.groupPrimaryAdminId === selectedMemberCloudId ||
                     Boolean(activeConv.groupAdminIds?.includes(selectedMemberCloudId));
+                  const memberLabel = memberPlayer?.name ?? memberStaff?.name ?? "Member";
                   return (
                     <>
-                      <p className="text-sm font-semibold text-white">{memberPlayer?.name ?? "Member"}</p>
+                      <p className="text-sm font-semibold text-white">{memberLabel}</p>
                       {memberPlayer ? (
                         <p className="mt-1 text-xs text-zinc-400">
                           #{memberPlayer.number} - {memberPlayer.position}
                         </p>
+                      ) : null}
+                      {memberStaff && !memberPlayer ? (
+                        <p className="mt-1 text-xs text-zinc-400">{memberStaff.role}</p>
                       ) : null}
                       <div className="mt-3 flex flex-wrap gap-2">
                         {memberPlayer ? (
@@ -713,6 +831,27 @@ export function MessagesClient() {
                             variant="secondary"
                             onClick={() => {
                               const id = createDmWithPlayer(memberPlayer, {
+                                peerCloudUserId: selectedMemberCloudId,
+                              });
+                              if (id) {
+                                focusDraftAfterConvIdRef.current = id;
+                                setActiveId(id);
+                                setTab("dm");
+                                setManageGroupOpen(false);
+                                setSelectedMemberCloudId(null);
+                              }
+                            }}
+                          >
+                            {isPt ? "Mensagem Direta" : "Direct Message"}
+                          </Button>
+                        ) : null}
+                        {memberStaff && !memberPlayer ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => {
+                              const id = createDmWithStaff(memberStaff, {
                                 peerCloudUserId: selectedMemberCloudId,
                               });
                               if (id) {
@@ -773,7 +912,7 @@ export function MessagesClient() {
                   if (manageGroupNameDraft.trim() && manageGroupNameDraft.trim() !== activeConv.title) {
                     await updateGroupConversation(activeConv.id, { title: manageGroupNameDraft });
                   }
-                  const members = selectedManagePlayerIds
+                  const fromPlayers = selectedManagePlayerIds
                     .map((id) => {
                       const player = players.find((p) => p.id === id);
                       const peerId = playerCloudUserId[id];
@@ -781,10 +920,19 @@ export function MessagesClient() {
                       return { participantId: peerId, name: player.name };
                     })
                     .filter((m): m is { participantId: string; name: string } => Boolean(m));
-                  addParticipantsToGroupChat(activeConv.id, members);
+                  const fromStaff = selectedManageStaffIds
+                    .map((id) => {
+                      const sm = staff.find((s) => s.id === id);
+                      const peerId = staffCloudUserId[id];
+                      if (!sm || !peerId) return null;
+                      return { participantId: peerId, name: sm.name };
+                    })
+                    .filter((m): m is { participantId: string; name: string } => Boolean(m));
+                  addParticipantsToGroupChat(activeConv.id, [...fromPlayers, ...fromStaff]);
                   setSavingGroupSettings(false);
                   setManageGroupOpen(false);
                   setSelectedManagePlayerIds([]);
+                  setSelectedManageStaffIds([]);
                   setSelectedMemberCloudId(null);
                 }}
               >
@@ -796,6 +944,7 @@ export function MessagesClient() {
                 onClick={() => {
                   setManageGroupOpen(false);
                   setSelectedManagePlayerIds([]);
+                  setSelectedManageStaffIds([]);
                   setSelectedMemberCloudId(null);
                 }}
               >
@@ -1067,8 +1216,8 @@ export function MessagesClient() {
                 {activeConv.type === "dm" && !canSendDm ? (
                   <p className="mt-2 text-[11px] text-amber-500/95">
                     {isPt
-                      ? "Este jogador ainda não tem conta na app. Associa o nametag em Equipa (conta verificada) para enviar mensagens."
-                      : "This player has no app account yet. Link a verified nametag in Team to send messages."}
+                      ? "Esta pessoa ainda não tem conta na app. Associa o nametag em Equipa (jogador ou staff) para enviar mensagens."
+                      : "This person has no app account yet. Link their nametag in Team (player or staff) to send messages."}
                   </p>
                 ) : (
                   <p className="mt-2 text-[11px] text-zinc-600">

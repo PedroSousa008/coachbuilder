@@ -238,6 +238,10 @@ export interface StaffMember {
   /** ISO date YYYY-MM-DD */
   dateOfBirth?: string;
   documents?: TeamDocumentsBundle;
+  /**
+   * Nametag de conta CoachBuilder (normalizado, sem @). Verificado na cloud como nos jogadores.
+   */
+  linkedNametag?: string;
 }
 
 export type TeamSingleRoleId =

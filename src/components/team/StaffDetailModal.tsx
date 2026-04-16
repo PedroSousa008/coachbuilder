@@ -1,12 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { StaffMember, TeamDocumentsBundle } from "@/types";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { cn } from "@/lib/utils";
 import { normalizeTeamDocuments } from "@/lib/team-documents";
 import { TeamDocumentsPanel } from "@/components/team/TeamDocumentsPanel";
+import { useAuth } from "@/contexts/AuthContext";
+import { shouldUseCloudClientApis } from "@/lib/cloud-config";
+import { normalizeNametagInput } from "@/lib/user-nametag";
 
 type Tab = "dados" | "documentos";
 
@@ -23,11 +26,17 @@ export function StaffDetailModal({
   onSave: (id: string, patch: Partial<Omit<StaffMember, "id">>) => void;
   onRemove: (id: string) => void;
 }) {
+  const { user } = useAuth();
   const [tab, setTab] = useState<Tab>("dados");
   const [name, setName] = useState("");
   const [role, setRole] = useState("");
   const [dateOfBirth, setDateOfBirth] = useState("");
   const [documentsBundle, setDocumentsBundle] = useState<TeamDocumentsBundle>(() => normalizeTeamDocuments());
+  const [linkedNametagDraft, setLinkedNametagDraft] = useState("");
+  const [nametagLookup, setNametagLookup] = useState<
+    "idle" | "loading" | "linked" | "unlinked" | "need_auth" | "server_off" | "error"
+  >("idle");
+  const lookupGen = useRef(0);
 
   useEffect(() => {
     if (!member) return;
@@ -35,19 +44,60 @@ export function StaffDetailModal({
     setRole(member.role);
     setDateOfBirth(member.dateOfBirth ?? "");
     setDocumentsBundle(normalizeTeamDocuments(member.documents));
+    setLinkedNametagDraft(member.linkedNametag ?? "");
+    setNametagLookup("idle");
     setTab("dados");
   }, [member]);
+
+  useEffect(() => {
+    if (!open || !member) return;
+    const norm = normalizeNametagInput(linkedNametagDraft);
+    if (!norm) {
+      setNametagLookup("idle");
+      return;
+    }
+    if (!shouldUseCloudClientApis(user)) {
+      setNametagLookup("need_auth");
+      return;
+    }
+    setNametagLookup("loading");
+    const gen = ++lookupGen.current;
+    const t = window.setTimeout(() => {
+      fetch(`/api/cloud/nametag/lookup?tag=${encodeURIComponent(norm)}`, { credentials: "include" })
+        .then(async (res) => {
+          if (lookupGen.current !== gen) return;
+          const data = (await res.json()) as { ok?: boolean; exists?: boolean };
+          if (!res.ok) {
+            if (res.status === 401) setNametagLookup("need_auth");
+            else if (res.status === 503) setNametagLookup("server_off");
+            else setNametagLookup("error");
+            return;
+          }
+          if (data.ok && data.exists) setNametagLookup("linked");
+          else if (data.ok && data.exists === false) setNametagLookup("unlinked");
+          else setNametagLookup("idle");
+        })
+        .catch(() => {
+          if (lookupGen.current === gen) setNametagLookup("error");
+        });
+    }, 380);
+    return () => {
+      window.clearTimeout(t);
+    };
+  }, [linkedNametagDraft, open, member?.id, user?.id]);
 
   if (!open || !member) return null;
 
   const save = () => {
     const n = name.trim();
     if (!n) return;
+    const ln = normalizeNametagInput(linkedNametagDraft);
     onSave(member.id, {
       name: n,
       role: role.trim() || "Staff",
       dateOfBirth: dateOfBirth || undefined,
       documents: normalizeTeamDocuments(documentsBundle),
+      ...(ln ? { linkedNametag: ln } : { linkedNametag: undefined }),
     });
   };
 
@@ -68,6 +118,46 @@ export function StaffDetailModal({
             {member.name}
           </h3>
           <p className="mt-0.5 text-xs text-zinc-500">Dados e documentos da equipa técnica</p>
+          <div className="mt-3 max-w-sm">
+            <label
+              htmlFor="staff-linked-nametag"
+              className="block text-[11px] font-medium uppercase tracking-wide text-zinc-500"
+            >
+              Nametag (conta CoachBuilder)
+            </label>
+            <div className="mt-1.5 flex items-center gap-0.5 rounded-xl border border-surface-border bg-black/30 px-2 py-1.5 focus-within:border-accent/40 focus-within:ring-1 focus-within:ring-accent/25">
+              <span className="shrink-0 pl-0.5 font-mono text-sm text-zinc-500" aria-hidden>
+                @
+              </span>
+              <input
+                id="staff-linked-nametag"
+                type="text"
+                autoComplete="off"
+                spellCheck={false}
+                placeholder="ex. pedrosousa"
+                value={linkedNametagDraft}
+                onChange={(e) => setLinkedNametagDraft(e.target.value)}
+                className="min-w-0 flex-1 bg-transparent font-mono text-sm text-zinc-100 outline-none placeholder:text-zinc-600"
+              />
+            </div>
+            {normalizeNametagInput(linkedNametagDraft) ? (
+              <p className="mt-1.5 text-xs" role="status">
+                {nametagLookup === "loading" ? (
+                  <span className="text-zinc-500">A verificar…</span>
+                ) : nametagLookup === "linked" ? (
+                  <span className="text-emerald-400/95">Conta encontrada — associação válida.</span>
+                ) : nametagLookup === "unlinked" ? (
+                  <span className="text-amber-400/95">Ainda não existe conta com este nametag.</span>
+                ) : nametagLookup === "need_auth" ? (
+                  <span className="text-zinc-500">Inicia sessão na cloud para verificar o nametag.</span>
+                ) : nametagLookup === "server_off" ? (
+                  <span className="text-zinc-500">Verificação indisponível (servidor).</span>
+                ) : (
+                  <span className="text-zinc-600">Não foi possível verificar.</span>
+                )}
+              </p>
+            ) : null}
+          </div>
           <div className="mt-4 grid grid-cols-2 gap-1 rounded-xl bg-black/40 p-1">
             <button
               type="button"
