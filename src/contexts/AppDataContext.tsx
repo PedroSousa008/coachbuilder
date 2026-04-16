@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type Dispatch,
   type ReactNode,
@@ -195,6 +196,8 @@ type AppDataContextValue = {
   /** Soma de `unread` por conversa (badge no header/sidebar). */
   unreadMessagesCount: number;
   messagesByConv: Record<string, Message[]>;
+  /** Id da última mensagem lida por conversa (local); usado para abrir no primeiro não lido. */
+  lastReadMessageByConv: Record<string, string>;
   createDmWithPlayer: (player: Player, opts?: { peerCloudUserId: string | null }) => string | null;
   addPlayerToGroupChat: (conversationId: string, player: Player) => void;
   createGroupConversation: (title: string, members: { participantId: string; name: string }[]) => string;
@@ -295,6 +298,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [teamRoles, setTeamRoles] = useState<TeamRoles>(() => defaultTeamRoles());
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [messagesByConv, setMessagesByConv] = useState<Record<string, Message[]>>({});
+  const [lastReadMessageByConv, setLastReadMessageByConv] = useState<Record<string, string>>({});
+  const messagesByConvRef = useRef(messagesByConv);
+  messagesByConvRef.current = messagesByConv;
   const [trainingSessions, setTrainingSessions] = useState<TrainingSession[]>([]);
   const [trainingPlayerIdsBySession, setTrainingPlayerIdsBySession] = useState<Record<string, string[]>>({});
   const [fixtures, setFixtures] = useState<MatchFixture[]>([]);
@@ -336,6 +342,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       setTeamRoles(defaultTeamRoles());
       setConversations([]);
       setMessagesByConv({});
+      setLastReadMessageByConv({});
       setTrainingSessions([]);
       setTrainingPlayerIdsBySession({});
       setFixtures([]);
@@ -375,6 +382,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setTeamRoles(loadedTeamRoles);
     setConversations(loadedConvs);
     setMessagesByConv(loadedMsgs);
+    setLastReadMessageByConv(loadJSON<Record<string, string>>(ks.conversationLastReadMessageIds, {}));
     setTrainingSessions(loadJSON<TrainingSession[]>(ks.sessions, []));
     setTrainingPlayerIdsBySession(loadJSON<Record<string, string[]>>(ks.trainingPlayers, {}));
     setFixtures(loadJSON<MatchFixture[]>(ks.fixtures, []));
@@ -556,6 +564,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     if (!hydrated || !ks) return;
     saveJSON(ks.messages, messagesByConv);
   }, [messagesByConv, hydrated, ks]);
+
+  useEffect(() => {
+    if (!hydrated || !ks) return;
+    saveJSON(ks.conversationLastReadMessageIds, lastReadMessageByConv);
+  }, [lastReadMessageByConv, hydrated, ks]);
 
   useEffect(() => {
     if (!hydrated || !ks) return;
@@ -846,6 +859,13 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setConversations((prev) =>
       prev.map((c) => (c.id === conversationId ? { ...c, unread: 0 } : c))
     );
+    const msgs = messagesByConvRef.current[conversationId];
+    if (!msgs?.length) return;
+    const sorted = [...msgs].sort(
+      (a, b) => new Date(a.sentAt).getTime() - new Date(b.sentAt).getTime()
+    );
+    const last = sorted[sorted.length - 1]!;
+    setLastReadMessageByConv((prev) => ({ ...prev, [conversationId]: last.id }));
   }, []);
 
   const createGroupConversation = useCallback(
@@ -1425,6 +1445,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       conversations,
       unreadMessagesCount,
       messagesByConv,
+      lastReadMessageByConv,
       createDmWithPlayer,
       addPlayerToGroupChat,
       createGroupConversation,
@@ -1485,6 +1506,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       conversations,
       unreadMessagesCount,
       messagesByConv,
+      lastReadMessageByConv,
       createDmWithPlayer,
       addPlayerToGroupChat,
       createGroupConversation,

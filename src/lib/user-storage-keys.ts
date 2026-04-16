@@ -29,6 +29,7 @@ export type UserDataKeyId =
   | "conversations"
   | "messages"
   | "messageReadAt"
+  | "conversationLastReadMessageIds"
   | "sessions"
   | "trainingPlayers"
   | "fixtures"
@@ -47,6 +48,7 @@ const LEGACY_MAP: Record<UserDataKeyId, string> = {
   conversations: "coachbuilder-conversations",
   messages: "coachbuilder-messages",
   messageReadAt: "coachbuilder-message-read-at-v1",
+  conversationLastReadMessageIds: "coachbuilder-conversation-last-read-msg-v1",
   sessions: "coachbuilder-sessions",
   trainingPlayers: "coachbuilder-training-session-players",
   fixtures: "coachbuilder-fixtures",
@@ -71,6 +73,7 @@ export function getAllUserDataKeys(userId: string): Record<UserDataKeyId, string
     conversations: userDataKey(userId, "conversations"),
     messages: userDataKey(userId, "messages"),
     messageReadAt: userDataKey(userId, "messageReadAt"),
+    conversationLastReadMessageIds: userDataKey(userId, "conversationLastReadMessageIds"),
     sessions: userDataKey(userId, "sessions"),
     trainingPlayers: userDataKey(userId, "trainingPlayers"),
     fixtures: userDataKey(userId, "fixtures"),

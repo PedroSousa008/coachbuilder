@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Paperclip } from "lucide-react";
 import { ChatConversationItem } from "@/components/messages/ChatConversationItem";
 import { GroupEditorModal } from "@/components/messages/GroupEditorModal";
@@ -24,6 +24,7 @@ import {
   validateAttachmentPayload,
 } from "@/lib/chat-attachments";
 import { getTrainingCatalogItems } from "@/lib/training-session-local";
+import { getScrollTargetMessageId } from "@/lib/chat-scroll-read";
 
 function mapApiMessage(
   convId: string,
@@ -62,6 +63,7 @@ export function MessagesClient() {
     mergeRemoteDmMessages,
     hydrateDmThreadsFromCloud,
     markConversationRead,
+    lastReadMessageByConv,
     hydrated,
     trainingSessions,
     savedTrainingExercises,
@@ -101,6 +103,8 @@ export function MessagesClient() {
   const draftInputRef = useRef<HTMLInputElement>(null);
   /** After opening a DM, focus the composer once that conversation is active. */
   const focusDraftAfterConvIdRef = useRef<string | null>(null);
+  /** Scroll to first unread (or bottom) once per conversa aberta — não em cada poll. */
+  const scrollThreadPendingRef = useRef(false);
 
   const coachUserId = user?.id ?? mockCoach.id;
 
@@ -212,9 +216,41 @@ export function MessagesClient() {
   }, [hydrated, conversations, activeId]);
 
   const activeConv = conversations.find((c) => c.id === activeId);
-  const thread = [...(messagesByConv[activeId] ?? [])].sort(
-    (a, b) => new Date(a.sentAt).getTime() - new Date(b.sentAt).getTime()
+  const thread = useMemo(
+    () =>
+      [...(messagesByConv[activeId] ?? [])].sort(
+        (a, b) => new Date(a.sentAt).getTime() - new Date(b.sentAt).getTime()
+      ),
+    [messagesByConv, activeId]
   );
+
+  useLayoutEffect(() => {
+    scrollThreadPendingRef.current = true;
+  }, [activeId]);
+
+  useLayoutEffect(() => {
+    if (!activeId || !scrollThreadPendingRef.current) return;
+    if (thread.length === 0) return;
+    const targetId = getScrollTargetMessageId(thread, lastReadMessageByConv[activeId]);
+    if (!targetId) {
+      scrollThreadPendingRef.current = false;
+      return;
+    }
+    const run = () => {
+      const el = document.getElementById(`chat-msg-${targetId}`);
+      if (el) {
+        el.scrollIntoView({ block: "nearest", behavior: "auto" });
+        scrollThreadPendingRef.current = false;
+        return true;
+      }
+      return false;
+    };
+    if (!run()) {
+      requestAnimationFrame(() => {
+        if (!run()) scrollThreadPendingRef.current = false;
+      });
+    }
+  }, [activeId, thread, lastReadMessageByConv]);
 
   const activeDmPeerCloudId = useMemo(() => {
     if (!activeConv || activeConv.type !== "dm" || !user?.id) return null;
@@ -874,15 +910,16 @@ export function MessagesClient() {
               </p>
             ) : (
               thread.map((m) => (
-                <MessageBubble
-                  key={m.id}
-                  body={m.body}
-                  authorName={m.authorName}
-                  sentAt={m.sentAt}
-                  mine={!isChannelSystemMessage(m) && m.authorId === coachUserId}
-                  system={isChannelSystemMessage(m)}
-                  attachments={m.attachments}
-                />
+                <div key={m.id} id={`chat-msg-${m.id}`} className="scroll-mt-4">
+                  <MessageBubble
+                    body={m.body}
+                    authorName={m.authorName}
+                    sentAt={m.sentAt}
+                    mine={!isChannelSystemMessage(m) && m.authorId === coachUserId}
+                    system={isChannelSystemMessage(m)}
+                    attachments={m.attachments}
+                  />
+                </div>
               ))
             )}
           </div>
