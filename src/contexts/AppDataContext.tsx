@@ -192,6 +192,8 @@ type AppDataContextValue = {
   setTeamDoubleRole: (role: TeamDoubleRoleId, playerIds: string[]) => void;
 
   conversations: Conversation[];
+  /** Soma de `unread` por conversa (badge no header/sidebar). */
+  unreadMessagesCount: number;
   messagesByConv: Record<string, Message[]>;
   createDmWithPlayer: (player: Player, opts?: { peerCloudUserId: string | null }) => string | null;
   addPlayerToGroupChat: (conversationId: string, player: Player) => void;
@@ -1401,6 +1403,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     }
   }, [leagueTableUrl]);
 
+  const unreadMessagesCount = useMemo(
+    () => conversations.reduce((n, c) => n + (c.unread ?? 0), 0),
+    [conversations]
+  );
+
   const value = useMemo<AppDataContextValue>(
     () => ({
       hydrated,
@@ -1416,6 +1423,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       setTeamSingleRole,
       setTeamDoubleRole,
       conversations,
+      unreadMessagesCount,
       messagesByConv,
       createDmWithPlayer,
       addPlayerToGroupChat,
@@ -1475,6 +1483,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       setTeamSingleRole,
       setTeamDoubleRole,
       conversations,
+      unreadMessagesCount,
       messagesByConv,
       createDmWithPlayer,
       addPlayerToGroupChat,
