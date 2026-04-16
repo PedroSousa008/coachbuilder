@@ -290,9 +290,12 @@ export function MessagesClient() {
   const groupPickerPlayers = useMemo(
     () =>
       squadGroup
-        ? players.filter((p) => !squadGroup.participantIds.includes(p.id))
+        ? players.filter((p) => {
+            const peerId = playerCloudUserId[p.id] ?? p.id;
+            return !squadGroup.participantIds.includes(peerId);
+          })
         : [],
-    [players, squadGroup]
+    [playerCloudUserId, players, squadGroup]
   );
 
   return (
@@ -326,7 +329,11 @@ export function MessagesClient() {
         disabledHint={isPt ? "Sem conta na app (associa o nametag em Equipa)" : "No app account yet (link nametag in Team)"}
         onClose={() => setGroupPickerOpen(false)}
         onSelect={(p) => {
-          if (squadGroup) addPlayerToGroupChat(squadGroup.id, p);
+          if (squadGroup) {
+            addPlayerToGroupChat(squadGroup.id, p, {
+              peerCloudUserId: playerCloudUserId[p.id] ?? null,
+            });
+          }
         }}
         emptyHint={
           isPt
@@ -462,8 +469,8 @@ export function MessagesClient() {
                 ) : (
                   <p className="mt-2 text-[11px] text-zinc-600">
                     {isPt
-                      ? "DM na cloud: sincronização frequente entre contas (~½ s). Chat de grupo continua só neste browser."
-                      : "Cloud DMs sync between accounts about every ½ s. Squad group chat stays local in this browser."}
+                      ? "DMs e chat do plantel sincronizam entre contas na cloud com pequeno atraso."
+                      : "DMs and the squad group sync through the cloud with a short delay."}
                   </p>
                 )}
               </>
