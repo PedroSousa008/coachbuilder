@@ -1,7 +1,9 @@
 import type { ChatAttachment, ChatAttachmentKind } from "@/types";
 
-export const CHAT_ATTACHMENT_MAX_BYTES = 2_500_000;
-export const CHAT_ATTACHMENTS_MAX_JSON_CHARS = 3_500_000;
+/** PDFs/vídeos locais em base64 — limite por ficheiro (antes de codificar). */
+export const CHAT_ATTACHMENT_MAX_BYTES = 6_000_000;
+/** Teto global do JSON de anexos numa mensagem (vários ficheiros / base64). */
+export const CHAT_ATTACHMENTS_MAX_JSON_CHARS = 16_000_000;
 
 export function uidAttachment(prefix = "att"): string {
   return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;

@@ -48,6 +48,28 @@ function mapApiMessage(
   };
 }
 
+function mapWorkspaceMessage(msg: {
+  id: string;
+  conversationId: string;
+  authorId: string;
+  authorName: string;
+  body: string;
+  sentAt: string;
+  attachments?: unknown;
+  system?: boolean;
+}): Message {
+  return {
+    id: msg.id,
+    conversationId: msg.conversationId,
+    authorId: msg.authorId,
+    authorName: msg.authorName,
+    body: msg.body,
+    sentAt: msg.sentAt,
+    attachments: parseChatAttachmentsFromApi(msg.attachments),
+    ...(msg.system ? { system: true } : {}),
+  };
+}
+
 export function MessagesClient() {
   const {
     conversations,
@@ -328,7 +350,7 @@ export function MessagesClient() {
           if (cancelled) return;
           if (!data.ok || !data.messages?.length) return;
           const mapped = data.messages.map((m) => mapApiMessage(convId, m));
-          mergeRemoteDmMessages(convId, mapped);
+          mergeRemoteDmMessages(convId, mapped, { viewerActiveConversationId: activeId });
           const last = mapped[mapped.length - 1]!;
           streamSinceRef.current[convId] = last.sentAt;
         }
@@ -338,7 +360,7 @@ export function MessagesClient() {
     return () => {
       cancelled = true;
     };
-  }, [activeConv?.id, activeDmPeerCloudId, mergeRemoteDmMessages, user]);
+  }, [activeConv?.id, activeDmPeerCloudId, mergeRemoteDmMessages, user, activeId]);
 
   /**
    * Polling curto (~550 ms): no serverless o mesmo URL SSE não renova o `since` ao reconectar;
@@ -371,7 +393,7 @@ export function MessagesClient() {
         };
         if (!res.ok || !data.ok || !data.messages?.length) return;
         const mapped = data.messages.map((m) => mapApiMessage(convId, m));
-        mergeRemoteDmMessages(convId, mapped);
+        mergeRemoteDmMessages(convId, mapped, { viewerActiveConversationId: activeId });
         streamSinceRef.current[convId] = mapped[mapped.length - 1]!.sentAt;
       } catch {
         /* offline */
@@ -384,7 +406,70 @@ export function MessagesClient() {
       cancelled = true;
       window.clearInterval(id);
     };
-  }, [activeConv?.id, activeDmPeerCloudId, mergeRemoteDmMessages, user?.id]);
+  }, [activeConv?.id, activeDmPeerCloudId, mergeRemoteDmMessages, user?.id, activeId]);
+
+  /** Mantém `since` alinhado ao último turno local para não voltar a pedir todo o histórico no 1.º poll. */
+  useEffect(() => {
+    if (!activeConv || activeConv.type !== "group") return;
+    const msgs = messagesByConv[activeConv.id] ?? [];
+    if (msgs.length === 0) return;
+    const sorted = [...msgs].sort(
+      (a, b) => new Date(a.sentAt).getTime() - new Date(b.sentAt).getTime()
+    );
+    const last = sorted[sorted.length - 1]!;
+    const cur = streamSinceRef.current[activeConv.id];
+    if (!cur || new Date(last.sentAt).getTime() > new Date(cur).getTime()) {
+      streamSinceRef.current[activeConv.id] = last.sentAt;
+    }
+  }, [activeConv?.id, activeConv?.type, messagesByConv]);
+
+  /**
+   * Grupos na cloud: mensagens chegam ao workspace do destinatário via `group/sync`;
+   * polling lê o workspace do utilizador e funde mensagens novas (sem refresh da página).
+   */
+  useEffect(() => {
+    if (!activeConv || activeConv.type !== "group") return;
+    if (!shouldUseCloudClientApis(user)) return;
+
+    const convId = activeConv.id;
+    let cancelled = false;
+    const poll = async () => {
+      if (cancelled) return;
+      const since = streamSinceRef.current[convId] ?? new Date(0).toISOString();
+      try {
+        const res = await fetch(
+          `/api/cloud/chat/group/messages?conversationId=${encodeURIComponent(convId)}&since=${encodeURIComponent(since)}`,
+          { credentials: "include" }
+        );
+        const data = (await res.json()) as {
+          ok?: boolean;
+          messages?: Array<{
+            id: string;
+            conversationId: string;
+            authorId: string;
+            authorName: string;
+            body: string;
+            sentAt: string;
+            attachments?: unknown;
+            system?: boolean;
+          }>;
+        };
+        if (!res.ok || !data.ok || !data.messages?.length) return;
+        const mapped = data.messages.map(mapWorkspaceMessage);
+        mergeRemoteDmMessages(convId, mapped, { viewerActiveConversationId: activeId });
+        streamSinceRef.current[convId] = mapped[mapped.length - 1]!.sentAt;
+      } catch {
+        /* offline */
+      }
+    };
+
+    const id = window.setInterval(() => void poll(), 450);
+    void poll();
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
+  }, [activeConv?.id, activeConv?.type, mergeRemoteDmMessages, user, activeId]);
 
   const canSendDm = useMemo(() => {
     if (!activeConv || activeConv.type !== "dm") return true;
@@ -526,7 +611,9 @@ export function MessagesClient() {
           };
         };
         if (res.ok && data.ok && data.message) {
-          mergeRemoteDmMessages(activeConv.id, [mapApiMessage(activeConv.id, data.message)]);
+          mergeRemoteDmMessages(activeConv.id, [mapApiMessage(activeConv.id, data.message)], {
+            viewerActiveConversationId: activeId,
+          });
           streamSinceRef.current[activeConv.id] = data.message.sentAt;
           setDraft("");
           setPendingAttachments([]);

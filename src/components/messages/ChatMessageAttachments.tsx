@@ -189,19 +189,6 @@ function AttachmentRow({
           <FileText className="h-4 w-4 shrink-0 text-zinc-500" aria-hidden />
         </div>
 
-        {img ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={a.dataUrl} alt="" className="mt-2 max-h-56 w-full rounded-lg object-contain" />
-        ) : pdf ? (
-          <iframe
-            title={safe}
-            src={a.dataUrl}
-            className="mt-2 h-52 w-full rounded-lg border border-zinc-700/80 bg-zinc-900/40"
-          />
-        ) : (
-          <p className="mt-2 text-[11px] leading-snug text-zinc-500">{unavailable}</p>
-        )}
-
         <div className="mt-2 flex flex-wrap gap-2">
           <a
             href={a.dataUrl}
@@ -221,6 +208,34 @@ function AttachmentRow({
             {downloadLabel}
           </a>
         </div>
+
+        {img ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={a.dataUrl} alt="" className="mt-2 max-h-56 w-full rounded-lg object-contain" />
+        ) : pdf ? (
+          <>
+            <p className="mt-2 text-[11px] leading-snug text-zinc-500 sm:hidden">
+              {isPt
+                ? "Em telemóvel ou iPad, usa «Abrir» se o PDF não aparecer em baixo."
+                : "On phone or iPad, tap Open if the preview does not show below."}
+            </p>
+            <iframe
+              title={safe}
+              src={a.dataUrl}
+              className="mt-2 hidden h-52 w-full rounded-lg border border-zinc-700/80 bg-zinc-900/40 sm:block"
+            />
+            <object
+              data={a.dataUrl}
+              type={a.mimeType || "application/pdf"}
+              className="mt-2 h-48 w-full rounded-lg border border-zinc-700/80 bg-zinc-900/40 sm:hidden"
+              aria-label={safe}
+            >
+              <span className="sr-only">PDF</span>
+            </object>
+          </>
+        ) : (
+          <p className="mt-2 text-[11px] leading-snug text-zinc-500">{unavailable}</p>
+        )}
       </div>
     );
   }

@@ -24,8 +24,10 @@ export function sanitizeDownloadFileName(name: string | undefined): string {
 }
 
 export function isLikelyPdf(mime: string | undefined, name: string | undefined): boolean {
-  if (mime?.toLowerCase().includes("pdf")) return true;
-  return (name ?? "").toLowerCase().endsWith(".pdf");
+  const n = (name ?? "").toLowerCase();
+  if (n.endsWith(".pdf")) return true;
+  const m = mime?.toLowerCase() ?? "";
+  return m.includes("pdf");
 }
 
 export function isImageMime(mime: string | undefined): boolean {

@@ -207,7 +207,11 @@ type AppDataContextValue = {
   removeParticipantFromGroupChat: (conversationId: string, participantCloudId: string) => Promise<void>;
   setGroupAdmin: (conversationId: string, participantCloudId: string, isAdmin: boolean) => void;
   sendChatMessage: (conversationId: string, body: string, attachments?: ChatAttachment[]) => void;
-  mergeRemoteDmMessages: (conversationId: string, incoming: Message[]) => void;
+  mergeRemoteDmMessages: (
+    conversationId: string,
+    incoming: Message[],
+    opts?: { viewerActiveConversationId?: string | null }
+  ) => void;
   hydrateDmThreadsFromCloud: (
     threads: Array<{ peerUserId: string; peerName: string; lastBody: string; lastAt: string }>
   ) => void;
@@ -795,26 +799,38 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setTeamRoles((prev) => ({ ...prev, [role]: playerIds.slice(0, 2) }));
   }, []);
 
-  const mergeRemoteDmMessages = useCallback((conversationId: string, incoming: Message[]) => {
-    if (incoming.length === 0) return;
-    setMessagesByConv((prev) => {
-      const cur = prev[conversationId] ?? [];
-      return { ...prev, [conversationId]: mergeMessages(cur, incoming) };
-    });
-    const last = incoming[incoming.length - 1]!;
-    const preview = clipPreviewLine(messagePreviewLine(last.body, last.attachments));
-    setConversations((prev) =>
-      prev.map((c) =>
-        c.id === conversationId
-          ? {
+  const mergeRemoteDmMessages = useCallback(
+    (conversationId: string, incoming: Message[], opts?: { viewerActiveConversationId?: string | null }) => {
+      if (incoming.length === 0) return;
+      const actorId = user?.id ?? mockCoach.id;
+      const viewerActive = opts?.viewerActiveConversationId ?? null;
+      setMessagesByConv((prev) => {
+        const cur = prev[conversationId] ?? [];
+        const existingIds = new Set(cur.map((m) => m.id));
+        const newMsgs = incoming.filter((m) => !existingIds.has(m.id));
+        const merged = mergeMessages(cur, incoming);
+        const last = merged[merged.length - 1]!;
+        const preview = clipPreviewLine(messagePreviewLine(last.body, last.attachments));
+        const newFromOthers = newMsgs.filter((m) => m.authorId !== actorId);
+        const bumpUnread = newFromOthers.length > 0 && viewerActive !== conversationId;
+
+        setConversations((prevConvs) =>
+          prevConvs.map((c) => {
+            if (c.id !== conversationId) return c;
+            return {
               ...c,
               lastMessagePreview: preview,
               lastMessageAt: last.sentAt,
-            }
-          : c
-      )
-    );
-  }, []);
+              ...(bumpUnread ? { unread: (c.unread ?? 0) + newFromOthers.length } : {}),
+            };
+          })
+        );
+
+        return { ...prev, [conversationId]: merged };
+      });
+    },
+    [user?.id]
+  );
 
   const hydrateDmThreadsFromCloud = useCallback(
     (threads: Array<{ peerUserId: string; peerName: string; lastBody: string; lastAt: string }>) => {
