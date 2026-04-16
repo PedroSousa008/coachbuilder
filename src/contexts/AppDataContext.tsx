@@ -209,7 +209,7 @@ type AppDataContextValue = {
   messagesByConv: Record<string, Message[]>;
   createDmWithPlayer: (player: Player, options?: { peerCloudUserId?: string | null }) => string | null;
   createGroupConversation: (title: string, members?: GroupChatMemberInput[]) => string;
-  updateGroupConversation: (conversationId: string, patch: { title?: string }) => void;
+  updateGroupConversation: (conversationId: string, patch: { title?: string }) => Promise<boolean>;
   addParticipantsToGroupChat: (conversationId: string, members: GroupChatMemberInput[]) => void;
   sendChatMessage: (conversationId: string, body: string) => void;
   /** Mescla mensagens vindas da cloud (ids do servidor) num fio DM. */
@@ -1042,24 +1042,51 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     [user?.id, user?.name]
   );
 
-  const updateGroupConversation = useCallback((conversationId: string, patch: { title?: string }) => {
+  const updateGroupConversation = useCallback(async (conversationId: string, patch: { title?: string }) => {
     const nextTitle = patch.title?.trim();
-    if (!nextTitle) return;
+    if (!nextTitle) return false;
     const now = new Date().toISOString();
     const me = user?.id ?? mockCoach.id;
     const meName = user?.name?.trim() || mockCoach.name.trim() || "Coach";
+
+    if (shouldUseCloudClientApis(user) && user?.id) {
+      try {
+        const res = await fetch("/api/cloud/chat/group/rename", {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ conversationId, title: nextTitle }),
+        });
+        const data = (await res.json()) as { ok?: boolean; conversation?: Conversation; message?: Message };
+        if (res.ok && data.ok && data.conversation) {
+          setConversations((prev) =>
+            prev.map((c) =>
+              c.id === conversationId && c.type === "group" ? { ...c, ...data.conversation } : c
+            )
+          );
+          if (data.message) {
+            setMessagesByConv((prev) => {
+              const cur = prev[conversationId] ?? [];
+              if (cur.some((m) => m.id === data.message!.id)) return prev;
+              return { ...prev, [conversationId]: [...cur, data.message!] };
+            });
+          }
+          return true;
+        }
+      } catch {
+        /* fallback local */
+      }
+    }
+
     let didRename = false;
     setConversations((prev) =>
       prev.map((c) => {
         if (c.id !== conversationId || c.type !== "group") return c;
-        const ownerId = c.createdById ?? me;
-        const isOwner = ownerId === me;
-        if (!isOwner) return c;
         if (c.title === nextTitle) return c;
         didRename = true;
         return {
           ...c,
-          createdById: ownerId,
+          createdById: c.createdById ?? me,
           title: nextTitle,
           titleUpdatedAt: now,
           avatarInitials: initials(nextTitle),
@@ -1068,7 +1095,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         };
       })
     );
-    if (!didRename) return;
+    if (!didRename) return false;
     const renameMsg: Message = {
       id: uid("m"),
       conversationId,
@@ -1081,7 +1108,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       ...prev,
       [conversationId]: [...(prev[conversationId] ?? []), renameMsg],
     }));
-  }, [user?.id, user?.name]);
+    return true;
+  }, [user?.id, user?.name, user]);
 
   const addParticipantsToGroupChat = useCallback(
     (conversationId: string, members: GroupChatMemberInput[]) => {

@@ -304,10 +304,6 @@ export function MessagesClient() {
     });
   }, [accountPlayers, activeConv, playerCloudUserId]);
 
-  const canRenameActiveGroup =
-    activeConv?.type === "group" &&
-    (activeConv.createdById ?? user?.id ?? mockCoach.id) === (user?.id ?? mockCoach.id);
-
   useEffect(() => {
     if (activeConv?.type === "group") setManageGroupNameDraft(activeConv.title);
   }, [activeConv?.id, activeConv?.title, activeConv?.type]);
@@ -401,7 +397,7 @@ export function MessagesClient() {
         onSubmit={() => {
           if (!activeConv || activeConv.type !== "group") return;
           if (manageGroupNameDraft.trim() && manageGroupNameDraft.trim() !== activeConv.title) {
-            updateGroupConversation(activeConv.id, { title: manageGroupNameDraft });
+            void updateGroupConversation(activeConv.id, { title: manageGroupNameDraft });
           }
           const members = selectedManagePlayerIds
             .map((id) => {
@@ -421,7 +417,7 @@ export function MessagesClient() {
             ? "Todas as pessoas com conta já estão neste grupo."
             : "Everyone with an app account is already in this group."
         }
-        canEditName={Boolean(canRenameActiveGroup)}
+        canEditName
       />
 
       <div className="flex flex-wrap gap-2">
@@ -506,13 +502,6 @@ export function MessagesClient() {
                 <p className="font-display font-semibold text-white">{activeConv.title}</p>
               )}
               {activeConv.subtitle && <p className="text-xs text-zinc-500">{activeConv.subtitle}</p>}
-              {activeConv.type === "group" && !canRenameActiveGroup ? (
-                <p className="mt-1 text-[11px] text-zinc-600">
-                  {isPt
-                    ? "Só o criador do grupo pode alterar o nome."
-                    : "Only the group creator can change its name."}
-                </p>
-              ) : null}
             </div>
           ) : (
             <div className="border-b border-surface-border px-4 py-4 lg:px-6">
