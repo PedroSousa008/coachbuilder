@@ -1041,6 +1041,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const updateGroupConversation = useCallback((conversationId: string, patch: { title?: string }) => {
     const nextTitle = patch.title?.trim();
     if (!nextTitle) return;
+    const now = new Date().toISOString();
+    const me = user?.id ?? mockCoach.id;
+    const meName = user?.name?.trim() || mockCoach.name.trim() || "Coach";
     setConversations((prev) =>
       prev.map((c) =>
         c.id === conversationId && c.type === "group" && (c.createdById ?? user?.id ?? mockCoach.id) === (user?.id ?? mockCoach.id)
@@ -1048,11 +1051,25 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
               ...c,
               title: nextTitle,
               avatarInitials: initials(nextTitle),
+              lastMessageAt: now,
+              lastMessagePreview: `Group renamed to ${nextTitle}`,
             }
           : c
       )
     );
-  }, []);
+    const renameMsg: Message = {
+      id: uid("m"),
+      conversationId,
+      authorId: me,
+      authorName: meName,
+      body: `Group renamed to ${nextTitle}.`,
+      sentAt: now,
+    };
+    setMessagesByConv((prev) => ({
+      ...prev,
+      [conversationId]: [...(prev[conversationId] ?? []), renameMsg],
+    }));
+  }, [user?.id, user?.name]);
 
   const addParticipantsToGroupChat = useCallback(
     (conversationId: string, members: GroupChatMemberInput[]) => {

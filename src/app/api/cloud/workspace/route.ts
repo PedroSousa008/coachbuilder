@@ -7,6 +7,12 @@ import { readSessionFromCookies } from "@/lib/cloud-session";
 import { emptyWorkspaceSnapshot, parseWorkspacePayload, type WorkspaceSnapshotV1 } from "@/lib/workspace-snapshot";
 import type { Conversation, Message } from "@/types";
 
+function timeMs(iso: string | undefined): number {
+  if (!iso) return 0;
+  const t = new Date(iso).getTime();
+  return Number.isFinite(t) ? t : 0;
+}
+
 function mergeConversationLists(
   incoming: Conversation[],
   existing: Conversation[],
@@ -23,6 +29,7 @@ function mergeConversationLists(
     const existingGroup = existing.find((c) => c.id === groupId && c.type === "group");
     const incomingGroup = incoming.find((c) => c.id === groupId && c.type === "group");
     if (!existingGroup) continue;
+    const incomingIsNewer = timeMs(incomingGroup?.lastMessageAt) >= timeMs(existingGroup.lastMessageAt);
     byId.set(groupId, {
       ...existingGroup,
       ...(incomingGroup ?? {}),
@@ -31,12 +38,25 @@ function mergeConversationLists(
         (existingGroup.createdById ?? incomingGroup?.createdById) &&
         actorUserId !== (existingGroup.createdById ?? incomingGroup?.createdById)
           ? existingGroup.title
-          : (incomingGroup?.title ?? existingGroup.title),
+          : incomingIsNewer
+            ? (incomingGroup?.title ?? existingGroup.title)
+            : existingGroup.title,
       avatarInitials:
         (existingGroup.createdById ?? incomingGroup?.createdById) &&
         actorUserId !== (existingGroup.createdById ?? incomingGroup?.createdById)
           ? existingGroup.avatarInitials
-          : (incomingGroup?.avatarInitials ?? existingGroup.avatarInitials),
+          : incomingIsNewer
+            ? (incomingGroup?.avatarInitials ?? existingGroup.avatarInitials)
+            : existingGroup.avatarInitials,
+      lastMessageAt: incomingIsNewer
+        ? (incomingGroup?.lastMessageAt ?? existingGroup.lastMessageAt)
+        : existingGroup.lastMessageAt,
+      lastMessagePreview: incomingIsNewer
+        ? (incomingGroup?.lastMessagePreview ?? existingGroup.lastMessagePreview)
+        : existingGroup.lastMessagePreview,
+      subtitle: incomingIsNewer
+        ? (incomingGroup?.subtitle ?? existingGroup.subtitle)
+        : existingGroup.subtitle,
       participantIds: Array.from(
         new Set([
           ...existingGroup.participantIds,

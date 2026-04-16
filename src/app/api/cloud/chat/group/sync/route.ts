@@ -7,19 +7,38 @@ import type { Conversation, Message } from "@/types";
 
 export const dynamic = "force-dynamic";
 
+function timeMs(iso: string | undefined): number {
+  if (!iso) return 0;
+  const t = new Date(iso).getTime();
+  return Number.isFinite(t) ? t : 0;
+}
+
 function mergeConversation(existing: Conversation[], incoming: Conversation, actorId: string): Conversation[] {
   const idx = existing.findIndex((c) => c.id === incoming.id);
   if (idx < 0) return [...existing, incoming];
   const current = existing[idx]!;
   const ownerId = current.createdById ?? incoming.createdById;
+  const incomingIsNewer = timeMs(incoming.lastMessageAt) >= timeMs(current.lastMessageAt);
   const next = [...existing];
   next[idx] = {
     ...current,
     ...incoming,
     createdById: ownerId,
-    title: ownerId && actorId !== ownerId ? current.title : incoming.title,
+    title:
+      ownerId && actorId !== ownerId
+        ? current.title
+        : incomingIsNewer
+          ? incoming.title
+          : current.title,
     avatarInitials:
-      ownerId && actorId !== ownerId ? current.avatarInitials : incoming.avatarInitials,
+      ownerId && actorId !== ownerId
+        ? current.avatarInitials
+        : incomingIsNewer
+          ? incoming.avatarInitials
+          : current.avatarInitials,
+    lastMessageAt: incomingIsNewer ? incoming.lastMessageAt : current.lastMessageAt,
+    lastMessagePreview: incomingIsNewer ? incoming.lastMessagePreview : current.lastMessagePreview,
+    subtitle: incomingIsNewer ? incoming.subtitle : current.subtitle,
     participantIds: Array.from(new Set(incoming.participantIds)),
   };
   return next;
