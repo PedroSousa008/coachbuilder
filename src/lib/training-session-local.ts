@@ -11,8 +11,6 @@ import type {
   AiTrainingBlock,
   AiTrainingPhase,
 } from "@/lib/training-ai-types";
-import { TRAINING_EXERCISE_PRINT_IMAGE_FOLDER } from "@/lib/training-exercise-print-images";
-
 /**
  * Vídeo do exercício "Offensive Between Lines".
  * Coloca o ficheiro em `public/videos/training/offensive-between-lines.mp4` ou substitui por um link YouTube (URL completa).
@@ -740,8 +738,6 @@ type MainDrillDef = {
   themes: TrainingThemeId[];
   title: string;
   describe: (players: Player[], minutes: number) => Omit<AiTrainingBlock, "durationMin" | "phase" | "title">;
-  /** Diagrama estático em `public/images/training-exercises/` (UI + PDF). */
-  diagramImageUrl?: string;
 };
 
 const MAIN_DRILLS: MainDrillDef[] = [
@@ -845,7 +841,6 @@ const MAIN_DRILLS: MainDrillDef[] = [
   {
     themes: ["possession", "pressing", "finishing", "transition"],
     title: "Between the Lines",
-    diagramImageUrl: `${TRAINING_EXERCISE_PRINT_IMAGE_FOLDER}/between-the-lines.png`,
     describe: (pl, m) => ({
       description: `Situação de jogo 7v3 (${m} min): a equipa com superioridade numérica (7) procura marcar golo em duas balizas pequenas, defendidas pelos 3 jogadores adversários. Os 3 defensores não podem permanecer parados à frente das balizas: são obrigados a ajustar posicionamentos e a pressionar o portador da bola. A equipa em posse deve circular bola e jogadores rapidamente, procurando criar espaço e encontrar o passe entre linhas defensivas para finalizar. A bola deve ser jogada sempre no chão; não é permitido levantar. Sempre que os 3 jogadores sofrem golo, saem e entram outros 3 que estão de fora. Após uma série definida, trocam-se as equipas, mantendo-se o jogador extra como elemento neutro ou de apoio. O foco está na circulação rápida, mobilidade, criação de linhas de passe e reação defensiva em inferioridade numérica.`,
       coachingPoints:
@@ -859,7 +854,7 @@ const MAIN_DRILLS: MainDrillDef[] = [
             ? "Reduz para 6v3+1 neutro ou rectângulo mais curto; mesma lógica de entrada dos 3 após golo."
             : "Espaço menor; coach como neutro ou 5v2+1 no mesmo modelo.",
       diagramHint:
-        "7 em posse com bola no chão; 3 a pressionar sem bloquear balizas; 2 mini-balizas; setas de passe entre linhas e finalização; neutro entre quadrantes; ver figura em PDF.",
+        "7 em posse com bola no chão; 3 a pressionar sem bloquear balizas; 2 mini-balizas; setas de passe entre linhas e finalização; neutro entre quadrantes.",
       videoUrl: BETWEEN_THE_LINES_VIDEO_URL,
     }),
   },
@@ -1615,8 +1610,6 @@ export type TrainingCatalogItem = {
   groupSplit?: string;
   diagramHint?: string;
   videoUrl?: string;
-  /** Diagrama estático (catálogo / impressão). */
-  diagramImageUrl?: string;
   progression?: string;
   variations?: string;
   /** Filtros na aba «Todos os exercícios» (OR). */
@@ -1693,7 +1686,6 @@ export function getTrainingCatalogItems(players: Player[]): TrainingCatalogItem[
       groupSplit: body.groupSplit,
       diagramHint: body.diagramHint,
       ...(body.videoUrl ? { videoUrl: body.videoUrl } : {}),
-      ...(def.diagramImageUrl ? { diagramImageUrl: def.diagramImageUrl } : {}),
       progression,
       ...(variations !== undefined ? { variations } : {}),
       filterCategories: fc,
