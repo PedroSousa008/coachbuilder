@@ -98,12 +98,12 @@ function initials(name: string) {
     .slice(0, 2);
 }
 
-function defaultGroup(): Conversation {
+function defaultGroup(ownerId?: string): Conversation {
   return {
     id: SQUAD_GROUP_ID,
     type: "group",
     title: "Squad",
-    createdById: mockCoach.id,
+    createdById: ownerId ?? mockCoach.id,
     subtitle: "Team channel",
     avatarInitials: "TM",
     lastMessagePreview: "Welcome your players when they join.",
@@ -124,9 +124,13 @@ function normalizeGroupConversation(conversation: Conversation, userId?: string 
   );
   const ensuredIds =
     userId && !normalizedIds.includes(userId) ? [userId, ...normalizedIds] : normalizedIds;
+  const normalizedOwnerId =
+    userId && (!conversation.createdById || conversation.createdById === mockCoach.id)
+      ? userId
+      : conversation.createdById;
   return {
     ...conversation,
-    createdById: conversation.createdById ?? (conversation.id === SQUAD_GROUP_ID ? userId ?? mockCoach.id : undefined),
+    createdById: normalizedOwnerId,
     participantIds: ensuredIds,
     subtitle: `${ensuredIds.length} members`,
   };
@@ -387,7 +391,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     const loadedTeamRoles = normalizeTeamRoles(loadJSON<unknown>(ks.teamRoles, defaultTeamRoles()));
     let loadedConvs = loadJSON<Conversation[]>(ks.conversations, []);
     if (!loadedConvs.some((c) => c.type === "group")) {
-      loadedConvs = [defaultGroup(), ...loadedConvs];
+      loadedConvs = [defaultGroup(user.id), ...loadedConvs];
     }
     loadedConvs = loadedConvs.map((c) => normalizeGroupConversation(c, user.id));
     const loadedMsgs = loadJSON<Record<string, Message[]>>(ks.messages, {});
@@ -443,7 +447,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           const s = data.payload;
           let loadedConvs = s.conversations;
           if (!loadedConvs.some((c) => c.type === "group")) {
-            loadedConvs = [defaultGroup(), ...loadedConvs];
+            loadedConvs = [defaultGroup(user.id), ...loadedConvs];
           }
           loadedConvs = loadedConvs.map((c) => normalizeGroupConversation(c, user.id));
           const loadedMsgs = { ...s.messages };
