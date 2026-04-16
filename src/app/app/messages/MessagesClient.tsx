@@ -2,12 +2,13 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChatConversationItem } from "@/components/messages/ChatConversationItem";
+import { GroupEditorModal } from "@/components/messages/GroupEditorModal";
 import { MessageBubble } from "@/components/messages/MessageBubble";
 import { PlayerPickerModal } from "@/components/players/PlayerPickerModal";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { mockCoach } from "@/data/mock";
-import { useAppData, SQUAD_GROUP_ID } from "@/contexts/AppDataContext";
+import { useAppData } from "@/contexts/AppDataContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { shouldUseCloudClientApis } from "@/lib/cloud-config";
@@ -32,7 +33,8 @@ export function MessagesClient() {
     messagesByConv,
     players,
     createDmWithPlayer,
-    addPlayerToGroupChat,
+    createGroupConversation,
+    addParticipantsToGroupChat,
     sendChatMessage,
     mergeRemoteDmMessages,
     hydrateDmThreadsFromCloud,
@@ -52,7 +54,11 @@ export function MessagesClient() {
   const [activeId, setActiveId] = useState("");
   const [draft, setDraft] = useState("");
   const [dmPickerOpen, setDmPickerOpen] = useState(false);
-  const [groupPickerOpen, setGroupPickerOpen] = useState(false);
+  const [createGroupOpen, setCreateGroupOpen] = useState(false);
+  const [manageGroupOpen, setManageGroupOpen] = useState(false);
+  const [groupNameDraft, setGroupNameDraft] = useState("");
+  const [selectedCreatePlayerIds, setSelectedCreatePlayerIds] = useState<string[]>([]);
+  const [selectedManagePlayerIds, setSelectedManagePlayerIds] = useState<string[]>([]);
   const [playerCloudUserId, setPlayerCloudUserId] = useState<Record<string, string>>({});
   const streamSinceRef = useRef<Record<string, string>>({});
 
@@ -283,20 +289,30 @@ export function MessagesClient() {
   };
 
   const hasConversations = conversations.length > 0;
-  const squadGroup =
-    conversations.find((c) => c.type === "group" && c.id === SQUAD_GROUP_ID) ??
-    conversations.find((c) => c.type === "group");
-
-  const groupPickerPlayers = useMemo(
-    () =>
-      squadGroup
-        ? players.filter((p) => {
-            const peerId = playerCloudUserId[p.id] ?? p.id;
-            return !squadGroup.participantIds.includes(peerId);
-          })
-        : [],
-    [playerCloudUserId, players, squadGroup]
+  const accountPlayers = useMemo(
+    () => players.filter((p) => playerHasAppAccount(p.id)),
+    [playerHasAppAccount, players]
   );
+
+  const activeGroupPlayers = useMemo(() => {
+    if (!activeConv || activeConv.type !== "group") return [];
+    return accountPlayers.filter((p) => {
+      const peerId = playerCloudUserId[p.id] ?? p.id;
+      return !activeConv.participantIds.includes(peerId);
+    });
+  }, [accountPlayers, activeConv, playerCloudUserId]);
+
+  const toggleCreatePlayer = (playerId: string) => {
+    setSelectedCreatePlayerIds((prev) =>
+      prev.includes(playerId) ? prev.filter((id) => id !== playerId) : [...prev, playerId]
+    );
+  };
+
+  const toggleManagePlayer = (playerId: string) => {
+    setSelectedManagePlayerIds((prev) =>
+      prev.includes(playerId) ? prev.filter((id) => id !== playerId) : [...prev, playerId]
+    );
+  };
 
   return (
     <div className="mx-auto max-w-6xl space-y-4">
@@ -321,24 +337,73 @@ export function MessagesClient() {
             : "Add players in Team and link their account nametag to message."
         }
       />
-      <PlayerPickerModal
-        open={groupPickerOpen}
-        title={isPt ? "Adicionar jogador ao chat do plantel" : "Add player to squad chat"}
-        players={groupPickerPlayers}
-        playerDisabled={(p) => !playerHasAppAccount(p.id)}
-        disabledHint={isPt ? "Sem conta na app (associa o nametag em Equipa)" : "No app account yet (link nametag in Team)"}
-        onClose={() => setGroupPickerOpen(false)}
-        onSelect={(p) => {
-          if (squadGroup) {
-            addPlayerToGroupChat(squadGroup.id, p, {
-              peerCloudUserId: playerCloudUserId[p.id] ?? null,
-            });
-          }
+      <GroupEditorModal
+        open={createGroupOpen}
+        mode="create"
+        title={isPt ? "Criar novo grupo" : "Create new group"}
+        players={accountPlayers}
+        selectedIds={selectedCreatePlayerIds}
+        groupName={groupNameDraft}
+        onGroupNameChange={setGroupNameDraft}
+        onTogglePlayer={toggleCreatePlayer}
+        onClose={() => {
+          setCreateGroupOpen(false);
+          setGroupNameDraft("");
+          setSelectedCreatePlayerIds([]);
+        }}
+        onSubmit={() => {
+          const members = selectedCreatePlayerIds
+            .map((id) => {
+              const player = players.find((p) => p.id === id);
+              const peerId = playerCloudUserId[id];
+              if (!player || !peerId) return null;
+              return { participantId: peerId, name: player.name };
+            })
+            .filter((m): m is { participantId: string; name: string } => Boolean(m));
+          const id = createGroupConversation(groupNameDraft, members);
+          setActiveId(id);
+          setTab("group");
+          setCreateGroupOpen(false);
+          setGroupNameDraft("");
+          setSelectedCreatePlayerIds([]);
         }}
         emptyHint={
           isPt
-            ? "Todos os jogadores já estão neste canal, ou ainda não tens jogadores."
-            : "Everyone on the roster is already in this channel, or you have no players yet."
+            ? "Ainda não tens jogadores com conta na app para adicionar a um grupo."
+            : "You have no players with app accounts to add to a group yet."
+        }
+      />
+      <GroupEditorModal
+        open={manageGroupOpen}
+        mode="add"
+        title={isPt ? "Adicionar pessoas ao grupo" : "Add people to group"}
+        players={activeGroupPlayers}
+        selectedIds={selectedManagePlayerIds}
+        groupName=""
+        onGroupNameChange={() => {}}
+        onTogglePlayer={toggleManagePlayer}
+        onClose={() => {
+          setManageGroupOpen(false);
+          setSelectedManagePlayerIds([]);
+        }}
+        onSubmit={() => {
+          if (!activeConv || activeConv.type !== "group") return;
+          const members = selectedManagePlayerIds
+            .map((id) => {
+              const player = players.find((p) => p.id === id);
+              const peerId = playerCloudUserId[id];
+              if (!player || !peerId) return null;
+              return { participantId: peerId, name: player.name };
+            })
+            .filter((m): m is { participantId: string; name: string } => Boolean(m));
+          addParticipantsToGroupChat(activeConv.id, members);
+          setManageGroupOpen(false);
+          setSelectedManagePlayerIds([]);
+        }}
+        emptyHint={
+          isPt
+            ? "Todas as pessoas com conta já estão neste grupo."
+            : "Everyone with an app account is already in this group."
         }
       />
 
@@ -346,11 +411,9 @@ export function MessagesClient() {
         <Button type="button" variant="secondary" size="sm" onClick={() => setDmPickerOpen(true)}>
           {isPt ? "Nova mensagem direta" : "New direct message"}
         </Button>
-        {squadGroup && (
-          <Button type="button" variant="outline" size="sm" onClick={() => setGroupPickerOpen(true)}>
-            {isPt ? "Adicionar ao chat do plantel" : "Add to squad chat"}
-          </Button>
-        )}
+        <Button type="button" variant="outline" size="sm" onClick={() => setCreateGroupOpen(true)}>
+          {isPt ? "Criar novo grupo" : "Create new group"}
+        </Button>
       </div>
 
       <div className="flex flex-col gap-4 lg:h-[calc(100vh-10rem)] lg:flex-row lg:gap-0 lg:overflow-hidden lg:rounded-2xl lg:border lg:border-surface-border lg:bg-surface-raised/20">
@@ -414,7 +477,17 @@ export function MessagesClient() {
         <div className="flex min-h-[420px] flex-1 flex-col lg:min-h-0">
           {activeConv ? (
             <div className="border-b border-surface-border px-4 py-4 lg:px-6">
-              <p className="font-display font-semibold text-white">{activeConv.title}</p>
+              {activeConv.type === "group" ? (
+                <button
+                  type="button"
+                  className="font-display font-semibold text-white transition-colors hover:text-accent"
+                  onClick={() => setManageGroupOpen(true)}
+                >
+                  {activeConv.title}
+                </button>
+              ) : (
+                <p className="font-display font-semibold text-white">{activeConv.title}</p>
+              )}
               {activeConv.subtitle && <p className="text-xs text-zinc-500">{activeConv.subtitle}</p>}
             </div>
           ) : (
@@ -469,8 +542,8 @@ export function MessagesClient() {
                 ) : (
                   <p className="mt-2 text-[11px] text-zinc-600">
                     {isPt
-                      ? "DMs e chat do plantel sincronizam entre contas na cloud com pequeno atraso."
-                      : "DMs and the squad group sync through the cloud with a short delay."}
+                      ? "DMs e grupos sincronizam entre contas na cloud com pequeno atraso."
+                      : "DMs and groups sync through the cloud with a short delay."}
                   </p>
                 )}
               </>

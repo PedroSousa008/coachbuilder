@@ -7,23 +7,25 @@ import { readSessionFromCookies } from "@/lib/cloud-session";
 import { emptyWorkspaceSnapshot, parseWorkspacePayload, type WorkspaceSnapshotV1 } from "@/lib/workspace-snapshot";
 import type { Conversation, Message } from "@/types";
 
-const SQUAD_GROUP_ID = "conv-squad";
-
 function mergeConversationLists(incoming: Conversation[], existing: Conversation[]): Conversation[] {
   const byId = new Map(existing.map((c) => [c.id, c]));
   for (const conv of incoming) {
     byId.set(conv.id, conv);
   }
-  const existingSquad = existing.find((c) => c.id === SQUAD_GROUP_ID && c.type === "group");
-  const incomingSquad = incoming.find((c) => c.id === SQUAD_GROUP_ID && c.type === "group");
-  if (existingSquad) {
-    byId.set(SQUAD_GROUP_ID, {
-      ...existingSquad,
-      ...(incomingSquad ?? {}),
+  const groupIds = new Set(
+    [...existing, ...incoming].filter((c) => c.type === "group").map((c) => c.id)
+  );
+  for (const groupId of groupIds) {
+    const existingGroup = existing.find((c) => c.id === groupId && c.type === "group");
+    const incomingGroup = incoming.find((c) => c.id === groupId && c.type === "group");
+    if (!existingGroup) continue;
+    byId.set(groupId, {
+      ...existingGroup,
+      ...(incomingGroup ?? {}),
       participantIds: Array.from(
         new Set([
-          ...existingSquad.participantIds,
-          ...(incomingSquad?.participantIds ?? []),
+          ...existingGroup.participantIds,
+          ...(incomingGroup?.participantIds ?? []),
         ])
       ),
     });
@@ -43,17 +45,17 @@ function mergeMessageLists(incoming: Message[], existing: Message[]): Message[] 
 
 function mergeWorkspacePayload(incoming: WorkspaceSnapshotV1, existing: WorkspaceSnapshotV1): WorkspaceSnapshotV1 {
   const mergedConversations = mergeConversationLists(incoming.conversations, existing.conversations);
+  const mergedMessages = { ...existing.messages, ...incoming.messages };
+  for (const group of mergedConversations.filter((c) => c.type === "group")) {
+    mergedMessages[group.id] = mergeMessageLists(
+      incoming.messages[group.id] ?? [],
+      existing.messages[group.id] ?? []
+    );
+  }
   return {
     ...incoming,
     conversations: mergedConversations,
-    messages: {
-      ...existing.messages,
-      ...incoming.messages,
-      [SQUAD_GROUP_ID]: mergeMessageLists(
-        incoming.messages[SQUAD_GROUP_ID] ?? [],
-        existing.messages[SQUAD_GROUP_ID] ?? []
-      ),
-    },
+    messages: mergedMessages,
   };
 }
 

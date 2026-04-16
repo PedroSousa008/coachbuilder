@@ -168,6 +168,11 @@ export type NewFixtureInput = {
   notes?: string;
 };
 
+export type GroupChatMemberInput = {
+  participantId: string;
+  name: string;
+};
+
 type LeaguePersist = {
   url: string;
   rows: LeagueTableRow[];
@@ -194,11 +199,8 @@ type AppDataContextValue = {
   conversations: Conversation[];
   messagesByConv: Record<string, Message[]>;
   createDmWithPlayer: (player: Player, options?: { peerCloudUserId?: string | null }) => string | null;
-  addPlayerToGroupChat: (
-    conversationId: string,
-    player: Player,
-    options?: { peerCloudUserId?: string | null }
-  ) => void;
+  createGroupConversation: (title: string, members?: GroupChatMemberInput[]) => string;
+  addParticipantsToGroupChat: (conversationId: string, members: GroupChatMemberInput[]) => void;
   sendChatMessage: (conversationId: string, body: string) => void;
   /** Mescla mensagens vindas da cloud (ids do servidor) num fio DM. */
   mergeRemoteDmMessages: (conversationId: string, messages: Message[]) => void;
@@ -566,27 +568,30 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!shouldUseCloudClientApis(user) || !cloudRemoteReady || !hydrated || !user?.id) return;
-    const squad = conversations.find((c) => c.id === SQUAD_GROUP_ID && c.type === "group");
-    if (!squad) return;
-    const squadMessages = messagesByConv[SQUAD_GROUP_ID] ?? [];
-    const participantIds = Array.from(
-      new Set(squad.participantIds.map((id) => (id === mockCoach.id ? user.id! : id)))
-    );
-    if (!participantIds.includes(user.id)) participantIds.unshift(user.id);
+    const groups = conversations.filter((c) => c.type === "group");
+    if (groups.length === 0) return;
     const t = window.setTimeout(() => {
-      void fetch("/api/cloud/chat/group/squad/sync", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          conversation: {
-            ...squad,
-            participantIds,
-            subtitle: `${participantIds.length} members`,
-          },
-          messages: squadMessages,
-        }),
-      });
+      void Promise.all(
+        groups.map((group) => {
+          const participantIds = Array.from(
+            new Set(group.participantIds.map((id) => (id === mockCoach.id ? user.id! : id)))
+          );
+          if (!participantIds.includes(user.id!)) participantIds.unshift(user.id!);
+          return fetch("/api/cloud/chat/group/sync", {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              conversation: {
+                ...group,
+                participantIds,
+                subtitle: `${participantIds.length} members`,
+              },
+              messages: messagesByConv[group.id] ?? [],
+            }),
+          });
+        })
+      );
     }, 700);
     return () => window.clearTimeout(t);
   }, [cloudRemoteReady, conversations, hydrated, messagesByConv, user?.id, user]);
@@ -602,39 +607,39 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           payload?: WorkspaceSnapshotV1 | null;
         };
         if (cancelled || !res.ok || !data.ok || !data.payload) return;
-        const remoteGroup = data.payload.conversations.find(
-          (c) => c.id === SQUAD_GROUP_ID && c.type === "group"
-        );
-        if (!remoteGroup) return;
-        const normalizedGroup = normalizeGroupConversation(remoteGroup, user.id);
-        const remoteMessages = data.payload.messages[SQUAD_GROUP_ID] ?? [];
+        const remoteGroups = data.payload.conversations.filter((c) => c.type === "group");
+        if (remoteGroups.length === 0) return;
         setConversations((prev) => {
-          const idx = prev.findIndex((c) => c.id === SQUAD_GROUP_ID);
-          if (idx < 0) return [...prev, normalizedGroup];
-          const cur = prev[idx]!;
-          if (
-            JSON.stringify(cur.participantIds) === JSON.stringify(normalizedGroup.participantIds) &&
-            cur.lastMessageAt === normalizedGroup.lastMessageAt &&
-            cur.lastMessagePreview === normalizedGroup.lastMessagePreview &&
-            cur.subtitle === normalizedGroup.subtitle
-          ) {
-            return prev;
-          }
           const next = [...prev];
-          next[idx] = { ...cur, ...normalizedGroup };
+          for (const remote of remoteGroups) {
+            const normalized =
+              remote.id === SQUAD_GROUP_ID ? normalizeGroupConversation(remote, user.id) : remote;
+            const idx = next.findIndex((c) => c.id === normalized.id);
+            if (idx < 0) {
+              next.push(normalized);
+              continue;
+            }
+            next[idx] = { ...next[idx], ...normalized };
+          }
           return next;
         });
         setMessagesByConv((prev) => {
-          const current = prev[SQUAD_GROUP_ID] ?? [];
-          const byId = new Map(current.map((m) => [m.id, m]));
-          for (const msg of remoteMessages) {
-            if (!byId.has(msg.id)) byId.set(msg.id, msg);
+          const mergedByConv = { ...prev };
+          let changed = false;
+          for (const remote of remoteGroups) {
+            const current = mergedByConv[remote.id] ?? [];
+            const byId = new Map(current.map((m) => [m.id, m]));
+            for (const msg of data.payload!.messages[remote.id] ?? []) {
+              if (!byId.has(msg.id)) {
+                byId.set(msg.id, msg);
+                changed = true;
+              }
+            }
+            mergedByConv[remote.id] = [...byId.values()].sort(
+              (a, b) => new Date(a.sentAt).getTime() - new Date(b.sentAt).getTime()
+            );
           }
-          const merged = [...byId.values()].sort(
-            (a, b) => new Date(a.sentAt).getTime() - new Date(b.sentAt).getTime()
-          );
-          if (merged.length === current.length) return prev;
-          return { ...prev, [SQUAD_GROUP_ID]: merged };
+          return changed ? mergedByConv : prev;
         });
       } catch {
         /* ignore transient cloud errors */
@@ -985,39 +990,98 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     [user?.id]
   );
 
-  const addPlayerToGroupChat = useCallback((conversationId: string, player: Player, options?: { peerCloudUserId?: string | null }) => {
-    if (!normalizeNametagInput(player.linkedNametag ?? "")) return;
-    const coachId = user?.id ?? mockCoach.id;
-    const coachName = user?.name?.trim() || mockCoach.name.trim() || "Coach";
-    const participantId = options?.peerCloudUserId?.trim() || player.id;
-    setConversations((prev) =>
-      prev.map((c) => {
-        if (c.id !== conversationId || c.type !== "group") return c;
-        if (c.participantIds.includes(participantId)) return c;
-        const nextIds = [...c.participantIds, participantId];
-        return {
-          ...c,
-          participantIds: nextIds,
-          subtitle: `${nextIds.length} members`,
-          lastMessagePreview: `${player.name} added to the channel`,
-          lastMessageAt: new Date().toISOString(),
-        };
-      })
-    );
-    const sysBody = `${player.name} was added to the squad channel.`;
-    const msg: Message = {
-      id: uid("m"),
-      conversationId,
-      authorId: coachId,
-      authorName: coachName,
-      body: sysBody,
-      sentAt: new Date().toISOString(),
-    };
-    setMessagesByConv((prev) => ({
-      ...prev,
-      [conversationId]: [...(prev[conversationId] ?? []), msg],
-    }));
-  }, [user?.id, user?.name]);
+  const createGroupConversation = useCallback(
+    (title: string, members: GroupChatMemberInput[] = []) => {
+      const groupTitle = title.trim() || "New group";
+      const me = user?.id ?? mockCoach.id;
+      const uniqueMembers = Array.from(
+        new Map(members.map((m) => [m.participantId, m])).values()
+      ).filter((m) => m.participantId !== me);
+      const conversationId = uid("conv-group");
+      const participantIds = [me, ...uniqueMembers.map((m) => m.participantId)];
+      const now = new Date().toISOString();
+      const createdBody =
+        uniqueMembers.length > 0
+          ? `${groupTitle} created. Members added: ${uniqueMembers.map((m) => m.name).join(", ")}.`
+          : `${groupTitle} created.`;
+      const conversation: Conversation = {
+        id: conversationId,
+        type: "group",
+        title: groupTitle,
+        subtitle: `${participantIds.length} members`,
+        avatarInitials: initials(groupTitle),
+        lastMessagePreview: createdBody,
+        lastMessageAt: now,
+        participantIds,
+        unread: 0,
+      };
+      const msg: Message = {
+        id: uid("m"),
+        conversationId,
+        authorId: me,
+        authorName: user?.name?.trim() || mockCoach.name.trim() || "Coach",
+        body: createdBody,
+        sentAt: now,
+      };
+      setConversations((prev) => [...prev, conversation]);
+      setMessagesByConv((prev) => ({ ...prev, [conversationId]: [msg] }));
+      return conversationId;
+    },
+    [user?.id, user?.name]
+  );
+
+  const addParticipantsToGroupChat = useCallback(
+    (conversationId: string, members: GroupChatMemberInput[]) => {
+      if (members.length === 0) return;
+      const coachId = user?.id ?? mockCoach.id;
+      const coachName = user?.name?.trim() || mockCoach.name.trim() || "Coach";
+      const uniqueMembers = Array.from(
+        new Map(members.map((m) => [m.participantId, m])).values()
+      );
+      const addedNames: string[] = [];
+      const now = new Date().toISOString();
+      setConversations((prev) =>
+        prev.map((c) => {
+          if (c.id !== conversationId || c.type !== "group") return c;
+          const nextIds = [...c.participantIds];
+          for (const member of uniqueMembers) {
+            if (nextIds.includes(member.participantId)) continue;
+            nextIds.push(member.participantId);
+            addedNames.push(member.name);
+          }
+          if (addedNames.length === 0) return c;
+          const label =
+            addedNames.length === 1
+              ? `${addedNames[0]} added to the channel`
+              : `${addedNames.length} people added to the channel`;
+          return {
+            ...c,
+            participantIds: nextIds,
+            subtitle: `${nextIds.length} members`,
+            lastMessagePreview: label,
+            lastMessageAt: now,
+          };
+        })
+      );
+      if (addedNames.length === 0) return;
+      const msg: Message = {
+        id: uid("m"),
+        conversationId,
+        authorId: coachId,
+        authorName: coachName,
+        body:
+          addedNames.length === 1
+            ? `${addedNames[0]} was added to the group.`
+            : `${addedNames.join(", ")} were added to the group.`,
+        sentAt: now,
+      };
+      setMessagesByConv((prev) => ({
+        ...prev,
+        [conversationId]: [...(prev[conversationId] ?? []), msg],
+      }));
+    },
+    [user?.id, user?.name]
+  );
 
   const mergeRemoteDmMessages = useCallback((conversationId: string, incoming: Message[]) => {
     if (incoming.length === 0) return;
@@ -1271,7 +1335,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       conversations,
       messagesByConv,
       createDmWithPlayer,
-      addPlayerToGroupChat,
+      createGroupConversation,
+      addParticipantsToGroupChat,
       sendChatMessage,
       mergeRemoteDmMessages,
       hydrateDmThreadsFromCloud,
@@ -1326,7 +1391,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       conversations,
       messagesByConv,
       createDmWithPlayer,
-      addPlayerToGroupChat,
+      createGroupConversation,
+      addParticipantsToGroupChat,
       sendChatMessage,
       mergeRemoteDmMessages,
       hydrateDmThreadsFromCloud,
