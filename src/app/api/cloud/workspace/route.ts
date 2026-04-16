@@ -5,6 +5,57 @@ import { prisma } from "@/lib/prisma";
 import { isCloudSyncEnabledServer } from "@/lib/cloud-config";
 import { readSessionFromCookies } from "@/lib/cloud-session";
 import { emptyWorkspaceSnapshot, parseWorkspacePayload, type WorkspaceSnapshotV1 } from "@/lib/workspace-snapshot";
+import type { Conversation, Message } from "@/types";
+
+const SQUAD_GROUP_ID = "conv-squad";
+
+function mergeConversationLists(incoming: Conversation[], existing: Conversation[]): Conversation[] {
+  const byId = new Map(existing.map((c) => [c.id, c]));
+  for (const conv of incoming) {
+    byId.set(conv.id, conv);
+  }
+  const existingSquad = existing.find((c) => c.id === SQUAD_GROUP_ID && c.type === "group");
+  const incomingSquad = incoming.find((c) => c.id === SQUAD_GROUP_ID && c.type === "group");
+  if (existingSquad) {
+    byId.set(SQUAD_GROUP_ID, {
+      ...existingSquad,
+      ...(incomingSquad ?? {}),
+      participantIds: Array.from(
+        new Set([
+          ...existingSquad.participantIds,
+          ...(incomingSquad?.participantIds ?? []),
+        ])
+      ),
+    });
+  }
+  return [...byId.values()];
+}
+
+function mergeMessageLists(incoming: Message[], existing: Message[]): Message[] {
+  const byId = new Map(existing.map((m) => [m.id, m]));
+  for (const msg of incoming) {
+    if (!byId.has(msg.id)) byId.set(msg.id, msg);
+  }
+  return [...byId.values()].sort(
+    (a, b) => new Date(a.sentAt).getTime() - new Date(b.sentAt).getTime()
+  );
+}
+
+function mergeWorkspacePayload(incoming: WorkspaceSnapshotV1, existing: WorkspaceSnapshotV1): WorkspaceSnapshotV1 {
+  const mergedConversations = mergeConversationLists(incoming.conversations, existing.conversations);
+  return {
+    ...incoming,
+    conversations: mergedConversations,
+    messages: {
+      ...existing.messages,
+      ...incoming.messages,
+      [SQUAD_GROUP_ID]: mergeMessageLists(
+        incoming.messages[SQUAD_GROUP_ID] ?? [],
+        existing.messages[SQUAD_GROUP_ID] ?? []
+      ),
+    },
+  };
+}
 
 async function requireUserId(): Promise<string | null> {
   const claims = await readSessionFromCookies();
@@ -63,7 +114,10 @@ export async function PUT(req: Request) {
       return NextResponse.json({ ok: false, error: "Payload inválido." }, { status: 400 });
     }
 
-    const payload: WorkspaceSnapshotV1 = { ...parsed, version: 1 };
+    const incomingPayload: WorkspaceSnapshotV1 = { ...parsed, version: 1 };
+    const existingRow = await prisma.workspace.findUnique({ where: { userId } });
+    const existingPayload = parseWorkspacePayload(existingRow?.payload) ?? emptyWorkspaceSnapshot();
+    const payload = mergeWorkspacePayload(incomingPayload, existingPayload);
 
     await prisma.workspace.upsert({
       where: { userId },
