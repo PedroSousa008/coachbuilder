@@ -104,6 +104,12 @@ export const BREAKOUT_RONDO_VIDEO_URL = "/videos/training/breakout-rondo.mp4";
 export const BUILD_UP_INTO_COUNTER_ATTACK_VIDEO_URL = "/videos/training/build-up-into-counter-attack.mp4";
 
 /**
+ * Vídeo do exercício "Fitness Rondo into Finishing".
+ * Coloca o ficheiro em `public/videos/training/fitness-rondo-finishing.mp4` ou substitui por um link YouTube.
+ */
+export const FITNESS_RONDO_INTO_FINISHING_VIDEO_URL = "/videos/training/fitness-rondo-finishing.mp4";
+
+/**
  * Vídeo do exercício "Goal Kick 1".
  * Coloca o ficheiro em `public/videos/training/goal-kick-1.mp4` ou substitui por um link YouTube.
  */
@@ -249,6 +255,14 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
     "superioridade no ataque",
     "superioridade numérica no ataque",
     "superioridade numerica no ataque",
+    "fitness rondo into finishing",
+    "fitness rondo",
+    "rondo com finalização",
+    "rondo com finalizacao",
+    "passes rápidos",
+    "passes rapidos",
+    "posse sob pressão",
+    "posse sob pressao",
     "jogo curto com finalização rápida",
     "jogo curto com finalizacao rapida",
     "breakout",
@@ -375,7 +389,11 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
     "5v3",
     "breakout rondo",
     "build up into counter attack",
+    "fitness rondo into finishing",
     "contra ataque",
+    "resistência",
+    "resistencia",
+    "2v1",
     "9v6",
     "3v2",
     "3v2 fast break",
@@ -419,7 +437,11 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
     "5v3",
     "breakout rondo",
     "build up into counter attack",
+    "fitness rondo into finishing",
     "6v3",
+    "3v2",
+    "3 setores",
+    "3 sectores",
     "3 em pressão",
     "3 em pressao",
     "pressão alta",
@@ -963,6 +985,26 @@ const MAIN_DRILLS: MainDrillDef[] = [
     }),
   },
   {
+    themes: ["possession", "pressing", "transition", "finishing", "physical"],
+    title: "Fitness Rondo into Finishing",
+    describe: (pl, m) => ({
+      description: `O exercício é composto por 2 equipas de 10 jogadores (ajustável) e dividido em 3 setores consecutivos. A equipa com colete começa distribuída pelos setores, com 3 jogadores em cada zona, enquanto a equipa sem colete entra com duplas de 2 jogadores para pressionar. Em cada setor cria-se uma situação de 3v2, onde a equipa com colete tem como objetivo manter a posse de bola o máximo de tempo possível em espaço reduzido, valorizando controlo, apoio e rapidez de decisão sob pressão. A equipa sem colete procura recuperar a bola e sair do setor, avançando sucessivamente pelos 3 setores. Quando ultrapassa o último setor, ataca a baliza numa situação de 2v1 contra um defesa da equipa com colete. O exercício repete-se até todas as duplas realizarem o percurso. Depois, trocam-se as funções: quem estava dentro passa a pressionar e vice-versa. Tudo é cronometrado, vencendo a equipa que completar o exercício em menos tempo. Cada golo marcado desconta 10 segundos ao tempo final. O foco está na posse sob pressão, reação à perda, progressão entre zonas e eficácia na finalização. (${m} min)`,
+      coachingPoints:
+        "Equipa em posse: apoio constante, orientação corporal e passes rápidos para fugir ao 3v2 em espaço curto. Dupla pressionante: coordenar ângulos de pressão e, ao roubar, sair logo do setor sem hesitar. Na chegada ao fim, 2v1 com decisão objetiva e remate rápido para ganhar segundos no cronómetro.",
+      setup:
+        "Três setores consecutivos em espaço reduzido + baliza final; 2 equipas de 10 (ajustável); coletes; cronómetro; bolas extra nas zonas e junto à baliza para manter ritmo alto.",
+      groupSplit:
+        pl.length >= 20
+          ? "Duas equipas completas: uma dentro em 3+3+3(+1 defesa final) e a outra em duplas de pressão a percorrer os setores; troca após todas as duplas terminarem."
+          : pl.length >= 14
+            ? "Reduz o número por setor (ex. 2+2+2) mantendo a lógica de duplas a progredir e 2v1 final."
+            : "Usa 2 setores em vez de 3 e termina em 2v1, preservando o foco em posse sob pressão e finalização rápida.",
+      diagramHint:
+        "Três setores seguidos: em cada setor 3v2 para manter/roubar; dupla recupera e progride setor a setor; ao sair do último, ataca baliza em 2v1; cronómetro global e bónus de -10 s por golo.",
+      videoUrl: FITNESS_RONDO_INTO_FINISHING_VIDEO_URL,
+    }),
+  },
+  {
     themes: ["possession", "transition", "wide"],
     title: "Goal Kick 1",
     describe: (_pl, m) => ({
@@ -1276,6 +1318,7 @@ const SINGLE_DRILL_20_MIN_TITLES = new Set<string>([
   "Offensive Between Lines",
   "9v9 + 2 Game",
   "Finishing Transition",
+  "Fitness Rondo into Finishing",
 ]);
 /** Valor médio quando o treinador indica ~15–20 min (ex.: bloco final). */
 const SINGLE_DRILL_18_MIN_TITLES = new Set<string>(["Double Finishing Drill"]);
@@ -1324,6 +1367,7 @@ function singleDrillProgressionVariationsForTitle(title: string): {
   const isRondo5v3 = title === "Rondo 5v3";
   const isBreakoutRondo = title === "Breakout Rondo";
   const isBuildUpIntoCounterAttack = title === "Build up into Counter Attack";
+  const isFitnessRondoIntoFinishing = title === "Fitness Rondo into Finishing";
   const isGoalKick1 = title === "Goal Kick 1";
   const isGoalKick2 = title === "Goal Kick 2";
   const isMidfielderRunBehindDefense = title === "Midfielder Run Behind Defense";
@@ -1361,6 +1405,8 @@ function singleDrillProgressionVariationsForTitle(title: string): {
                         ? "Sobe a meta para 8 passes no interior; ou após recuperação da equipa branca exige remate em ≤4 toques; ou interior só com 1 toque até à saída para o exterior."
                         : isBuildUpIntoCounterAttack
                           ? "Reduz o tempo de ligação entre setores (ex.: 6 s); ou limita a saída a 2 toques por jogador; ou no 3v2 ofensivo obriga remate em ≤5 s após receção."
+                        : isFitnessRondoIntoFinishing
+                          ? "Reduz o espaço em cada setor; ou limita a equipa em posse a 2 toques; ou no 2v1 final obriga remate em ≤4 s para contar o bónus de tempo."
                         : isGoalKick1
                         ? "Adversário com linha mais alta para forçar timing do overlap; ou máximo 8 s desde a reposição até ao passe em profundidade; ou lateral obrigado a cruzar com o pé interior na primeira série."
                         : isGoalKick2
@@ -1409,6 +1455,8 @@ function singleDrillProgressionVariationsForTitle(title: string): {
                         ? "Anel exterior mais estreito para decisão mais rápida; ou golo após roubo branco vale duplo se vier em ≤3 passes; ou neutro no interior que só pode orientar com 1 toque."
                         : isBuildUpIntoCounterAttack
                           ? "Aumenta pressão para 3+1 no setor de saída por blocos curtos; ou no setor ofensivo troca para 3v3 com golo a valer apenas após passe extra; ou equipa que recupera deve finalizar em ≤4 s para contar."
+                        : isFitnessRondoIntoFinishing
+                          ? "Troca o 2v1 final por 2v2 com perseguição atrasada; ou cada perda da equipa em posse soma penalização de +5 s; ou obriga a dupla a recuperar em todos os 3 setores antes de poder finalizar."
                         : isGoalKick1
                         ? "Espelhar toda a sequência pelo lado esquerdo; ou falso 9 a descair antes do passe ao trinco; ou profundidade obrigatoriamente em passe rasteiro (sem elevação)."
                         : isGoalKick2

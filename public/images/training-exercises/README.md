@@ -25,6 +25,7 @@ Expected file names:
 - `rondo-5v3.png`
 - `breakout-rondo.png`
 - `build-up-into-counter-attack.png`
+- `fitness-rondo-finishing.png`
 - `goal-kick-1.png`
 - `goal-kick-2.png`
 - `midfielder-run-behind-defense.png`
