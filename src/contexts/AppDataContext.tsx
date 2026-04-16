@@ -135,12 +135,23 @@ function normalizeGroupConversation(conversation: Conversation, userId?: string 
   const normalizedAdminIds = Array.from(
     new Set((conversation.groupAdminIds ?? []).filter((id) => id !== normalizedPrimaryAdminId))
   );
+  const baseJoinedAt = conversation.lastMessageAt ?? new Date().toISOString();
+  const currentMeta = conversation.groupMemberMeta ?? {};
+  const normalizedMeta: Record<string, { addedById: string; joinedAt: string }> = {};
+  for (const pid of ensuredIds) {
+    const row = currentMeta[pid];
+    normalizedMeta[pid] = {
+      addedById: row?.addedById ?? normalizedOwnerId,
+      joinedAt: row?.joinedAt ?? baseJoinedAt,
+    };
+  }
   return {
     ...conversation,
     titleUpdatedAt: conversation.titleUpdatedAt ?? conversation.lastMessageAt ?? new Date().toISOString(),
     createdById: normalizedOwnerId,
     groupPrimaryAdminId: normalizedPrimaryAdminId,
     groupAdminIds: normalizedAdminIds,
+    groupMemberMeta: normalizedMeta,
     participantIds: ensuredIds,
     subtitle: `${ensuredIds.length} members`,
   };
@@ -218,6 +229,8 @@ type AppDataContextValue = {
   createGroupConversation: (title: string, members?: GroupChatMemberInput[]) => string;
   updateGroupConversation: (conversationId: string, patch: { title?: string }) => Promise<boolean>;
   addParticipantsToGroupChat: (conversationId: string, members: GroupChatMemberInput[]) => void;
+  removeParticipantFromGroupChat: (conversationId: string, participantId: string) => void;
+  setGroupAdmin: (conversationId: string, participantId: string, makeAdmin: boolean) => void;
   sendChatMessage: (conversationId: string, body: string) => void;
   /** Mescla mensagens vindas da cloud (ids do servidor) num fio DM. */
   mergeRemoteDmMessages: (conversationId: string, messages: Message[]) => void;
@@ -1132,9 +1145,14 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         prev.map((c) => {
           if (c.id !== conversationId || c.type !== "group") return c;
           const nextIds = [...c.participantIds];
+          const nextMeta = { ...(c.groupMemberMeta ?? {}) };
           for (const member of uniqueMembers) {
             if (nextIds.includes(member.participantId)) continue;
             nextIds.push(member.participantId);
+            nextMeta[member.participantId] = {
+              addedById: coachId,
+              joinedAt: now,
+            };
             addedNames.push(member.name);
           }
           if (addedNames.length === 0) return c;
@@ -1145,6 +1163,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           return {
             ...c,
             participantIds: nextIds,
+            groupMemberMeta: nextMeta,
             subtitle: `${nextIds.length} members`,
             lastMessagePreview: label,
             lastMessageAt: now,
@@ -1169,6 +1188,77 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       }));
     },
     [user?.id, user?.name]
+  );
+
+  const removeParticipantFromGroupChat = useCallback(
+    (conversationId: string, participantId: string) => {
+      const actorId = user?.id ?? mockCoach.id;
+      const actorName = user?.name?.trim() || mockCoach.name.trim() || "Coach";
+      let removed = false;
+      const removedName = "Member";
+      const now = new Date().toISOString();
+      setConversations((prev) =>
+        prev.map((c) => {
+          if (c.id !== conversationId || c.type !== "group") return c;
+          if (!c.participantIds.includes(participantId)) return c;
+          const isAdmin =
+            actorId === c.groupPrimaryAdminId || Boolean(c.groupAdminIds?.includes(actorId));
+          const addedByActor = c.groupMemberMeta?.[participantId]?.addedById === actorId;
+          if (!isAdmin && !addedByActor) return c;
+          removed = true;
+          const nextIds = c.participantIds.filter((id) => id !== participantId);
+          const nextMeta = { ...(c.groupMemberMeta ?? {}) };
+          delete nextMeta[participantId];
+          const nextAdmins = (c.groupAdminIds ?? []).filter((id) => id !== participantId);
+          const nextPrimary =
+            c.groupPrimaryAdminId === participantId ? nextIds[0] ?? actorId : c.groupPrimaryAdminId;
+          return {
+            ...c,
+            participantIds: nextIds,
+            groupMemberMeta: nextMeta,
+            groupAdminIds: nextAdmins,
+            groupPrimaryAdminId: nextPrimary,
+            subtitle: `${nextIds.length} members`,
+            lastMessagePreview: `${actorName} removed a member`,
+            lastMessageAt: now,
+          };
+        })
+      );
+      if (!removed) return;
+      const msg: Message = {
+        id: uid("m"),
+        conversationId,
+        authorId: actorId,
+        authorName: actorName,
+        body: `${removedName} was removed from the group.`,
+        sentAt: now,
+      };
+      setMessagesByConv((prev) => ({
+        ...prev,
+        [conversationId]: [...(prev[conversationId] ?? []), msg],
+      }));
+    },
+    [user?.id, user?.name]
+  );
+
+  const setGroupAdmin = useCallback(
+    (conversationId: string, participantId: string, makeAdmin: boolean) => {
+      const actorId = user?.id ?? mockCoach.id;
+      setConversations((prev) =>
+        prev.map((c) => {
+          if (c.id !== conversationId || c.type !== "group") return c;
+          const isAdmin =
+            actorId === c.groupPrimaryAdminId || Boolean(c.groupAdminIds?.includes(actorId));
+          if (!isAdmin || !c.participantIds.includes(participantId)) return c;
+          const base = new Set(c.groupAdminIds ?? []);
+          if (participantId === c.groupPrimaryAdminId) return c;
+          if (makeAdmin) base.add(participantId);
+          else base.delete(participantId);
+          return { ...c, groupAdminIds: Array.from(base) };
+        })
+      );
+    },
+    [user?.id]
   );
 
   const mergeRemoteDmMessages = useCallback((conversationId: string, incoming: Message[]) => {
@@ -1426,6 +1516,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       createGroupConversation,
       updateGroupConversation,
       addParticipantsToGroupChat,
+      removeParticipantFromGroupChat,
+      setGroupAdmin,
       sendChatMessage,
       mergeRemoteDmMessages,
       hydrateDmThreadsFromCloud,
@@ -1483,6 +1575,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       createGroupConversation,
       updateGroupConversation,
       addParticipantsToGroupChat,
+      removeParticipantFromGroupChat,
+      setGroupAdmin,
       sendChatMessage,
       mergeRemoteDmMessages,
       hydrateDmThreadsFromCloud,

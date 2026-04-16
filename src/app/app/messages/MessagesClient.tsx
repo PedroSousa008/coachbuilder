@@ -36,6 +36,8 @@ export function MessagesClient() {
     createGroupConversation,
     updateGroupConversation,
     addParticipantsToGroupChat,
+    removeParticipantFromGroupChat,
+    setGroupAdmin,
     sendChatMessage,
     mergeRemoteDmMessages,
     hydrateDmThreadsFromCloud,
@@ -61,6 +63,8 @@ export function MessagesClient() {
   const [manageGroupNameDraft, setManageGroupNameDraft] = useState("");
   const [selectedCreatePlayerIds, setSelectedCreatePlayerIds] = useState<string[]>([]);
   const [selectedManagePlayerIds, setSelectedManagePlayerIds] = useState<string[]>([]);
+  const [selectedMemberCloudId, setSelectedMemberCloudId] = useState<string | null>(null);
+  const [savingGroupSettings, setSavingGroupSettings] = useState(false);
   const [playerCloudUserId, setPlayerCloudUserId] = useState<Record<string, string>>({});
   const streamSinceRef = useRef<Record<string, string>>({});
 
@@ -295,14 +299,31 @@ export function MessagesClient() {
     () => players.filter((p) => playerHasAppAccount(p.id)),
     [playerHasAppAccount, players]
   );
+  const playerIdByCloudUserId = useMemo(() => {
+    const out: Record<string, string> = {};
+    for (const [playerId, cloudId] of Object.entries(playerCloudUserId)) out[cloudId] = playerId;
+    return out;
+  }, [playerCloudUserId]);
 
   const activeGroupPlayers = useMemo(() => {
     if (!activeConv || activeConv.type !== "group") return [];
     return accountPlayers.filter((p) => {
-      const peerId = playerCloudUserId[p.id] ?? p.id;
+      const peerId = playerCloudUserId[p.id];
+      if (!peerId) return false;
       return !activeConv.participantIds.includes(peerId);
     });
   }, [accountPlayers, activeConv, playerCloudUserId]);
+  const activeGroupMembers = useMemo(() => {
+    if (!activeConv || activeConv.type !== "group") return [];
+    return activeConv.participantIds.map((participantCloudId) => {
+      const playerId = playerIdByCloudUserId[participantCloudId];
+      const player = playerId ? players.find((p) => p.id === playerId) : null;
+      return {
+        participantCloudId,
+        player,
+      };
+    });
+  }, [activeConv, playerIdByCloudUserId, players]);
 
   useEffect(() => {
     if (activeConv?.type === "group") setManageGroupNameDraft(activeConv.title);
@@ -380,45 +401,193 @@ export function MessagesClient() {
         }
         canEditName
       />
-      <GroupEditorModal
-        open={manageGroupOpen}
-        mode="add"
-        title={isPt ? "Adicionar pessoas ao grupo" : "Add people to group"}
-        players={activeGroupPlayers}
-        selectedIds={selectedManagePlayerIds}
-        groupName={manageGroupNameDraft}
-        onGroupNameChange={setManageGroupNameDraft}
-        onTogglePlayer={toggleManagePlayer}
-        onClose={() => {
-          setManageGroupOpen(false);
-          setSelectedManagePlayerIds([]);
-          setManageGroupNameDraft(activeConv?.type === "group" ? activeConv.title : "");
-        }}
-        onSubmit={() => {
-          if (!activeConv || activeConv.type !== "group") return;
-          if (manageGroupNameDraft.trim() && manageGroupNameDraft.trim() !== activeConv.title) {
-            void updateGroupConversation(activeConv.id, { title: manageGroupNameDraft });
-          }
-          const members = selectedManagePlayerIds
-            .map((id) => {
-              const player = players.find((p) => p.id === id);
-              const peerId = playerCloudUserId[id];
-              if (!player || !peerId) return null;
-              return { participantId: peerId, name: player.name };
-            })
-            .filter((m): m is { participantId: string; name: string } => Boolean(m));
-          addParticipantsToGroupChat(activeConv.id, members);
-          setManageGroupOpen(false);
-          setSelectedManagePlayerIds([]);
-          setManageGroupNameDraft("");
-        }}
-        emptyHint={
-          isPt
-            ? "Todas as pessoas com conta já estão neste grupo."
-            : "Everyone with an app account is already in this group."
-        }
-        canEditName
-      />
+      {manageGroupOpen && activeConv?.type === "group" ? (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 p-4">
+          <div className="w-full max-w-2xl rounded-2xl border border-surface-border bg-surface p-4">
+            <p className="font-display text-lg font-semibold text-white">
+              {isPt ? "Membros do grupo" : "Group members"}
+            </p>
+            <p className="mt-1 text-xs text-zinc-400">
+              {activeConv.participantIds.length} {isPt ? "membros" : "members"}
+            </p>
+            <div className="mt-3 max-h-60 space-y-2 overflow-y-auto">
+              {activeGroupMembers.map(({ participantCloudId, player }) => {
+                const isPrimaryAdmin = activeConv.groupPrimaryAdminId === participantCloudId;
+                const isSecondaryAdmin = Boolean(activeConv.groupAdminIds?.includes(participantCloudId));
+                return (
+                  <button
+                    key={participantCloudId}
+                    type="button"
+                    className="flex w-full items-center justify-between rounded-xl border border-surface-border px-3 py-2 text-left hover:bg-white/5"
+                    onClick={() =>
+                      setSelectedMemberCloudId((prev) => (prev === participantCloudId ? null : participantCloudId))
+                    }
+                  >
+                    <span className="text-sm text-white">
+                      {player?.name ?? (participantCloudId === coachUserId ? (isPt ? "Tu" : "You") : "Unknown user")}
+                    </span>
+                    <span className="text-[11px] text-zinc-400">
+                      {isPrimaryAdmin ? (isPt ? "Admin principal" : "Primary admin") : isSecondaryAdmin ? "Admin" : ""}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="mt-4 rounded-xl border border-surface-border p-3">
+              <p className="text-sm font-semibold text-white">{isPt ? "Nome do grupo" : "Group name"}</p>
+              <Input
+                className="mt-2"
+                value={manageGroupNameDraft}
+                onChange={(e) => setManageGroupNameDraft(e.target.value)}
+                placeholder={isPt ? "Ex.: Dumiense 2025/26" : "E.g. Dumiense 2025/26"}
+              />
+              <p className="mt-3 text-sm font-semibold text-white">{isPt ? "Adicionar pessoas" : "Add people"}</p>
+              <div className="mt-2 max-h-28 space-y-1 overflow-y-auto">
+                {activeGroupPlayers.length === 0 ? (
+                  <p className="text-xs text-zinc-400">
+                    {isPt
+                      ? "Todas as pessoas com conta já estão neste grupo."
+                      : "Everyone with an app account is already in this group."}
+                  </p>
+                ) : (
+                  activeGroupPlayers.map((p) => (
+                    <label key={p.id} className="flex items-center gap-2 text-sm text-zinc-200">
+                      <input
+                        type="checkbox"
+                        checked={selectedManagePlayerIds.includes(p.id)}
+                        onChange={() => toggleManagePlayer(p.id)}
+                      />
+                      <span>{p.name}</span>
+                    </label>
+                  ))
+                )}
+              </div>
+            </div>
+            {selectedMemberCloudId ? (
+              <div className="mt-3 rounded-xl border border-surface-border p-3">
+                {(() => {
+                  const memberPlayerId = playerIdByCloudUserId[selectedMemberCloudId];
+                  const memberPlayer = memberPlayerId ? players.find((p) => p.id === memberPlayerId) : null;
+                  const isMe = selectedMemberCloudId === coachUserId;
+                  const actorIsAdmin =
+                    activeConv.groupPrimaryAdminId === coachUserId ||
+                    Boolean(activeConv.groupAdminIds?.includes(coachUserId));
+                  const addedByActor = activeConv.groupMemberMeta?.[selectedMemberCloudId]?.addedById === coachUserId;
+                  const canExpel = !isMe && (actorIsAdmin || addedByActor);
+                  const selectedIsAdmin =
+                    activeConv.groupPrimaryAdminId === selectedMemberCloudId ||
+                    Boolean(activeConv.groupAdminIds?.includes(selectedMemberCloudId));
+                  return (
+                    <>
+                      <p className="text-sm font-semibold text-white">{memberPlayer?.name ?? "Member"}</p>
+                      {memberPlayer ? (
+                        <p className="mt-1 text-xs text-zinc-400">
+                          #{memberPlayer.number} - {memberPlayer.position}
+                        </p>
+                      ) : null}
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {memberPlayer ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => {
+                              const id = createDmWithPlayer(memberPlayer, {
+                                peerCloudUserId: selectedMemberCloudId,
+                              });
+                              if (id) {
+                                setActiveId(id);
+                                setTab("dm");
+                                setManageGroupOpen(false);
+                              }
+                            }}
+                          >
+                            {isPt ? "Mensagem Direta" : "Direct Message"}
+                          </Button>
+                        ) : null}
+                        {memberPlayer ? (
+                          <Button type="button" size="sm" variant="outline" onClick={() => window.open("/app/team", "_self")}>
+                            {isPt ? "Detalhes" : "Details"}
+                          </Button>
+                        ) : null}
+                        {actorIsAdmin && !isMe ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() =>
+                              setGroupAdmin(activeConv.id, selectedMemberCloudId, !selectedIsAdmin)
+                            }
+                          >
+                            {selectedIsAdmin
+                              ? isPt
+                                ? "Remover admin"
+                                : "Remove admin"
+                              : isPt
+                                ? "Tornar admin"
+                                : "Make admin"}
+                          </Button>
+                        ) : null}
+                        {canExpel ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              removeParticipantFromGroupChat(activeConv.id, selectedMemberCloudId);
+                              setSelectedMemberCloudId(null);
+                            }}
+                          >
+                            {isPt ? "Expulsar do Grupo" : "Remove from group"}
+                          </Button>
+                        ) : null}
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+            ) : null}
+            <div className="mt-3 flex justify-end">
+              <Button
+                type="button"
+                onClick={async () => {
+                  if (!activeConv || activeConv.type !== "group") return;
+                  setSavingGroupSettings(true);
+                  if (manageGroupNameDraft.trim() && manageGroupNameDraft.trim() !== activeConv.title) {
+                    await updateGroupConversation(activeConv.id, { title: manageGroupNameDraft });
+                  }
+                  const members = selectedManagePlayerIds
+                    .map((id) => {
+                      const player = players.find((p) => p.id === id);
+                      const peerId = playerCloudUserId[id];
+                      if (!player || !peerId) return null;
+                      return { participantId: peerId, name: player.name };
+                    })
+                    .filter((m): m is { participantId: string; name: string } => Boolean(m));
+                  addParticipantsToGroupChat(activeConv.id, members);
+                  setSavingGroupSettings(false);
+                  setManageGroupOpen(false);
+                  setSelectedManagePlayerIds([]);
+                  setSelectedMemberCloudId(null);
+                }}
+              >
+                {isPt ? "Guardar alterações" : "Save changes"}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => {
+                  setManageGroupOpen(false);
+                  setSelectedManagePlayerIds([]);
+                  setSelectedMemberCloudId(null);
+                }}
+              >
+                {isPt ? "Fechar" : "Close"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <div className="flex flex-wrap gap-2">
         <Button type="button" variant="secondary" size="sm" onClick={() => setDmPickerOpen(true)}>
@@ -501,7 +670,11 @@ export function MessagesClient() {
               ) : (
                 <p className="font-display font-semibold text-white">{activeConv.title}</p>
               )}
-              {activeConv.subtitle && <p className="text-xs text-zinc-500">{activeConv.subtitle}</p>}
+              {savingGroupSettings ? (
+                <p className="text-xs text-amber-400">{isPt ? "A guardar..." : "Saving..."}</p>
+              ) : activeConv.subtitle ? (
+                <p className="text-xs text-zinc-500">{activeConv.subtitle}</p>
+              ) : null}
             </div>
           ) : (
             <div className="border-b border-surface-border px-4 py-4 lg:px-6">
