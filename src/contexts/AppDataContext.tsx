@@ -1048,20 +1048,27 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     const now = new Date().toISOString();
     const me = user?.id ?? mockCoach.id;
     const meName = user?.name?.trim() || mockCoach.name.trim() || "Coach";
+    let didRename = false;
     setConversations((prev) =>
-      prev.map((c) =>
-        c.id === conversationId && c.type === "group" && (c.createdById ?? user?.id ?? mockCoach.id) === (user?.id ?? mockCoach.id)
-          ? {
-              ...c,
-              title: nextTitle,
-              titleUpdatedAt: now,
-              avatarInitials: initials(nextTitle),
-              lastMessageAt: now,
-              lastMessagePreview: `Group renamed to ${nextTitle}`,
-            }
-          : c
-      )
+      prev.map((c) => {
+        if (c.id !== conversationId || c.type !== "group") return c;
+        const ownerId = c.createdById ?? me;
+        const isOwner = ownerId === me;
+        if (!isOwner) return c;
+        if (c.title === nextTitle) return c;
+        didRename = true;
+        return {
+          ...c,
+          createdById: ownerId,
+          title: nextTitle,
+          titleUpdatedAt: now,
+          avatarInitials: initials(nextTitle),
+          lastMessageAt: now,
+          lastMessagePreview: `Group renamed to ${nextTitle}`,
+        };
+      })
     );
+    if (!didRename) return;
     const renameMsg: Message = {
       id: uid("m"),
       conversationId,
