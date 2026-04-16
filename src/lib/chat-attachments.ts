@@ -27,7 +27,7 @@ export function validateAttachmentPayload(attachments: ChatAttachment[] | undefi
     if (a.dataUrl && a.dataUrl.length > CHAT_ATTACHMENT_MAX_BYTES) {
       return "Um ficheiro anexo é demasiado grande.";
     }
-    if (a.payloadJson && a.payloadJson.length > CHAT_ATTACHMENT_MAX_JSON_CHARS) {
+    if (a.payloadJson && a.payloadJson.length > CHAT_ATTACHMENTS_MAX_JSON_CHARS) {
       return "Dados do anexo demasiado grandes.";
     }
   }
