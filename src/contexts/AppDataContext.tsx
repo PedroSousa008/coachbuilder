@@ -568,7 +568,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ payload: snap }),
       });
-    }, 2200);
+    }, 900);
     return () => window.clearTimeout(t);
   }, [
     cloudRemoteReady,
@@ -622,7 +622,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           });
         })
       );
-    }, 700);
+    }, 300);
     return () => window.clearTimeout(t);
   }, [cloudRemoteReady, conversations, hydrated, messagesByConv, user?.id, user]);
 
@@ -675,7 +675,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         /* ignore transient cloud errors */
       }
     };
-    const id = window.setInterval(() => void poll(), 2000);
+    const id = window.setInterval(() => void poll(), 1200);
     void poll();
     return () => {
       cancelled = true;

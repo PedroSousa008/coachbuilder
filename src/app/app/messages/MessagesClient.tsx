@@ -67,6 +67,9 @@ export function MessagesClient() {
   const [savingGroupSettings, setSavingGroupSettings] = useState(false);
   const [playerCloudUserId, setPlayerCloudUserId] = useState<Record<string, string>>({});
   const streamSinceRef = useRef<Record<string, string>>({});
+  const draftInputRef = useRef<HTMLInputElement>(null);
+  /** After opening a DM, focus the composer once that conversation is active. */
+  const focusDraftAfterConvIdRef = useRef<string | null>(null);
 
   const coachUserId = user?.id ?? mockCoach.id;
 
@@ -79,6 +82,25 @@ export function MessagesClient() {
     if (!activeId) return;
     markConversationRead(activeId);
   }, [activeId, openThreadLastId, markConversationRead]);
+
+  /** Open DM composer ready to type (after tab + conversation switch from group or picker). */
+  useEffect(() => {
+    const want = focusDraftAfterConvIdRef.current;
+    if (!want || activeId !== want || tab !== "dm") return;
+    const conv = conversations.find((c) => c.id === want);
+    if (!conv || conv.type !== "dm") return;
+    focusDraftAfterConvIdRef.current = null;
+    let innerRaf = 0;
+    const outerRaf = window.requestAnimationFrame(() => {
+      innerRaf = window.requestAnimationFrame(() => {
+        draftInputRef.current?.focus({ preventScroll: true });
+      });
+    });
+    return () => {
+      window.cancelAnimationFrame(outerRaf);
+      if (innerRaf) window.cancelAnimationFrame(innerRaf);
+    };
+  }, [activeId, tab, conversations]);
 
   useEffect(() => {
     if (!hydrated || !shouldUseCloudClientApis(user)) {
@@ -245,7 +267,7 @@ export function MessagesClient() {
       }
     };
 
-    const id = window.setInterval(() => void poll(), 550);
+    const id = window.setInterval(() => void poll(), 400);
     void poll();
     return () => {
       cancelled = true;
@@ -354,8 +376,10 @@ export function MessagesClient() {
           const peer = playerCloudUserId[p.id];
           const id = createDmWithPlayer(p, { peerCloudUserId: peer ?? null });
           if (id) {
+            focusDraftAfterConvIdRef.current = id;
             setActiveId(id);
             setTab("dm");
+            setDmPickerOpen(false);
           }
         }}
         emptyHint={
@@ -496,18 +520,15 @@ export function MessagesClient() {
                                 peerCloudUserId: selectedMemberCloudId,
                               });
                               if (id) {
+                                focusDraftAfterConvIdRef.current = id;
                                 setActiveId(id);
                                 setTab("dm");
                                 setManageGroupOpen(false);
+                                setSelectedMemberCloudId(null);
                               }
                             }}
                           >
                             {isPt ? "Mensagem Direta" : "Direct Message"}
-                          </Button>
-                        ) : null}
-                        {memberPlayer ? (
-                          <Button type="button" size="sm" variant="outline" onClick={() => window.open("/app/team", "_self")}>
-                            {isPt ? "Detalhes" : "Details"}
                           </Button>
                         ) : null}
                         {actorIsAdmin && !isMe ? (
@@ -708,6 +729,7 @@ export function MessagesClient() {
               <>
                 <div className="flex gap-2">
                   <Input
+                    ref={draftInputRef}
                     value={draft}
                     onChange={(e) => setDraft(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && (e.preventDefault(), void send())}
