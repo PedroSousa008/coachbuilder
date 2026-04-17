@@ -104,6 +104,9 @@ export function buildOpponentAnalysisDocumentHtml(params: {
   <p><strong>Banco / ajustes:</strong> ${esc(analysis.benchNotes)}</p>
 
   <h2>Papéis no jogo</h2>
+  <p class="muted" style="font-size:0.88rem;margin:-0.25rem 0 0.85rem">
+    Escolhidos em função do <strong>11 sugerido</strong> e das posições marcadas na ficha: capitães e livres entre titulares; cantos nos corredores esquerdo/direito do onze; penáltis entre titulares (com alternativa no banco se preciso).
+  </p>
   ${roleBlock("Capitão", analysis.roles.captain)}
   ${roleBlock("Alternativa a capitão (2.ª opção)", analysis.roles.captainAlternate)}
   ${roleBlock("Vice-capitão", analysis.roles.viceCaptain)}

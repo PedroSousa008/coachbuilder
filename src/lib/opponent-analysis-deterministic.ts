@@ -124,6 +124,76 @@ function rolePick(p: SerializedPlayerForAi, rationale: string): OpponentAnalysis
   return { playerId: p.id, playerName: p.name, rationale };
 }
 
+function leadershipScore(p: SerializedPlayerForAi): number {
+  return q(p, "composure") + p.age * 0.25 + q(p, "shortPass") * 0.15;
+}
+
+function isLeftSideSlotLabel(label: string): boolean {
+  const u = label.toUpperCase();
+  return (
+    /\b(LW|LM|LB|LWB)\b/.test(u) ||
+    label.toLowerCase().includes("extremo esquerdo") ||
+    label.toLowerCase().includes("lateral esquerdo")
+  );
+}
+
+function isRightSideSlotLabel(label: string): boolean {
+  const u = label.toUpperCase();
+  return (
+    /\b(RW|RM|RB|RWB)\b/.test(u) ||
+    label.toLowerCase().includes("extremo direito") ||
+    label.toLowerCase().includes("lateral direito")
+  );
+}
+
+function startersFromXi(players: SerializedPlayerForAi[], xi: OpponentAnalysisXiPlayer[]): SerializedPlayerForAi[] {
+  const byId = new Map(players.map((p) => [p.id, p]));
+  const out: SerializedPlayerForAi[] = [];
+  for (const row of xi) {
+    const p = byId.get(row.playerId);
+    if (p) out.push(p);
+  }
+  return out;
+}
+
+function pickBestBy(
+  pools: SerializedPlayerForAi[][],
+  scorer: (p: SerializedPlayerForAi) => number,
+  excludeIds: Set<string>
+): SerializedPlayerForAi | null {
+  for (const pool of pools) {
+    let best: SerializedPlayerForAi | null = null;
+    let bestS = -1e9;
+    for (const p of pool) {
+      if (excludeIds.has(p.id)) continue;
+      const s = scorer(p);
+      if (s > bestS) {
+        bestS = s;
+        best = p;
+      }
+    }
+    if (best) return best;
+  }
+  return null;
+}
+
+/** Cantos alinhados ao lado do campo no 11 sugerido; depois resto dos titulares, depois banco. */
+function pickCornerForSide(
+  xi: OpponentAnalysisXiPlayer[],
+  starters: SerializedPlayerForAi[],
+  bench: SerializedPlayerForAi[],
+  side: "left" | "right",
+  excludeIds: Set<string>
+): SerializedPlayerForAi {
+  const pred = side === "left" ? isLeftSideSlotLabel : isRightSideSlotLabel;
+  const wideStarters = starters.filter((p) => xi.some((r) => r.playerId === p.id && pred(r.positionLabel)));
+  const cross = (p: SerializedPlayerForAi) => q(p, "crossing");
+  return (
+    pickBestBy([wideStarters, starters, bench], cross, excludeIds) ??
+    pickBestBy([[...starters, ...bench]], cross, excludeIds)!
+  );
+}
+
 const ROLE_PT: Record<Position, string> = {
   GK: "Guarda-redes",
   CB: "Defesa central",
@@ -512,52 +582,51 @@ export function buildDeterministicOpponentAnalysis(input: OpponentAnalysisBuildI
   }.`;
 
   const { xi, notes: xiNotes } = buildStartingXi(availablePlayers, lineupFormationId, them);
-  const benchNames = availablePlayers
-    .filter((p) => !xi.some((x) => x.playerId === p.id))
-    .map((p) => p.name)
-    .slice(0, 12);
+  const starterIds = new Set(xi.map((r) => r.playerId));
+  const starters = startersFromXi(availablePlayers, xi);
+  const bench = availablePlayers.filter((p) => !starterIds.has(p.id));
+
+  const benchNames = bench.map((p) => p.name).slice(0, 12);
   const benchNotes =
-    benchNames.length > 0
-      ? `Banco sugerido (convocados não titulares): ${benchNames.join(", ")}.`
-      : "Sem suplentes convocados listados para além do onze.";
+    (benchNames.length > 0
+      ? `Banco sugerido (convocados não titulares): ${benchNames.join(", ")}. `
+      : "Sem suplentes convocados listados para além do onze. ") +
+    "Papéis no jogo (capitães, penáltis, livres, cantos) escolhidos em primeiro lugar entre os titulares do 11; alternativas vêm do banco só quando faz falta.";
 
-  const byLeadership = [...availablePlayers].sort(
-    (a, b) => q(b, "composure") + b.age * 0.25 + q(b, "shortPass") * 0.15 - (q(a, "composure") + a.age * 0.25 + q(a, "shortPass") * 0.15)
-  );
-  const captain = byLeadership[0]!;
-  const captainAlternate = byLeadership.find((p) => p.id !== captain.id) ?? null;
+  const startersByLead = [...starters].sort((a, b) => leadershipScore(b) - leadershipScore(a));
+  const captain = startersByLead[0]!;
+  const captainAlternate = startersByLead.find((p) => p.id !== captain.id) ?? null;
   const viceCaptain =
-    byLeadership.find((p) => p.id !== captain.id && p.id !== captainAlternate?.id) ?? null;
+    startersByLead.find((p) => p.id !== captain.id && p.id !== captainAlternate?.id) ?? null;
 
-  const byPenalties = [...availablePlayers].sort(
-    (a, b) => q(b, "penalties") + q(b, "composure") * 0.2 - (q(a, "penalties") + q(a, "composure") * 0.2)
-  );
-  const penaltyTaker = byPenalties[0]!;
-  const penaltyAlternate = byPenalties.find((p) => p.id !== penaltyTaker.id) ?? null;
+  const penScore = (p: SerializedPlayerForAi) => q(p, "penalties") + q(p, "composure") * 0.2;
+  const startersByPen = [...starters].sort((a, b) => penScore(b) - penScore(a));
+  const benchByPen = [...bench].sort((a, b) => penScore(b) - penScore(a));
+  const penaltyTaker =
+    startersByPen.find((p) => p.id !== captain.id) ??
+    startersByPen[0]!;
+  const penaltyAlternate =
+    startersByPen.find((p) => p.id !== penaltyTaker.id) ??
+    benchByPen.find((p) => p.id !== penaltyTaker.id) ??
+    null;
 
-  const byFk = [...availablePlayers].sort((a, b) => q(b, "freeKickAccuracy") + q(b, "shotPower") * 0.1 - (q(a, "freeKickAccuracy") + q(a, "shotPower") * 0.1));
-  const freeKickTaker = byFk[0]!;
+  const fkScore = (p: SerializedPlayerForAi) => q(p, "freeKickAccuracy") + q(p, "shotPower") * 0.1;
+  const startersByFk = [...starters].sort((a, b) => fkScore(b) - fkScore(a));
+  const benchByFk = [...bench].sort((a, b) => fkScore(b) - fkScore(a));
+  const freeKickTaker = startersByFk[0] ?? benchByFk[0]!;
 
-  const byCross = [...availablePlayers].sort((a, b) => q(b, "crossing") - q(a, "crossing"));
-  const cornerLeft =
-    byCross.find((p) => p.position === "LW") ??
-    byCross.find((p) => p.position === "LB") ??
-    byCross[0]!;
-  const cornerRight =
-    byCross.find((p) => p.id !== cornerLeft.id && p.position === "RW") ??
-    byCross.find((p) => p.id !== cornerLeft.id && p.position === "RB") ??
-    byCross.find((p) => p.id !== cornerLeft.id) ??
-    byCross[1]!;
+  const cornerLeft = pickCornerForSide(xi, starters, bench, "left", new Set());
+  const cornerRight = pickCornerForSide(xi, starters, bench, "right", new Set([cornerLeft.id]));
 
   const roles = {
-    captain: rolePick(captain, "Maior combinação de compostura, experiência (idade) e passe curto entre convocados."),
-    ...(captainAlternate ? { captainAlternate: rolePick(captainAlternate, "Segunda opção de liderança no balneário.") } : {}),
-    ...(viceCaptain ? { viceCaptain: rolePick(viceCaptain, "Terceira referência de liderança / comunicação.") } : {}),
-    penaltyTaker: rolePick(penaltyTaker, "Melhor conjunto penáltis + compostura entre convocados."),
-    ...(penaltyAlternate ? { penaltyAlternate: rolePick(penaltyAlternate, "Segunda opção de penáltis.") } : {}),
-    freeKickTaker: rolePick(freeKickTaker, "Melhor precisão em livres directos (atributos na app)."),
-    cornerLeft: rolePick(cornerLeft, "Prioridade a extremo/lateral esquerdo com melhor cruzamento."),
-    cornerRight: rolePick(cornerRight, "Prioridade a extremo/lateral direito; segundo melhor cruzamento se necessário."),
+    captain: rolePick(captain, "Entre titulares do 11: melhor liderança (compostura, idade, passe curto)."),
+    ...(captainAlternate ? { captainAlternate: rolePick(captainAlternate, "2.ª opção de capitão entre titulares.") } : {}),
+    ...(viceCaptain ? { viceCaptain: rolePick(viceCaptain, "Vice-capitão entre titulares.") } : {}),
+    penaltyTaker: rolePick(penaltyTaker, "Melhor penáltis entre titulares (evitando duplicar o capitão quando possível)."),
+    ...(penaltyAlternate ? { penaltyAlternate: rolePick(penaltyAlternate, "Alternativa a penáltis (titular ou banco).") } : {}),
+    freeKickTaker: rolePick(freeKickTaker, "Melhor livre directo entre titulares sugeridos."),
+    cornerLeft: rolePick(cornerLeft, "Canto esquerdo: titular no corredor esquerdo do 11 com melhor cruzamento."),
+    cornerRight: rolePick(cornerRight, "Canto direito: titular no corredor direito do 11 com melhor cruzamento (distinto do esquerdo)."),
   };
 
   const dataLimitations =
