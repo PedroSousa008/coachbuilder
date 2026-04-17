@@ -16,10 +16,13 @@ export function toCloudUserPublic(u: {
   coachingRole?: string | null;
   role?: string | null;
   subscriptionPlan?: string | null;
+  createdAt?: Date | null;
 }): CloudUserPublic {
   const cr = typeof u.coachingRole === "string" ? u.coachingRole : "head-coach";
   const r = typeof u.role === "string" ? u.role.trim().toLowerCase() : "user";
   const tag = typeof u.nametag === "string" && u.nametag.trim() !== "" ? u.nametag.trim() : undefined;
+  const createdAt =
+    u.createdAt instanceof Date && !Number.isNaN(u.createdAt.getTime()) ? u.createdAt.toISOString() : undefined;
   return {
     id: u.id,
     email: u.email,
@@ -28,6 +31,7 @@ export function toCloudUserPublic(u: {
     coachingRole: isCoachingRoleId(cr) ? cr : "head-coach",
     role: r === "admin" ? "admin" : "user",
     subscriptionPlan: (typeof u.subscriptionPlan === "string" && u.subscriptionPlan) || "free",
+    ...(createdAt ? { createdAt } : {}),
   };
 }
 
@@ -86,6 +90,7 @@ export function parseCloudUserFromApi(raw: unknown): CloudUserPublic | null {
   const sp = o.subscriptionPlan;
   const subscriptionPlan = typeof sp === "string" || sp === null ? sp : null;
   const roleLower = typeof o.role === "string" ? o.role.trim().toLowerCase() : "user";
+  const createdAtIso = typeof o.createdAt === "string" ? o.createdAt : undefined;
   const base = toCloudUserPublic({
     id: o.id,
     email: o.email,
@@ -94,6 +99,7 @@ export function parseCloudUserFromApi(raw: unknown): CloudUserPublic | null {
     coachingRole: typeof o.coachingRole === "string" ? o.coachingRole : "head-coach",
     role: roleLower,
     subscriptionPlan,
+    ...(createdAtIso ? { createdAt: new Date(createdAtIso) } : {}),
   });
   const subscriptionAccess =
     parseSubscriptionAccessPayload(o.subscriptionAccess) ?? legacySubscriptionAccess(base.subscriptionPlan, base.role);

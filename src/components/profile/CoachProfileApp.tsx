@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
-import { Activity, Briefcase, Sparkles, User } from "lucide-react";
+import { Activity, Briefcase, Sparkles, User, Video } from "lucide-react";
 import { useAppData } from "@/contexts/AppDataContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { mockCoach } from "@/data/mock";
@@ -11,9 +11,10 @@ import { PerformanceTab } from "@/components/profile/PerformanceTab";
 import { PersonalTab } from "@/components/profile/PersonalTab";
 import { CareerTab } from "@/components/profile/CareerTab";
 import { HonorsTab } from "@/components/profile/HonorsTab";
+import { CoachingProfessionalsTab } from "@/components/profile/CoachingProfessionalsTab";
 import type { CoachProfileState } from "@/types";
 
-const TABS = ["performance", "personal", "career", "honors"] as const;
+const TABS = ["performance", "personal", "career", "honors", "coaching"] as const;
 type ProfileTabId = (typeof TABS)[number];
 
 function isTab(s: string | null): s is ProfileTabId {
@@ -81,6 +82,7 @@ export function CoachProfileApp() {
           { id: "personal" as const, label: "Dados pessoais", icon: User },
           { id: "career" as const, label: "Carreira", icon: Briefcase },
           { id: "honors" as const, label: "Palmarés", icon: Sparkles },
+          { id: "coaching" as const, label: "Coaching by Professionals", icon: Video },
         ] as const
       ).map(({ id, label, icon: Icon }) => {
         const active = tab === id;
@@ -193,6 +195,7 @@ export function CoachProfileApp() {
         ) : null}
         {tab === "career" ? <CareerTab coachProfile={coachProfile} hydrated={hydrated} onCommit={commitProfile} /> : null}
         {tab === "honors" ? <HonorsTab coachProfile={coachProfile} onCommit={commitProfile} /> : null}
+        {tab === "coaching" ? <CoachingProfessionalsTab /> : null}
       </div>
     </div>
   );

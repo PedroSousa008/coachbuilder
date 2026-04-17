@@ -78,12 +78,14 @@ function toAuthUser(u: {
   email: string;
   name: string;
   coachingRole: CoachingRoleId;
+  createdAt?: string;
 }): AuthUser {
   return {
     id: u.id,
     email: u.email,
     name: u.name,
     coachingRole: u.coachingRole,
+    ...(u.createdAt ? { createdAt: u.createdAt } : {}),
   };
 }
 

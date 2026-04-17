@@ -52,6 +52,8 @@ export type AuthUser = {
   subscriptionPlan?: string;
   /** Calculado no servidor (GET /me, login, registo). */
   subscriptionAccess?: SubscriptionAccessPayload;
+  /** ISO 8601 — data de criação da conta (calendário Coaching by Professionals, etc.). */
+  createdAt?: string;
 };
 
 export type SignUpCredentials = {
