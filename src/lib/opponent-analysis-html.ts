@@ -30,10 +30,8 @@ export function buildOpponentAnalysisDocumentHtml(params: {
   fixture: MatchFixture;
   analysis: OpponentAnalysisAiResult;
   generatedAt: string;
-  /** Pesquisas Google usadas pelo Gemini (grounding); transparência / requisitos de uso. */
-  googleSearchQueriesUsed?: string[];
 }): string {
-  const { ourClub, fixture, analysis, generatedAt, googleSearchQueriesUsed } = params;
+  const { ourClub, fixture, analysis, generatedAt } = params;
   const venue = fixture.venue === "home" ? "Casa" : "Fora";
   const xi = analysis.startingXi ?? [];
 
@@ -102,14 +100,9 @@ export function buildOpponentAnalysisDocumentHtml(params: {
       ? `<h2>Limitações dos dados</h2><p class="muted">${esc(analysis.dataLimitations)}</p>`
       : ""
   }
-  ${
-    googleSearchQueriesUsed?.length
-      ? `<h2>Fonte web (Google Search)</h2><p class="muted">O modelo utilizou pesquisas automáticas na Web para complementar os dados da app. Consultas: ${googleSearchQueriesUsed
-          .map((q) => esc(q))
-          .join(" · ")}</p>`
-      : ""
-  }
-  <p class="muted" style="margin-top:2rem;font-size:0.75rem">Análise gerada com Gemini e Grounding with Google Search (Google AI).</p>
+  <p class="muted" style="margin-top:2rem;font-size:0.75rem">
+    Relatório gerado apenas a partir dos dados e estatísticas da aplicação CoachBuilder (sem APIs de modelos de IA externos).
+  </p>
 </body>
 </html>`;
 }

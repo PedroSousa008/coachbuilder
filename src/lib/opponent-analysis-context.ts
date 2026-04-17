@@ -60,6 +60,7 @@ export type SerializedPlayerForAi = {
   name: string;
   position: string;
   number: number;
+  age: number;
   availability: Player["availability"];
   /** Partial FIFA-style 0–100; omit keys not set. */
   qualities: Record<string, number>;
@@ -79,6 +80,7 @@ export function serializePlayersForAi(players: Player[], availableIds: Set<strin
         name: p.name,
         position: p.position,
         number: p.number,
+        age: p.age,
         availability: p.availability,
         qualities,
       };

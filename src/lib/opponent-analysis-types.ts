@@ -1,4 +1,4 @@
-/** Structured output from the opponent-analysis AI (server + client render). */
+/** Estrutura do relatório de análise de adversário (motor local + render no cliente). */
 
 export type OpponentAnalysisRolePick = {
   playerId: string;

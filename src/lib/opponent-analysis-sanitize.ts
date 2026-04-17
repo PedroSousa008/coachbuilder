@@ -20,7 +20,7 @@ function fallbackPick(players: SerializedPlayerForAi[], used: Set<string>, ratio
   return { playerId: pick.id, playerName: pick.name, rationale };
 }
 
-/** Coerce OpenAI JSON into a safe document; fix invalid player ids using convocados + strength order. */
+/** Valida e corrige o relatório (onze e papéis) contra os convocados; substitui IDs inválidos por ordem de força heurística. */
 export function sanitizeOpponentAnalysisResult(
   raw: unknown,
   available: SerializedPlayerForAi[]

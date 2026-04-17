@@ -275,18 +275,9 @@ export function SketchOpponentAnalysisPanel() {
             </Button>
           </div>
           <p className="text-[11px] leading-relaxed text-zinc-600">
-            Usa <strong>Gemini</strong> com <strong>Google Search</strong> (pesquisa automática na Web). Configura{" "}
-            <code className="text-zinc-400">GEMINI_API_KEY</code> no servidor (ex.:{" "}
-            <a
-              className="text-accent underline hover:text-white"
-              href="https://aistudio.google.com/apikey"
-              target="_blank"
-              rel="noreferrer"
-            >
-              Google AI Studio
-            </a>
-            ). Opcional: <code className="text-zinc-400">GEMINI_OPPONENT_ANALYSIS_MODEL</code> (ex.: gemini-2.0-flash).
-            Alternativa: <code className="text-zinc-400">GOOGLE_GEMINI_API_KEY</code>.
+            O PDF é montado <strong>só no servidor</strong> com os dados que já tens na app (plantel, qualidades, táticas,
+            jogos importados, calendário). <strong>Não</strong> são usados serviços de IA de terceiros nem pesquisas na
+            Web — quanto mais completa estiver a importação da liga e os registos de jogos, melhor fica o relatório.
           </p>
         </CardContent>
       </Card>
