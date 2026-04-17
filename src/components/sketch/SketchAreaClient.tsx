@@ -18,6 +18,7 @@ import {
   Plus,
   Trash2,
   Users,
+  Sparkles,
 } from "lucide-react";
 import { useAppData } from "@/contexts/AppDataContext";
 import type {
@@ -53,8 +54,9 @@ import {
 } from "./constants";
 import { cn } from "@/lib/utils";
 import { BOARD_COLORS, SketchBoardCanvas } from "./SketchBoardCanvas";
+import { SketchOpponentAnalysisPanel } from "./SketchOpponentAnalysisPanel";
 
-type TabId = "calendar" | "notes" | "tasks" | "files" | "board" | "watchlist";
+type TabId = "calendar" | "notes" | "tasks" | "files" | "board" | "watchlist" | "opponentAi";
 
 const TABS: { id: TabId; label: string; icon: typeof Calendar }[] = [
   { id: "calendar", label: "Calendar", icon: Calendar },
@@ -63,6 +65,7 @@ const TABS: { id: TabId; label: string; icon: typeof Calendar }[] = [
   { id: "files", label: "Files", icon: FolderOpen },
   { id: "board", label: "Board", icon: LayoutGrid },
   { id: "watchlist", label: "Watchlist", icon: Users },
+  { id: "opponentAi", label: "Análise Adversário AI", icon: Sparkles },
 ];
 
 function sketchUid(prefix: string) {
@@ -87,8 +90,11 @@ export function SketchAreaClient() {
     tabParam === "tasks" ||
     tabParam === "files" ||
     tabParam === "board" ||
-    tabParam === "watchlist"
-      ? tabParam
+    tabParam === "watchlist" ||
+    tabParam === "opponent-ai"
+      ? tabParam === "opponent-ai"
+        ? "opponentAi"
+        : tabParam
       : "calendar";
 
   const {
@@ -1382,6 +1388,8 @@ export function SketchAreaClient() {
           {sketchArea.watchlist.length === 0 ? <p className="text-center text-sm text-zinc-500">No players on the watchlist.</p> : null}
         </div>
       ) : null}
+
+      {tab === "opponentAi" ? <SketchOpponentAnalysisPanel /> : null}
     </div>
   );
 }
