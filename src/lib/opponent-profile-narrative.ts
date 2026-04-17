@@ -1,5 +1,11 @@
 import type { LeagueTableRow, MatchFixture } from "@/types";
 import { normalizeTeamLabel, pickBestTeamMatch, teamNameSimilarity } from "@/lib/team-match";
+import {
+  APPROACH_BY_ARCH,
+  EXPECT_BY_ARCH,
+  type ExpectVenue,
+  type RankBucket,
+} from "@/lib/opponent-profile-narrative-variants";
 
 export type OpponentArchetype =
   | "table_top"
@@ -23,7 +29,11 @@ export type OpponentProfileContext = {
   themGcpg: number;
   themPpg: number;
   themN: number;
+  /** Seed estável por jogo — garante variação de frases entre encontros. */
+  narrativeSeed: number;
 };
+
+export type { RankBucket };
 
 function dumbHash(s: string): number {
   let h = 2166136261;
@@ -34,8 +44,52 @@ function dumbHash(s: string): number {
   return Math.abs(h);
 }
 
-function pick<T>(arr: T[], seed: number, salt: number): T {
-  return arr[(seed + salt) % arr.length]!;
+/** Escolha determinística mas distinta entre secções (evita repetir a mesma frase). */
+function pickVariant(lines: string[], seed: number, salt: number): string {
+  if (lines.length === 0) return "";
+  const mixed = (seed ^ salt * 0x9e3779b9) >>> 0;
+  const idx = mixed % lines.length;
+  return lines[idx]!;
+}
+
+function ordinalPt(n: number): string {
+  return `${n}.º`;
+}
+
+function rankBucket(oppRank: number | null, total: number): RankBucket {
+  if (oppRank == null || oppRank < 1 || total < 1) return "unknown";
+  if (total >= 10) {
+    if (oppRank <= 5) return "top";
+    if (oppRank >= total - 4) return "bottom";
+    return "mid";
+  }
+  if (total >= 6) {
+    if (oppRank <= 3) return "top";
+    if (oppRank >= total - 2) return "bottom";
+    return "mid";
+  }
+  if (total === 1) return "mid";
+  if (oppRank === 1) return "top";
+  if (oppRank === total) return "bottom";
+  return "mid";
+}
+
+function fillNarrativeTemplate(s: string, ctx: OpponentProfileContext): string {
+  const rank = ctx.oppRank != null ? ordinalPt(ctx.oppRank) : "—";
+  const total = String(ctx.totalTeams);
+  const g = ctx.themGpg.toFixed(2);
+  const gc = ctx.themGcpg.toFixed(2);
+  return s
+    .replace(/\{\{rank\}\}/g, rank)
+    .replace(/\{\{total\}\}/g, total)
+    .replace(/\{\{g\}\}/g, g)
+    .replace(/\{\{gc\}\}/g, gc);
+}
+
+function fillApproachUs(s: string, ctx: OpponentProfileContext, us: { gpg: number; gcpg: number }): string {
+  return fillNarrativeTemplate(s, ctx)
+    .replace(/\{\{ug\}\}/g, us.gpg.toFixed(2))
+    .replace(/\{\{ugc\}\}/g, us.gcpg.toFixed(2));
 }
 
 function teamKey(row: LeagueTableRow): string {
@@ -82,10 +136,6 @@ export function rowForTeam(rows: LeagueTableRow[], teamLabel: string): LeagueTab
   return rows.find((r) => normalizeTeamLabel(r.team) === normalizeTeamLabel(best.name)) ?? null;
 }
 
-/**
- * Classifica o adversário só com base na tabela importada:
- * 1–5 topo; top 6 GM; meio; bottom 6 GS; últimos 5 PTS; top 5 DG; físicas (meio + poucos GM/GS + GM≈GS).
- */
 function classifyArchetypesFromTable(rows: LeagueTableRow[], opponentLabel: string): OpponentArchetype[] {
   const valid = rows.filter((r) => r.team?.trim());
   if (valid.length < 2) return ["mid_balanced"];
@@ -196,8 +246,18 @@ export function buildOpponentProfileContext(args: {
     else if (dppg <= -0.35) relativeLevel = "opponent_weaker";
   }
 
-  const seed = dumbHash(`${fixture.kickoff}|${opponentName}|${coachClub}`);
-  const profileSummaryLine = buildProfileSummaryLine(archetypes, oppRank, totalTeams, rows.length >= 5, them, seed);
+  const narrativeSeed = dumbHash(
+    `${fixture.kickoff}|${opponentName}|${coachClub}|${oppRank ?? 0}|${totalTeams}|${archetypes.join("|")}|${them.ppg.toFixed(3)}|${us.ppg.toFixed(3)}`
+  );
+
+  const profileSummaryLine = buildProfileSummaryLine(
+    archetypes,
+    oppRank,
+    totalTeams,
+    rows.length >= 5,
+    them,
+    narrativeSeed
+  );
 
   return {
     archetypes,
@@ -210,6 +270,7 @@ export function buildOpponentProfileContext(args: {
     themGcpg: them.gcpg,
     themPpg: them.ppg,
     themN: them.n,
+    narrativeSeed,
   };
 }
 
@@ -235,17 +296,13 @@ function buildProfileSummaryLine(
   seed: number
 ): string {
   const parts: string[] = [];
-  if (oppRank != null) parts.push(`${oppRank}º / ${totalTeams} equipas na tabela`);
+  if (oppRank != null) parts.push(`${oppRank}.º / ${totalTeams} equipas na tabela`);
   if (them.n >= 2) {
     parts.push(`últimos jogos: ~${them.gpg.toFixed(2)} GM/jogo, ~${them.gcpg.toFixed(2)} GS/jogo`);
   }
   const labels = arch.slice(0, 4).map(archetypeLabelPt);
-  const intro = pick(
-    [
-      "Perfil (regras da tabela importada):",
-      "Classificação automática:",
-      "Leitura da competição:",
-    ],
+  const intro = pickVariant(
+    ["Perfil (regras da tabela importada):", "Classificação automática:", "Leitura da competição:"],
     seed,
     0
   );
@@ -257,9 +314,160 @@ function venueOur(fixture: MatchFixture): "home" | "away" {
   return fixture.venue === "home" ? "home" : "away";
 }
 
-/** Nós em casa → adversário joga fora; nós fora → adversário em casa. */
 function opponentPlaysAway(fixture: MatchFixture): boolean {
   return fixture.venue === "home";
+}
+
+function linesForApproach(arch: OpponentArchetype, bucket: RankBucket): string[] {
+  const pool = APPROACH_BY_ARCH[arch];
+  if (!pool) return [];
+  const primary = pool[bucket];
+  if (primary && primary.length > 0) return primary;
+  if (pool.unknown?.length) return pool.unknown;
+  if (pool.mid?.length) return pool.mid;
+  return [...(pool.top ?? []), ...(pool.mid ?? []), ...(pool.bottom ?? [])];
+}
+
+function linesForExpect(arch: OpponentArchetype, oppVenue: ExpectVenue, bucket: RankBucket): string[] {
+  const a = EXPECT_BY_ARCH[arch];
+  if (!a) return [];
+  const v = a[oppVenue];
+  if (!v) return [];
+  const primary = v[bucket];
+  if (primary && primary.length > 0) return primary;
+  if (v.unknown?.length) return v.unknown;
+  if (v.mid?.length) return v.mid;
+  return [...(v.top ?? []), ...(v.mid ?? []), ...(v.bottom ?? [])];
+}
+
+function approachArchetypeLine(
+  arch: OpponentArchetype,
+  ctx: OpponentProfileContext,
+  bucket: RankBucket,
+  seed: number,
+  idx: number
+): string {
+  const lines = linesForApproach(arch, bucket);
+  const salt = idx * 131 + arch.length * 17 + 400;
+  const raw = pickVariant(lines, seed, salt);
+  return fillNarrativeTemplate(raw, ctx);
+}
+
+function expectArchetypeLine(
+  arch: OpponentArchetype,
+  ctx: OpponentProfileContext,
+  oppVenue: ExpectVenue,
+  bucket: RankBucket,
+  seed: number,
+  idx: number
+): string {
+  const lines = linesForExpect(arch, oppVenue, bucket);
+  const salt = idx * 137 + arch.charCodeAt(0) + 900;
+  const raw = pickVariant(lines, seed ^ 0xdeadbeef, salt);
+  return fillNarrativeTemplate(raw, ctx);
+}
+
+const APPROACH_OPENERS_WE_HOME = [
+  "Encontro no nosso terreno contra quem está no {{rank}} lugar ({{total}} equipas): os teus registos recentes apontam ~{{ug}} GM/jogo e ~{{ugc}} GS/jogo — constrói o plano em função desse duelo de classificação.",
+  "Jogas em casa: o adversário surge no {{rank}} posto da tabela ({{total}} equipas). Com base no que tens na app (~{{ug}} golos marcados e ~{{ugc}} sofridos por jogo), equilibra iniciativa e segurança.",
+  "No teu estádio, defrontas equipa no {{rank}} lugar. Os teus números (~{{ug}} GM/jogo, ~{{ugc}} GS/jogo) dizem-te o risco que podes correr para impor o teu jogo.",
+  "Casa: adversário classificado em {{rank}} entre {{total}}. Usa a amostra recente (~{{ug}} / ~{{ugc}}) para calibrar pressão e transição.",
+  "Reduto próprio, adversário no {{rank}} lugar: lê o encontro como jogo de tabela — os teus dados (~{{ug}} e ~{{ugc}} por jogo) guiam o ritmo ofensivo.",
+  "Em casa, com oposição no {{rank}} posto ({{total}} equipas), o ponto de partida é a tua forma recente: ~{{ug}} GM/jogo, ~{{ugc}} GS/jogo.",
+  "Factor casa + adversário no {{rank}} lugar: traduz a classificação em tarefas claras; a tua amostra (~{{ug}} / ~{{ugc}}) define quanto podes investir na pressão.",
+  "Recebes equipa no {{rank}} lugar: com ~{{ug}} GM e ~{{ugc}} GS por jogo na app, escolhe o equilíbrio entre domínio e proteção às costas.",
+  "No teu campo, {{rank}} na tabela adversária ({{total}} equipas). Os teus indicadores (~{{ug}}, ~{{ugc}}) ajudam a decidir se assumis mais risco ou gestão.",
+  "Jogo em casa frente ao {{rank}} classificado: usa os teus números (~{{ug}} GM/jogo, ~{{ugc}} GS/jogo) para definir o tom do primeiro tempo.",
+];
+
+const APPROACH_OPENERS_WE_AWAY = [
+  "Vais jogar fora contra equipa no {{rank}} lugar ({{total}} equipas). Os teus dados recentes (~{{ug}} GM/jogo, ~{{ugc}} GS/jogo) indicam o teu leque táctico como visitante.",
+  "Deslocação: adversário no {{rank}} posto. Com base no que registaste (~{{ug}} / ~{{ugc}}), planeia entrada madura e crescimento ao longo do jogo.",
+  "Como visitante, defrontas o {{rank}} classificado entre {{total}} equipas. A tua amostra (~{{ug}} GM, ~{{ugc}} GS) diz-te quanta folga podes dar na saída.",
+  "Fora de casa, {{rank}} na tabela adversária: disciplina colectiva primeiro; os teus números (~{{ug}} e ~{{ugc}}) orientam quando acelerar.",
+  "Estádio alheio, adversário no {{rank}} lugar. Usa ~{{ug}} / ~{{ugc}} por jogo para calibrar se apostas mais em transição ou em posse segura.",
+  "Visitante: encontro com equipa no {{rank}} posto ({{total}} equipas). Os registos (~{{ug}} GM, ~{{ugc}} GS) ajudam a definir o bloco inicial.",
+  "Jogo fora frente ao {{rank}} classificado: com ~{{ug}} e ~{{ugc}} na app, escolhe o nível de pressão sem te expores cedo.",
+  "Deslocação para defrontar o {{rank}} lugar: ponto de partida nos teus últimos jogos (~{{ug}} GM/jogo, ~{{ugc}} GS/jogo).",
+  "Adversário no {{rank}} posto, tu como visitante: lê a tabela e cruza com a tua forma (~{{ug}} / ~{{ugc}}) para não repetires erros.",
+  "Fora, contra quem está {{rank}} entre {{total}}: entra organizado; a tua amostra (~{{ug}}, ~{{ugc}}) define o timing para assumir risco.",
+];
+
+const EXPECT_OPENERS = [
+  "Neste encontro o adversário está no {{rank}} lugar ({{total}} equipas) e, nos dados recentes, ronda ~{{g}} GM/jogo e ~{{gc}} GS/jogo.",
+  "Classificação adversária: {{rank}} entre {{total}}. A amostra importada sugere ~{{g}} golos marcados e ~{{gc}} sofridos por jogo.",
+  "Olhando para a tabela, ocupam o {{rank}} posto (de {{total}} equipas); nos últimos jogos registados, ~{{g}} a favor e ~{{gc}} contra por jogo.",
+  "Perfil numérico: {{rank}} lugar, com médias de ~{{g}} GM/jogo e ~{{gc}} GS/jogo na app.",
+  "Contexto de competição: adversário no {{rank}} entre {{total}}; números recentes ~{{g}} / ~{{gc}} por jogo.",
+  "Na classificação estão {{rank}} ({{total}} equipas). Nos dados que tens, ~{{g}} GM e ~{{gc}} GS por encontro.",
+  "Posição {{rank}} na tabela geral ({{total}} equipas); últimos jogos na ordem dos ~{{g}} GM e ~{{gc}} GS por jogo.",
+  "Referência: {{rank}} lugar — cruza isso com ~{{g}} golos marcados e ~{{gc}} sofridos por jogo nos registos recentes.",
+];
+
+const VENUE_US_HOME = [
+  "No teu reduto: procura iniciativa clara, subir a linha de pressão quando o bloco estiver compacto e usar o apoio para desconfortar o adversário no relógio.",
+  "Em casa, o desafio é traduzir o factor campos em ritmo e responsabilidade ofensiva sem te expores em transição.",
+  "Jogando em Portugal no teu estádio: força erros com pressão coordenada e evita o jogo de ida-e-volta sem controlo.",
+  "Factor casa: domina o meio-campo nos primeiros minutos e faz o adversário correr para o lado que queres.",
+  "No teu terreno, o público empurra — canaliza isso em organização e claridade no último passe.",
+];
+
+const VENUE_US_AWAY = [
+  "Como visitante: entrada madura, pouca folga entre linhas nos primeiros minutos e capacidade de crescer se o resultado o permitir.",
+  "Fora, a prioridade é não regalar transições; depois escolhe os momentos para subir a pressão.",
+  "Em deslocação: disciplina colectiva, poucos erros na saída e leitura paciente do momento certo para acelerar.",
+  "Visitante: fecha o jogo interior primeiro; o espaço costuma aparecer quando o adversário se desgasta.",
+  "No estádio alheio, gere o jogo emocional — não abras sem ter superioridade no meio.",
+];
+
+const TACTIC_CLOSE_APPROACH = [
+  "Ao longo do jogo: se fecharem o eixo, abre largura; se subirem laterais, fecha as costas; se pressionarem alto, valoriza saída limpa ou ruptura.",
+  "Sinais em tempo real: bloco baixo pede paciência e último passe; pressão alta pede coragem na saída ou bola por cima.",
+  "Ajusta ao vivo: se o bloco baixa, circula e procura o desequilíbrio; se sobem a pressão, ataca o espaço por trás.",
+  "Leitura de meio-parto: se não há linha entrelinhas, força o jogo às alas; se há pressão na saída, simplifica.",
+  "Último terço: se não há remate, recicla e troca o jogo; se há transição, ataca com poucos toques.",
+  "Bola parada: tanto defensiva como ofensiva pode decidir — antecipa bloqueios e segundas bolas.",
+];
+
+const TACTIC_CLOSE_EXPECT = [
+  "Durante o jogo: se pressionarem alto, valoriza as costas; se baixarem o bloco, entra paciência e largura.",
+  "Ajusta ao vivo: pressão alta pede saída limpa; bloco baixo pede circulação e bola parada bem ensaiada.",
+  "Se fecharem o meio, força o jogo ao corredor; se abrirem, fecha o corredor central e protege transição.",
+  "Lê o desgaste: equipas que fecham cedo costumam ceder espaço na segunda parte — antecipa a mudança de ritmo.",
+  "Se o resultado aperta, o adversário pode subir linhas ou baixar ainda mais — adapta a pressão em janelas curtas.",
+  "Bola parada defensiva: atenção aos bloqueios e aos ressaltos na grande área.",
+];
+
+function relativeLevelChunk(level: RelativeLevel, seed: number): string {
+  const stronger = [
+    "Na tabela estão acima ou com melhor média de pontos: organização máxima, paciência e aproveitamento cirúrgico dos momentos a teu favor.",
+    "Contexto desfavorável no ‘papel’: madurez colectiva, poucos erros forçados e leitura fria nos lances decisivos.",
+    "Leitura de força adversária: não persigas o jogo caótico; força-os a jogar de lado e castiga transições bem escolhidas.",
+    "Indicadores apontam para adversário forte: disciplina táctica e gestão emocional do resultado.",
+    "No confronto directo de classificação, eles levam vantagem numérica na tabela — exige eficácia e pouca folga defensiva.",
+  ];
+  const weaker = [
+    "Nos números da competição, tens margem para impor ritmo e domínio emocional — resolve situações sem dar oxigénio ao adversário.",
+    "Leitura favorável na tabela ou nos pontos por jogo: intensidade, claridade e capacidade de feitar o jogo.",
+    "Contexto que te permite assumir mais iniciativa — sem confiança desmedida nem jogo de ida-e-volta inconsciente.",
+    "Indicadores a teu favor: força o teu modelo, mas respeita o momento em que o adversário possa arriscar tudo.",
+    "Vantagem no ‘papel’: traduz em golos e não regales esperança com erros individuais.",
+  ];
+  const similar = [
+    "Forças parecidas no que a tabela e as médias mostram: ganham-se detalhes, segunda bola e a primeira meia hora.",
+    "Encontro equilibrado nos indicadores: consistência e personalidade fazem a diferença.",
+    "Nada está decidido antes do apito: o jogo pede concentração e adaptação ao que o adversário permitir.",
+    "Classificação e forma próximas: o resultado pode nascer de bola parada ou de um lance de segunda jogada.",
+    "Equilíbrio relativo: evita o erro forçado e procura superioridade nas transições.",
+  ];
+  switch (level) {
+    case "opponent_stronger":
+      return pickVariant(stronger, seed, 2000);
+    case "opponent_weaker":
+      return pickVariant(weaker, seed, 2100);
+    default:
+      return pickVariant(similar, seed, 2200);
+  }
 }
 
 export function buildHowWeShouldApproachNarrative(
@@ -267,359 +475,77 @@ export function buildHowWeShouldApproachNarrative(
   fixture: MatchFixture,
   us: { gpg: number; gcpg: number; n: number }
 ): string {
-  const seed = dumbHash(`${fixture.kickoff}|approach|${ctx.profileSummaryLine}`);
+  const seed = ctx.narrativeSeed;
   const weHome = venueOur(fixture) === "home";
-
+  const bucket = rankBucket(ctx.oppRank, ctx.totalTeams);
   const chunks: string[] = [];
 
-  chunks.push(
-    pick(
-      [
-        `Encontro ${weHome ? "no nosso reduto" : "como visitante"}: o plano deve reflectir isso — os teus números recentes na app apontam para ~${us.gpg.toFixed(2)} golos marcados e ~${us.gcpg.toFixed(2)} sofridos por jogo.`,
-        `Jogo ${weHome ? "em casa" : "fora"}: ponto de partida táctico com base no que tens registado (~${us.gpg.toFixed(2)} GM/jogo, ~${us.gcpg.toFixed(2)} GS/jogo).`,
-      ],
-      seed,
-      1
-    )
-  );
+  const openerPool = weHome ? APPROACH_OPENERS_WE_HOME : APPROACH_OPENERS_WE_AWAY;
+  chunks.push(fillApproachUs(pickVariant(openerPool, seed, 101), ctx, us));
 
+  let i = 0;
   for (const a of ctx.archetypes.slice(0, 3)) {
-    const line = archetypeApproachChunk(a, ctx, seed + a.length * 17);
+    const line = approachArchetypeLine(a, ctx, bucket, seed, i);
     if (line.trim()) chunks.push(line);
+    i += 1;
   }
 
-  chunks.push(relativeLevelChunk(ctx.relativeLevel, seed + 7));
+  chunks.push(relativeLevelChunk(ctx.relativeLevel, seed));
 
-  if (weHome) {
-    chunks.push(
-      pick(
-        [
-          "Em casa: procura assumir iniciativa, subir a linha de pressão quando fizer sentido e fazer o adversário sentir desconforto com o relógio e com o apoio.",
-          "No teu terreno: ritmo e responsabilidade ofensiva claros — força erros sem te expores em transição.",
-        ],
-        seed,
-        8
-      )
-    );
-  } else {
-    chunks.push(
-      pick(
-        [
-          "Fora: entrada madura nos primeiros minutos, pouca folga na organização defensiva e capacidade de crescer ao longo do jogo se o resultado o permitir.",
-          "Como visitante: disciplina colectiva primeiro; o jogo longo pode vir a dar-te vantagem se não regalares transições.",
-        ],
-        seed,
-        9
-      )
-    );
-  }
+  chunks.push(weHome ? pickVariant(VENUE_US_HOME, seed, 108) : pickVariant(VENUE_US_AWAY, seed, 109));
 
-  chunks.push(
-    pick(
-      [
-        "Ao longo do encontro: se fecharem o eixo, abre largura; se subirem laterais, pensa nas costas; se pressionarem muito alto, valoriza saída limpa ou ruptura.",
-        "Sinais em tempo real: bloco baixo pede paciência e último passe; pressão alta pede coragem na saída ou bola por cima.",
-      ],
-      seed,
-      4
-    )
-  );
+  chunks.push(pickVariant(TACTIC_CLOSE_APPROACH, seed, 112));
 
   return dedupeSentences(chunks.join(" "));
 }
 
-function archetypeApproachChunk(a: OpponentArchetype, ctx: OpponentProfileContext, seed: number): string {
-  const g = ctx.themGpg.toFixed(2);
-  const gc = ctx.themGcpg.toFixed(2);
-  switch (a) {
-    case "table_top":
-      return pick(
-        [
-          `Equipa do grupo dos primeiros lugares: competem bem os momentos decisivos. Sem bola, bloco curto e eixo fechado; com bola, circulação paciente e mudanças de ritmo para não lhes dar conforto.`,
-          `Referência na parte alta da tabela: sabem ganhar mesmo sem dominar sempre. Exige disciplina e transições bem escolhidas — manter o jogo empatado até ao fim aumenta a pressão sobre eles.`,
-        ],
-        seed,
-        10
-      );
-    case "attacking":
-      return pick(
-        [
-          `Entre as equipas com mais golos marcados na tabela: perfil perigoso em volume. Organização sem bola, coberturas às costas e evitar o jogo completamente aberto cedo.`,
-          `Linha ofensiva forte nos números agregados: controla o caos, fecha o meio e escolhe o momento de acelerar.`,
-        ],
-        seed,
-        11
-      );
-    case "mid_balanced":
-      return pick(
-        [
-          "Meio da tabela: organização para competir com quase todos. Impõe personalidade cedo, ganha segundas bolas e troca o jogo de flanco para os tirar da zona de conforto.",
-          "Perfil equilibrado na classificação: não costumam facilitar — o jogo decide-se em duelos e em detalhe.",
-        ],
-        seed,
-        12
-      );
-    case "defensive_block":
-      return pick(
-        [
-          `Entre as defesas que menos sofrem na tabela: paciência com bola, largura, circulação até abrir linha e remates com critério. Depois de perder, equilíbrio imediato.`,
-          `Bloco cuidadoso nos totais de GS: ritmo mais lento e muitas situações fechadas — força o desgaste sem te precipitares.`,
-        ],
-        seed,
-        13
-      );
-    case "table_bottom":
-      return pick(
-        [
-          "Entre os lugares com menos pontos: urgência e entrega costumam subir — seriedade competitiva, intensidade e simplicidade com bola.",
-          "Equipa em luta na parte baixa: evita confusão emocional e não regales transições baratas.",
-        ],
-        seed,
-        14
-      );
-    case "physical_direct":
-      return pick(
-        [
-          `Perfil de jogo mais físico/directo (GM e GS moderados e próximos entre si): ganhar primeira e segunda bola, reduzir faltas laterais perigosas e fazer a bola correr no chão.`,
-          "Transições e duelos: antecipa o jogo partido e protege os lances de segunda jogada.",
-        ],
-        seed,
-        15
-      );
-    case "technical_possession":
-      return pick(
-        [
-          `Entre as melhores diferenças de golos na tabela: leitura e eficácia acima da média. Fecha o corredor central, pressiona em momentos escolhidos e, na recuperação, ataca espaço com velocidade.`,
-          "Equipa com saldo ofensivo muito positivo nos dados agregados: cuidado com o controlo do ritmo e com o meio-alto.",
-        ],
-        seed,
-        16
-      );
-    default:
-      return "";
-  }
-}
-
-function relativeLevelChunk(level: RelativeLevel, seed: number): string {
-  switch (level) {
-    case "opponent_stronger":
-      return pick(
-        [
-          "Na tabela estão acima ou com melhor média de pontos: organização máxima, paciência e aproveitamento cirúrgico dos momentos a teu favor.",
-          "Contexto desfavorável no ‘papel’: madurez colectiva e poucos erros forçados.",
-        ],
-        seed,
-        20
-      );
-    case "opponent_weaker":
-      return pick(
-        [
-          "Nos números da competição, tens margem para impor ritmo e domínio emocional — resolve situações sem dar oxigénio ao adversário.",
-          "Leitura favorável na tabela ou nos pontos por jogo: intensidade e clareza para fechar o jogo.",
-        ],
-        seed,
-        21
-      );
-    default:
-      return pick(
-        [
-          "Forças parecidas no que a tabela e as médias mostram: ganham-se detalhes, segunda bola e a primeira meia hora.",
-          "Encontro equilibrado nos indicadores: consistência e personalidade fazem a diferença.",
-        ],
-        seed,
-        22
-      );
-  }
-}
-
 export function buildHowWeExpectOpponentNarrative(ctx: OpponentProfileContext, fixture: MatchFixture): string {
-  const seed = dumbHash(`${fixture.kickoff}|expect|${ctx.profileSummaryLine}`);
-  const oppAway = opponentPlaysAway(fixture);
-
+  const seed = ctx.narrativeSeed;
+  const oppVenue: ExpectVenue = opponentPlaysAway(fixture) ? "away" : "home";
+  const bucket = rankBucket(ctx.oppRank, ctx.totalTeams);
   const parts: string[] = [];
 
-  parts.push(
-    pick(
-      [
-        oppAway
-          ? `Neste jogo eles jogam fora de casa — foca o que esse contexto costuma alterar (~${ctx.themGpg.toFixed(2)} GM/jogo, ~${ctx.themGcpg.toFixed(2)} GS/jogo nos dados recentes).`
-          : `Neste jogo eles jogam em casa — antecipa o que o factor do reduto costuma acrescentar (~${ctx.themGpg.toFixed(2)} GM/jogo, ~${ctx.themGcpg.toFixed(2)} GS/jogo nos dados recentes).`,
-        oppAway
-          ? `Adversário em deslocação: leitura com base no perfil e nos números importados (~${ctx.themGpg.toFixed(2)} a favor, ~${ctx.themGcpg.toFixed(2)} contra).`
-          : `Adversário no próprio estádio: comportamento esperado à luz do perfil e dos dados (~${ctx.themGpg.toFixed(2)} GM, ~${ctx.themGcpg.toFixed(2)} GS).`,
-      ],
-      seed,
-      30
-    )
-  );
+  const venueNote = opponentPlaysAway(fixture)
+    ? pickVariant(
+        [
+          "Neste jogo disputam fora do seu reduto — antecipa o comportamento típico de visitante.",
+          "Condição de visitantes: o factor casa não está do lado deles; lê bem o arranque.",
+          "Jogam como equipa visitante: menos tempo com bola em alguns momentos, mais gestão do risco.",
+        ],
+        seed,
+        300
+      )
+    : pickVariant(
+        [
+          "Neste jogo atuam em casa, com o apoio e o factor estádio a favor.",
+          "No próprio terreno: mais iniciativa e pressão em determinados momentos.",
+          "Condição de anfitriões: procuram impor o seu ritmo e explorar o último terço.",
+        ],
+        seed,
+        301
+      );
 
+  parts.push(fillNarrativeTemplate(pickVariant(EXPECT_OPENERS, seed, 302), ctx) + " " + venueNote);
+
+  let j = 0;
   for (const a of ctx.archetypes.slice(0, 3)) {
-    const line = expectChunkForArchetype(a, oppAway, ctx, seed + a.length * 19);
+    const line = expectArchetypeLine(a, ctx, oppVenue, bucket, seed, j);
     if (line.trim()) parts.push(line);
+    j += 1;
   }
 
-  parts.push(
-    pick(
-      [
-        "Durante o jogo: se pressionarem alto, valoriza as costas; se baixarem o bloco, entra paciência e largura.",
-        "Ajusta ao vivo: pressão alta pede saída limpa; bloco baixo pede circulação e bola parada bem ensaiada.",
-      ],
-      seed,
-      31
-    )
-  );
+  parts.push(pickVariant(TACTIC_CLOSE_EXPECT, seed ^ 0xcafebabe, 303));
 
   return dedupeSentences(parts.join(" "));
 }
 
-/** Só a parte do guia que corresponde a adversário fora OU adversário em casa. */
-function expectChunkForArchetype(
-  a: OpponentArchetype,
-  opponentPlaysAway: boolean,
-  ctx: OpponentProfileContext,
-  seed: number
-): string {
-  switch (a) {
-    case "table_top":
-      return opponentPlaysAway
-        ? pick(
-            [
-              "Equipa de topo em deslocação: mais pragmatismo, menos exposição, decisões calculadas e foco no resultado parcial.",
-              "Fora, este tipo de equipa costuma gerir melhor o risco e o relógio emocional.",
-            ],
-            seed,
-            40
-          )
-        : pick(
-            [
-              "No próprio reduto, equipa de topo entra forte, procura o primeiro golo e tenta controlar o ritmo; castiga erros e cresce com o apoio.",
-              "Em casa, espera pressão alta no arranque e intensidade para marcar cedo.",
-            ],
-            seed,
-            41
-          );
-    case "attacking":
-      return opponentPlaysAway
-        ? pick(
-            [
-              "Equipa muito ofensiva fora: continua perigosa, mas costuma deixar um pouco mais de espaço atrás — atenção às transições.",
-              "Em deslocação, ainda atacam em volume, com um pouco menos de gente fixa no último terço.",
-            ],
-            seed,
-            42
-          )
-        : pick(
-            [
-              "Em casa, equipa muito ofensiva: pressão alta, entrada agressiva e muitos jogadores em zonas de finalização.",
-              "No seu estádio, espera jogo aberto e intensidade na recuperação.",
-            ],
-            seed,
-            43
-          );
-    case "mid_balanced":
-      return opponentPlaysAway
-        ? pick(
-            [
-              "Meio da tabela fora: mais cautela, menos exposição e maior dependência do erro adversário.",
-              "Em deslocação, equipa equilibrada costuma fechar um pouco mais e gerir o resultado.",
-            ],
-            seed,
-            44
-          )
-        : pick(
-            [
-              "Meio da tabela em casa: intensidade alta no duelo, ritmo competitivo e vontade de impor o jogo.",
-              "No reduto, espera-se equipa incómoda e agressiva na primeira bola.",
-            ],
-            seed,
-            45
-          );
-    case "defensive_block":
-      return opponentPlaysAway
-        ? pick(
-            [
-              `Bloco defensivo fora: ainda mais fechados — um ponto já os pode satisfazer (~${ctx.themGcpg.toFixed(2)} GS/jogo nos dados recentes).`,
-              "Em deslocação, linhas muito juntas e ritmo lento para tirar tempo ao relógio.",
-            ],
-            seed,
-            46
-          )
-        : pick(
-            [
-              `Em casa, bloco baixo: linhas juntas, ritmo controlado e muitas situações de bola parada (~${ctx.themGcpg.toFixed(2)} GS/jogo).`,
-              "No seu terreno, priorizam não sofrer e esperar o momento de transição.",
-            ],
-            seed,
-            47
-          );
-    case "table_bottom":
-      return opponentPlaysAway
-        ? pick(
-            [
-              "Parte baixa da tabela fora: bloco mais baixo, jogo mais directo e pragmatismo extremo.",
-              "Em deslocação, equipa em luta costuma fechar e apostar no pouco que precisa.",
-            ],
-            seed,
-            48
-          )
-        : pick(
-            [
-              "Parte baixa em casa: entrada agressiva, muito duelo e emoção alta para levantar o público.",
-              "No reduto, espera urgência e entrega máxima desde o apito inicial.",
-            ],
-            seed,
-            49
-          );
-    case "physical_direct":
-      return opponentPlaysAway
-        ? pick(
-            [
-              "Jogo físico fora: ainda directo, mas por vezes com menos corredor para segunda bola longa.",
-              "Em deslocação, continuam fortes no contacto — atenção aos duelos e às segundas bolas.",
-            ],
-            seed,
-            50
-          )
-        : pick(
-            [
-              "Em casa, perfil físico: bola longa, segunda bola e cruzamentos com muitos corpos na área.",
-              "No estádio deles, espera contacto constante e jogo directo.",
-            ],
-            seed,
-            51
-          );
-    case "technical_possession":
-      return opponentPlaysAway
-        ? pick(
-            [
-              "Equipa técnica fora: circulação ainda boa, mas menos tempo com bola e mais transições longas.",
-              "Em deslocação, procuram espaços interiores com menos gente por perto.",
-            ],
-            seed,
-            52
-          )
-        : pick(
-            [
-              "Em casa, equipa técnica: circular muito, atrair pressão e procurar linha entrelinhas.",
-              "No reduto, querem controlo do ritmo e domínio posicional.",
-            ],
-            seed,
-            53
-          );
-    default:
-      return "";
-  }
-}
-
 function dedupeSentences(text: string): string {
-  const parts = text
-    .split(/(?<=[.!?])\s+/)
-    .map((s) => s.trim())
-    .filter(Boolean);
+  const split = text.split(/(?<=[.!?])\s+/);
+  const parts = split.map((s) => s.trim()).filter(Boolean);
   const seen = new Set<string>();
   const out: string[] = [];
   for (const p of parts) {
-    const key = p.slice(0, 52);
+    const key = p.slice(0, 88);
     if (seen.has(key)) continue;
     seen.add(key);
     out.push(p);
