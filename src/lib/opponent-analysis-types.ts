@@ -35,6 +35,10 @@ export type OpponentAnalysisAiResult = {
   goalsAgainstTrend: string;
   howWeShouldApproach: string;
   howWeExpectOpponent: string;
+  /** Linha única com posição, pontos e golos na classificação importada (adversário). */
+  opponentLeagueStandingLine?: string;
+  /** Texto com os últimos jogos disputados do adversário (ex.: últimos 5 com resultado). */
+  opponentLastFiveSummary?: string;
   recommendedFormation: string;
   formationAndTacticRationale: string;
   startingXi: OpponentAnalysisXiPlayer[];

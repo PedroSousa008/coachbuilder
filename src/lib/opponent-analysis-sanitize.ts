@@ -46,6 +46,14 @@ export function sanitizeOpponentAnalysisResult(
     typeof o.howWeShouldApproach === "string" ? o.howWeShouldApproach : "Pressing organizado e transições rápidas após recuperação.";
   const howWeExpectOpponent =
     typeof o.howWeExpectOpponent === "string" ? o.howWeExpectOpponent : "Saída em bloco médio e procura de espaços nas costas.";
+  const opponentLeagueStandingLine =
+    typeof o.opponentLeagueStandingLine === "string" && o.opponentLeagueStandingLine.trim()
+      ? o.opponentLeagueStandingLine.trim()
+      : undefined;
+  const opponentLastFiveSummary =
+    typeof o.opponentLastFiveSummary === "string" && o.opponentLastFiveSummary.trim()
+      ? o.opponentLastFiveSummary.trim()
+      : undefined;
   const recommendedFormation = typeof o.recommendedFormation === "string" ? o.recommendedFormation : "4-3-3";
   const formationAndTacticRationale =
     typeof o.formationAndTacticRationale === "string"
@@ -133,6 +141,8 @@ export function sanitizeOpponentAnalysisResult(
     goalsAgainstTrend,
     howWeShouldApproach,
     howWeExpectOpponent,
+    opponentLeagueStandingLine,
+    opponentLastFiveSummary,
     recommendedFormation,
     formationAndTacticRationale,
     startingXi,

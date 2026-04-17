@@ -1,4 +1,4 @@
-import type { MatchFixture, Position } from "@/types";
+import type { LeagueTableRow, MatchFixture, Position } from "@/types";
 import type {
   OpponentAnalysisAiResult,
   OpponentAnalysisRolePick,
@@ -6,6 +6,7 @@ import type {
 } from "@/lib/opponent-analysis-types";
 import type { SerializedPlayerForAi } from "@/lib/opponent-analysis-context";
 import { heuristicPlayerStrength } from "@/lib/opponent-analysis-context";
+import { normalizeTeamLabel, pickBestTeamMatch, teamNameSimilarity } from "@/lib/team-match";
 
 function norm(s: string): string {
   return s
@@ -50,6 +51,51 @@ function formLetters(matches: MiniMatch[], team: string, max = 6): string {
     if (letters.length >= max) break;
   }
   return letters.length ? letters.join("-") : "—";
+}
+
+function officialOpponentLabel(fixtureOpponent: string, rows: LeagueTableRow[], leagueMatchesTheirs: MiniMatch[]): string {
+  const fromRows = rows.map((r) => r.team).filter(Boolean);
+  const fromMatches: string[] = [];
+  for (const m of leagueMatchesTheirs) {
+    if (m.homeTeam.trim()) fromMatches.push(m.homeTeam.trim());
+    if (m.awayTeam.trim()) fromMatches.push(m.awayTeam.trim());
+  }
+  const candidates = [...new Set([...fromRows, ...fromMatches])];
+  if (candidates.length === 0) return fixtureOpponent.trim();
+  return pickBestTeamMatch(fixtureOpponent, candidates)?.name ?? fixtureOpponent.trim();
+}
+
+function pickOpponentTableRow(rows: LeagueTableRow[], officialOpp: string): LeagueTableRow | null {
+  const o = normalizeTeamLabel(officialOpp);
+  const exact = rows.find((r) => normalizeTeamLabel(r.team) === o);
+  if (exact) return exact;
+  let best: LeagueTableRow | null = null;
+  let bestS = 0;
+  for (const r of rows) {
+    const s = teamNameSimilarity(r.team, officialOpp);
+    if (s > bestS) {
+      bestS = s;
+      best = r;
+    }
+  }
+  return bestS >= 0.55 ? best : null;
+}
+
+function formatStandingLine(row: LeagueTableRow): string {
+  const bits: string[] = [];
+  bits.push(`${row.team} está em ${row.position}º`);
+  if (row.points != null) bits.push(`${row.points} pontos`);
+  if (row.played != null) bits.push(`em ${row.played} jogos`);
+  if (row.won != null && row.drawn != null && row.lost != null) bits.push(`(${row.won}V ${row.drawn}E ${row.lost}D)`);
+  if (row.goalsFor != null && row.goalsAgainst != null) {
+    const gd =
+      row.goalDifference != null
+        ? row.goalDifference
+        : Math.round(row.goalsFor - row.goalsAgainst);
+    const gds = gd > 0 ? `+${gd}` : `${gd}`;
+    bits.push(`golos ${row.goalsFor}-${row.goalsAgainst}, dif. ${gds}`);
+  }
+  return bits.join(", ") + ".";
 }
 
 function aggregate(team: string, matches: MiniMatch[]) {
@@ -189,6 +235,7 @@ export type OpponentAnalysisBuildInput = {
     lost?: number;
     goalsFor?: number;
     goalsAgainst?: number;
+    goalDifference?: number;
     points?: number;
   }>;
   leagueMatchesOurs: MiniMatch[];
@@ -207,6 +254,41 @@ export function buildDeterministicOpponentAnalysis(input: OpponentAnalysisBuildI
     tacticMatchesRecent,
   } = input;
   const opp = fixture.opponent;
+  const officialOpp = officialOpponentLabel(opp, input.leagueRowsSample, leagueMatchesTheirs);
+  const oppTableRow = pickOpponentTableRow(input.leagueRowsSample, officialOpp);
+  const opponentLeagueStandingLine = oppTableRow ? formatStandingLine(oppTableRow) : undefined;
+
+  const completedTheirs = [...leagueMatchesTheirs]
+    .filter(
+      (m) =>
+        m.homeScore != null &&
+        m.awayScore != null &&
+        !Number.isNaN(Date.parse(m.kickoff))
+    )
+    .sort((a, b) => Date.parse(b.kickoff) - Date.parse(a.kickoff))
+    .slice(0, 5);
+
+  const last5DetailLines: string[] = [];
+  const last5Letters: string[] = [];
+  for (const m of completedTheirs) {
+    const simHome = teamNameSimilarity(m.homeTeam, officialOpp);
+    const simAway = teamNameSimilarity(m.awayTeam, officialOpp);
+    const atHome = simHome >= simAway;
+    const other = atHome ? m.awayTeam : m.homeTeam;
+    const gf = atHome ? m.homeScore! : m.awayScore!;
+    const ga = atHome ? m.awayScore! : m.homeScore!;
+    const letter = gf > ga ? "V" : gf < ga ? "D" : "E";
+    last5Letters.push(letter);
+    const loc = atHome ? "Casa" : "Fora";
+    const d = new Date(m.kickoff).toLocaleDateString("pt-PT", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+    last5DetailLines.push(`${loc} vs ${other} · ${gf}-${ga} · ${letter} (${d})`);
+  }
+  const opponentLastFiveSummary =
+    last5DetailLines.length > 0 ? last5DetailLines.join("\n") : undefined;
 
   const us = aggregate(coachClub, leagueMatchesOurs);
   const them = aggregate(opp, leagueMatchesTheirs);
@@ -230,10 +312,15 @@ export function buildDeterministicOpponentAnalysis(input: OpponentAnalysisBuildI
   const ourForm = formLetters(leagueMatchesOurs, coachClub, 6);
   const theirForm = formLetters(leagueMatchesTheirs, opp, 6);
 
+  const last5FormClause =
+    last5Letters.length > 0
+      ? ` Últimos ${last5Letters.length} resultados importados (mais recente primeiro): ${last5Letters.join("-")}.`
+      : "";
+
   const opponentRecentSummary =
     them.n > 0
-      ? `Últimos ${them.n} jogos com resultado: média de ${them.gpg.toFixed(2)} golos marcados e ${them.gcpg.toFixed(2)} sofridos por jogo. Forma (mais recente primeiro): ${theirForm}.`
-      : "Sem jogos importados recentes para o adversário nesta app — reforça a importação da liga ou regista jogos na equipa.";
+      ? `Últimos ${them.n} jogos com resultado: média de ${them.gpg.toFixed(2)} golos marcados e ${them.gcpg.toFixed(2)} sofridos por jogo. Forma (amostra mais larga na app, mais recente primeiro): ${theirForm}.${last5FormClause}`
+      : `Sem jogos importados recentes para o adversário nesta app — reforça a importação da liga ou regista jogos na equipa.${last5FormClause}`;
 
   const ourRecentSummary =
     us.n > 0
@@ -274,7 +361,12 @@ export function buildDeterministicOpponentAnalysis(input: OpponentAnalysisBuildI
   const venuePt = fixture.venue === "home" ? "em casa" : "fora";
   const howWeShouldApproach = `Objectivo: aproveitar ${venuePt}. Com média ofensiva ${us.gpg.toFixed(2)} golos/jogo e defensiva ${us.gcpg.toFixed(2)} sofridos/jogo nos dados importados, equilibrar bloco e transição: se ${them.gpg.toFixed(2)} golos/jogo do adversário for alto, fecha mais o interior e força saídas limpas; se for baixo, acelera mudanças de corredor para criar superioridades. Usa os cantos e bolas paradas como arma (dados internos da equipa).`;
 
-  const howWeExpectOpponent = `Antecipação com base nos números da app: adversário com ~${them.gpg.toFixed(2)} golos marcados e ~${them.gcpg.toFixed(2)} sofridos por jogo (${theirForm}). Espera-se que procurem o equilíbrio entre segurança e momentos de transição rápida, especialmente ${fixture.venue === "home" ? "se fecharem por períodos fora de portas" : "se aproveitarem o factor casa para assumirem iniciativa em altura de pressão."}.`;
+  const standingClause = opponentLeagueStandingLine ? ` ${opponentLeagueStandingLine}` : "";
+  const form5Clause =
+    last5Letters.length > 0
+      ? ` Forma recente (últimos ${last5Letters.length} com resultado na importação): ${last5Letters.join("-")}.`
+      : "";
+  const howWeExpectOpponent = `Antecipação com base nos números da app: adversário com ~${them.gpg.toFixed(2)} golos marcados e ~${them.gcpg.toFixed(2)} sofridos por jogo (${theirForm}).${standingClause}${form5Clause} Espera-se equilíbrio entre segurança e transição rápida, especialmente ${fixture.venue === "home" ? "se fecharem por períodos fora de portas" : "se aproveitarem o factor casa para assumirem iniciativa em altura de pressão."}.`;
 
   const { xi, notes: xiNotes } = buildStartingXi(availablePlayers);
   const benchNames = availablePlayers
@@ -338,6 +430,8 @@ export function buildDeterministicOpponentAnalysis(input: OpponentAnalysisBuildI
     goalsAgainstTrend,
     howWeShouldApproach,
     howWeExpectOpponent,
+    opponentLeagueStandingLine,
+    opponentLastFiveSummary,
     recommendedFormation,
     formationAndTacticRationale,
     startingXi: xi,

@@ -39,6 +39,7 @@ type RequestBody = {
     lost?: number;
     goalsFor?: number;
     goalsAgainst?: number;
+    goalDifference?: number;
     points?: number;
   }>;
   leagueMatchesOurs: Array<{
@@ -81,8 +82,8 @@ export async function POST(req: Request) {
     tacticsSummarized: body.tacticsSummarized?.slice(0, 24) ?? [],
     tacticMatchesRecent: body.tacticMatchesRecent?.slice(0, 40) ?? [],
     leagueRowsSample: body.leagueRowsSample?.slice(0, 24) ?? [],
-    leagueMatchesOurs: body.leagueMatchesOurs?.slice(0, 18) ?? [],
-    leagueMatchesTheirs: body.leagueMatchesTheirs?.slice(0, 18) ?? [],
+    leagueMatchesOurs: body.leagueMatchesOurs?.slice(0, 28) ?? [],
+    leagueMatchesTheirs: body.leagueMatchesTheirs?.slice(0, 40) ?? [],
     competitionName: body.competitionName,
   };
 

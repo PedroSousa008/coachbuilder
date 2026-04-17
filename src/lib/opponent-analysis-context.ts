@@ -1,4 +1,6 @@
 import type { CoachProfileState, LeagueImportedMatch, LeagueTableRow, MatchFixture, Player } from "@/types";
+import { calendarDayLisbon, isImportedMatchUpcoming, isKickoffInFuture } from "@/lib/lisbon-date";
+import { teamNameSimilarity, userClubMatchesOfficialTeam } from "@/lib/team-match";
 
 export function upcomingFixturesSorted(fixtures: MatchFixture[]): MatchFixture[] {
   const t0 = Date.now() - 36 * 60 * 60 * 1000;
@@ -8,6 +10,66 @@ export function upcomingFixturesSorted(fixtures: MatchFixture[]): MatchFixture[]
       return !Number.isNaN(t) && t >= t0;
     })
     .sort((a, b) => Date.parse(a.kickoff) - Date.parse(b.kickoff));
+}
+
+/**
+ * Próximos jogos para análise de adversário: junta jogos manuais com jogos futuros importados da liga
+ * em que o clube do treinador participa (mesma lógica que o Calendário / “Next Game”).
+ */
+export function mergedUpcomingFixturesForCoach(args: {
+  manualFixtures: MatchFixture[];
+  leagueMatches: LeagueImportedMatch[];
+  coachClub: string;
+  coachClubCanonical?: string | null;
+  teamCandidateNames: string[];
+  leagueCompetitionName: string | null;
+  nowMs: number;
+}): MatchFixture[] {
+  const club = (args.coachClubCanonical?.trim() || args.coachClub.trim());
+  const comp = (args.leagueCompetitionName ?? "").trim() || "Competição";
+  const names = args.teamCandidateNames;
+
+  type Cand = MatchFixture & { t: number };
+  const cands: Cand[] = [];
+
+  for (const f of args.manualFixtures) {
+    if (!isKickoffInFuture(f.kickoff, args.nowMs)) continue;
+    const t = new Date(f.kickoff).getTime();
+    if (!Number.isFinite(t)) continue;
+    cands.push({ ...f, t });
+  }
+
+  const manualForDedup = cands.map(({ t: _t, ...rest }) => rest);
+
+  if (club.length > 0) {
+    for (const m of args.leagueMatches) {
+      if (!isImportedMatchUpcoming(m, args.nowMs)) continue;
+      const homeHit = userClubMatchesOfficialTeam(club, m.homeTeam, names);
+      const awayHit = userClubMatchesOfficialTeam(club, m.awayTeam, names);
+      if (!homeHit && !awayHit) continue;
+      const venue: "home" | "away" = homeHit ? "home" : "away";
+      const opponent = homeHit ? m.awayTeam : m.homeTeam;
+      const dup = manualForDedup.some(
+        (f) =>
+          calendarDayLisbon(f.kickoff) === calendarDayLisbon(m.kickoff) &&
+          teamNameSimilarity(f.opponent, opponent) >= 0.82
+      );
+      if (dup) continue;
+      const t = new Date(m.kickoff).getTime();
+      if (!Number.isFinite(t)) continue;
+      cands.push({
+        id: `league-import:${m.id}`,
+        opponent,
+        competition: comp,
+        kickoff: m.kickoff,
+        venue,
+        t,
+      });
+    }
+  }
+
+  cands.sort((a, b) => a.t - b.t);
+  return cands.map(({ t: _t, ...rest }) => rest);
 }
 
 function norm(s: string): string {

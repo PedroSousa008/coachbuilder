@@ -25,6 +25,13 @@ function roleBlock(title: string, r: { playerName: string; rationale: string } |
   return `<p><strong>${esc(title)}:</strong> ${esc(r.playerName)}. <span class="muted">${esc(r.rationale)}</span></p>`;
 }
 
+function escLines(s: string): string {
+  return s
+    .split("\n")
+    .map((line) => esc(line))
+    .join("<br/>");
+}
+
 export function buildOpponentAnalysisDocumentHtml(params: {
   ourClub: string;
   fixture: MatchFixture;
@@ -72,6 +79,17 @@ export function buildOpponentAnalysisDocumentHtml(params: {
   <div class="box">
     <p><strong>Nós:</strong> ${esc(analysis.ourRecentSummary)}</p>
   </div>
+
+  ${
+    analysis.opponentLeagueStandingLine
+      ? `<h2>Classificação na liga (adversário)</h2><div class="box"><p>${esc(analysis.opponentLeagueStandingLine)}</p></div>`
+      : ""
+  }
+  ${
+    analysis.opponentLastFiveSummary
+      ? `<h2>Últimos jogos do adversário (importados)</h2><div class="box"><p>${escLines(analysis.opponentLastFiveSummary)}</p><p class="muted" style="margin-top:8px;margin-bottom:0">Ordem: do mais recente para o mais antigo. V/E/D na perspectiva do adversário.</p></div>`
+      : ""
+  }
 
   <h2>Abordagem ao jogo</h2>
   <p><strong>O que propomos fazer:</strong> ${esc(analysis.howWeShouldApproach)}</p>

@@ -11,12 +11,14 @@ import { formationDisplayLabel } from "@/data/formations";
 import { tallyForTactic } from "@/lib/tactics-match-stats";
 import {
   coachClubLabel,
+  mergedUpcomingFixturesForCoach,
   recentLeagueMatchesForTeams,
   serializePlayersForAi,
   tableRowsForTeams,
-  upcomingFixturesSorted,
 } from "@/lib/opponent-analysis-context";
 import { openPrintableHtml } from "@/lib/training-print-html";
+import { useScheduleNow } from "@/hooks/useScheduleNow";
+import { collectUniqueTeamNames, pickBestTeamMatch } from "@/lib/team-match";
 
 export function SketchOpponentAnalysisPanel() {
   const {
@@ -30,7 +32,32 @@ export function SketchOpponentAnalysisPanel() {
     leagueCompetitionName,
   } = useAppData();
 
-  const upcoming = useMemo(() => upcomingFixturesSorted(fixtures), [fixtures]);
+  const nowMs = useScheduleNow();
+
+  const teamCandidateNames = useMemo(
+    () => collectUniqueTeamNames({ tableRows: leagueTableRows, matches: leagueMatches }),
+    [leagueTableRows, leagueMatches]
+  );
+
+  const canonicalClub = useMemo(() => {
+    const c = coachProfile.club.trim();
+    if (!c || teamCandidateNames.length === 0) return null;
+    return pickBestTeamMatch(c, teamCandidateNames);
+  }, [coachProfile.club, teamCandidateNames]);
+
+  const upcoming = useMemo(
+    () =>
+      mergedUpcomingFixturesForCoach({
+        manualFixtures: fixtures,
+        leagueMatches,
+        coachClub: coachProfile.club,
+        coachClubCanonical: canonicalClub?.name ?? null,
+        teamCandidateNames,
+        leagueCompetitionName,
+        nowMs,
+      }),
+    [fixtures, leagueMatches, coachProfile.club, canonicalClub?.name, teamCandidateNames, leagueCompetitionName, nowMs]
+  );
   const [fixtureId, setFixtureId] = useState<string>("");
 
   useEffect(() => {
@@ -102,7 +129,7 @@ export function SketchOpponentAnalysisPanel() {
           opponentGoals: m.opponentGoals,
         };
       });
-    const { ours, theirs } = recentLeagueMatchesForTeams(leagueMatches, club, selectedFixture.opponent, 14);
+    const { ours, theirs } = recentLeagueMatchesForTeams(leagueMatches, club, selectedFixture.opponent, 24);
     const leagueRowsSample = tableRowsForTeams(leagueTableRows, club, selectedFixture.opponent).slice(0, 20);
 
     return {
@@ -184,12 +211,12 @@ export function SketchOpponentAnalysisPanel() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
             <Sparkles className="h-5 w-5 text-accent" strokeWidth={1.75} />
-            Análise Adversário AI
+            Análise de Adversário
           </CardTitle>
           <p className="text-sm text-zinc-500">
             Gera um documento para impressão / PDF com probabilidade de vitória, tendência de golos, plano de jogo, 11
             sugerido e papéis (capitão, penáltis, …). Os jogadores <strong>não</strong> marcados como disponíveis ficam
-            de fora da análise; a IA usa as qualidades individuais para alternativas quando faz sentido.
+            de fora da análise; o motor local usa as qualidades individuais para alternativas quando faz sentido.
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -204,11 +231,16 @@ export function SketchOpponentAnalysisPanel() {
           ) : null}
           {upcoming.length === 0 ? (
             <p className="text-sm text-amber-200/90">
-              Não há jogos futuros na lista de calendário. Adiciona o próximo adversário em{" "}
+              Não há próximos jogos detectados. Confirma o <strong>nome do clube</strong> no Perfil (deve coincidir com a
+              classificação importada), actualiza o URL da liga em{" "}
+              <Link className="underline hover:text-white" href="/app/calendar">
+                Calendário
+              </Link>
+              , ou adiciona um jogo manual em{" "}
               <Link className="underline hover:text-white" href="/app/team">
                 Equipa
-              </Link>{" "}
-              (jogos) ou cria um evento ligado a um jogo no Sketch Calendar.
+              </Link>
+              . Os jogos futuros vindos da importação da liga passam a aparecer aqui automaticamente.
             </p>
           ) : (
             <div className="space-y-2">
