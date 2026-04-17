@@ -1,4 +1,6 @@
-import type { LeagueTableRow, MatchFixture, Position } from "@/types";
+import type { FormationId, LeagueTableRow, MatchFixture, PlayerQualities, Position } from "@/types";
+import { FORMATION_LAYOUTS } from "@/data/formations";
+import { computePositionFocusedOverall } from "@/lib/player-insights";
 import type {
   OpponentAnalysisAiResult,
   OpponentAnalysisRolePick,
@@ -122,116 +124,229 @@ function rolePick(p: SerializedPlayerForAi, rationale: string): OpponentAnalysis
   return { playerId: p.id, playerName: p.name, rationale };
 }
 
-/**
- * 4-3-3: eixo defensivo primeiro (dois centrais antes dos laterais) para o par CB reflectir melhor a qualidade global,
- * depois médios e linha da frente.
- */
-const XI_SLOTS: { role: Position; label: string }[] = [
-  { role: "GK", label: "Guarda-redes" },
-  { role: "CB", label: "Defesa central (Esq.)" },
-  { role: "CB", label: "Defesa central (Dto.)" },
-  { role: "LB", label: "Lateral esquerdo" },
-  { role: "RB", label: "Lateral direito" },
-  { role: "CM", label: "Médio esquerdo" },
-  { role: "CM", label: "Médio centro" },
-  { role: "CM", label: "Médio direito" },
-  { role: "LW", label: "Extremo esquerdo" },
-  { role: "RW", label: "Extremo direito" },
-  { role: "ST", label: "Avançado" },
-];
+const ROLE_PT: Record<Position, string> = {
+  GK: "Guarda-redes",
+  CB: "Defesa central",
+  LB: "Lateral esquerdo",
+  RB: "Lateral direito",
+  CDM: "Médio defensivo",
+  CM: "Médio",
+  CAM: "Médio ofensivo",
+  LW: "Extremo esquerdo",
+  RW: "Extremo direito",
+  ST: "Avançado",
+};
 
-/** 22–100: encaixe tático; linha defensiva com trocas CB/LB/RB mais realistas. */
-function positionFit(playerPos: string, slot: Position): number {
-  const p = playerPos as Position;
-  if (p === slot) return 100;
-  if (slot === "CM" && (p === "CDM" || p === "CAM")) return 76;
-  if (slot === "CAM" && (p === "CM" || p === "CDM")) return 72;
-  if (slot === "CB" && p === "CDM") return 54;
-  if (slot === "CB" && (p === "LB" || p === "RB")) return 58;
-  if ((slot === "LB" || slot === "RB") && p === "CB") return 56;
-  if (slot === "LB" && p === "RB") return 34;
-  if (slot === "RB" && p === "LB") return 34;
-  if ((slot === "LB" || slot === "RB") && p === "CDM") return 46;
-  if ((slot === "LW" || slot === "RW") && (p === "CAM" || p === "ST")) return 62;
-  if ((slot === "LW" || slot === "RW") && (p === "LW" || p === "RW") && p !== slot) return 52;
-  if (slot === "ST" && (p === "CAM" || p === "LW" || p === "RW")) return 64;
-  if ((slot === "LB" || slot === "RB") && p === "CM") return 38;
-  return 22;
+const FORMATION_LABEL_TO_POSITION: Record<string, Position> = {
+  GK: "GK",
+  CB: "CB",
+  LB: "LB",
+  RB: "RB",
+  CDM: "CDM",
+  CM: "CM",
+  CAM: "CAM",
+  LW: "LW",
+  RW: "RW",
+  ST: "ST",
+  LM: "LW",
+  RM: "RW",
+  LWB: "LB",
+  RWB: "RB",
+  DM: "CDM",
+  CF: "ST",
+};
+
+function formationLabelToPosition(label: string): Position | null {
+  return FORMATION_LABEL_TO_POSITION[label] ?? null;
 }
 
-/** Mistura encaixe (36%) com qualidade global média das qualidades (64%) — excepto GR (tratado à parte). */
-function xiSlotScore(p: SerializedPlayerForAi, slot: Position): number {
-  const fit = positionFit(p.position, slot);
-  const str = heuristicPlayerStrength(p);
-  return fit * 0.36 + str * 0.64;
+type OppAgg = { gcpg: number; gpg: number; n: number };
+
+function playerEligiblePositions(p: SerializedPlayerForAi): Position[] {
+  return p.eligiblePositions?.length ? p.eligiblePositions : [p.position as Position];
 }
 
-function buildStartingXi(players: SerializedPlayerForAi[]): { xi: OpponentAnalysisXiPlayer[]; notes: string[] } {
-  const notes: string[] = [];
-  const used = new Set<string>();
-  const xi: OpponentAnalysisXiPlayer[] = [];
-  const pool = [...players];
+function eligibleForSlot(p: SerializedPlayerForAi, slotRole: Position): boolean {
+  return playerEligiblePositions(p).includes(slotRole);
+}
 
-  const hasGk = pool.some((p) => p.position === "GK");
-  if (!hasGk) notes.push("Não há GR entre os convocados: foi escolhido o jogador com melhor leitura defensiva como último recurso na posição de GR (rever manualmente).");
+/** 0–100: ajuste fino (20%) com base no perfil ofensivo/defensivo do adversário nos dados importados. */
+function opponentTweakScore(p: SerializedPlayerForAi, slot: Position, them: OppAgg): number {
+  if (them.n < 2) return 50;
+  const finishing = (q(p, "finishing") + q(p, "attackingPosition") + q(p, "shotPower")) / 3;
+  const passing = (q(p, "shortPass") + q(p, "longPass") + q(p, "vision") + q(p, "ballControl")) / 4;
+  const defending = (q(p, "defensiveAwareness") + q(p, "interceptions") + q(p, "standTackle") + q(p, "stamina") * 0.45) / 3.45;
+  const stingy = them.gcpg <= 0.95;
+  const prolific = them.gpg >= 1.65;
+  if (stingy && !prolific) {
+    if (slot === "ST" || slot === "CAM" || slot === "LW" || slot === "RW") return Math.min(100, Math.round(finishing));
+    return 48;
+  }
+  if (prolific && them.gcpg >= 0.85) {
+    if (slot === "CB" || slot === "LB" || slot === "RB" || slot === "CDM" || slot === "CM") return Math.min(100, Math.round(defending));
+    return 48;
+  }
+  if (slot === "CM" || slot === "CAM" || slot === "CDM") return Math.min(100, Math.round(passing));
+  if (slot === "LB" || slot === "RB") return Math.min(100, Math.round(passing * 0.65 + defending * 0.35));
+  return 50;
+}
 
-  for (const slot of XI_SLOTS) {
-    let best: SerializedPlayerForAi | null = null;
-    let bestScore = -1e9;
-    const candidates = pool.filter((p) => !used.has(p.id));
+function slotAssignmentScore(p: SerializedPlayerForAi, slotRole: Position, them: OppAgg): number {
+  const base = computePositionFocusedOverall(slotRole, p.qualities as Partial<PlayerQualities>);
+  const tw = opponentTweakScore(p, slotRole, them);
+  return 0.8 * base + 0.2 * tw;
+}
 
-    if (slot.role === "GK") {
-      const gkPool = hasGk ? candidates.filter((p) => p.position === "GK") : candidates;
-      for (const p of gkPool) {
-        let score: number;
-        if (p.position === "GK") {
-          score = 1000 + xiSlotScore(p, "GK");
-        } else {
-          score =
-            q(p, "defensiveAwareness") * 0.35 +
-            q(p, "reactions") * 0.25 +
-            heuristicPlayerStrength(p) * 0.15;
-        }
-        if (score > bestScore) {
-          bestScore = score;
-          best = p;
-        }
-      }
+function gkEmergencyScore(p: SerializedPlayerForAi): number {
+  return q(p, "defensiveAwareness") * 0.38 + q(p, "reactions") * 0.28 + heuristicPlayerStrength(p) * 0.2;
+}
+
+function formationSlotsFromLayout(formationId: FormationId): { role: Position; label: string }[] {
+  const layout =
+    FORMATION_LAYOUTS[formationId]?.length === 11 ? FORMATION_LAYOUTS[formationId]! : FORMATION_LAYOUTS["4-3-3"]!;
+  const out: { role: Position; label: string }[] = [];
+  let cbOrdinal = 0;
+  for (const cell of layout) {
+    const role = formationLabelToPosition(cell.label);
+    if (!role) continue;
+    let label: string;
+    if (role === "CB") {
+      cbOrdinal += 1;
+      label = cbOrdinal === 1 ? "CB (defesa central — esq.)" : "CB (defesa central — dto.)";
     } else {
-      for (const p of candidates) {
-        const score = xiSlotScore(p, slot.role);
-        if (score > bestScore) {
-          bestScore = score;
-          best = p;
-        }
+      label = `${cell.label} (${ROLE_PT[role]})`;
+    }
+    out.push({ role, label });
+  }
+  return out;
+}
+
+function pairScore(
+  p: SerializedPlayerForAi,
+  slotRole: Position,
+  them: OppAgg,
+  opts: { isGkSlot: boolean; anyGkAmongFree: boolean }
+): number {
+  if (opts.isGkSlot) {
+    if (eligibleForSlot(p, "GK")) return 8000 + slotAssignmentScore(p, "GK", them);
+    if (!opts.anyGkAmongFree) return gkEmergencyScore(p);
+    return -1e9;
+  }
+  if (eligibleForSlot(p, slotRole)) return slotAssignmentScore(p, slotRole, them);
+  return -1e9;
+}
+
+function pairScoreForced(p: SerializedPlayerForAi, slotRole: Position, them: OppAgg, isGk: boolean): number {
+  if (isGk) return eligibleForSlot(p, "GK") ? 8000 + slotAssignmentScore(p, "GK", them) : gkEmergencyScore(p);
+  return slotAssignmentScore(p, slotRole, them) * 0.2;
+}
+
+/**
+ * Onze: posições da formação da tática escolhida; só entram jogadores nas posições marcadas na ficha
+ * (80% overall focado na posição + 20% perfil do adversário). Atribuição por “lacuna” entre 1.º e 2.º
+ * candidato para desempates tipo vários CAM / alas.
+ */
+function buildStartingXi(players: SerializedPlayerForAi[], formationId: FormationId, them: OppAgg): { xi: OpponentAnalysisXiPlayer[]; notes: string[] } {
+  const notes: string[] = [];
+  const pool = [...players];
+  let slots = formationSlotsFromLayout(formationId);
+  if (slots.length !== 11) {
+    notes.push("Formação sem 11 posições na planta — usado 4-3-3 para montar o onze.");
+    slots = formationSlotsFromLayout("4-3-3");
+  }
+
+  const used = new Set<string>();
+  const bySlotIndex = new Map<number, OpponentAnalysisXiPlayer>();
+  const unassigned = new Set(slots.map((_, i) => i));
+
+  while (unassigned.size > 0) {
+    const free = pool.filter((p) => !used.has(p.id));
+    if (free.length === 0) break;
+
+    let pickSlot: number | null = null;
+    let pickPlayer: SerializedPlayerForAi | null = null;
+    let bestGap = -1;
+
+    for (const si of unassigned) {
+      const slot = slots[si]!;
+      const anyGk = free.some((p) => eligibleForSlot(p, "GK"));
+      const rows = free
+        .map((p) => ({
+          p,
+          s: pairScore(p, slot.role, them, { isGkSlot: slot.role === "GK", anyGkAmongFree: anyGk }),
+        }))
+        .filter((x) => x.s > -1e8)
+        .sort((a, b) => b.s - a.s);
+
+      const forced =
+        rows.length === 0
+          ? free
+              .map((p) => ({
+                p,
+                s: pairScoreForced(p, slot.role, them, slot.role === "GK"),
+              }))
+              .sort((a, b) => b.s - a.s)
+          : null;
+
+      const finalRows = forced ?? rows;
+      if (finalRows.length === 0) continue;
+      const top = finalRows[0]!;
+      const second = finalRows[1]?.s ?? top.s - 2000;
+      const gap = top.s - second;
+      if (gap > bestGap) {
+        bestGap = gap;
+        pickSlot = si;
+        pickPlayer = top.p;
       }
     }
 
-    if (!best) break;
-    used.add(best.id);
-    xi.push({
-      playerId: best.id,
-      playerName: best.name,
-      shirtNumber: best.number,
+    if (pickSlot == null || !pickPlayer) {
+      const si = [...unassigned][0]!;
+      const slot = slots[si]!;
+      const p = free.sort((a, b) => heuristicPlayerStrength(b) - heuristicPlayerStrength(a))[0]!;
+      used.add(p.id);
+      bySlotIndex.set(si, {
+        playerId: p.id,
+        playerName: p.name,
+        shirtNumber: p.number,
+        positionLabel: slot.label,
+        tacticalNotes: "Completação automática — rever posição na ficha ou convocados.",
+      });
+      unassigned.delete(si);
+      continue;
+    }
+
+    const slot = slots[pickSlot]!;
+    const eligible = eligibleForSlot(pickPlayer, slot.role);
+    used.add(pickPlayer.id);
+    bySlotIndex.set(pickSlot, {
+      playerId: pickPlayer.id,
+      playerName: pickPlayer.name,
+      shirtNumber: pickPlayer.number,
       positionLabel: slot.label,
-      tacticalNotes:
-        best.position === slot.role
-          ? undefined
-          : `Natural: ${best.position} — adaptação ao ${slot.label}.`,
+      tacticalNotes: eligible ? undefined : "Fora das posições assinaladas na ficha — ajustar manualmente se necessário.",
     });
+    unassigned.delete(pickSlot);
   }
+
+  let xi = [...bySlotIndex.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([, row]) => row);
 
   while (xi.length < 11 && pool.length > used.size) {
     const rest = pool.filter((p) => !used.has(p.id)).sort((a, b) => heuristicPlayerStrength(b) - heuristicPlayerStrength(a));
     const p = rest[0]!;
     used.add(p.id);
-    xi.push({
-      playerId: p.id,
-      playerName: p.name,
-      shirtNumber: p.number,
-      positionLabel: "Jogador de equiparação",
-      tacticalNotes: "Completa o onze por disponibilidade.",
-    });
+    xi = [
+      ...xi,
+      {
+        playerId: p.id,
+        playerName: p.name,
+        shirtNumber: p.number,
+        positionLabel: "Convocado extra",
+        tacticalNotes: "Completa o onze por disponibilidade.",
+      },
+    ];
   }
 
   return { xi, notes };
@@ -246,6 +361,7 @@ export type OpponentAnalysisBuildInput = {
     id: string;
     name: string;
     formation: string;
+    formationId?: FormationId;
     wins: number;
     draws: number;
     losses: number;
@@ -369,6 +485,8 @@ export function buildDeterministicOpponentAnalysis(input: OpponentAnalysisBuildI
   }
 
   const recommendedFormation = bestT?.formation ?? "4-3-3";
+  const lineupFormationId: FormationId =
+    bestT?.formationId && FORMATION_LAYOUTS[bestT.formationId]?.length === 11 ? bestT.formationId : "4-3-3";
   const recentTacticLine =
     tacticMatchesRecent.length > 0
       ? ` Últimos jogos registados na app (amostra): ${tacticMatchesRecent
@@ -393,7 +511,7 @@ export function buildDeterministicOpponentAnalysis(input: OpponentAnalysisBuildI
       : "se aproveitarem o factor casa para assumirem iniciativa em altura de pressão"
   }.`;
 
-  const { xi, notes: xiNotes } = buildStartingXi(availablePlayers);
+  const { xi, notes: xiNotes } = buildStartingXi(availablePlayers, lineupFormationId, them);
   const benchNames = availablePlayers
     .filter((p) => !xi.some((x) => x.playerId === p.id))
     .map((p) => p.name)

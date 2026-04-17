@@ -108,6 +108,7 @@ export function SketchOpponentAnalysisPanel() {
         id: t.id,
         name: t.name,
         formation: formationDisplayLabel(t.formation),
+        formationId: t.formation,
         wins: tally.wins,
         draws: tally.draws,
         losses: tally.losses,

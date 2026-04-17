@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import type { MatchFixture } from "@/types";
+import type { FormationId, MatchFixture } from "@/types";
 import { buildOpponentAnalysisDocumentHtml } from "@/lib/opponent-analysis-html";
 import { sanitizeOpponentAnalysisResult } from "@/lib/opponent-analysis-sanitize";
 import type { SerializedPlayerForAi } from "@/lib/opponent-analysis-context";
@@ -16,6 +16,7 @@ type RequestBody = {
     id: string;
     name: string;
     formation: string;
+    formationId?: FormationId;
     wins: number;
     draws: number;
     losses: number;

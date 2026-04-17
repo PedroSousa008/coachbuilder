@@ -1,4 +1,5 @@
-import type { CoachProfileState, LeagueImportedMatch, LeagueTableRow, MatchFixture, Player } from "@/types";
+import type { CoachProfileState, LeagueImportedMatch, LeagueTableRow, MatchFixture, Player, Position } from "@/types";
+import { getPlayerPositions } from "@/lib/player-positions";
 import { calendarDayLisbon, isImportedMatchUpcoming, isKickoffInFuture } from "@/lib/lisbon-date";
 import { teamNameSimilarity, userClubMatchesOfficialTeam } from "@/lib/team-match";
 
@@ -120,7 +121,10 @@ export function tableRowsForTeams(rows: LeagueTableRow[], ourClub: string, oppon
 export type SerializedPlayerForAi = {
   id: string;
   name: string;
+  /** Posição principal (compatibilidade / exibição). */
   position: string;
+  /** Posições que o treinador marcou na ficha (primária + secundárias). */
+  eligiblePositions: Position[];
   number: number;
   age: number;
   availability: Player["availability"];
@@ -141,6 +145,7 @@ export function serializePlayersForAi(players: Player[], availableIds: Set<strin
         id: p.id,
         name: p.name,
         position: p.position,
+        eligiblePositions: getPlayerPositions(p),
         number: p.number,
         age: p.age,
         availability: p.availability,

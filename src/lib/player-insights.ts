@@ -207,6 +207,20 @@ export function computePlayerOverall(position: Position, partial?: Partial<Playe
   return Math.round(sum / OUTFIELD_QUALITY_STAT_IDS.length);
 }
 
+/**
+ * Overall “por posição”: média dos atributos mais relevantes para essa função
+ * (ver `POSITION_FOCUS`). Para GR mantém o modelo ponderado de `computePlayerOverall`.
+ */
+export function computePositionFocusedOverall(position: Position, partial?: Partial<PlayerQualities>): number {
+  const q = mergeQualities(partial);
+  if (position === "GK") return computePlayerOverall("GK", partial);
+  const focus = POSITION_FOCUS[position];
+  if (!focus?.length) return computePlayerOverall(position, partial);
+  let sum = 0;
+  for (const id of focus) sum += q[id];
+  return Math.round(sum / focus.length);
+}
+
 export function getTopStrengths(
   q: PlayerQualities,
   n: number,
