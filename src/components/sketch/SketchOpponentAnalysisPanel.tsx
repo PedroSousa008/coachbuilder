@@ -179,6 +179,19 @@ export function SketchOpponentAnalysisPanel() {
       setErr("Selecciona pelo menos 11 jogadores disponíveis (convocados).");
       return;
     }
+    const printWin = window.open("about:blank", "_blank");
+    if (!printWin) {
+      setErr(
+        "O navegador bloqueou a nova janela. Permite pop-ups para este site (ou desactiva o bloqueador só para CoachBuilder) e tenta de novo."
+      );
+      return;
+    }
+    printWin.document.open();
+    printWin.document.write(
+      `<!DOCTYPE html><html lang="pt"><head><meta charset="utf-8"/><title>Relatório</title></head><body style="font-family:system-ui;padding:2rem;color:#444">A gerar relatório…</body></html>`
+    );
+    printWin.document.close();
+
     setLoading(true);
     try {
       const res = await fetch("/api/sketch/opponent-analysis", {
@@ -189,15 +202,37 @@ export function SketchOpponentAnalysisPanel() {
       const data = (await res.json().catch(() => ({}))) as { html?: string; error?: string };
       if (!res.ok) {
         setErr(data.error ?? "Não foi possível gerar o relatório.");
+        printWin.document.open();
+        printWin.document.write(
+          `<!DOCTYPE html><html lang="pt"><head><meta charset="utf-8"/></head><body style="font-family:system-ui;padding:2rem"><p>Não foi possível gerar o relatório.</p><p style="color:#666">${String(data.error ?? "").replace(/</g, "")}</p></body></html>`
+        );
+        printWin.document.close();
         return;
       }
       if (!data.html) {
         setErr("Resposta inválida do servidor.");
+        printWin.document.open();
+        printWin.document.write(
+          `<!DOCTYPE html><html lang="pt"><head><meta charset="utf-8"/></head><body style="font-family:system-ui;padding:2rem"><p>Resposta inválida do servidor.</p></body></html>`
+        );
+        printWin.document.close();
         return;
       }
-      openPrintableHtml(data.html);
+      const ok = openPrintableHtml(data.html, printWin);
+      if (!ok) {
+        setErr("Não foi possível escrever o documento na janela aberta.");
+      }
     } catch {
       setErr("Erro de rede ao gerar o relatório.");
+      try {
+        printWin.document.open();
+        printWin.document.write(
+          `<!DOCTYPE html><html lang="pt"><head><meta charset="utf-8"/></head><body style="font-family:system-ui;padding:2rem"><p>Erro de rede.</p></body></html>`
+        );
+        printWin.document.close();
+      } catch {
+        printWin.close();
+      }
     } finally {
       setLoading(false);
     }
@@ -306,11 +341,6 @@ export function SketchOpponentAnalysisPanel() {
               {loading ? "A gerar…" : "Gerar documento (PDF)"}
             </Button>
           </div>
-          <p className="text-[11px] leading-relaxed text-zinc-600">
-            O PDF é montado <strong>só no servidor</strong> com os dados que já tens na app (plantel, qualidades, táticas,
-            jogos importados, calendário). <strong>Não</strong> são usados serviços de IA de terceiros nem pesquisas na
-            Web — quanto mais completa estiver a importação da liga e os registos de jogos, melhor fica o relatório.
-          </p>
         </CardContent>
       </Card>
     </div>

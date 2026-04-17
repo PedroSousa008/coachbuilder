@@ -132,12 +132,28 @@ export function buildSingleDrillDocumentHtml(params: {
 </html>`;
 }
 
-export function openPrintableHtml(html: string): void {
-  const w = window.open("", "_blank");
-  if (!w) return;
-  w.document.open();
-  w.document.write(html);
-  w.document.close();
-  w.focus();
-  setTimeout(() => w.print(), 250);
+/**
+ * Abre o HTML num separador e abre o diálogo de impressão (PDF via “Guardar como PDF”).
+ * Opcionalmente reutiliza uma janela já aberta no **mesmo** clique do utilizador — necessário
+ * quando o HTML só chega depois de um `fetch`, para o browser não bloquear pop-ups.
+ */
+export function openPrintableHtml(html: string, existingWindow?: Window | null): boolean {
+  const w = existingWindow ?? window.open("about:blank", "_blank");
+  if (!w) return false;
+  try {
+    w.document.open();
+    w.document.write(html);
+    w.document.close();
+    w.focus();
+    setTimeout(() => {
+      try {
+        w.print();
+      } catch {
+        /* ignorar — utilizador pode imprimir manualmente */
+      }
+    }, 300);
+  } catch {
+    return false;
+  }
+  return true;
 }
