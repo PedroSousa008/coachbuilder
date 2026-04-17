@@ -269,7 +269,6 @@ export function buildDeterministicOpponentAnalysis(input: OpponentAnalysisBuildI
     .slice(0, 5);
 
   const last5DetailLines: string[] = [];
-  const last5Letters: string[] = [];
   for (const m of completedTheirs) {
     const simHome = teamNameSimilarity(m.homeTeam, officialOpp);
     const simAway = teamNameSimilarity(m.awayTeam, officialOpp);
@@ -278,7 +277,6 @@ export function buildDeterministicOpponentAnalysis(input: OpponentAnalysisBuildI
     const gf = atHome ? m.homeScore! : m.awayScore!;
     const ga = atHome ? m.awayScore! : m.homeScore!;
     const letter = gf > ga ? "V" : gf < ga ? "D" : "E";
-    last5Letters.push(letter);
     const loc = atHome ? "Casa" : "Fora";
     const d = new Date(m.kickoff).toLocaleDateString("pt-PT", {
       day: "2-digit",
@@ -310,17 +308,11 @@ export function buildDeterministicOpponentAnalysis(input: OpponentAnalysisBuildI
   winP = Math.round(Math.min(82, Math.max(18, winP)));
 
   const ourForm = formLetters(leagueMatchesOurs, coachClub, 6);
-  const theirForm = formLetters(leagueMatchesTheirs, opp, 6);
-
-  const last5FormClause =
-    last5Letters.length > 0
-      ? ` Últimos ${last5Letters.length} resultados importados (mais recente primeiro): ${last5Letters.join("-")}.`
-      : "";
 
   const opponentRecentSummary =
     them.n > 0
-      ? `Últimos ${them.n} jogos com resultado: média de ${them.gpg.toFixed(2)} golos marcados e ${them.gcpg.toFixed(2)} sofridos por jogo. Forma (amostra mais larga na app, mais recente primeiro): ${theirForm}.${last5FormClause}`
-      : `Sem jogos importados recentes para o adversário nesta app — reforça a importação da liga ou regista jogos na equipa.${last5FormClause}`;
+      ? `Últimos ${them.n} jogos com resultado: média de ${them.gpg.toFixed(2)} golos marcados e ${them.gcpg.toFixed(2)} sofridos por jogo.`
+      : "Sem jogos importados recentes para o adversário nesta app — reforça a importação da liga ou regista jogos na equipa.";
 
   const ourRecentSummary =
     us.n > 0
@@ -361,12 +353,11 @@ export function buildDeterministicOpponentAnalysis(input: OpponentAnalysisBuildI
   const venuePt = fixture.venue === "home" ? "em casa" : "fora";
   const howWeShouldApproach = `Objectivo: aproveitar ${venuePt}. Com média ofensiva ${us.gpg.toFixed(2)} golos/jogo e defensiva ${us.gcpg.toFixed(2)} sofridos/jogo nos dados importados, equilibrar bloco e transição: se ${them.gpg.toFixed(2)} golos/jogo do adversário for alto, fecha mais o interior e força saídas limpas; se for baixo, acelera mudanças de corredor para criar superioridades. Usa os cantos e bolas paradas como arma (dados internos da equipa).`;
 
-  const standingClause = opponentLeagueStandingLine ? ` ${opponentLeagueStandingLine}` : "";
-  const form5Clause =
-    last5Letters.length > 0
-      ? ` Forma recente (últimos ${last5Letters.length} com resultado na importação): ${last5Letters.join("-")}.`
-      : "";
-  const howWeExpectOpponent = `Antecipação com base nos números da app: adversário com ~${them.gpg.toFixed(2)} golos marcados e ~${them.gcpg.toFixed(2)} sofridos por jogo (${theirForm}).${standingClause}${form5Clause} Espera-se equilíbrio entre segurança e transição rápida, especialmente ${fixture.venue === "home" ? "se fecharem por períodos fora de portas" : "se aproveitarem o factor casa para assumirem iniciativa em altura de pressão."}.`;
+  const howWeExpectOpponent = `Espera-se equilíbrio entre segurança e transição rápida, especialmente ${
+    fixture.venue === "home"
+      ? "se fecharem por períodos fora de portas"
+      : "se aproveitarem o factor casa para assumirem iniciativa em altura de pressão"
+  }.`;
 
   const { xi, notes: xiNotes } = buildStartingXi(availablePlayers);
   const benchNames = availablePlayers
@@ -421,7 +412,7 @@ export function buildDeterministicOpponentAnalysis(input: OpponentAnalysisBuildI
     [...limitations, ...xiNotes].filter(Boolean).join(" ") || undefined;
 
   return {
-    headline: `${coachClub} vs ${opp} — relatório (dados da app)`,
+    headline: `${coachClub} vs ${opp} — relatório`,
     winProbabilityPercent: winP,
     winProbabilityNotes: `Estimativa heurística (${winP}%) a partir de pontos por jogo e médias de golos dos últimos jogos com resultado na app, ajustada ${fixture.venue === "home" ? "pelo factor casa" : "por jogar fora"}. Não é predição de mercado — é apoio à decisão com base no que tens registado.`,
     opponentRecentSummary,

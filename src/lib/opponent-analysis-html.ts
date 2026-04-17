@@ -20,9 +20,9 @@ function liPlayers(players: { playerName: string; positionLabel: string; shirtNu
     .join("");
 }
 
-function roleBlock(title: string, r: { playerName: string; rationale: string } | undefined): string {
+function roleBlock(title: string, r: { playerName: string; rationale?: string } | undefined): string {
   if (!r) return "";
-  return `<p><strong>${esc(title)}:</strong> ${esc(r.playerName)}. <span class="muted">${esc(r.rationale)}</span></p>`;
+  return `<p><strong>${esc(title)}:</strong> ${esc(r.playerName)}</p>`;
 }
 
 function escLines(s: string): string {
