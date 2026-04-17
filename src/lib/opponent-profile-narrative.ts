@@ -363,7 +363,7 @@ function archetypeApproachChunk(a: OpponentArchetype, ctx: OpponentProfileContex
       return pick(
         [
           `Entre as defesas que menos sofrem na tabela: paciência com bola, largura, circulação até abrir linha e remates com critério. Depois de perder, equilíbrio imediato.`,
-          `Bloco cuidadoso nos totais de GS: ritmo mais lento e muitas situações fechadas — força o desgaste sem te precipitares.",
+          `Bloco cuidadoso nos totais de GS: ritmo mais lento e muitas situações fechadas — força o desgaste sem te precipitares.`,
         ],
         seed,
         13
