@@ -122,12 +122,15 @@ function rolePick(p: SerializedPlayerForAi, rationale: string): OpponentAnalysis
   return { playerId: p.id, playerName: p.name, rationale };
 }
 
-/** Slots for a classic 4-3-3 (positions in app taxonomy). */
+/**
+ * 4-3-3: eixo defensivo primeiro (dois centrais antes dos laterais) para o par CB reflectir melhor a qualidade global,
+ * depois médios e linha da frente.
+ */
 const XI_SLOTS: { role: Position; label: string }[] = [
   { role: "GK", label: "Guarda-redes" },
-  { role: "LB", label: "Lateral esquerdo" },
   { role: "CB", label: "Defesa central (Esq.)" },
   { role: "CB", label: "Defesa central (Dto.)" },
+  { role: "LB", label: "Lateral esquerdo" },
   { role: "RB", label: "Lateral direito" },
   { role: "CM", label: "Médio esquerdo" },
   { role: "CM", label: "Médio centro" },
@@ -137,15 +140,30 @@ const XI_SLOTS: { role: Position; label: string }[] = [
   { role: "ST", label: "Avançado" },
 ];
 
+/** 22–100: encaixe tático; linha defensiva com trocas CB/LB/RB mais realistas. */
 function positionFit(playerPos: string, slot: Position): number {
   const p = playerPos as Position;
   if (p === slot) return 100;
-  if (slot === "CM" && (p === "CDM" || p === "CAM")) return 72;
-  if (slot === "CB" && p === "CDM") return 45;
-  if ((slot === "LW" || slot === "RW") && (p === "CAM" || p === "ST")) return 55;
-  if (slot === "ST" && (p === "CAM" || p === "LW" || p === "RW")) return 60;
-  if ((slot === "LB" || slot === "RB") && p === "CB") return 40;
-  return 25;
+  if (slot === "CM" && (p === "CDM" || p === "CAM")) return 76;
+  if (slot === "CAM" && (p === "CM" || p === "CDM")) return 72;
+  if (slot === "CB" && p === "CDM") return 54;
+  if (slot === "CB" && (p === "LB" || p === "RB")) return 58;
+  if ((slot === "LB" || slot === "RB") && p === "CB") return 56;
+  if (slot === "LB" && p === "RB") return 34;
+  if (slot === "RB" && p === "LB") return 34;
+  if ((slot === "LB" || slot === "RB") && p === "CDM") return 46;
+  if ((slot === "LW" || slot === "RW") && (p === "CAM" || p === "ST")) return 62;
+  if ((slot === "LW" || slot === "RW") && (p === "LW" || p === "RW") && p !== slot) return 52;
+  if (slot === "ST" && (p === "CAM" || p === "LW" || p === "RW")) return 64;
+  if ((slot === "LB" || slot === "RB") && p === "CM") return 38;
+  return 22;
+}
+
+/** Mistura encaixe (36%) com qualidade global média das qualidades (64%) — excepto GR (tratado à parte). */
+function xiSlotScore(p: SerializedPlayerForAi, slot: Position): number {
+  const fit = positionFit(p.position, slot);
+  const str = heuristicPlayerStrength(p);
+  return fit * 0.36 + str * 0.64;
 }
 
 function buildStartingXi(players: SerializedPlayerForAi[]): { xi: OpponentAnalysisXiPlayer[]; notes: string[] } {
@@ -160,19 +178,35 @@ function buildStartingXi(players: SerializedPlayerForAi[]): { xi: OpponentAnalys
   for (const slot of XI_SLOTS) {
     let best: SerializedPlayerForAi | null = null;
     let bestScore = -1e9;
-    for (const p of pool) {
-      if (used.has(p.id)) continue;
-      let fit = positionFit(p.position, slot.role);
-      if (slot.role === "GK" && p.position !== "GK") {
-        fit = Math.min(fit, 35) + q(p, "defensiveAwareness") * 0.15 + q(p, "reactions") * 0.1;
-      } else {
-        fit += heuristicPlayerStrength(p) * 0.35;
+    const candidates = pool.filter((p) => !used.has(p.id));
+
+    if (slot.role === "GK") {
+      const gkPool = hasGk ? candidates.filter((p) => p.position === "GK") : candidates;
+      for (const p of gkPool) {
+        let score: number;
+        if (p.position === "GK") {
+          score = 1000 + xiSlotScore(p, "GK");
+        } else {
+          score =
+            q(p, "defensiveAwareness") * 0.35 +
+            q(p, "reactions") * 0.25 +
+            heuristicPlayerStrength(p) * 0.15;
+        }
+        if (score > bestScore) {
+          bestScore = score;
+          best = p;
+        }
       }
-      if (fit > bestScore) {
-        bestScore = fit;
-        best = p;
+    } else {
+      for (const p of candidates) {
+        const score = xiSlotScore(p, slot.role);
+        if (score > bestScore) {
+          bestScore = score;
+          best = p;
+        }
       }
     }
+
     if (!best) break;
     used.add(best.id);
     xi.push({
