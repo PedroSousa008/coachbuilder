@@ -39,6 +39,8 @@ export type OpponentAnalysisAiResult = {
   opponentLeagueStandingLine?: string;
   /** Texto com os últimos jogos disputados do adversário (ex.: últimos 5 com resultado). */
   opponentLastFiveSummary?: string;
+  /** Uma linha: perfil táctico inferido (tabela + médias) para contextualizar a abordagem. */
+  opponentProfileSummary?: string;
   recommendedFormation: string;
   formationAndTacticRationale: string;
   startingXi: OpponentAnalysisXiPlayer[];

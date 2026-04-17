@@ -9,6 +9,11 @@ import type {
 import type { SerializedPlayerForAi } from "@/lib/opponent-analysis-context";
 import { heuristicPlayerStrength } from "@/lib/opponent-analysis-context";
 import { normalizeTeamLabel, pickBestTeamMatch, teamNameSimilarity } from "@/lib/team-match";
+import {
+  buildHowWeExpectOpponentNarrative,
+  buildHowWeShouldApproachNarrative,
+  buildOpponentProfileContext,
+} from "@/lib/opponent-profile-narrative";
 
 function norm(s: string): string {
   return s
@@ -572,14 +577,17 @@ export function buildDeterministicOpponentAnalysis(input: OpponentAnalysisBuildI
       }${recentTacticLine}`
     : `Sem táticas com histórico suficiente na app — sugere-se um 4-3-3 equilibrado como ponto de partida; ajusta o modelo com base no que sabes do adversário fora destes números.${recentTacticLine}`;
 
-  const venuePt = fixture.venue === "home" ? "em casa" : "fora";
-  const howWeShouldApproach = `Objectivo: aproveitar ${venuePt}. Com média ofensiva ${us.gpg.toFixed(2)} golos/jogo e defensiva ${us.gcpg.toFixed(2)} sofridos/jogo nos dados importados, equilibrar bloco e transição: se ${them.gpg.toFixed(2)} golos/jogo do adversário for alto, fecha mais o interior e força saídas limpas; se for baixo, acelera mudanças de corredor para criar superioridades. Usa os cantos e bolas paradas como arma (dados internos da equipa).`;
-
-  const howWeExpectOpponent = `Espera-se equilíbrio entre segurança e transição rápida, especialmente ${
-    fixture.venue === "home"
-      ? "se fecharem por períodos fora de portas"
-      : "se aproveitarem o factor casa para assumirem iniciativa em altura de pressão"
-  }.`;
+  const profileCtx = buildOpponentProfileContext({
+    leagueRows: input.leagueRowsSample,
+    coachClub,
+    opponentName: opp,
+    them: { gpg: them.gpg, gcpg: them.gcpg, ppg: them.ppg, n: them.n },
+    us: { gpg: us.gpg, gcpg: us.gcpg, ppg: us.ppg, n: us.n },
+    fixture,
+  });
+  const howWeShouldApproach = buildHowWeShouldApproachNarrative(profileCtx, fixture, us);
+  const howWeExpectOpponent = buildHowWeExpectOpponentNarrative(profileCtx, fixture);
+  const opponentProfileSummary = profileCtx.profileSummaryLine;
 
   const { xi, notes: xiNotes } = buildStartingXi(availablePlayers, lineupFormationId, them);
   const starterIds = new Set(xi.map((r) => r.playerId));
@@ -644,6 +652,7 @@ export function buildDeterministicOpponentAnalysis(input: OpponentAnalysisBuildI
     howWeExpectOpponent,
     opponentLeagueStandingLine,
     opponentLastFiveSummary,
+    opponentProfileSummary,
     recommendedFormation,
     formationAndTacticRationale,
     startingXi: xi,

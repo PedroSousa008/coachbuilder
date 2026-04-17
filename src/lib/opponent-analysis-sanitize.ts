@@ -54,6 +54,10 @@ export function sanitizeOpponentAnalysisResult(
     typeof o.opponentLastFiveSummary === "string" && o.opponentLastFiveSummary.trim()
       ? o.opponentLastFiveSummary.trim()
       : undefined;
+  const opponentProfileSummary =
+    typeof o.opponentProfileSummary === "string" && o.opponentProfileSummary.trim()
+      ? o.opponentProfileSummary.trim()
+      : undefined;
   const recommendedFormation = typeof o.recommendedFormation === "string" ? o.recommendedFormation : "4-3-3";
   const formationAndTacticRationale =
     typeof o.formationAndTacticRationale === "string"
@@ -143,6 +147,7 @@ export function sanitizeOpponentAnalysisResult(
     howWeExpectOpponent,
     opponentLeagueStandingLine,
     opponentLastFiveSummary,
+    opponentProfileSummary,
     recommendedFormation,
     formationAndTacticRationale,
     startingXi,

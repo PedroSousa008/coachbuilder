@@ -92,6 +92,11 @@ export function buildOpponentAnalysisDocumentHtml(params: {
   }
 
   <h2>Abordagem ao jogo</h2>
+  ${
+    analysis.opponentProfileSummary
+      ? `<p class="box" style="margin-bottom:1rem"><strong>Leitura de perfil:</strong> ${esc(analysis.opponentProfileSummary)}</p>`
+      : ""
+  }
   <p><strong>O que propomos fazer:</strong> ${esc(analysis.howWeShouldApproach)}</p>
   <p><strong>O que antecipamos do adversário:</strong> ${esc(analysis.howWeExpectOpponent)}</p>
 
