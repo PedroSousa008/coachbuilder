@@ -3,10 +3,13 @@ import type { MatchFixture } from "@/types";
 import { buildOpponentAnalysisDocumentHtml } from "@/lib/opponent-analysis-html";
 import { sanitizeOpponentAnalysisResult } from "@/lib/opponent-analysis-sanitize";
 import type { SerializedPlayerForAi } from "@/lib/opponent-analysis-context";
+import { geminiGenerateWithGoogleSearch } from "@/lib/gemini-google-search";
 
 export const maxDuration = 60;
 
-const SYSTEM = `És um analista tático de futebol profissional. Respondes APENAS com JSON válido UTF-8 (sem markdown, sem texto antes ou depois).
+const SYSTEM = `És um analista tático de futebol profissional. Tens acesso à ferramenta Google Search: usa-a de forma proactiva para encontrar forma recente do adversário, notícias públicas, classificação ou jogos recentes quando o JSON da app for insuficiente. Cruza sempre o que encontras na Web com os dados fornecidos pelo utilizador.
+
+Respondes APENAS com JSON válido UTF-8 (sem markdown, sem texto antes ou depois).
 
 O JSON deve seguir exactamente estas chaves (tipos):
 - headline: string (título curto do relatório)
@@ -102,14 +105,17 @@ function stripJsonFence(s: string): string {
 }
 
 export async function POST(req: Request) {
-  const key = process.env.OPENAI_API_KEY;
-  const model = process.env.OPENAI_OPPONENT_ANALYSIS_MODEL?.trim() || "gpt-4o-mini";
+  const key = (process.env.GEMINI_API_KEY ?? process.env.GOOGLE_GEMINI_API_KEY)?.trim();
+  const model =
+    process.env.GEMINI_OPPONENT_ANALYSIS_MODEL?.trim() ||
+    process.env.GOOGLE_GEMINI_MODEL?.trim() ||
+    "gemini-2.0-flash";
 
   if (!key) {
     return NextResponse.json(
       {
         error:
-          "OPENAI_API_KEY não está configurada no servidor. Adiciona a variável em Vercel (Settings → Environment Variables) para usar a Análise Adversário AI.",
+          "GEMINI_API_KEY não está configurada no servidor. Cria uma chave em Google AI Studio (https://aistudio.google.com/apikey) e adiciona GEMINI_API_KEY nas variáveis de ambiente da Vercel para usar a Análise Adversário AI com Google Search.",
       },
       { status: 503 }
     );
@@ -143,43 +149,30 @@ export async function POST(req: Request) {
   };
 
   let rawText: string;
+  let googleSearchQueriesUsed: string[] | undefined;
   try {
-    const res = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${key}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model,
-        temperature: 0.35,
-        response_format: { type: "json_object" },
-        messages: [
-          { role: "system", content: SYSTEM },
-          {
-            role: "user",
-            content: `Analisa o próximo jogo e devolve o JSON pedido.\n\nDADOS:\n${JSON.stringify(userPayload)}`,
-          },
-        ],
-      }),
+    const { text, raw } = await geminiGenerateWithGoogleSearch({
+      apiKey: key,
+      model,
+      systemInstruction: SYSTEM,
+      userText: `Analisa o próximo jogo e devolve o JSON pedido. Pesquisa na Web pelo adversário, competição e forma recente quando fizer falta.\n\nDADOS DA APP (JSON):\n${JSON.stringify(userPayload)}`,
+      temperature: 0.35,
     });
-
-    if (!res.ok) {
-      const errText = await res.text().catch(() => "");
-      console.error("[opponent-analysis] OpenAI error", res.status, errText.slice(0, 500));
-      return NextResponse.json(
-        { error: "O serviço de IA devolveu um erro. Tenta de novo dentro de momentos." },
-        { status: 502 }
-      );
-    }
-
-    const data = (await res.json()) as {
-      choices?: Array<{ message?: { content?: string } }>;
-    };
-    rawText = data.choices?.[0]?.message?.content ?? "";
+    rawText = text;
+    const q = raw.candidates?.[0]?.groundingMetadata?.webSearchQueries;
+    if (Array.isArray(q) && q.length) googleSearchQueriesUsed = q.filter((x): x is string => typeof x === "string");
   } catch (e) {
-    console.error("[opponent-analysis] fetch failed", e);
-    return NextResponse.json({ error: "Não foi possível contactar o serviço de IA." }, { status: 502 });
+    console.error("[opponent-analysis] Gemini/Google Search failed", e);
+    const msg = e instanceof Error ? e.message : String(e);
+    return NextResponse.json(
+      {
+        error:
+          msg.length > 280
+            ? "O Google Gemini devolveu um erro. Verifica GEMINI_API_KEY, quotas e se o modelo suporta Google Search."
+            : msg,
+      },
+      { status: 502 }
+    );
   }
 
   let parsed: unknown;
@@ -196,6 +189,7 @@ export async function POST(req: Request) {
     fixture: body.fixture,
     analysis: sanitized,
     generatedAt,
+    googleSearchQueriesUsed,
   });
 
   return NextResponse.json({ html });

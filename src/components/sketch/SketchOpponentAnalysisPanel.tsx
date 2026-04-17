@@ -275,8 +275,18 @@ export function SketchOpponentAnalysisPanel() {
             </Button>
           </div>
           <p className="text-[11px] leading-relaxed text-zinc-600">
-            Requer <code className="text-zinc-400">OPENAI_API_KEY</code> no ambiente do servidor (ex.: Vercel). Opcional:{" "}
-            <code className="text-zinc-400">OPENAI_OPPONENT_ANALYSIS_MODEL</code> (default: gpt-4o-mini).
+            Usa <strong>Gemini</strong> com <strong>Google Search</strong> (pesquisa automática na Web). Configura{" "}
+            <code className="text-zinc-400">GEMINI_API_KEY</code> no servidor (ex.:{" "}
+            <a
+              className="text-accent underline hover:text-white"
+              href="https://aistudio.google.com/apikey"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Google AI Studio
+            </a>
+            ). Opcional: <code className="text-zinc-400">GEMINI_OPPONENT_ANALYSIS_MODEL</code> (ex.: gemini-2.0-flash).
+            Alternativa: <code className="text-zinc-400">GOOGLE_GEMINI_API_KEY</code>.
           </p>
         </CardContent>
       </Card>
