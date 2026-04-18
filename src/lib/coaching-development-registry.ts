@@ -113,11 +113,14 @@ export const COACHING_LESSON_DEVELOPMENTS: CoachingLessonDevelopmentDef[] = [
   },
   {
     lessonId: "day-004",
-    title: "Example: Third man and angles (catalogue sample)",
+    title: "Fabregas - Importance of the Wingers - Coaches' Vision",
     skillIds: [
-      "tactical-intelligence-third-man-awareness",
-      "advanced-tactical-creating-passing-angles",
-      "technical-ability-short-passing",
+      "defensive-skills-pressing-intensity",
+      "advanced-tactical-depth-management",
+      "advanced-tactical-weak-side-exploitation",
+      "midfield-mastery-deep-build-up-composure",
+      "attacking-skills-movement-off-ball",
+      "tactical-intelligence-transition-awareness",
     ],
   },
   {
