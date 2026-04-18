@@ -44,6 +44,7 @@ import {
   type PrivateLibraryState,
 } from "@/lib/coaching-private-library-storage";
 import { CoachingDevelopmentTable } from "@/components/profile/CoachingDevelopmentTable";
+import { getLessonDevelopment } from "@/lib/coaching-development-registry";
 
 const WEEKDAYS_PT = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
 
@@ -69,6 +70,7 @@ export function CoachingProfessionalsTab() {
   const [challenge, setChallenge] = useState<CoachingChallengeState | null>(null);
   const [library, setLibrary] = useState<PrivateLibraryState | null>(null);
   const [notesDraft, setNotesDraft] = useState("");
+  const [videoLoadFailed, setVideoLoadFailed] = useState(false);
 
   const today = useMemo(() => startOfLocalDay(new Date()), []);
   const anchor = useMemo(() => parseAccountAnchor(user?.createdAt), [user?.createdAt]);
@@ -97,6 +99,20 @@ export function CoachingProfessionalsTab() {
 
   const selectedDayNumEarly =
     selected && anchor ? dayNumberFromAnchor(anchor, selected) : null;
+
+  const lessonVideoUrl = useMemo(() => {
+    if (!selectedDayKey || !anchor) return null;
+    return getLessonVideoUrl(selectedDayKey, anchor);
+  }, [selectedDayKey, anchor]);
+
+  const lessonCatalogEntry = useMemo(() => {
+    if (selectedDayNumEarly == null || selectedDayNumEarly < 1) return null;
+    return getLessonDevelopment(programLessonCatalogId(selectedDayNumEarly));
+  }, [selectedDayNumEarly]);
+
+  useEffect(() => {
+    setVideoLoadFailed(false);
+  }, [selectedDayKey]);
 
   useEffect(() => {
     if (!user?.id || !selected) {
@@ -495,10 +511,45 @@ export function CoachingProfessionalsTab() {
                         year: "numeric",
                       })}
                     </p>
-                    <div className="flex aspect-video max-w-2xl flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-white/15 bg-zinc-950/80 text-zinc-500">
-                      <PlayCircle className="h-14 w-14 text-zinc-600" aria-hidden />
-                      <p className="text-sm">Video content will appear here.</p>
-                    </div>
+                    {lessonCatalogEntry?.title ? (
+                      <p className="max-w-2xl text-sm font-medium leading-snug text-zinc-100">
+                        {lessonCatalogEntry.title}
+                      </p>
+                    ) : null}
+                    {lessonVideoUrl && !videoLoadFailed ? (
+                      <video
+                        key={lessonVideoUrl}
+                        className="aspect-video w-full max-w-2xl rounded-xl border border-white/10 bg-black object-contain shadow-lg"
+                        controls
+                        playsInline
+                        preload="metadata"
+                        src={lessonVideoUrl}
+                        onError={() => setVideoLoadFailed(true)}
+                      />
+                    ) : lessonVideoUrl && videoLoadFailed ? (
+                      <div className="flex aspect-video max-w-2xl flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-amber-500/30 bg-amber-500/5 px-4 text-center text-sm text-amber-100/90">
+                        <p>Não foi possível carregar o vídeo.</p>
+                        <p className="text-xs text-amber-200/80">
+                          Esperado no servidor:{" "}
+                          <code className="rounded bg-black/30 px-1 py-0.5 text-amber-50">
+                            public/coaching-daily-videos/
+                            {selectedDayNumEarly != null ? programLessonCatalogId(selectedDayNumEarly) : "day-NNN"}
+                            /lesson.mp4
+                          </code>{" "}
+                          (nome exacto <span className="font-medium">lesson.mp4</span>, minúsculas). Volta a fazer
+                          deploy depois de o adicionares ao repositório ou ao CDN.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="flex aspect-video max-w-2xl flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-white/15 bg-zinc-950/80 px-4 text-center text-zinc-500">
+                        <PlayCircle className="h-14 w-14 text-zinc-600" aria-hidden />
+                        <p className="text-sm">
+                          {selectedDayNumEarly != null && selectedDayNumEarly > 365
+                            ? "Ainda não há slot de vídeo para este dia do programa (só existem 365 lições numeradas)."
+                            : "Sem vídeo para este dia. Verifica a data de criação da conta (sincronizar) ou o dia seleccionado."}
+                        </p>
+                      </div>
+                    )}
 
                     <div className="max-w-2xl space-y-3">
                       {selectedCompleted ? (
