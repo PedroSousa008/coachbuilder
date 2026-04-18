@@ -42,6 +42,7 @@ import {
   triggerBrowserDownload,
   type PrivateLibraryState,
 } from "@/lib/coaching-private-library-storage";
+import { CoachingDevelopmentTable } from "@/components/profile/CoachingDevelopmentTable";
 
 const WEEKDAYS_PT = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
 
@@ -248,6 +249,8 @@ export function CoachingProfessionalsTab() {
   const streak = challengeDisplay ? getCurrentStreak(challengeDisplay) : 0;
   const progressPct = challengeDisplay ? getProgressPercentInLevel(challengeDisplay) : 0;
 
+  const watchedLessonIds = challengeDisplay?.completedDayKeys ?? [];
+
   if (!user) {
     return (
       <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-8 text-center text-sm text-zinc-400">
@@ -349,6 +352,10 @@ export function CoachingProfessionalsTab() {
             </div>
           </div>
         </section>
+      ) : null}
+
+      {anchor && challengeDisplay ? (
+        <CoachingDevelopmentTable watchedLessonIds={watchedLessonIds} />
       ) : null}
 
       {!anchor ? (
