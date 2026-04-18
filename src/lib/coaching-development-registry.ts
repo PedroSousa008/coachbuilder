@@ -263,6 +263,30 @@ export const COACHING_LESSON_DEVELOPMENTS: CoachingLessonDevelopmentDef[] = [
       "tactical-intelligence-tactical-discipline",
     ],
   },
+  {
+    lessonId: "day-013",
+    title: "Zabaleta - Importance of Full Backs - Coaches' Vision",
+    skillIds: [
+      "full-back-wing-back-wide-channel-defending",
+      "centre-back-build-up-passing",
+      "physical-attributes-stamina",
+      "physical-attributes-recovery-speed",
+      "advanced-physical-work-rate-engine",
+      "attacking-skills-overlap-timing",
+      "full-back-wing-back-overlap-end-product",
+      "advanced-tactical-creating-passing-angles",
+      "wide-player-winger-wide-combination-play",
+      "defensive-skills-defensive-positioning",
+      "defensive-skills-tracking-runners",
+      "physical-attributes-physical-duels",
+      "defensive-skills-1v1-defending",
+      "defensive-specialist-back-pedal-control",
+      "defensive-specialist-defensive-body-shape",
+      "attacking-skills-underlap-timing",
+      "full-back-wing-back-underlap-runs",
+      "advanced-tactical-decoy-runs",
+    ],
+  },
 ];
 
 const LESSON_BY_ID: Map<string, CoachingLessonDevelopmentDef> = new Map(
