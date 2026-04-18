@@ -287,6 +287,31 @@ export const COACHING_LESSON_DEVELOPMENTS: CoachingLessonDevelopmentDef[] = [
       "advanced-tactical-decoy-runs",
     ],
   },
+  {
+    lessonId: "day-014",
+    title: "Zabaleta - Defending 1v1 situations as a Full Back - Coaches' Vision",
+    skillIds: [
+      "defensive-skills-1v1-defending",
+      "defensive-specialist-last-man-defending",
+      "defensive-specialist-tackling-timing",
+      "centre-back-body-position-in-duels",
+      "defensive-skills-defensive-positioning",
+      "tactical-intelligence-marking-intelligence",
+      "tactical-intelligence-covering-space",
+      "full-back-wing-back-wide-defensive-timing",
+      "full-back-wing-back-wide-channel-defending",
+      "defensive-skills-tracking-runners",
+      "defensive-skills-recovery-runs",
+      "advanced-physical-work-rate-engine",
+      "defensive-skills-defensive-communication",
+      "communication-leadership-defensive-instructions",
+      "defensive-skills-anticipation",
+      "tactical-intelligence-game-reading",
+      "centre-back-line-control",
+      "coach-development-metrics-opposition-analysis-skill",
+      "defensive-skills-blocking",
+    ],
+  },
 ];
 
 const LESSON_BY_ID: Map<string, CoachingLessonDevelopmentDef> = new Map(
