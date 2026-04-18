@@ -312,6 +312,30 @@ export const COACHING_LESSON_DEVELOPMENTS: CoachingLessonDevelopmentDef[] = [
       "defensive-skills-blocking",
     ],
   },
+  {
+    lessonId: "day-015",
+    title: "Zabaleta - Final Decision after Overlap - Coaches' Vision",
+    skillIds: [
+      "tactical-intelligence-decision-making",
+      "attacking-skills-chance-creation",
+      "attacking-specialist-final-third-decisions",
+      "full-back-wing-back-overlap-end-product",
+      "advanced-technical-cut-back-delivery",
+      "wide-player-winger-cutback-awareness",
+      "attacking-skills-final-pass",
+      "attacking-skills-box-movement",
+      "advanced-technical-low-cross-accuracy",
+      "advanced-technical-early-cross-timing",
+      "full-back-wing-back-endline-delivery",
+      "wide-player-winger-cross-after-sprint",
+      "advanced-technical-first-time-cross",
+      "attacking-skills-near-post-runs",
+      "attacking-skills-far-post-runs",
+      "attacking-specialist-double-movement-in-box",
+      "striker-penalty-box-presence",
+      "striker-near-post-movement",
+    ],
+  },
 ];
 
 const LESSON_BY_ID: Map<string, CoachingLessonDevelopmentDef> = new Map(
