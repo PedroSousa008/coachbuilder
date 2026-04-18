@@ -355,6 +355,21 @@ export const COACHING_LESSON_DEVELOPMENTS: CoachingLessonDevelopmentDef[] = [
       "advanced-tactical-rest-defence-awareness",
     ],
   },
+  {
+    lessonId: "day-017",
+    title: "Zabaleta - Importance of switching from Overlap to Underlap - Coaches' Vision",
+    skillIds: [
+      "attacking-skills-underlap-timing",
+      "full-back-wing-back-underlap-runs",
+      "advanced-tactical-creating-passing-angles",
+      "midfield-mastery-support-angle-creation",
+      "tactical-intelligence-game-reading",
+      "tactical-intelligence-decision-making",
+      "advanced-tactical-match-momentum-reading",
+      "attacking-skills-movement-off-ball",
+      "attacking-specialist-explosive-run-in-behind",
+    ],
+  },
 ];
 
 const LESSON_BY_ID: Map<string, CoachingLessonDevelopmentDef> = new Map(
