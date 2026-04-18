@@ -225,6 +225,23 @@ export const COACHING_LESSON_DEVELOPMENTS: CoachingLessonDevelopmentDef[] = [
       "midfield-mastery-dictating-possession",
     ],
   },
+  {
+    lessonId: "day-011",
+    title: "Thiago Alcântara - Midfield Defensive Awareness - Coaches' Vision",
+    skillIds: [
+      "tactical-intelligence-spatial-awareness",
+      "tactical-intelligence-defensive-shape-understanding",
+      "tactical-intelligence-covering-space",
+      "tactical-intelligence-zone-occupation",
+      "defensive-skills-defensive-positioning",
+      "communication-leadership-trigger-communication",
+      "advanced-tactical-trigger-press-recognition",
+      "defensive-skills-tracking-runners",
+      "advanced-tactical-width-management",
+      "advanced-tactical-depth-management",
+      "advanced-tactical-defensive-cover-shadow",
+    ],
+  },
 ];
 
 const LESSON_BY_ID: Map<string, CoachingLessonDevelopmentDef> = new Map(
