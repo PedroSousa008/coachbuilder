@@ -97,12 +97,18 @@ export const COACHING_LESSON_DEVELOPMENTS: CoachingLessonDevelopmentDef[] = [
   },
   {
     lessonId: "day-003",
-    title: "Example: Press resistance and receiving (catalogue sample)",
+    title: "Fabregas - Importance of the Midfield - Coaches' Vision",
     skillIds: [
-      "tactical-intelligence-press-resistance",
-      "midfielder-elite-habits-receive-between-lines",
-      "midfielder-elite-habits-progressive-receiving",
-      "technical-ability-close-control",
+      "midfielder-elite-habits-scanning",
+      "midfielder-elite-habits-open-body-shape",
+      "midfielder-elite-habits-forward-passing-mindset",
+      "advanced-tactical-between-line-positioning",
+      "advanced-tactical-overload-creation",
+      "advanced-tactical-width-management",
+      "midfield-mastery-vertical-progression",
+      "tactical-intelligence-rotation-understanding",
+      "attacking-skills-movement-off-ball",
+      "tactical-intelligence-decision-making",
     ],
   },
   {
