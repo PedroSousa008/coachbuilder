@@ -203,6 +203,28 @@ export const COACHING_LESSON_DEVELOPMENTS: CoachingLessonDevelopmentDef[] = [
       "advanced-tactical-creating-passing-angles",
     ],
   },
+  {
+    lessonId: "day-010",
+    title: "Thiago Alcântara - Midfielder dropping for Build Up - Coaches' Vision",
+    skillIds: [
+      "midfielder-elite-habits-scanning",
+      "midfield-mastery-deep-build-up-composure",
+      "centre-back-build-up-passing",
+      "attacking-skills-creativity",
+      "midfielder-elite-habits-receive-between-lines",
+      "tactical-intelligence-spatial-awareness",
+      "advanced-tactical-between-line-positioning",
+      "tactical-intelligence-line-breaking-vision",
+      "midfield-mastery-passing-lane-manipulation",
+      "tactical-intelligence-numerical-superiority-recognition",
+      "attacking-skills-combination-play",
+      "tactical-intelligence-decision-making",
+      "advanced-tactical-trigger-press-recognition",
+      "advanced-tactical-creating-passing-angles",
+      "tactical-intelligence-zone-occupation",
+      "midfield-mastery-dictating-possession",
+    ],
+  },
 ];
 
 const LESSON_BY_ID: Map<string, CoachingLessonDevelopmentDef> = new Map(
