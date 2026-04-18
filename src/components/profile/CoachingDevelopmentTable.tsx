@@ -7,6 +7,9 @@ type Props = {
   watchedLessonIds: readonly string[];
 };
 
+/**
+ * Conteúdo da tabela (título "Skill Development Table" fica no pai — CoachingProfessionalsTab).
+ */
 export function CoachingDevelopmentTable({ watchedLessonIds }: Props) {
   const rows = useMemo(() => computeCoachingDevelopmentRows(watchedLessonIds), [watchedLessonIds]);
 
@@ -21,26 +24,21 @@ export function CoachingDevelopmentTable({ watchedLessonIds }: Props) {
   }, [rows]);
 
   if (rows.length === 0) {
-    return null;
+    return (
+      <p className="text-sm text-zinc-500">
+        Ainda não há competências no catálogo, ou o catálogo está vazio. Adiciona tópicos e skills em{" "}
+        <code className="text-zinc-400">coaching-development-registry.ts</code>.
+      </p>
+    );
   }
 
   return (
-    <section className="rounded-2xl border border-white/10 bg-gradient-to-br from-zinc-900/80 to-zinc-950/95 p-6 sm:p-8">
-      <div className="mb-6 max-w-3xl space-y-2">
-        <p className="text-xs font-medium uppercase tracking-[0.2em] text-accent/90">Skill development</p>
-        <h3 className="font-display text-xl font-semibold text-white sm:text-2xl">Coaching Development Table</h3>
-        <p className="text-sm leading-relaxed text-zinc-400">
-          Every lesson you mark as watched contributes <span className="text-zinc-300">partial progress</span> to the
-          skills it develops. If a skill appears in <span className="text-zinc-300">N</span> lessons in the catalogue,
-          each completed lesson adds <span className="text-zinc-300">100 ÷ N</span> percent toward that skill — so
-          knowledge builds over time instead of unlocking instantly.
-        </p>
-        <p className="text-xs text-zinc-600">
-          Catalogue entries use lesson IDs (usually the calendar <code className="text-zinc-500">YYYY-MM-DD</code> when
-          a video goes live). Sample lessons in the codebase use <code className="text-zinc-500">example-lesson-*</code>{" "}
-          until you replace them with your topics, skills, and per-video mappings.
-        </p>
-      </div>
+    <div className="space-y-8">
+      <p className="max-w-3xl text-xs text-zinc-600">
+        Each watched lesson adds partial progress (<span className="text-zinc-500">100 ÷ N</span> per skill,{" "}
+        <span className="text-zinc-500">N</span> = lessons in the catalogue that reference that skill). Day keys are
+        usually <code className="text-zinc-500">YYYY-MM-DD</code>; demos may use <code className="text-zinc-500">example-lesson-*</code>.
+      </p>
 
       <div className="space-y-10">
         {byTopic.map(({ topic, skills }) => (
@@ -93,6 +91,6 @@ export function CoachingDevelopmentTable({ watchedLessonIds }: Props) {
           </div>
         ))}
       </div>
-    </section>
+    </div>
   );
 }

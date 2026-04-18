@@ -298,288 +298,308 @@ export function CoachingProfessionalsTab() {
         ) : null}
       </section>
 
-      {anchor && challengeDisplay ? (
-        <section className="rounded-2xl border border-accent/25 bg-gradient-to-br from-accent/[0.08] via-zinc-900/60 to-zinc-950/90 p-6 sm:p-8">
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-            <div className="max-w-xl space-y-3">
-              <p className="text-xs font-medium uppercase tracking-[0.2em] text-accent/90">Challenge System</p>
-              <h3 className="font-display text-xl font-semibold text-white sm:text-2xl">
-                Watch today&apos;s lesson — keep your streak alive
-              </h3>
-              <p className="text-sm leading-relaxed text-zinc-400">
-                Each time you open a day and mark the lesson as watched, your progress bar advances. Build your coaching
-                level and consistency over time. Skip a day and you miss that chance to push your streak further — the
-                same drive as daily challenges in top apps and games.
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-4 lg:justify-end">
-              <div className="flex min-w-[7rem] flex-col rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-center">
-                <span className="flex items-center justify-center gap-1 text-xs font-medium uppercase tracking-wider text-zinc-500">
-                  <Flame className="h-3.5 w-3.5 text-orange-400" aria-hidden />
-                  Streak
-                </span>
-                <span className="mt-1 font-display text-2xl font-bold text-white">{streak}</span>
-                <span className="text-[10px] text-zinc-500">days</span>
-              </div>
-              <div className="flex min-w-[7rem] flex-col rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-center">
-                <span className="flex items-center justify-center gap-1 text-xs font-medium uppercase tracking-wider text-zinc-500">
-                  <Trophy className="h-3.5 w-3.5 text-amber-400" aria-hidden />
-                  Best
-                </span>
-                <span className="mt-1 font-display text-2xl font-bold text-white">{challengeDisplay.longestStreak}</span>
-                <span className="text-[10px] text-zinc-500">days</span>
-              </div>
-              <div className="flex min-w-[7rem] flex-col rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-center">
-                <span className="text-xs font-medium uppercase tracking-wider text-zinc-500">Coach level</span>
-                <span className="mt-1 font-display text-2xl font-bold text-accent">{challengeDisplay.level}</span>
-                <span className="text-[10px] text-zinc-500">+{XP_PER_LESSON} XP / lesson</span>
-              </div>
-            </div>
+      <section className="space-y-10 rounded-2xl border border-white/10 bg-white/[0.02] p-6 sm:p-10">
+        <header className="border-b border-white/10 pb-6">
+          <h3 className="font-display text-xl font-semibold tracking-tight text-white sm:text-2xl">Challenge System</h3>
+          <p className="mt-2 max-w-2xl text-sm text-zinc-500">
+            Streak, level, calendar, daily video and your private library. Mark a lesson as watched here — the Skill
+            Development Table below uses the same completed days.
+          </p>
+        </header>
+
+        {!anchor ? (
+          <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-8 text-center text-sm text-zinc-500">
+            O calendário diário fica disponível quando a data de criação da conta estiver sincronizada. Usa
+            &quot;Sincronizar conta&quot; acima se necessário.
           </div>
-
-          <div className="mt-8">
-            <div className="mb-2 flex items-center justify-between text-xs text-zinc-500">
-              <span>Progress to next level</span>
-              <span>
-                {challengeDisplay.xpInLevel} / {XP_PER_LEVEL} XP
-              </span>
-            </div>
-            <div className="h-3 overflow-hidden rounded-full bg-zinc-800/80">
-              <div
-                className="h-full rounded-full bg-gradient-to-r from-accent to-accent/70 transition-[width] duration-500 ease-out"
-                style={{ width: `${progressPct}%` }}
-              />
-            </div>
-          </div>
-        </section>
-      ) : null}
-
-      {anchor && challengeDisplay ? (
-        <CoachingDevelopmentTable watchedLessonIds={watchedLessonIds} />
-      ) : null}
-
-      {!anchor ? (
-        <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-8 text-center text-sm text-zinc-500">
-          O calendário diário fica disponível quando a data de criação da conta estiver sincronizada. Usa
-          &quot;Sincronizar conta&quot; acima se necessário.
-        </div>
-      ) : null}
-
-      {anchor ? (
-        <section>
-          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h3 className="font-display text-lg font-semibold text-white">Calendar</h3>
-              <p className="text-sm text-zinc-500">
-                Toca num dia para abrir a lição. Visto verde = lição contada no desafio; marcador = guardado na tua
-                biblioteca privada.
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={prevMonth}
-                className="rounded-lg border border-white/10 p-2 text-zinc-400 transition hover:bg-white/[0.06] hover:text-white"
-                aria-label="Previous month"
-              >
-                <ChevronLeft className="h-5 w-5" />
-              </button>
-              <span className="min-w-[10rem] text-center font-medium capitalize text-zinc-200">{monthLabel}</span>
-              <button
-                type="button"
-                onClick={nextMonth}
-                className="rounded-lg border border-white/10 p-2 text-zinc-400 transition hover:bg-white/[0.06] hover:text-white"
-                aria-label="Next month"
-              >
-                <ChevronRight className="h-5 w-5" />
-              </button>
-            </div>
-          </div>
-
-          <div className="overflow-x-auto rounded-2xl border border-white/10 bg-white/[0.02] p-3 sm:p-4">
-            <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-medium uppercase tracking-wider text-zinc-500 sm:text-xs">
-              {WEEKDAYS_PT.map((w) => (
-                <div key={w} className="py-2">
-                  {w}
+        ) : challengeDisplay ? (
+          <>
+            <div className="rounded-2xl border border-accent/25 bg-gradient-to-br from-accent/[0.08] via-zinc-900/60 to-zinc-950/90 p-6 sm:p-8">
+              <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+                <div className="max-w-xl space-y-3">
+                  <h4 className="font-display text-lg font-semibold text-white sm:text-xl">
+                    Watch today&apos;s lesson — keep your streak alive
+                  </h4>
+                  <p className="text-sm leading-relaxed text-zinc-400">
+                    Each time you open a day and mark the lesson as watched, your progress bar advances. Build your coaching
+                    level and consistency over time. Skip a day and you miss that chance to push your streak further — the
+                    same drive as daily challenges in top apps and games.
+                  </p>
                 </div>
-              ))}
-            </div>
-            <div className="grid grid-cols-7 gap-1.5">
-              {cells.map((d, i) => {
-                if (!d) {
-                  return <div key={`pad-${i}`} className="aspect-square min-h-[2.5rem] sm:min-h-[3rem]" />;
-                }
-                const state = getDayCellState(d, anchor, today);
-                const isToday = isSameLocalDay(d, today);
-                const isSel = selected && isSameLocalDay(d, selected);
-                const dayNum = dayNumberFromAnchor(anchor, d);
-                const done = state === "available" && isDayMarkedComplete(d);
-                const saved = state === "available" && isDaySavedToLibrary(d);
-
-                const base =
-                  "relative flex aspect-square min-h-[2.5rem] flex-col items-center justify-center rounded-xl border text-sm font-medium transition sm:min-h-[3rem]";
-                let cls = `${base} `;
-                if (state === "before_account") {
-                  cls += "cursor-not-allowed border-transparent bg-white/[0.02] text-zinc-700";
-                } else if (state === "locked_future") {
-                  cls += "cursor-not-allowed border-white/5 bg-zinc-900/40 text-zinc-600";
-                } else {
-                  cls += isSel
-                    ? "border-accent bg-accent/15 text-white shadow-[0_0_0_1px_rgb(var(--accent-rgb)/0.5)]"
-                    : "cursor-pointer border-white/10 bg-white/[0.04] text-zinc-200 hover:border-accent/40 hover:bg-white/[0.07]";
-                  if (done && !isSel) {
-                    cls += " border-emerald-500/35 bg-emerald-500/10";
-                  }
-                  if (saved && !done && !isSel) {
-                    cls += " border-sky-500/35 bg-sky-500/10";
-                  }
-                  if (isToday && !isSel) {
-                    cls += " ring-1 ring-accent/50";
-                  }
-                }
-
-                return (
-                  <button
-                    key={d.getTime()}
-                    type="button"
-                    disabled={state !== "available"}
-                    onClick={() => onPickDay(d)}
-                    className={cls}
-                    title={
-                      state === "before_account"
-                        ? "Antes da tua conta"
-                        : state === "locked_future"
-                          ? "Dia futuro"
-                          : `${saved ? "Guardado · " : ""}${done ? "Completo · " : ""}Dia ${dayNum}`
-                    }
-                  >
-                    {saved ? (
-                      <Bookmark
-                        className="absolute left-1 top-1 h-3.5 w-3.5 fill-sky-400/30 text-sky-400"
-                        aria-label="Guardado na biblioteca"
-                      />
-                    ) : null}
-                    <span>{d.getDate()}</span>
-                    {done ? (
-                      <Check className="absolute bottom-1 right-1 h-3.5 w-3.5 text-emerald-400" aria-label="Completo" />
-                    ) : null}
-                    {state === "locked_future" ? (
-                      <Lock className="absolute bottom-1 right-1 h-3 w-3 text-zinc-600" aria-hidden />
-                    ) : null}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </section>
-      ) : null}
-
-      {anchor && selected ? (
-        <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
-          <h3 className="font-display text-lg font-semibold text-white">Video of the day</h3>
-          {selectedDayNumEarly != null ? (
-            <div className="mt-4 space-y-6">
-              <p className="text-sm text-zinc-400">
-                <span className="text-zinc-200">Day {selectedDayNumEarly}</span>
-                {" · "}
-                {selected.toLocaleDateString("pt-PT", {
-                  weekday: "long",
-                  day: "numeric",
-                  month: "long",
-                  year: "numeric",
-                })}
-              </p>
-              <div className="flex aspect-video max-w-2xl flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-white/15 bg-zinc-950/80 text-zinc-500">
-                <PlayCircle className="h-14 w-14 text-zinc-600" aria-hidden />
-                <p className="text-sm">Video content will appear here.</p>
-              </div>
-
-              <div className="max-w-2xl space-y-3">
-                {selectedCompleted ? (
-                  <div className="flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100/90">
-                    <Check className="h-5 w-5 shrink-0 text-emerald-400" aria-hidden />
-                    <span>Lesson marked as watched — progress updated.</span>
+                <div className="flex flex-wrap gap-4 lg:justify-end">
+                  <div className="flex min-w-[7rem] flex-col rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-center">
+                    <span className="flex items-center justify-center gap-1 text-xs font-medium uppercase tracking-wider text-zinc-500">
+                      <Flame className="h-3.5 w-3.5 text-orange-400" aria-hidden />
+                      Streak
+                    </span>
+                    <span className="mt-1 font-display text-2xl font-bold text-white">{streak}</span>
+                    <span className="text-[10px] text-zinc-500">days</span>
                   </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={onMarkWatched}
-                    className="w-full rounded-xl bg-accent px-4 py-3 text-sm font-semibold text-zinc-950 transition hover:bg-accent/90 sm:w-auto"
-                  >
-                    I watched this lesson — count toward my progress
-                  </button>
-                )}
-                <p className="text-xs text-zinc-500">
-                  Opens after you pick a day above. Tap when you&apos;ve watched the lesson to advance your bar and
-                  streak.
-                </p>
-              </div>
-
-              <div className="max-w-2xl space-y-4 rounded-2xl border border-white/10 bg-zinc-950/50 p-5">
-                <div className="flex items-start gap-3">
-                  <div className="rounded-lg border border-white/10 bg-white/[0.04] p-2">
-                    <Library className="h-5 w-5 text-accent" aria-hidden />
+                  <div className="flex min-w-[7rem] flex-col rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-center">
+                    <span className="flex items-center justify-center gap-1 text-xs font-medium uppercase tracking-wider text-zinc-500">
+                      <Trophy className="h-3.5 w-3.5 text-amber-400" aria-hidden />
+                      Best
+                    </span>
+                    <span className="mt-1 font-display text-2xl font-bold text-white">{challengeDisplay.longestStreak}</span>
+                    <span className="text-[10px] text-zinc-500">days</span>
                   </div>
-                  <div>
-                    <h4 className="font-display text-sm font-semibold text-white">Your device & private library</h4>
-                    <p className="mt-1 text-xs leading-relaxed text-zinc-500">
-                      Download this lesson to keep offline, write your own notes, and save everything to your private
-                      library. When you save, this day shows the bookmark on the calendar (in addition to the green tick
-                      when completed).
-                    </p>
+                  <div className="flex min-w-[7rem] flex-col rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-center">
+                    <span className="text-xs font-medium uppercase tracking-wider text-zinc-500">Coach level</span>
+                    <span className="mt-1 font-display text-2xl font-bold text-accent">{challengeDisplay.level}</span>
+                    <span className="text-[10px] text-zinc-500">+{XP_PER_LESSON} XP / lesson</span>
                   </div>
                 </div>
+              </div>
 
-                <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-                  <button
-                    type="button"
-                    onClick={onDownloadLessonPack}
-                    className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/[0.06] px-4 py-2.5 text-sm font-medium text-zinc-200 transition hover:bg-white/[0.1]"
-                  >
-                    <FileText className="h-4 w-4 shrink-0" aria-hidden />
-                    Download lesson pack (JSON)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => void onDownloadVideoOrInfo()}
-                    className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/[0.06] px-4 py-2.5 text-sm font-medium text-zinc-200 transition hover:bg-white/[0.1]"
-                  >
-                    <Download className="h-4 w-4 shrink-0" aria-hidden />
-                    {getLessonVideoUrl(selectedDayKey ?? "") ? "Download video file" : "Download video / offline info"}
-                  </button>
+              <div className="mt-8">
+                <div className="mb-2 flex items-center justify-between text-xs text-zinc-500">
+                  <span>Progress to next level</span>
+                  <span>
+                    {challengeDisplay.xpInLevel} / {XP_PER_LEVEL} XP
+                  </span>
                 </div>
-
-                <div>
-                  <label htmlFor="coaching-lesson-notes" className="mb-2 block text-xs font-medium uppercase tracking-wider text-zinc-500">
-                    Notes (private)
-                  </label>
-                  <textarea
-                    id="coaching-lesson-notes"
-                    value={notesDraft}
-                    onChange={(e) => setNotesDraft(e.target.value)}
-                    rows={5}
-                    placeholder="Write reflections, cues for your team, or key takeaways…"
-                    className="w-full resize-y rounded-xl border border-white/10 bg-zinc-950/80 px-3 py-2.5 text-sm text-zinc-200 placeholder:text-zinc-600 focus:border-accent/50 focus:outline-none focus:ring-1 focus:ring-accent/30"
+                <div className="h-3 overflow-hidden rounded-full bg-zinc-800/80">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-accent to-accent/70 transition-[width] duration-500 ease-out"
+                    style={{ width: `${progressPct}%` }}
                   />
                 </div>
-
-                <button
-                  type="button"
-                  onClick={onSaveToLibrary}
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-sky-500/40 bg-sky-500/15 px-4 py-3 text-sm font-semibold text-sky-100 transition hover:bg-sky-500/25 sm:w-auto"
-                >
-                  <Bookmark className="h-4 w-4 shrink-0" aria-hidden />
-                  Save to my private library
-                </button>
-                {selectedSaved ? (
-                  <p className="flex items-center gap-2 text-sm text-sky-300/90">
-                    <Bookmark className="h-4 w-4 fill-sky-400/40" aria-hidden />
-                    Saved — this day now shows the bookmark on the calendar.
-                  </p>
-                ) : null}
               </div>
             </div>
-          ) : null}
+
+            <div>
+              <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h4 className="font-display text-lg font-semibold text-white">Calendar</h4>
+                  <p className="text-sm text-zinc-500">
+                    Toca num dia para abrir a lição. Visto verde = lição contada no desafio; marcador = guardado na tua
+                    biblioteca privada.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={prevMonth}
+                    className="rounded-lg border border-white/10 p-2 text-zinc-400 transition hover:bg-white/[0.06] hover:text-white"
+                    aria-label="Previous month"
+                  >
+                    <ChevronLeft className="h-5 w-5" />
+                  </button>
+                  <span className="min-w-[10rem] text-center font-medium capitalize text-zinc-200">{monthLabel}</span>
+                  <button
+                    type="button"
+                    onClick={nextMonth}
+                    className="rounded-lg border border-white/10 p-2 text-zinc-400 transition hover:bg-white/[0.06] hover:text-white"
+                    aria-label="Next month"
+                  >
+                    <ChevronRight className="h-5 w-5" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto rounded-2xl border border-white/10 bg-white/[0.02] p-3 sm:p-4">
+                <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-medium uppercase tracking-wider text-zinc-500 sm:text-xs">
+                  {WEEKDAYS_PT.map((w) => (
+                    <div key={w} className="py-2">
+                      {w}
+                    </div>
+                  ))}
+                </div>
+                <div className="grid grid-cols-7 gap-1.5">
+                  {cells.map((d, i) => {
+                    if (!d) {
+                      return <div key={`pad-${i}`} className="aspect-square min-h-[2.5rem] sm:min-h-[3rem]" />;
+                    }
+                    const state = getDayCellState(d, anchor, today);
+                    const isToday = isSameLocalDay(d, today);
+                    const isSel = selected && isSameLocalDay(d, selected);
+                    const dayNum = dayNumberFromAnchor(anchor, d);
+                    const done = state === "available" && isDayMarkedComplete(d);
+                    const saved = state === "available" && isDaySavedToLibrary(d);
+
+                    const base =
+                      "relative flex aspect-square min-h-[2.5rem] flex-col items-center justify-center rounded-xl border text-sm font-medium transition sm:min-h-[3rem]";
+                    let cls = `${base} `;
+                    if (state === "before_account") {
+                      cls += "cursor-not-allowed border-transparent bg-white/[0.02] text-zinc-700";
+                    } else if (state === "locked_future") {
+                      cls += "cursor-not-allowed border-white/5 bg-zinc-900/40 text-zinc-600";
+                    } else {
+                      cls += isSel
+                        ? "border-accent bg-accent/15 text-white shadow-[0_0_0_1px_rgb(var(--accent-rgb)/0.5)]"
+                        : "cursor-pointer border-white/10 bg-white/[0.04] text-zinc-200 hover:border-accent/40 hover:bg-white/[0.07]";
+                      if (done && !isSel) {
+                        cls += " border-emerald-500/35 bg-emerald-500/10";
+                      }
+                      if (saved && !done && !isSel) {
+                        cls += " border-sky-500/35 bg-sky-500/10";
+                      }
+                      if (isToday && !isSel) {
+                        cls += " ring-1 ring-accent/50";
+                      }
+                    }
+
+                    return (
+                      <button
+                        key={d.getTime()}
+                        type="button"
+                        disabled={state !== "available"}
+                        onClick={() => onPickDay(d)}
+                        className={cls}
+                        title={
+                          state === "before_account"
+                            ? "Antes da tua conta"
+                            : state === "locked_future"
+                              ? "Dia futuro"
+                              : `${saved ? "Guardado · " : ""}${done ? "Completo · " : ""}Dia ${dayNum}`
+                        }
+                      >
+                        {saved ? (
+                          <Bookmark
+                            className="absolute left-1 top-1 h-3.5 w-3.5 fill-sky-400/30 text-sky-400"
+                            aria-label="Guardado na biblioteca"
+                          />
+                        ) : null}
+                        <span>{d.getDate()}</span>
+                        {done ? (
+                          <Check className="absolute bottom-1 right-1 h-3.5 w-3.5 text-emerald-400" aria-label="Completo" />
+                        ) : null}
+                        {state === "locked_future" ? (
+                          <Lock className="absolute bottom-1 right-1 h-3 w-3 text-zinc-600" aria-hidden />
+                        ) : null}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {selected ? (
+              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+                <h4 className="font-display text-lg font-semibold text-white">Video of the day</h4>
+                {selectedDayNumEarly != null ? (
+                  <div className="mt-4 space-y-6">
+                    <p className="text-sm text-zinc-400">
+                      <span className="text-zinc-200">Day {selectedDayNumEarly}</span>
+                      {" · "}
+                      {selected.toLocaleDateString("pt-PT", {
+                        weekday: "long",
+                        day: "numeric",
+                        month: "long",
+                        year: "numeric",
+                      })}
+                    </p>
+                    <div className="flex aspect-video max-w-2xl flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-white/15 bg-zinc-950/80 text-zinc-500">
+                      <PlayCircle className="h-14 w-14 text-zinc-600" aria-hidden />
+                      <p className="text-sm">Video content will appear here.</p>
+                    </div>
+
+                    <div className="max-w-2xl space-y-3">
+                      {selectedCompleted ? (
+                        <div className="flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100/90">
+                          <Check className="h-5 w-5 shrink-0 text-emerald-400" aria-hidden />
+                          <span>Lesson marked as watched — progress updated.</span>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={onMarkWatched}
+                          className="w-full rounded-xl bg-accent px-4 py-3 text-sm font-semibold text-zinc-950 transition hover:bg-accent/90 sm:w-auto"
+                        >
+                          I watched this lesson — count toward my progress
+                        </button>
+                      )}
+                      <p className="text-xs text-zinc-500">
+                        Tap when you&apos;ve watched the lesson to advance your bar, streak, and skill rows for this day.
+                      </p>
+                    </div>
+
+                    <div className="max-w-2xl space-y-4 rounded-2xl border border-white/10 bg-zinc-950/50 p-5">
+                      <div className="flex items-start gap-3">
+                        <div className="rounded-lg border border-white/10 bg-white/[0.04] p-2">
+                          <Library className="h-5 w-5 text-accent" aria-hidden />
+                        </div>
+                        <div>
+                          <h5 className="font-display text-sm font-semibold text-white">Your device & private library</h5>
+                          <p className="mt-1 text-xs leading-relaxed text-zinc-500">
+                            Download this lesson to keep offline, write your own notes, and save everything to your private
+                            library. When you save, this day shows the bookmark on the calendar (in addition to the green tick
+                            when completed).
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                        <button
+                          type="button"
+                          onClick={onDownloadLessonPack}
+                          className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/[0.06] px-4 py-2.5 text-sm font-medium text-zinc-200 transition hover:bg-white/[0.1]"
+                        >
+                          <FileText className="h-4 w-4 shrink-0" aria-hidden />
+                          Download lesson pack (JSON)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void onDownloadVideoOrInfo()}
+                          className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/[0.06] px-4 py-2.5 text-sm font-medium text-zinc-200 transition hover:bg-white/[0.1]"
+                        >
+                          <Download className="h-4 w-4 shrink-0" aria-hidden />
+                          {getLessonVideoUrl(selectedDayKey ?? "") ? "Download video file" : "Download video / offline info"}
+                        </button>
+                      </div>
+
+                      <div>
+                        <label htmlFor="coaching-lesson-notes" className="mb-2 block text-xs font-medium uppercase tracking-wider text-zinc-500">
+                          Notes (private)
+                        </label>
+                        <textarea
+                          id="coaching-lesson-notes"
+                          value={notesDraft}
+                          onChange={(e) => setNotesDraft(e.target.value)}
+                          rows={5}
+                          placeholder="Write reflections, cues for your team, or key takeaways…"
+                          className="w-full resize-y rounded-xl border border-white/10 bg-zinc-950/80 px-3 py-2.5 text-sm text-zinc-200 placeholder:text-zinc-600 focus:border-accent/50 focus:outline-none focus:ring-1 focus:ring-accent/30"
+                        />
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={onSaveToLibrary}
+                        className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-sky-500/40 bg-sky-500/15 px-4 py-3 text-sm font-semibold text-sky-100 transition hover:bg-sky-500/25 sm:w-auto"
+                      >
+                        <Bookmark className="h-4 w-4 shrink-0" aria-hidden />
+                        Save to my private library
+                      </button>
+                      {selectedSaved ? (
+                        <p className="flex items-center gap-2 text-sm text-sky-300/90">
+                          <Bookmark className="h-4 w-4 fill-sky-400/40" aria-hidden />
+                          Saved — this day now shows the bookmark on the calendar.
+                        </p>
+                      ) : null}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            ) : (
+              <p className="rounded-xl border border-dashed border-white/10 bg-zinc-950/40 px-4 py-6 text-center text-sm text-zinc-500">
+                Select a day on the calendar to open the video, mark the lesson, and use downloads and notes.
+              </p>
+            )}
+          </>
+        ) : null}
+      </section>
+
+      {anchor && challengeDisplay ? (
+        <section className="space-y-8 rounded-2xl border border-white/10 bg-zinc-950/40 p-6 sm:p-10">
+          <header className="border-b border-white/10 pb-6">
+            <h3 className="font-display text-xl font-semibold tracking-tight text-white sm:text-2xl">
+              Skill Development Table
+            </h3>
+            <p className="mt-2 max-w-2xl text-sm text-zinc-500">
+              Tracks the same lesson days you complete in Challenge System; skills fill as you mark videos watched.
+            </p>
+          </header>
+          <CoachingDevelopmentTable watchedLessonIds={watchedLessonIds} />
         </section>
       ) : null}
     </div>
