@@ -78,10 +78,20 @@ export function CoachingDevelopmentTable({ watchedLessonIds }: Props) {
                         </div>
                       </td>
                       <td className="px-4 py-3 align-top text-xs text-zinc-500">
-                        <span className="text-zinc-300">{r.contributingWatchedCount}</span>
-                        <span className="text-zinc-600"> / </span>
-                        <span>{r.relatedLessonTotal}</span>
-                        <span className="ml-1 block text-[10px] uppercase tracking-wider text-zinc-600">in catalogue</span>
+                        {r.relatedLessonTotal > 0 ? (
+                          <>
+                            <span className="text-zinc-300">{r.contributingWatchedCount}</span>
+                            <span className="text-zinc-600"> / </span>
+                            <span>{r.relatedLessonTotal}</span>
+                            <span className="ml-1 block text-[10px] uppercase tracking-wider text-zinc-600">
+                              in catalogue
+                            </span>
+                          </>
+                        ) : (
+                          <span className="text-zinc-600" title="No published lessons reference this skill yet">
+                            —
+                          </span>
+                        )}
                       </td>
                     </tr>
                   ))}

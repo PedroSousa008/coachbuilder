@@ -1,23 +1,23 @@
 /**
  * Coaching Development — catálogo de tópicos, competências e lições (vídeos).
  *
- * Como editar quando tiveres o conteúdo:
- * 1. Adiciona entradas em `COACHING_TOPICS` (áreas gerais).
- * 2. Adiciona `COACHING_SKILLS` com `topicId` que aponta para um tópico.
- * 3. Para cada vídeo/lição publicada, adiciona `COACHING_LESSON_DEVELOPMENTS`.
- *    - `lessonId` deve coincidir com o identificador usado quando o treinador marca a lição como vista.
- *      Na app isso é o **dayKey** do calendário (`YYYY-MM-DD`) no dia em que essa lição está activa.
- * 4. Em cada lição, lista `skillIds` (ids das competências que essa lição desenvolve).
+ * Tópicos e competências vivem em `coaching-catalog-specs.ts` (lista completa).
  *
- * Progresso por competência: cada visualização válida soma `100 / N` pontos percentuais,
- * onde `N` = número total de lições no catálogo que referenciam essa competência.
- * Assim, 5 lições sobre "Game intelligence" → cada uma vale 20% até completar 100%.
+ * Para cada vídeo/lição publicada, adiciona `COACHING_LESSON_DEVELOPMENTS`.
+ * - `lessonId` deve coincidir com o identificador quando o treinador marca a lição como vista
+ *   (dayKey do calendário `YYYY-MM-DD` no dia activo).
+ * - Lista `skillIds`: ids das competências — formato `{topicId}-{slugDoNome}` (ver `COACHING_SKILLS` na app ou inspecciona `slugify`).
+ *
+ * Progresso: cada visualização válida soma `100 / N` pontos percentuais,
+ * onde `N` = número de lições no catálogo que referenciam essa competência.
+ * Competências sem lições ainda aparecem na tabela com 0% até serem ligadas.
  */
+
+import { TOPIC_SKILL_SPECS } from "./coaching-catalog-specs";
 
 export type CoachingTopicDef = {
   id: string;
   label: string;
-  /** Texto curto opcional para a UI. */
   summary?: string;
 };
 
@@ -26,115 +26,106 @@ export type CoachingSkillDef = {
   topicId: string;
   label: string;
   summary?: string;
+  /** Ordem dentro do tópico no catálogo (0-based). */
+  catalogOrder?: number;
 };
 
 export type CoachingLessonDevelopmentDef = {
-  /** Normalmente `YYYY-MM-DD` (dia da lição no calendário). */
   lessonId: string;
   title: string;
-  /** Competências que esta lição desenvolve (cada uma recebe +100/N % quando vista). */
   skillIds: string[];
 };
 
-export const COACHING_TOPICS: CoachingTopicDef[] = [
-  {
-    id: "game-intelligence-midfield",
-    label: "Game intelligence & midfield",
-    summary: "Leitura de jogo, meio-campo e ritmo.",
-  },
-  {
-    id: "technical-foundation",
-    label: "Technical foundation",
-    summary: "Base técnica reutilizável em contexto de jogo.",
-  },
-];
+function slugify(label: string): string {
+  return label
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
 
-/** Competências individuais (cada linha da tabela de desenvolvimento). */
-export const COACHING_SKILLS: CoachingSkillDef[] = [
-  {
-    id: "game-intelligence",
-    topicId: "game-intelligence-midfield",
-    label: "Game intelligence",
-    summary: "Decisões e leitura global.",
-  },
-  {
-    id: "midfield-understanding",
-    topicId: "game-intelligence-midfield",
-    label: "Midfield understanding",
-    summary: "Estrutura e funções no meio.",
-  },
-  {
-    id: "scanning-before-receiving",
-    topicId: "game-intelligence-midfield",
-    label: "Scanning before receiving",
-    summary: "Informação antes do primeiro toque.",
-  },
-  {
-    id: "tempo-control",
-    topicId: "game-intelligence-midfield",
-    label: "Tempo control",
-    summary: "Acelerar e abrandar o jogo com bola.",
-  },
-  {
-    id: "passing-angles",
-    topicId: "game-intelligence-midfield",
-    label: "Passing angles",
-    summary: "Linhas de passe e terceiro homem.",
-  },
-  {
-    id: "first-touch-under-pressure",
-    topicId: "technical-foundation",
-    label: "First touch under pressure",
-    summary: "Controlo orientado com adversário próximo.",
-  },
-];
+export const COACHING_TOPICS: CoachingTopicDef[] = TOPIC_SKILL_SPECS.map((t) => ({
+  id: t.id,
+  label: t.label,
+  summary: t.summary,
+}));
+
+export const COACHING_SKILLS: CoachingSkillDef[] = TOPIC_SKILL_SPECS.flatMap((t) =>
+  t.skills.map((label, catalogOrder) => ({
+    id: `${t.id}-${slugify(label)}`,
+    topicId: t.id,
+    label,
+    catalogOrder,
+  }))
+);
 
 /**
  * Catálogo de lições → competências.
- * Substitui / acrescenta linhas quando publicares vídeos; usa `lessonId` = dayKey do dia.
- * Entradas de exemplo (lessonIds fictícios) para demonstrar o cálculo 100/N na UI.
+ * `lessonId` = dayKey quando publicares por dia. Exemplos usam `example-lesson-*` e skillIds reais do catálogo.
  */
 export const COACHING_LESSON_DEVELOPMENTS: CoachingLessonDevelopmentDef[] = [
   {
     lessonId: "example-lesson-midfield-1",
-    title: "Example: Midfield intelligence (catalogue sample)",
+    title: "Example: Scanning and game reading (catalogue sample)",
     skillIds: [
-      "game-intelligence",
-      "midfield-understanding",
-      "scanning-before-receiving",
-      "tempo-control",
-      "passing-angles",
+      "midfielder-elite-habits-scanning",
+      "midfielder-elite-habits-open-body-shape",
+      "tactical-intelligence-game-reading",
+      "tactical-intelligence-spatial-awareness",
+      "technical-ability-first-touch",
     ],
   },
   {
     lessonId: "example-lesson-midfield-2",
-    title: "Example: Tempo and angles (catalogue sample)",
-    skillIds: ["game-intelligence", "tempo-control", "passing-angles"],
+    title: "Example: Tempo and line-breaking (catalogue sample)",
+    skillIds: [
+      "tactical-intelligence-tempo-control",
+      "tactical-intelligence-line-breaking-vision",
+      "midfielder-elite-habits-tempo-dictation",
+      "midfielder-elite-habits-passing-rhythm",
+    ],
   },
   {
     lessonId: "example-lesson-midfield-3",
-    title: "Example: Scanning habits (catalogue sample)",
-    skillIds: ["scanning-before-receiving", "game-intelligence"],
+    title: "Example: Press resistance and receiving (catalogue sample)",
+    skillIds: [
+      "tactical-intelligence-press-resistance",
+      "midfielder-elite-habits-receive-between-lines",
+      "midfielder-elite-habits-progressive-receiving",
+      "technical-ability-close-control",
+    ],
   },
   {
     lessonId: "example-lesson-midfield-4",
-    title: "Example: Midfield structure (catalogue sample)",
-    skillIds: ["midfield-understanding", "passing-angles"],
+    title: "Example: Third man and angles (catalogue sample)",
+    skillIds: [
+      "tactical-intelligence-third-man-awareness",
+      "advanced-tactical-creating-passing-angles",
+      "technical-ability-short-passing",
+    ],
   },
   {
     lessonId: "example-lesson-midfield-5",
-    title: "Example: Game intelligence blocks (catalogue sample)",
-    skillIds: ["game-intelligence", "midfield-understanding"],
+    title: "Example: Compactness and discipline (catalogue sample)",
+    skillIds: [
+      "tactical-intelligence-compactness-understanding",
+      "tactical-intelligence-tactical-discipline",
+      "defensive-skills-compact-defending",
+    ],
   },
   {
     lessonId: "example-lesson-technical-1",
-    title: "Example: First touch in tight spaces (catalogue sample)",
-    skillIds: ["first-touch-under-pressure", "tempo-control"],
+    title: "Example: First touch and finishing (catalogue sample)",
+    skillIds: [
+      "technical-ability-first-touch",
+      "technical-ability-finishing",
+      "advanced-technical-turn-under-pressure",
+      "mental-attributes-composure",
+    ],
   },
   {
     lessonId: "example-lesson-midfield-6",
-    title: "Example: Reading pressure as a #6 (catalogue sample)",
-    skillIds: ["game-intelligence"],
+    title: "Example: Decision making under pressure (catalogue sample)",
+    skillIds: ["tactical-intelligence-decision-making", "mental-attributes-focus-under-pressure"],
   },
 ];
 
@@ -161,11 +152,8 @@ export function countRelatedLessonsPerSkill(): Map<string, number> {
 export type SkillProgressRow = {
   skill: CoachingSkillDef;
   topic: CoachingTopicDef;
-  /** 0–100 após cap. */
   progressPercent: number;
-  /** Lições do catálogo que tocam esta competência. */
   relatedLessonTotal: number;
-  /** Quantas dessas lições o treinador já marcou como vistas (e existem no catálogo). */
   contributingWatchedCount: number;
 };
 
@@ -173,13 +161,9 @@ function topicById(id: string): CoachingTopicDef | undefined {
   return COACHING_TOPICS.find((t) => t.id === id);
 }
 
-function skillById(id: string): CoachingSkillDef | undefined {
-  return COACHING_SKILLS.find((s) => s.id === id);
-}
-
 /**
- * Calcula o progresso por competência a partir dos `lessonId` já marcados como vistos
- * (na app: `completedDayKeys` do challenge, cada um deve coincidir com `lessonId` no catálogo quando publicares por dia).
+ * Progresso por competência a partir dos `lessonId` marcados como vistos
+ * (`completedDayKeys`). Inclui todas as competências do catálogo; N=0 até existirem lições.
  */
 export function computeCoachingDevelopmentRows(watchedLessonIds: readonly string[]): SkillProgressRow[] {
   const watched = new Set(watchedLessonIds);
@@ -205,12 +189,11 @@ export function computeCoachingDevelopmentRows(watchedLessonIds: readonly string
     const topic = topicById(skill.topicId);
     if (!topic) continue;
     const n = relatedTotal.get(skill.id) ?? 0;
-    if (n <= 0) continue;
     const raw = incrementSum.get(skill.id) ?? 0;
     rows.push({
       skill,
       topic,
-      progressPercent: Math.min(100, Math.round(raw * 10) / 10),
+      progressPercent: n > 0 ? Math.min(100, Math.round(raw * 10) / 10) : 0,
       relatedLessonTotal: n,
       contributingWatchedCount: watchedTouchCount.get(skill.id) ?? 0,
     });
@@ -221,7 +204,7 @@ export function computeCoachingDevelopmentRows(watchedLessonIds: readonly string
     const oa = topicOrder.get(a.topic.id) ?? 99;
     const ob = topicOrder.get(b.topic.id) ?? 99;
     if (oa !== ob) return oa - ob;
-    return a.skill.label.localeCompare(b.skill.label);
+    return (a.skill.catalogOrder ?? 0) - (b.skill.catalogOrder ?? 0);
   });
 
   return rows;
@@ -229,4 +212,9 @@ export function computeCoachingDevelopmentRows(watchedLessonIds: readonly string
 
 export function getLessonDevelopment(lessonId: string): CoachingLessonDevelopmentDef | undefined {
   return LESSON_BY_ID.get(lessonId);
+}
+
+/** Resolve skill id from topic + label (útil ao mapear conteúdo novo). */
+export function coachingSkillId(topicId: string, label: string): string {
+  return `${topicId}-${slugify(label)}`;
 }
