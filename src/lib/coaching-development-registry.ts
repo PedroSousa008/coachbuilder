@@ -415,6 +415,25 @@ export const COACHING_LESSON_DEVELOPMENTS: CoachingLessonDevelopmentDef[] = [
       "defensive-specialist-delay-counter-attack",
     ],
   },
+  {
+    lessonId: "day-020",
+    title: "Zabaleta - Inverted Full Back Movement inside the Box - Coaches' Vision",
+    skillIds: [
+      "full-back-wing-back-inverted-fullback-iq",
+      "tactical-intelligence-zone-occupation",
+      "attacking-skills-box-movement",
+      "attacking-skills-far-post-runs",
+      "attacking-specialist-timing-to-attack-space",
+      "wide-player-winger-far-post-arrival",
+      "attacking-skills-movement-off-ball",
+      "tactical-intelligence-timing-of-runs",
+      "attacking-specialist-poacher-instinct",
+      "attacking-specialist-rebound-awareness",
+      "tactical-intelligence-game-reading",
+      "advanced-tactical-match-momentum-reading",
+      "striker-one-chance-one-goal-mentality",
+    ],
+  },
 ];
 
 const LESSON_BY_ID: Map<string, CoachingLessonDevelopmentDef> = new Map(
