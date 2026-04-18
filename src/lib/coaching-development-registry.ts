@@ -187,6 +187,22 @@ export const COACHING_LESSON_DEVELOPMENTS: CoachingLessonDevelopmentDef[] = [
       "tactical-intelligence-zone-occupation",
     ],
   },
+  {
+    lessonId: "day-009",
+    title: "Thiago Alcântara - Striker Stretching the Team - Coaches' Vision",
+    skillIds: [
+      "attacking-skills-hold-up-play",
+      "attacking-skills-link-up-play",
+      "advanced-tactical-width-management",
+      "attacking-skills-cut-inside-threat",
+      "tactical-intelligence-third-man-awareness",
+      "attacking-skills-combination-play",
+      "midfielder-elite-habits-receive-between-lines",
+      "midfield-mastery-support-angle-creation",
+      "striker-running-channels",
+      "advanced-tactical-creating-passing-angles",
+    ],
+  },
 ];
 
 const LESSON_BY_ID: Map<string, CoachingLessonDevelopmentDef> = new Map(
