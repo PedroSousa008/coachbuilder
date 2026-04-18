@@ -125,11 +125,16 @@ export const COACHING_LESSON_DEVELOPMENTS: CoachingLessonDevelopmentDef[] = [
   },
   {
     lessonId: "day-005",
-    title: "Example: Compactness and discipline (catalogue sample)",
+    title: "Fabregas - Trust the Process - Coaches' Vision",
     skillIds: [
-      "tactical-intelligence-compactness-understanding",
-      "tactical-intelligence-tactical-discipline",
-      "defensive-skills-compact-defending",
+      "tactical-intelligence-game-reading",
+      "tactical-intelligence-positioning",
+      "midfield-mastery-deep-build-up-composure",
+      "coach-development-metrics-leadership-presence-as-coach",
+      "mental-attributes-confidence",
+      "tactical-intelligence-spatial-awareness",
+      "tactical-intelligence-numerical-superiority-recognition",
+      "tactical-intelligence-decision-making",
     ],
   },
   {
