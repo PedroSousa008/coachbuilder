@@ -336,6 +336,25 @@ export const COACHING_LESSON_DEVELOPMENTS: CoachingLessonDevelopmentDef[] = [
       "striker-near-post-movement",
     ],
   },
+  {
+    lessonId: "day-016",
+    title: "Zabaleta - Full Back and Wingers Adaptation - Coaches' Vision",
+    skillIds: [
+      "coach-evaluation-development-role-adaptation",
+      "wide-player-winger-wide-combination-play",
+      "full-back-wing-back-support-under-pressure",
+      "full-back-wing-back-inverted-fullback-iq",
+      "midfield-mastery-support-angle-creation",
+      "tactical-intelligence-timing-of-runs",
+      "advanced-tactical-creating-passing-angles",
+      "attacking-skills-hold-up-play",
+      "attacking-skills-link-up-play",
+      "tactical-intelligence-decision-making",
+      "tactical-intelligence-game-reading",
+      "coach-evaluation-development-tactical-understanding",
+      "advanced-tactical-rest-defence-awareness",
+    ],
+  },
 ];
 
 const LESSON_BY_ID: Map<string, CoachingLessonDevelopmentDef> = new Map(
