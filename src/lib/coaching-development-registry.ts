@@ -157,8 +157,22 @@ export const COACHING_LESSON_DEVELOPMENTS: CoachingLessonDevelopmentDef[] = [
   },
   {
     lessonId: "day-007",
-    title: "Example: Decision making under pressure (catalogue sample)",
-    skillIds: ["tactical-intelligence-decision-making", "mental-attributes-focus-under-pressure"],
+    title: "Thiago Alcântara - False 9 Options - Coaches' Vision",
+    skillIds: [
+      "midfield-mastery-midfield-balance-awareness",
+      "tactical-intelligence-positioning",
+      "advanced-tactical-overload-creation",
+      "tactical-intelligence-rotation-understanding",
+      "attacking-specialist-dribble-to-final-third",
+      "tactical-intelligence-tactical-discipline",
+      "tactical-intelligence-spatial-awareness",
+      "advanced-tactical-double-movement-timing",
+      "tactical-intelligence-zone-occupation",
+      "striker-false-nine-link-play",
+      "tactical-intelligence-game-reading",
+      "tactical-intelligence-decision-making",
+      "tactical-intelligence-numerical-superiority-recognition",
+    ],
   },
 ];
 
