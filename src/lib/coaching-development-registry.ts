@@ -174,6 +174,19 @@ export const COACHING_LESSON_DEVELOPMENTS: CoachingLessonDevelopmentDef[] = [
       "tactical-intelligence-numerical-superiority-recognition",
     ],
   },
+  {
+    lessonId: "day-008",
+    title: "Thiago Alcântara - Full Backs and Wingers Coordination - Coaches' Vision",
+    skillIds: [
+      "tactical-intelligence-game-reading",
+      "advanced-tactical-width-management",
+      "full-back-wing-back-inverted-fullback-iq",
+      "tactical-intelligence-positioning",
+      "communication-leadership-organising-teammates",
+      "tactical-intelligence-rotation-understanding",
+      "tactical-intelligence-zone-occupation",
+    ],
+  },
 ];
 
 const LESSON_BY_ID: Map<string, CoachingLessonDevelopmentDef> = new Map(
