@@ -242,6 +242,27 @@ export const COACHING_LESSON_DEVELOPMENTS: CoachingLessonDevelopmentDef[] = [
       "advanced-tactical-defensive-cover-shadow",
     ],
   },
+  {
+    lessonId: "day-012",
+    title: "Thiago Alcântara - Reaction to Losing the ball - Coaches' Vision",
+    skillIds: [
+      "defensive-skills-pressing-intensity",
+      "advanced-tactical-trigger-press-recognition",
+      "advanced-tactical-counter-prevention",
+      "advanced-physical-work-rate-engine",
+      "tactical-intelligence-covering-space",
+      "tactical-intelligence-numerical-superiority-recognition",
+      "defensive-skills-anticipation",
+      "advanced-tactical-press-trap-understanding",
+      "tactical-intelligence-game-reading",
+      "tactical-intelligence-zone-occupation",
+      "defensive-skills-tackling",
+      "defensive-skills-interceptions",
+      "defensive-skills-second-ball-winning",
+      "communication-leadership-trigger-communication",
+      "tactical-intelligence-tactical-discipline",
+    ],
+  },
 ];
 
 const LESSON_BY_ID: Map<string, CoachingLessonDevelopmentDef> = new Map(
