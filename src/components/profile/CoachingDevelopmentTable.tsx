@@ -36,8 +36,9 @@ export function CoachingDevelopmentTable({ watchedLessonIds }: Props) {
     <div className="space-y-8">
       <p className="max-w-3xl text-xs text-zinc-600">
         Each watched lesson adds partial progress (<span className="text-zinc-500">100 ÷ N</span> per skill,{" "}
-        <span className="text-zinc-500">N</span> = lessons in the catalogue that reference that skill). Day keys are
-        usually <code className="text-zinc-500">YYYY-MM-DD</code>; demos may use <code className="text-zinc-500">example-lesson-*</code>.
+        <span className="text-zinc-500">N</span> = lessons in the catalogue that reference that skill). Lesson ids
+        follow programme days (<code className="text-zinc-500">day-001</code>, <code className="text-zinc-500">day-002</code>
+        , …); day 1 is your account creation day.
       </p>
 
       <div className="space-y-10">

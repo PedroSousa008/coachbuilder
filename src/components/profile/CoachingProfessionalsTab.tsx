@@ -34,6 +34,7 @@ import {
   XP_PER_LESSON,
 } from "@/lib/coaching-challenge-storage";
 import { getLessonVideoUrl } from "@/lib/coaching-lesson-assets";
+import { completedDayKeysToProgramLessonIds, programLessonCatalogId } from "@/lib/coaching-program-day";
 import {
   getLibraryEntry,
   loadPrivateLibrary,
@@ -147,12 +148,13 @@ export function CoachingProfessionalsTab() {
 
   const onDownloadLessonPack = useCallback(() => {
     if (!user?.id || !selected || selectedDayKey == null || selectedDayNumEarly == null) return;
-    const videoUrl = getLessonVideoUrl(selectedDayKey);
+    const videoUrl = getLessonVideoUrl(selectedDayKey, anchor);
     const payload = {
       app: "CoachBuilder",
       kind: "coaching-by-professionals-lesson",
       dayKey: selectedDayKey,
       dayNumber: selectedDayNumEarly,
+      programLessonId: programLessonCatalogId(selectedDayNumEarly),
       dateLabel: selected.toLocaleDateString("pt-PT", {
         weekday: "long",
         day: "numeric",
@@ -171,11 +173,11 @@ export function CoachingProfessionalsTab() {
     if (getLibraryEntry(user.id, selectedDayKey)) {
       setLibrary(touchLibraryDownload(user.id, selectedDayKey));
     }
-  }, [user?.id, selected, selectedDayKey, selectedDayNumEarly, notesDraft]);
+  }, [user?.id, selected, selectedDayKey, selectedDayNumEarly, notesDraft, anchor]);
 
   const onDownloadVideoOrInfo = useCallback(async () => {
     if (!user?.id || !selected || selectedDayKey == null || selectedDayNumEarly == null) return;
-    const videoUrl = getLessonVideoUrl(selectedDayKey);
+    const videoUrl = getLessonVideoUrl(selectedDayKey, anchor);
     if (videoUrl) {
       try {
         const res = await fetch(videoUrl);
@@ -209,7 +211,7 @@ export function CoachingProfessionalsTab() {
     if (getLibraryEntry(user.id, selectedDayKey)) {
       setLibrary(touchLibraryDownload(user.id, selectedDayKey));
     }
-  }, [user?.id, selected, selectedDayKey, selectedDayNumEarly, notesDraft]);
+  }, [user?.id, selected, selectedDayKey, selectedDayNumEarly, notesDraft, anchor]);
 
   const monthLabel = useMemo(
     () =>
@@ -249,7 +251,10 @@ export function CoachingProfessionalsTab() {
   const streak = challengeDisplay ? getCurrentStreak(challengeDisplay) : 0;
   const progressPct = challengeDisplay ? getProgressPercentInLevel(challengeDisplay) : 0;
 
-  const watchedLessonIds = challengeDisplay?.completedDayKeys ?? [];
+  const watchedProgramLessonIds = useMemo(() => {
+    if (!anchor || !challengeDisplay) return [];
+    return completedDayKeysToProgramLessonIds(challengeDisplay.completedDayKeys, anchor);
+  }, [anchor, challengeDisplay]);
 
   if (!user) {
     return (
@@ -302,8 +307,9 @@ export function CoachingProfessionalsTab() {
         <header className="border-b border-white/10 pb-6">
           <h3 className="font-display text-xl font-semibold tracking-tight text-white sm:text-2xl">Challenge System</h3>
           <p className="mt-2 max-w-2xl text-sm text-zinc-500">
-            Streak, level, calendar, daily video and your private library. Mark a lesson as watched here — the Skill
-            Development Table below uses the same completed days.
+            Streak, level, calendar, daily video and your private library. Day 1 is the day you created your account;
+            the video for each day is the same programme slot for everyone (day-001, day-002, …). The Skill Development
+            Table maps those completions to <code className="text-zinc-400">day-NNN</code> lesson ids.
           </p>
         </header>
 
@@ -544,7 +550,7 @@ export function CoachingProfessionalsTab() {
                           className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/[0.06] px-4 py-2.5 text-sm font-medium text-zinc-200 transition hover:bg-white/[0.1]"
                         >
                           <Download className="h-4 w-4 shrink-0" aria-hidden />
-                          {getLessonVideoUrl(selectedDayKey ?? "") ? "Download video file" : "Download video / offline info"}
+                          {getLessonVideoUrl(selectedDayKey ?? "", anchor) ? "Download video file" : "Download video / offline info"}
                         </button>
                       </div>
 
@@ -596,10 +602,11 @@ export function CoachingProfessionalsTab() {
               Skill Development Table
             </h3>
             <p className="mt-2 max-w-2xl text-sm text-zinc-500">
-              Tracks the same lesson days you complete in Challenge System; skills fill as you mark videos watched.
+              Uses the same programme-day lessons as Challenge System (day 1 = your account start); skills update when
+              you mark those days watched.
             </p>
           </header>
-          <CoachingDevelopmentTable watchedLessonIds={watchedLessonIds} />
+          <CoachingDevelopmentTable watchedLessonIds={watchedProgramLessonIds} />
         </section>
       ) : null}
     </div>

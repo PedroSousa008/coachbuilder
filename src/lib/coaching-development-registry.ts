@@ -4,8 +4,9 @@
  * Tópicos e competências vivem em `coaching-catalog-specs.ts` (lista completa).
  *
  * Para cada vídeo/lição publicada, adiciona `COACHING_LESSON_DEVELOPMENTS`.
- * - `lessonId` deve coincidir com o identificador quando o treinador marca a lição como vista
- *   (dayKey do calendário `YYYY-MM-DD` no dia activo).
+ * - `lessonId` = **dia do programa** desde a criação da conta (`day-001` … `day-365`), o mesmo id que a pasta
+ *   em `public/coaching-daily-videos/`. O desafio continua a guardar `completedDayKeys` como datas de calendário;
+ *   a app converte anchor + data → N e usa `day-NNN` para o catálogo e para o vídeo.
  * - Lista `skillIds`: ids das competências — formato `{topicId}-{slugDoNome}` (ver `COACHING_SKILLS` na app ou inspecciona `slugify`).
  *
  * Progresso: cada visualização válida soma `100 / N` pontos percentuais,
@@ -60,11 +61,11 @@ export const COACHING_SKILLS: CoachingSkillDef[] = TOPIC_SKILL_SPECS.flatMap((t)
 
 /**
  * Catálogo de lições → competências.
- * `lessonId` = dayKey quando publicares por dia. Exemplos usam `example-lesson-*` e skillIds reais do catálogo.
+ * `lessonId` = `day-001` … (program day). Exemplos nos primeiros dias.
  */
 export const COACHING_LESSON_DEVELOPMENTS: CoachingLessonDevelopmentDef[] = [
   {
-    lessonId: "example-lesson-midfield-1",
+    lessonId: "day-001",
     title: "Example: Scanning and game reading (catalogue sample)",
     skillIds: [
       "midfielder-elite-habits-scanning",
@@ -75,7 +76,7 @@ export const COACHING_LESSON_DEVELOPMENTS: CoachingLessonDevelopmentDef[] = [
     ],
   },
   {
-    lessonId: "example-lesson-midfield-2",
+    lessonId: "day-002",
     title: "Example: Tempo and line-breaking (catalogue sample)",
     skillIds: [
       "tactical-intelligence-tempo-control",
@@ -85,7 +86,7 @@ export const COACHING_LESSON_DEVELOPMENTS: CoachingLessonDevelopmentDef[] = [
     ],
   },
   {
-    lessonId: "example-lesson-midfield-3",
+    lessonId: "day-003",
     title: "Example: Press resistance and receiving (catalogue sample)",
     skillIds: [
       "tactical-intelligence-press-resistance",
@@ -95,7 +96,7 @@ export const COACHING_LESSON_DEVELOPMENTS: CoachingLessonDevelopmentDef[] = [
     ],
   },
   {
-    lessonId: "example-lesson-midfield-4",
+    lessonId: "day-004",
     title: "Example: Third man and angles (catalogue sample)",
     skillIds: [
       "tactical-intelligence-third-man-awareness",
@@ -104,7 +105,7 @@ export const COACHING_LESSON_DEVELOPMENTS: CoachingLessonDevelopmentDef[] = [
     ],
   },
   {
-    lessonId: "example-lesson-midfield-5",
+    lessonId: "day-005",
     title: "Example: Compactness and discipline (catalogue sample)",
     skillIds: [
       "tactical-intelligence-compactness-understanding",
@@ -113,7 +114,7 @@ export const COACHING_LESSON_DEVELOPMENTS: CoachingLessonDevelopmentDef[] = [
     ],
   },
   {
-    lessonId: "example-lesson-technical-1",
+    lessonId: "day-006",
     title: "Example: First touch and finishing (catalogue sample)",
     skillIds: [
       "technical-ability-first-touch",
@@ -123,7 +124,7 @@ export const COACHING_LESSON_DEVELOPMENTS: CoachingLessonDevelopmentDef[] = [
     ],
   },
   {
-    lessonId: "example-lesson-midfield-6",
+    lessonId: "day-007",
     title: "Example: Decision making under pressure (catalogue sample)",
     skillIds: ["tactical-intelligence-decision-making", "mental-attributes-focus-under-pressure"],
   },
@@ -163,7 +164,8 @@ function topicById(id: string): CoachingTopicDef | undefined {
 
 /**
  * Progresso por competência a partir dos `lessonId` marcados como vistos
- * (`completedDayKeys`). Inclui todas as competências do catálogo; N=0 até existirem lições.
+ * (`day-001`, … — ids de programa; a UI passa-os derivados de `completedDayKeys` + anchor).
+ * Inclui todas as competências do catálogo; N=0 até existirem lições.
  */
 export function computeCoachingDevelopmentRows(watchedLessonIds: readonly string[]): SkillProgressRow[] {
   const watched = new Set(watchedLessonIds);

@@ -1,24 +1,26 @@
-# Coaching by Professionals — daily lesson videos
+# Coaching by Professionals — daily lesson videos (program days)
 
-This tree reserves **one folder per calendar day** so you can drop in lesson files without renaming paths in code.
+Lessons are keyed by **program day** since the user’s account was created (**day 1 = signup day** in their local calendar), not by a fixed global calendar date. The same file is “video 1” for everyone; only the calendar date on which it unlocks differs per user.
 
 ## Layout
 
-- **`YYYY-MM-DD/`** — local calendar day (same string as the app’s **day key** when a coach picks that date).
-- Inside each day folder, place your file as:
+- **`day-001/`** … **`day-365/`** — `001` = first day of the programme for that user, `002` = second day, etc.
+- Put the file in each folder as:
 
   **`lesson.mp4`**
 
-  The app resolves the public URL as `/coaching-daily-videos/{dayKey}/lesson.mp4` (see `getLessonVideoUrl` in `src/lib/coaching-lesson-assets.ts`).
+- The app builds the public URL as  
+  `/coaching-daily-videos/day-NNN/lesson.mp4`  
+  where `NNN` is derived from the selected calendar date and the user’s account anchor (`createdAt`). See `getLessonVideoUrl` in `src/lib/coaching-lesson-assets.ts` and `src/lib/coaching-program-day.ts`.
 
-## Current batch
+## Skill catalogue
 
-Folders are pre-created for **365 consecutive days** starting **2026-04-16** (inclusive). Extend by adding more `YYYY-MM-DD` folders alongside these if you need a longer runway.
+`COACHING_LESSON_DEVELOPMENTS` in `src/lib/coaching-development-registry.ts` should use the same ids (`day-001`, …) so the Skill Development Table matches completed lessons.
 
 ## Git and file size
 
-Video files are large. Prefer **[Git LFS](https://git-lfs.github.com/)** (or host on a CDN / object storage and point `getLessonVideoUrl` to signed URLs) for production so the repo stays cloneable.
+Video files are large. Prefer **[Git LFS](https://git-lfs.github.com/)** or a CDN / object storage for production.
 
 ## Optional assets
 
-You may add sidecars in the same day folder (e.g. `poster.jpg`, `captions.vtt`); the app only reads `lesson.mp4` unless you extend `coaching-lesson-assets.ts`.
+Sidecars (e.g. `poster.jpg`) can live next to `lesson.mp4`; only `lesson.mp4` is read by the app unless you extend `coaching-lesson-assets.ts`.
