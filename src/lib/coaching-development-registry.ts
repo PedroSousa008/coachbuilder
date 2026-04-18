@@ -398,6 +398,23 @@ export const COACHING_LESSON_DEVELOPMENTS: CoachingLessonDevelopmentDef[] = [
       "attacking-skills-combination-play",
     ],
   },
+  {
+    lessonId: "day-019",
+    title: "Zabaleta - Game reading as an Inverted Full Back - Coaches' Vision",
+    skillIds: [
+      "tactical-intelligence-game-reading",
+      "advanced-tactical-match-momentum-reading",
+      "tactical-intelligence-line-breaking-vision",
+      "technical-ability-through-balls",
+      "full-back-wing-back-inverted-fullback-iq",
+      "defensive-skills-counter-pressing",
+      "advanced-tactical-trigger-press-recognition",
+      "advanced-tactical-counter-prevention",
+      "defensive-skills-anticipation",
+      "defensive-skills-pressing-intensity",
+      "defensive-specialist-delay-counter-attack",
+    ],
+  },
 ];
 
 const LESSON_BY_ID: Map<string, CoachingLessonDevelopmentDef> = new Map(
