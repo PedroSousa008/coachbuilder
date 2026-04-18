@@ -82,12 +82,17 @@ export const COACHING_LESSON_DEVELOPMENTS: CoachingLessonDevelopmentDef[] = [
   },
   {
     lessonId: "day-002",
-    title: "Example: Tempo and line-breaking (catalogue sample)",
+    title: "Fabregas - Playing under Pressure - Coaches' Vision",
     skillIds: [
-      "tactical-intelligence-tempo-control",
-      "tactical-intelligence-line-breaking-vision",
-      "midfielder-elite-habits-tempo-dictation",
-      "midfielder-elite-habits-passing-rhythm",
+      "midfield-mastery-deep-build-up-composure",
+      "midfielder-elite-habits-press-escape-awareness",
+      "technical-ability-through-balls",
+      "centre-back-line-control",
+      "midfield-mastery-support-angle-creation",
+      "attacking-skills-movement-off-ball",
+      "tactical-intelligence-timing-of-runs",
+      "tactical-intelligence-game-reading",
+      "tactical-intelligence-positioning",
     ],
   },
   {
