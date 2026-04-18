@@ -66,13 +66,18 @@ export const COACHING_SKILLS: CoachingSkillDef[] = TOPIC_SKILL_SPECS.flatMap((t)
 export const COACHING_LESSON_DEVELOPMENTS: CoachingLessonDevelopmentDef[] = [
   {
     lessonId: "day-001",
-    title: "Example: Scanning and game reading (catalogue sample)",
+    title: "Fabregas - Building up to Attack - Coaches' Vision",
     skillIds: [
+      "tactical-intelligence-decision-making",
+      "tactical-intelligence-positioning",
       "midfielder-elite-habits-scanning",
-      "midfielder-elite-habits-open-body-shape",
-      "tactical-intelligence-game-reading",
-      "tactical-intelligence-spatial-awareness",
-      "technical-ability-first-touch",
+      "goalkeeper-specific-distribution",
+      "centre-back-build-up-passing",
+      "midfield-mastery-passing-lane-manipulation",
+      "midfield-mastery-support-angle-creation",
+      "midfielder-elite-habits-receive-between-lines",
+      "midfield-mastery-dictating-possession",
+      "tactical-intelligence-press-resistance",
     ],
   },
   {
