@@ -152,6 +152,12 @@ export const MIDFIELDER_RUN_BEHIND_DEFENSE_VIDEO_URL = "/videos/training/behind-
 export const THREE_V_TWO_FAST_BREAK_VIDEO_URL = "/videos/training/3x2-fast-breaks.mp4";
 
 /**
+ * Vídeo do exercício "3v2 Finishing Drill".
+ * Coloca o ficheiro em `public/videos/training/3v2-finishing-drill.mp4` ou substitui por um link YouTube.
+ */
+export const THREE_V_TWO_FINISHING_DRILL_VIDEO_URL = "/videos/training/3v2-finishing-drill.mp4";
+
+/**
  * Vídeo do exercício "Full Back Overlap - Striker".
  * Coloca o ficheiro em `public/videos/training/full-back-overlap-2.mp4` ou substitui por um link YouTube.
  */
@@ -427,6 +433,9 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
     "contra ataques rapidos",
     "contra-ataque 3v2",
     "contra ataque 3v2",
+    "3v2 finishing drill",
+    "vantagem numérica",
+    "vantagem numerica",
     "decisão rápida",
     "decisao rapida",
     "variação de jogo",
@@ -574,6 +583,8 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
     "cruzamento medio para medio",
     "3v2 fast break",
     "3x2 fast break",
+    "3v2 finishing drill",
+    "3v2 finishing",
     "contra-ataque rápido",
     "contra ataque rapido",
     "bolas nas costas",
@@ -626,6 +637,9 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
     "superioridade no pontapé",
     "superioridade no pontape",
     "goal kick 2",
+    "inferioridade numérica",
+    "inferioridade numerica",
+    "3v2 finishing drill",
   ],
   wide: [
     "largo",
@@ -1186,6 +1200,26 @@ const MAIN_DRILLS: MainDrillDef[] = [
     }),
   },
   {
+    themes: ["transition", "finishing", "defensive"],
+    title: "3v2 Finishing Drill",
+    describe: (pl, m) => ({
+      description: `O exercício é composto por 2 defesas e 3 avançados. Inicia-se com os 2 centrais na linha de fundo, que colocam a bola no jogador ofensivo do meio. Após a receção, os 3 avançados atacam de imediato a baliza numa situação de 3v2, procurando aproveitar a superioridade numérica para marcar rapidamente. Os defesas devem ajustar posicionamentos, atrasar a jogada e tentar impedir a finalização. O foco está na transição ofensiva rápida, tomada de decisão no último terço e organização defensiva em inferioridade numérica. (${m} min)`,
+      coachingPoints:
+        "Ataque: primeira receção orientada e acelerar no primeiro passe; explorar a 3v2 com combinações curtas, penetração e remate ou último passe limpo. Defesa: retardar sem abrir linha directa à baliza; equilibrar pressão ao portador com cobertura da profundidade e do remate.",
+      setup:
+        "Terço ofensivo ou meio campo atacado com baliza (GR ou mini-balizas); 2 centrais na linha de fundo a iniciar, 2 defesas e 3 avançados no lance; bolas junto aos centrais; coletes.",
+      groupSplit:
+        pl.length >= 12
+          ? "Rotação por funções: pares de centrais na saída; trio ofensivo e dupla defensiva alternam a cada 4–6 repetições; fila de reposição rápida."
+          : pl.length >= 8
+            ? "Mantém 3v2 e roda 1 central extra na saída ou acrescenta neutro servidor se faltar corpo."
+            : "Reduz espaço ou usa 2v1 + 1 defesa com coach como 2.º defensor; mantém a lógica saída dos centrais → 3v2.",
+      diagramHint:
+        "2 centrais na linha de fundo → passe ao jogador ofensivo do meio → 3 avançados atacam a baliza em 3v2; defesas a fechar e atrasar; rotação após finalização ou saída.",
+      videoUrl: THREE_V_TWO_FINISHING_DRILL_VIDEO_URL,
+    }),
+  },
+  {
     themes: ["pressing", "defensive", "transition"],
     title: "Pressing Exercise",
     describe: (_pl, m) => ({
@@ -1423,6 +1457,7 @@ const SINGLE_DRILL_10_MIN_TITLES = new Set<string>([
   "Full Back Overlap - Winger",
   "Full Back Overlap - Striker",
   "Pressing Exercise",
+  "3v2 Finishing Drill",
 ]);
 const SINGLE_DRILL_8_MIN_TITLES = new Set<string>(["Passing Activation", "Dual Passing"]);
 const SINGLE_DRILL_5_MIN_TITLES = new Set<string>(["Rondo 9v3", "Warm Up with Ball"]);
@@ -1463,6 +1498,7 @@ function singleDrillProgressionVariationsForTitle(title: string): {
   const isFullBackOverlapWinger = title === "Full Back Overlap - Winger";
   const isFullBackOverlapStriker = title === "Full Back Overlap - Striker";
   const is3v2FastBreak = title === "3v2 Fast Break";
+  const is3v2FinishingDrill = title === "3v2 Finishing Drill";
   const isWarmUpWithBall = title === "Warm Up with Ball";
   const isPassingActivation = title === "Passing Activation";
   const isDualPassing = title === "Dual Passing";
@@ -1512,15 +1548,17 @@ function singleDrillProgressionVariationsForTitle(title: string): {
                                             ? "Força variação de corredor em 2 passes (central-trinco-central) e obriga o extremo de apoio a jogar de primeira no corredor interior; limita a última ação na área a 2 toques."
                                             : isFullBackOverlapStriker
                                               ? "Aumenta a pressão no primeiro central para acelerar a circulação; ou obriga o avançado a jogar sempre de primeira; ou limita os médios a 2 toques para forçar decisão rápida no lado a atacar."
-                                              : is3v2FastBreak
-                                                ? "Encurta o eixo a ~24 m para decisões ainda mais rápidas; ou extremo com máximo 2 toques antes do cruzamento na 1.ª fase; ou defesa pode sair ao cruzamento com contacto leve."
-                                                : isWarmUpWithBall
-                                                  ? "Acrescenta um 3.º cone no slalom; ou exige passe com o pé interior; ou sprint com mudança de direcção obrigatória ao desmarcar."
-                                                  : isPassingActivation
-                                                    ? "Aperta distâncias entre postes para exigir passes mais curtos e reacção mais rápida; ou fixa 2 toques máx.; ou alterna o pé obrigatório em cada série."
-                                                    : isDualPassing
-                                                      ? "Encolhe o hexágono para forçar primeiro toque ainda mais limpo; ou acrescenta um defensor ligeiro no centro por 45 s; ou exige só combinações com o pé não dominante."
-                                                      : "Aumenta espaço (mais difícil defender) ou reduz toques permitidos no rondo. Alterna pé fraco em passes fixos.";
+                                              : is3v2FinishingDrill
+                                                ? "Reduz a largura do terço para forçar decisão mais rápida; ou obriga finalização em ≤5 toques após a saída dos centrais; ou um defesa pode pressionar o portador após o primeiro passe (contacto leve)."
+                                                : is3v2FastBreak
+                                                  ? "Encurta o eixo a ~24 m para decisões ainda mais rápidas; ou extremo com máximo 2 toques antes do cruzamento na 1.ª fase; ou defesa pode sair ao cruzamento com contacto leve."
+                                                  : isWarmUpWithBall
+                                                    ? "Acrescenta um 3.º cone no slalom; ou exige passe com o pé interior; ou sprint com mudança de direcção obrigatória ao desmarcar."
+                                                    : isPassingActivation
+                                                      ? "Aperta distâncias entre postes para exigir passes mais curtos e reacção mais rápida; ou fixa 2 toques máx.; ou alterna o pé obrigatório em cada série."
+                                                      : isDualPassing
+                                                        ? "Encolhe o hexágono para forçar primeiro toque ainda mais limpo; ou acrescenta um defensor ligeiro no centro por 45 s; ou exige só combinações com o pé não dominante."
+                                                        : "Aumenta espaço (mais difícil defender) ou reduz toques permitidos no rondo. Alterna pé fraco em passes fixos.";
 
   if (isDualPassing) return { progression };
 
@@ -1568,13 +1606,15 @@ function singleDrillProgressionVariationsForTitle(title: string): {
                                           ? "Define gatilho: passe no extremo em apoio obriga leitura imediata do trinco para soltar lateral nas costas. Alterna repetições em que o médio-centro ataca primeiro poste vs zona de penalty."
                                           : isFullBackOverlapStriker
                                             ? "Definir gatilhos de decisão: apoio no médio do lado da bola = obrigatório overlap; apoio no médio oposto = obrigatória rotura do extremo. Alternar corredor inicial dos centrais a cada série."
-                                            : is3v2FastBreak
-                                              ? "1.ª fase só cruzamento rasteiro; ou médio/treinador serve a 2.ª bola em profundidade para o extremo entrar ao eixo; ou GR activo nas duas fases com saída ao primeiro passe."
-                                              : isWarmUpWithBall
-                                                ? "Duas filas opostas a cruzar sem colidir; ou volteio extra entre cones; ou após o sprint, regressar a pé ao fim da fila com ball mastery leve."
-                                                : isPassingActivation
-                                                  ? "Dois coletes com passes obrigatórios entre cores; ou inverte o sentido da rotação a cada minuto; ou acrescenta um jogador 'defensor' a tapar uma linha de passe por 30 s."
-                                                  : "Reduz jogadores no meio; ou acrescenta neutro exterior; ou pontua por X passes seguidos.";
+                                            : is3v2FinishingDrill
+                                              ? "Após golo ou saída, nova bola imediata pelos centrais; ou centrais obrigados a 1 toque na saída; ou zona mínima de remate (ex.: só dentro da meia-lua) numa série."
+                                              : is3v2FastBreak
+                                                ? "1.ª fase só cruzamento rasteiro; ou médio/treinador serve a 2.ª bola em profundidade para o extremo entrar ao eixo; ou GR activo nas duas fases com saída ao primeiro passe."
+                                                : isWarmUpWithBall
+                                                  ? "Duas filas opostas a cruzar sem colidir; ou volteio extra entre cones; ou após o sprint, regressar a pé ao fim da fila com ball mastery leve."
+                                                  : isPassingActivation
+                                                    ? "Dois coletes com passes obrigatórios entre cores; ou inverte o sentido da rotação a cada minuto; ou acrescenta um jogador 'defensor' a tapar uma linha de passe por 30 s."
+                                                    : "Reduz jogadores no meio; ou acrescenta neutro exterior; ou pontua por X passes seguidos.";
 
   return { progression, variations };
 }
