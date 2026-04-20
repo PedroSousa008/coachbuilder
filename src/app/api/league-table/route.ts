@@ -14,7 +14,7 @@ import {
   isZeroZeroHost,
   parseZeroZeroStandings,
 } from "@/lib/league-import-zerozero";
-import { createZeroZeroFetchSession } from "@/lib/fetch-zerozero-session";
+import { createZeroZeroFetchSession, type ZeroZeroFetch } from "@/lib/fetch-zerozero-session";
 
 /** FPF loads many matchday fragments; allow enough time on cold starts. */
 export const maxDuration = 120;
@@ -46,7 +46,7 @@ export async function POST(req: Request) {
     const host = parsed.hostname.toLowerCase();
 
     let res: Response;
-    let zzFetch: typeof fetch | null = null;
+    let zzFetch: ZeroZeroFetch | null = null;
 
     if (isZeroZeroHost(host)) {
       const session = await createZeroZeroFetchSession();
@@ -99,8 +99,9 @@ export async function POST(req: Request) {
       const zzRows = parseZeroZeroStandings(html);
       if (zzRows.length > 0) rows = zzRows;
       try {
-        const fetchRounds = zzFetch ?? fetch;
-        matches = await fetchZeroZeroMatchesForAllRounds(html, url, fetchRounds);
+        if (zzFetch) {
+          matches = await fetchZeroZeroMatchesForAllRounds(html, url, zzFetch);
+        }
       } catch (e) {
         console.error("league-table ZeroZero fixture rounds", e);
       }

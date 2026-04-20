@@ -5,6 +5,7 @@ import type { LeagueImportedMatch, LeagueTableRow } from "@/types";
 import { dedupeMatches } from "@/lib/league-match-dedupe";
 import { extractSeasonYearsFromHtml } from "@/lib/league-import-fpf";
 import { wallClockLisbonToUtcIso } from "@/lib/lisbon-date";
+import type { ZeroZeroFetch } from "@/lib/fetch-zerozero-session";
 
 type LoadedCheerio = ReturnType<typeof cheerio.load>;
 type CheerioSel = Cheerio<AnyNode>;
@@ -294,7 +295,7 @@ export function parseZeroZeroMatchesFromHtml(
 export async function fetchZeroZeroMatchesForAllRounds(
   mainHtml: string,
   pageUrl: string,
-  fetchImpl: typeof fetch
+  fetchImpl: ZeroZeroFetch
 ): Promise<LeagueImportedMatch[]> {
   const params = extractZeroZeroEditionParams(mainHtml);
   if (!params) return [];
