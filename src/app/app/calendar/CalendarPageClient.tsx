@@ -366,7 +366,7 @@ export function CalendarPageClient() {
               Your fixtures
             </CardTitle>
             <CardDescription>
-              Import FPF: resultado na página → Previous; resto pela data/hora. Perfil = filtro da equipa.
+              Import FPF / ZeroZero: resultado na página → Previous; resto pela data/hora. Perfil = filtro da equipa.
             </CardDescription>
           </div>
           <Button
@@ -611,8 +611,8 @@ export function CalendarPageClient() {
           </CardTitle>
           <CardDescription>
             Paste the public URL of your league standings page. We fetch it on this server and parse HTML tables or
-            known layouts (e.g. FPF resultados.fpf.pt classificações). Heavy JavaScript-only pages may not work until we
-            add a dedicated integration.
+            known layouts (e.g. FPF resultados.fpf.pt or ZeroZero competição / classificação). Heavy JavaScript-only pages
+            may not work until we add a dedicated integration.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">

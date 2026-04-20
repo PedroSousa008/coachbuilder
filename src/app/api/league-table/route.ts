@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import type { LeagueImportedMatch } from "@/types";
 import { parseStandingsFromHtml, isAllowedLeagueTableUrl } from "@/lib/league-table-parse";
 import {
   dedupeMatches,
@@ -7,6 +8,12 @@ import {
   fetchFpfMatchesFromFixtureRounds,
   parseFpfMatchesFromHtml,
 } from "@/lib/league-import-fpf";
+import {
+  extractZeroZeroCompetitionLabel,
+  fetchZeroZeroMatchesForAllRounds,
+  isZeroZeroHost,
+  parseZeroZeroStandings,
+} from "@/lib/league-import-zerozero";
 
 /** FPF loads many matchday fragments; allow enough time on cold starts. */
 export const maxDuration = 120;
@@ -50,19 +57,34 @@ export async function POST(req: Request) {
     }
 
     const html = await res.text();
-    const rows = parseStandingsFromHtml(html);
-    const roundMap = extractFpfFixtureRoundMapFromHtml(html);
-    let matches = parseFpfMatchesFromHtml(html, url, roundMap);
-    try {
-      const host = new URL(url).hostname.toLowerCase();
-      if (host.includes("resultados.fpf.pt")) {
-        const extra = await fetchFpfMatchesFromFixtureRounds(html, url, fetch);
-        matches = dedupeMatches([...matches, ...extra]);
+    const host = new URL(url).hostname.toLowerCase();
+
+    let rows = parseStandingsFromHtml(html);
+    let matches: LeagueImportedMatch[] = [];
+    let competitionName: string | null | undefined;
+
+    if (isZeroZeroHost(host)) {
+      const zzRows = parseZeroZeroStandings(html);
+      if (zzRows.length > 0) rows = zzRows;
+      try {
+        matches = await fetchZeroZeroMatchesForAllRounds(html, url, fetch);
+      } catch (e) {
+        console.error("league-table ZeroZero fixture rounds", e);
       }
-    } catch (e) {
-      console.error("league-table FPF fixture rounds", e);
+      competitionName = extractZeroZeroCompetitionLabel(html) ?? extractCompetitionLabelFromHtml(html);
+    } else {
+      const roundMap = extractFpfFixtureRoundMapFromHtml(html);
+      matches = parseFpfMatchesFromHtml(html, url, roundMap);
+      try {
+        if (host.includes("resultados.fpf.pt")) {
+          const extra = await fetchFpfMatchesFromFixtureRounds(html, url, fetch);
+          matches = dedupeMatches([...matches, ...extra]);
+        }
+      } catch (e) {
+        console.error("league-table FPF fixture rounds", e);
+      }
+      competitionName = extractCompetitionLabelFromHtml(html);
     }
-    const competitionName = extractCompetitionLabelFromHtml(html);
 
     if (rows.length === 0 && matches.length === 0) {
       return NextResponse.json({
