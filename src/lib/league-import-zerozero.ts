@@ -302,6 +302,7 @@ export async function fetchZeroZeroMatchesForAllRounds(
 ): Promise<LeagueImportedMatch[]> {
   const params = extractZeroZeroEditionParams(mainHtml);
   if (!params) return [];
+  const edition = params;
 
   let origin: string;
   try {
@@ -316,7 +317,7 @@ export async function fetchZeroZeroMatchesForAllRounds(
   const jornadas = Array.from({ length: maxJ }, (_, i) => i + 1);
 
   async function fetchOneRound(j: number): Promise<LeagueImportedMatch[]> {
-    const u = `${origin}/edition.php?id_edicao=${encodeURIComponent(params.idEdicao)}&fase=${encodeURIComponent(params.fase)}&jornada_in=${j}`;
+    const u = `${origin}/edition.php?id_edicao=${encodeURIComponent(edition.idEdicao)}&fase=${encodeURIComponent(edition.fase)}&jornada_in=${j}`;
     try {
       const r = await fetchImpl(u, {
         cache: "no-store",
