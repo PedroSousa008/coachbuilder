@@ -164,6 +164,12 @@ export const THREE_V_TWO_FAST_BREAK_VIDEO_URL = "/videos/training/3x2-fast-break
 export const THREE_V_TWO_FINISHING_DRILL_VIDEO_URL = "/videos/training/3v2-finishing-drill.mp4";
 
 /**
+ * Vídeo do exercício "Short Corner Routine".
+ * Coloca o ficheiro em `public/videos/training/short-corner.mp4` ou substitui por um link YouTube.
+ */
+export const SHORT_CORNER_ROUTINE_VIDEO_URL = "/videos/training/short-corner.mp4";
+
+/**
  * Vídeo do exercício "Full Back Overlap - Striker".
  * Coloca o ficheiro em `public/videos/training/full-back-overlap-2.mp4` ou substitui por um link YouTube.
  */
@@ -324,6 +330,10 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
     "inicio de treino",
     "movimentação com bola",
     "movimentacao com bola",
+    "canto curto",
+    "jogada estudada",
+    "bola parada",
+    "short corner routine",
     "controlo de bola",
     "controle de bola",
     "ativação",
@@ -403,6 +413,10 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
     "reacao rapida a perda",
     "2+1v1 transition",
     "(2+1)v1 transition",
+    "aparecer à entrada da área",
+    "aparecer a entrada da area",
+    "finalização rápida",
+    "finalizacao rapida",
     "três balizas",
     "tres balizas",
     "goal kick",
@@ -428,6 +442,9 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
     "medios a aparecer nas costas",
     "cruzamento médio para médio",
     "cruzamento medio para medio",
+    "canto curto",
+    "short corner",
+    "corner short",
     "rondo 5v3",
     "5v3",
     "breakout rondo",
@@ -1082,6 +1099,22 @@ const MAIN_DRILLS: MainDrillDef[] = [
     }),
   },
   {
+    themes: ["wide", "finishing", "possession", "transition"],
+    title: "Short Corner Routine",
+    describe: (_pl, m) => ({
+      description: `O canto é batido curto para o jogador colocado na esquina da área. Em simultâneo, o jogador que estava no primeiro poste sai rapidamente para dar apoio e receber a bola. Enquanto isso, os restantes jogadores dentro da área fazem movimento para o segundo poste, arrastando marcações e criando espaço na zona frontal. No momento em que a bola entra no jogador que veio do primeiro poste, um dos jogadores da área regressa ao centro para bloquear o defesa responsável pela entrada da área. De seguida, a bola é colocada no jogador que surge sozinho à entrada da área, que deve rematar de primeira, preferencialmente para o poste mais próximo. Nos cantos do lado esquerdo utiliza-se, idealmente, batedor destro e apoio canhoto; no lado direito, o contrário. O foco está no timing das movimentações, bloqueio legal e finalização rápida de média distância. (${m} min)`,
+      coachingPoints:
+        "Canto curto com passe tenso e orientação corporal para jogar de frente; apoio do 1.º poste sai no timing certo para não 'matar' a linha curta. Dentro da área, movimentos coordenados ao 2.º poste para arrastar marcações e libertar a frontal; bloqueio legal com pés parados e contacto controlado. Finalizador à entrada da área prepara remate de 1.ª ao poste mais próximo.",
+      setup:
+        "Zona de canto com baliza e GR; 1 batedor, 1 apoio curto na esquina, 1 jogador a sair do 1.º poste, 3–5 jogadores na área para arraste/bloqueio e 1 finalizador na frontal; coletes e bolas junto à bandeirola.",
+      groupSplit:
+        "Alterna lado esquerdo/direito a cada série: no esquerdo, batedor destro + apoio canhoto; no direito, batedor canhoto + apoio destro. Rodar funções (batedor, apoio, bloqueador e finalizador) a cada 4–6 repetições.",
+      diagramHint:
+        "Canto curto para a esquina da área → apoio do 1.º poste recebe; área movimenta ao 2.º poste para arrastar; um regressa para bloqueio legal na frontal; passe para finalizador à entrada da área e remate de 1.ª ao poste próximo.",
+      videoUrl: SHORT_CORNER_ROUTINE_VIDEO_URL,
+    }),
+  },
+  {
     themes: ["possession", "transition", "finishing", "pressing"],
     title: "Build up into Counter Attack",
     describe: (pl, m) => ({
@@ -1479,6 +1512,7 @@ const SINGLE_DRILL_15_MIN_TITLES = new Set<string>([
   "3v2 Fast Break",
   "Between the Lines",
   "Defensive Recovery on Counter Attack",
+  "Short Corner Routine",
 ]);
 const SINGLE_DRILL_10_MIN_TITLES = new Set<string>([
   "Back Four Shifting",
@@ -1529,6 +1563,7 @@ function singleDrillProgressionVariationsForTitle(title: string): {
   const isRondo5v3 = title === "Rondo 5v3";
   const isBreakoutRondo = title === "Breakout Rondo";
   const is2Plus1V1Transition = title === "(2+1)v1 Transition";
+  const isShortCornerRoutine = title === "Short Corner Routine";
   const isBuildUpIntoCounterAttack = title === "Build up into Counter Attack";
   const isRondoToCounterAttack = title === "Rondo to Counter Attack";
   const isFitnessRondoIntoFinishing = title === "Fitness Rondo into Finishing";
@@ -1574,6 +1609,8 @@ function singleDrillProgressionVariationsForTitle(title: string): {
                               ? "Sobe a meta para 8 passes no interior; ou após recuperação da equipa branca exige remate em ≤4 toques; ou interior só com 1 toque até à saída para o exterior."
                               : is2Plus1V1Transition
                                 ? "Encurta cada zona para forçar decisão mais rápida; ou o neutro só pode jogar em 1 toque ao entrar na zona; ou após recuperação, remate obrigatório numa mini-baliza em ≤4 s."
+                                : isShortCornerRoutine
+                                  ? "Limita o canto curto a 2 toques até ao passe de retorno; ou obriga remate de 1.ª na frontal em ≤4 s; ou alterna bloqueio no eixo e meio-espaço para variar referência defensiva."
                                 : isBuildUpIntoCounterAttack
                                 ? "Reduz o tempo de ligação entre setores (ex.: 6 s); ou limita a saída a 2 toques por jogador; ou no 3v2 ofensivo obriga remate em ≤5 s após receção."
                                 : isRondoToCounterAttack
@@ -1634,6 +1671,8 @@ function singleDrillProgressionVariationsForTitle(title: string): {
                             ? "Anel exterior mais estreito para decisão mais rápida; ou golo após roubo branco vale duplo se vier em ≤3 passes; ou neutro no interior que só pode orientar com 1 toque."
                             : is2Plus1V1Transition
                               ? "Só 3 mini-balizas activas por blocos de 2 min; ou após recuperação o defensor deve tocar noutra zona antes de rematar; ou equipa em posse deve ligar obrigatoriamente a 2 zonas diferentes em ≤8 passes."
+                              : isShortCornerRoutine
+                                ? "No lado esquerdo, sequência obrigatória com batedor destro e apoio canhoto (e inverso no lado direito); ou o bloqueador troca posição com finalizador a cada repetição; ou só conta golo se o remate sair de 1.ª na frontal."
                               : isBuildUpIntoCounterAttack
                               ? "Aumenta pressão para 3+1 no setor de saída por blocos curtos; ou no setor ofensivo troca para 3v3 com golo a valer apenas após passe extra; ou equipa que recupera deve finalizar em ≤4 s para contar."
                               : isRondoToCounterAttack

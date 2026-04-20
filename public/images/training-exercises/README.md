@@ -36,5 +36,6 @@ Expected file names:
 - `3v2-fast-break.png`
 - `3v2-finishing-drill.png`
 - `2+1v1-transition.png`
+- `short-corner.png`
 - `pressing-exercise.png`
 - `defensive-recovery.png`
