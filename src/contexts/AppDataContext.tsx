@@ -242,7 +242,7 @@ type AppDataContextValue = {
   leagueCompetitionName: string | null;
   leagueTableLastFetched: string | null;
   leagueTableFetchError: string | null;
-  refreshLeagueTable: () => Promise<void>;
+  refreshLeagueTable: (fullSeason?: boolean) => Promise<void>;
 
   coachProfile: CoachProfileState;
   setCoachProfile: (patch: Partial<CoachProfileState>) => void;
@@ -1456,7 +1456,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setCoachProfileState((prev) => normalizeCoachProfileState({ ...prev, ...patch }));
   }, []);
 
-  const refreshLeagueTable = useCallback(async () => {
+  const refreshLeagueTable = useCallback(async (fullSeason?: boolean) => {
     const u = leagueTableUrl.trim();
     if (!u) {
       setLeagueTableFetchError("Paste a standings page URL first.");
@@ -1467,7 +1467,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       const res = await fetch("/api/league-table", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: u }),
+        body: JSON.stringify({ url: u, fullSeason: fullSeason === true }),
       });
       const data = await res.json();
       if (!data.ok) {

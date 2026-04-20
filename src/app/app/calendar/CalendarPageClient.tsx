@@ -125,6 +125,8 @@ export function CalendarPageClient() {
   const [editing, setEditing] = useState<MatchFixture | null>(null);
   const [urlDraft, setUrlDraft] = useState("");
   const [refreshing, setRefreshing] = useState(false);
+  /** ZeroZero only: fetch every jornada (many HTTP calls). Default off to stay under serverless time limits. */
+  const [fullSeasonZeroZero, setFullSeasonZeroZero] = useState(false);
   const [nextSectionOpen, setNextSectionOpen] = useState(true);
   const [previousSectionOpen, setPreviousSectionOpen] = useState(true);
   const nowMs = useScheduleNow();
@@ -287,10 +289,12 @@ export function CalendarPageClient() {
     setLeagueTableUrl(urlDraft.trim());
   };
 
+  const isZeroZeroLeagueUrl = leagueTableUrl.toLowerCase().includes("zerozero");
+
   const handleRefresh = async () => {
     setRefreshing(true);
     try {
-      await refreshLeagueTable();
+      await refreshLeagueTable(isZeroZeroLeagueUrl ? fullSeasonZeroZero : undefined);
     } finally {
       setRefreshing(false);
     }
@@ -611,8 +615,9 @@ export function CalendarPageClient() {
           </CardTitle>
           <CardDescription>
             Paste the public URL of your league standings page. We fetch it on this server and parse HTML tables or
-            known layouts (e.g. FPF resultados.fpf.pt or ZeroZero competição / classificação). Heavy JavaScript-only pages
-            may not work until we add a dedicated integration.
+            known layouts (e.g. FPF resultados.fpf.pt or ZeroZero competição / classificação). For ZeroZero, the default
+            import uses only the fixtures shown on that page (fast); enable “all jornadas” for the full season if your
+            hosting allows longer requests. Heavy JavaScript-only pages may not work until we add a dedicated integration.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -639,6 +644,24 @@ export function CalendarPageClient() {
               </Button>
             </div>
           </div>
+          {isZeroZeroLeagueUrl && (
+            <div className="flex items-start gap-3 rounded-xl border border-zinc-800/90 bg-zinc-950/50 px-4 py-3">
+              <input
+                id="zz-full-season"
+                type="checkbox"
+                className="mt-1 h-4 w-4 shrink-0 rounded border-zinc-600 bg-zinc-900 text-accent focus:ring-accent"
+                checked={fullSeasonZeroZero}
+                onChange={(e) => setFullSeasonZeroZero(e.target.checked)}
+              />
+              <label htmlFor="zz-full-season" className="cursor-pointer text-sm leading-snug text-zinc-400">
+                <span className="font-medium text-zinc-200">Import all jornadas (full season)</span>
+                <span className="block text-xs text-zinc-500">
+                  Off by default: only fixtures visible on the page (usually the current and next round). Turning this on
+                  fetches every round and may time out on free Vercel — use Vercel Pro or keep it off if refresh fails.
+                </span>
+              </label>
+            </div>
+          )}
           {leagueTableFetchError && (
             <p className="rounded-xl border border-amber-500/25 bg-amber-500/5 px-4 py-3 text-sm text-amber-200/90">
               {leagueTableFetchError}

@@ -12,6 +12,7 @@ import {
   extractZeroZeroCompetitionLabel,
   fetchZeroZeroMatchesForAllRounds,
   isZeroZeroHost,
+  parseZeroZeroMatchesFromPageHtml,
   parseZeroZeroStandings,
 } from "@/lib/league-import-zerozero";
 import { createZeroZeroFetchSession, type ZeroZeroFetch } from "@/lib/fetch-zerozero-session";
@@ -36,6 +37,7 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     const url = typeof body?.url === "string" ? body.url.trim() : "";
+    const fullSeason = body?.fullSeason === true;
     if (!url || !isAllowedLeagueTableUrl(url)) {
       return NextResponse.json({ ok: false, error: "Enter a valid http(s) URL." }, { status: 400 });
     }
@@ -102,11 +104,18 @@ export async function POST(req: Request) {
       const zzRows = parseZeroZeroStandings(html);
       if (zzRows.length > 0) rows = zzRows;
       try {
-        if (zzFetch) {
+        if (fullSeason && zzFetch) {
           matches = await fetchZeroZeroMatchesForAllRounds(html, url, zzFetch);
+        } else {
+          matches = parseZeroZeroMatchesFromPageHtml(html, url);
         }
       } catch (e) {
-        console.error("league-table ZeroZero fixture rounds", e);
+        console.error("league-table ZeroZero fixtures", e);
+        try {
+          matches = parseZeroZeroMatchesFromPageHtml(html, url);
+        } catch (e2) {
+          console.error("league-table ZeroZero page parse fallback", e2);
+        }
       }
       competitionName = extractZeroZeroCompetitionLabel(html) ?? extractCompetitionLabelFromHtml(html);
     } else {
@@ -137,6 +146,9 @@ export async function POST(req: Request) {
       matches,
       competitionName: competitionName ?? undefined,
       fetchedAt: new Date().toISOString(),
+      ...(isZeroZeroHost(host)
+        ? { zeroZeroImportScope: fullSeason ? ("full" as const) : ("page" as const) }
+        : {}),
     });
   } catch (e) {
     console.error("league-table route", e);

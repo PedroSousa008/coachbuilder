@@ -261,12 +261,28 @@ function buildTeamLabel($: LoadedCheerio, $td: CheerioSel): string {
 }
 
 /**
- * Parse `#fixture_games` blocks whose header matches `JORNADA {expectedRound}`.
+ * Parse every `#fixture_games` block on a page (each has its own JORNADA N header).
+ * Fast: one HTTP response only — used by default on Vercel Hobby (avoids 10s timeout / 502).
+ */
+export function parseZeroZeroMatchesFromPageHtml(html: string, pageUrl: string): LeagueImportedMatch[] {
+  return parseZeroZeroFixtureBlocks(html, pageUrl, undefined);
+}
+
+/**
+ * Parse `#fixture_games` blocks; if `expectedRound` is set, only that jornada (edition.php pages).
  */
 export function parseZeroZeroMatchesFromHtml(
   html: string,
   pageUrl: string,
   expectedRound: number
+): LeagueImportedMatch[] {
+  return parseZeroZeroFixtureBlocks(html, pageUrl, expectedRound);
+}
+
+function parseZeroZeroFixtureBlocks(
+  html: string,
+  pageUrl: string,
+  expectedRound: number | undefined
 ): LeagueImportedMatch[] {
   const $ = cheerio.load(html);
   const { start: y1, end: y2 } = extractSeasonYearsFromHtml(html);
@@ -277,13 +293,14 @@ export function parseZeroZeroMatchesFromHtml(
     const header = $card.find("h3.smallheader").first().text().replace(/\s+/g, " ").trim();
     const rm = header.match(/JORNADA\s+(\d+)/i);
     const blockRound = rm ? parseInt(rm[1]!, 10) : NaN;
-    if (!Number.isFinite(blockRound) || blockRound !== expectedRound) return;
+    if (!Number.isFinite(blockRound)) return;
+    if (expectedRound !== undefined && blockRound !== expectedRound) return;
 
     let dateCarry = "";
     $(fg)
       .find("table.zztable.stats tbody tr")
       .each((__, tr) => {
-        const row = parseZeroZeroFixtureRow($, $(tr), dateCarry, y1, y2, expectedRound, pageUrl);
+        const row = parseZeroZeroFixtureRow($, $(tr), dateCarry, y1, y2, blockRound, pageUrl);
         if (row) {
           out.push(row);
           const dc = $(tr).find("> td").first().text().trim();
