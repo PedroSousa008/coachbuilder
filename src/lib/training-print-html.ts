@@ -9,11 +9,11 @@ function esc(s: string): string {
     .replace(/"/g, "&quot;");
 }
 
-/** Rodapé de geração: "CoachBuilder" ou "CoachBuilder. Nome" quando há treinador. */
+/** Rodapé de geração: "CoachBuilder" ou "CoachBuilder · Nome" quando há treinador (mesmo separador que o resto da linha). */
 function coachBuilderAttribution(coachPrintName: string | undefined): string {
   const t = coachPrintName?.trim();
   if (!t) return "CoachBuilder";
-  return `CoachBuilder. ${esc(t)}`;
+  return `CoachBuilder · ${esc(t)}`;
 }
 
 export function buildFullSessionDocumentHtml(params: {
@@ -22,7 +22,7 @@ export function buildFullSessionDocumentHtml(params: {
   playerLines: string[];
   generatedAt: string;
   assetBaseUrl?: string;
-  /** Nome do treinador (ex. perfil); aparece como "CoachBuilder. Nome" no PDF. */
+  /** Nome do treinador (ex. perfil); aparece como "CoachBuilder · Nome" no PDF. */
   coachPrintName?: string;
 }): string {
   const { plan, durationMin, playerLines, generatedAt, assetBaseUrl, coachPrintName } = params;
