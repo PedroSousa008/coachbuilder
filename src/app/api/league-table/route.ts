@@ -1,35 +1,38 @@
 import { NextResponse } from "next/server";
-import { isAllowedLeagueTableUrl } from "@/lib/league-api-url";
+import { isAllowedLeagueTableUrl, validateFpfCompetitionUrl } from "@/lib/league-api-url";
 
 export const runtime = "nodejs";
 
-/** Hobby: ~10s wall time — keep upstream fetch under this budget. */
+/** Hobby: stay under ~10s wall time (gateway 504 if we exceed). */
 export const maxDuration = 10;
 
-const GENERIC_FETCH_MS = 7500;
+/** Hard budget for fetch + reading the response body (body read is not covered by fetch() signal alone). */
+const TOTAL_BUDGET_MS = 8000;
 
 const GENERIC_HTML_HEADERS: Record<string, string> = {
   "User-Agent":
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
   Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
   "Accept-Language": "pt-PT,pt;q=0.9,en-GB;q=0.8,en;q=0.7",
-  "Accept-Encoding": "gzip, deflate, br",
   "Cache-Control": "max-age=0",
   "Upgrade-Insecure-Requests": "1",
 };
 
-/** Smoke test: open GET /api/league-table in the browser to confirm this deployment includes the route. */
+/** Smoke test: open GET /api/league-table in the browser. */
 export async function GET() {
   return NextResponse.json({
     ok: true,
-    leagueTableApi: "fpf-fetch-html-v1",
+    leagueTableApi: "fpf-fetch-html-v2",
     maxDurationSec: maxDuration,
+    totalBudgetMs: TOTAL_BUDGET_MS,
   });
 }
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
+    const t0 = Date.now();
+
     const url = typeof body?.url === "string" ? body.url.trim() : "";
     if (!url || !isAllowedLeagueTableUrl(url)) {
       return NextResponse.json({ ok: false, error: "Enter a valid http(s) URL." }, { status: 400 });
@@ -41,6 +44,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Invalid URL." }, { status: 400 });
     }
 
+    const fpfErr = validateFpfCompetitionUrl(url);
+    if (fpfErr) {
+      return NextResponse.json({ ok: false, error: fpfErr }, { status: 400 });
+    }
+
+    const remaining = () => Math.max(500, TOTAL_BUDGET_MS - (Date.now() - t0));
+
     let res: Response;
     try {
       res = await fetch(url, {
@@ -49,7 +59,7 @@ export async function POST(req: Request) {
         cache: "no-store",
         signal:
           typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function"
-            ? AbortSignal.timeout(GENERIC_FETCH_MS)
+            ? AbortSignal.timeout(remaining())
             : undefined,
       });
     } catch {
@@ -57,7 +67,7 @@ export async function POST(req: Request) {
         {
           ok: false,
           error:
-            "A página demorou demasiado a carregar (limite do servidor). Tenta outro URL ou mais tarde.",
+            "The page took too long to respond (server time limit). Check the URL is complete, then try again.",
         },
         { status: 400 }
       );
@@ -87,16 +97,33 @@ export async function POST(req: Request) {
     }
 
     let html: string;
+    const bodyMs = remaining();
+    let bodyTimer: ReturnType<typeof setTimeout> | undefined;
     try {
-      html = await res.text();
-    } catch {
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        bodyTimer = setTimeout(() => reject(new Error("body-timeout")), bodyMs);
+      });
+      html = await Promise.race([res.text(), timeoutPromise]);
+    } catch (e) {
+      if (e instanceof Error && e.message === "body-timeout") {
+        return NextResponse.json(
+          {
+            ok: false,
+            error:
+              "Reading the page was too slow (size or network). Try again or use a lighter competition page URL.",
+          },
+          { status: 400 }
+        );
+      }
       return NextResponse.json(
         { ok: false, error: "Could not read the page body. Try again." },
         { status: 400 }
       );
+    } finally {
+      if (bodyTimer !== undefined) clearTimeout(bodyTimer);
     }
 
-    const trimmed = html.length > 2_000_000 ? html.slice(0, 2_000_000) : html;
+    const trimmed = html.length > 1_500_000 ? html.slice(0, 1_500_000) : html;
     if (!trimmed.trim()) {
       return NextResponse.json({ ok: false, error: "Empty page." }, { status: 400 });
     }

@@ -625,7 +625,7 @@ export function CalendarPageClient() {
                 id="league-url"
                 value={urlDraft}
                 onChange={(e) => setUrlDraft(e.target.value)}
-                placeholder="https://…"
+                placeholder="https://resultados.fpf.pt/Competition/Details?competitionId=12345"
                 className="mt-1.5"
               />
             </div>
