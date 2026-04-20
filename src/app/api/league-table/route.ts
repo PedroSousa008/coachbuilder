@@ -4,8 +4,14 @@ import { createZeroZeroFetchSession } from "@/lib/fetch-zerozero-session";
 
 export const runtime = "nodejs";
 
-/** Fetch + return HTML only; parsing runs in the browser. Hobby caps execution ~10s — keep imports cheerio-free. */
+/**
+ * Hobby: hard cap ~10s wall time. Anything that waits longer (e.g. fetch timeout 12s) → platform 502.
+ * Pro can raise maxDuration; keep this aligned with the smallest plan.
+ */
 export const maxDuration = 10;
+
+const GENERIC_FETCH_MS = 7500;
+const ZEROZERO_TARGET_MS = 5500;
 
 const GENERIC_HTML_HEADERS: Record<string, string> = {
   "User-Agent":
@@ -16,6 +22,15 @@ const GENERIC_HTML_HEADERS: Record<string, string> = {
   "Cache-Control": "max-age=0",
   "Upgrade-Insecure-Requests": "1",
 };
+
+/** Smoke test: open GET /api/league-table in the browser to confirm this deployment includes the route. */
+export async function GET() {
+  return NextResponse.json({
+    ok: true,
+    leagueTableApi: "fetch-html-v3",
+    maxDurationSec: maxDuration,
+  });
+}
 
 export async function POST(req: Request) {
   try {
@@ -36,18 +51,21 @@ export async function POST(req: Request) {
     let res: Response;
 
     if (isZeroZeroHost(host)) {
-      // One path only: warm + cookie + target (avoids 6s + 3.5s + 6s sequential → >10s Hobby limit → 502).
       try {
         const session = await createZeroZeroFetchSession();
         res = await session.fetch(url, {
           signal:
             typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function"
-              ? AbortSignal.timeout(6500)
+              ? AbortSignal.timeout(ZEROZERO_TARGET_MS)
               : undefined,
         });
       } catch {
         return NextResponse.json(
-          { ok: false, error: "ZeroZero did not respond in time. Try again." },
+          {
+            ok: false,
+            error:
+              "O ZeroZero não respondeu a tempo. Tenta de novo dentro de momentos ou verifica se o URL da competição está correto.",
+          },
           { status: 400 }
         );
       }
@@ -59,12 +77,16 @@ export async function POST(req: Request) {
           cache: "no-store",
           signal:
             typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function"
-              ? AbortSignal.timeout(12000)
+              ? AbortSignal.timeout(GENERIC_FETCH_MS)
               : undefined,
         });
       } catch {
         return NextResponse.json(
-          { ok: false, error: "The page did not load in time. Try again or use a simpler URL." },
+          {
+            ok: false,
+            error:
+              "A página demorou demasiado a carregar (limite do servidor). Tenta outro URL ou mais tarde.",
+          },
           { status: 400 }
         );
       }
@@ -103,8 +125,7 @@ export async function POST(req: Request) {
       );
     }
 
-    // Stay under Vercel serverless response body limits (~4.5MB); JSON adds overhead.
-    const trimmed = html.length > 3_500_000 ? html.slice(0, 3_500_000) : html;
+    const trimmed = html.length > 2_000_000 ? html.slice(0, 2_000_000) : html;
     if (!trimmed.trim()) {
       return NextResponse.json({ ok: false, error: "Empty page." }, { status: 400 });
     }
