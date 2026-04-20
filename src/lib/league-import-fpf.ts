@@ -534,7 +534,9 @@ export async function fetchFpfMatchesFromFixtureRounds(
   }
 
   const all: LeagueImportedMatch[] = [];
-  const batchSize = 12;
+  /** Small batches + per-request timeout so one Hobby invocation stays under ~10s (Vercel). */
+  const batchSize = 4;
+  const perFetchMs = 6500;
   for (let i = 0; i < ids.length; i += batchSize) {
     const batch = ids.slice(i, i + batchSize);
     const settled = await Promise.all(
@@ -545,6 +547,10 @@ export async function fetchFpfMatchesFromFixtureRounds(
             headers: DEFAULT_FETCH_HEADERS,
             cache: "no-store",
             redirect: "follow",
+            signal:
+              typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function"
+                ? AbortSignal.timeout(perFetchMs)
+                : undefined,
           });
           if (!r.ok) return [];
           const h = await r.text();

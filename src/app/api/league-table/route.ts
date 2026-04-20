@@ -35,9 +35,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Enter a valid http(s) URL." }, { status: 400 });
     }
 
-    let parsed: URL;
     try {
-      parsed = new URL(url);
+      new URL(url);
     } catch {
       return NextResponse.json({ ok: false, error: "Invalid URL." }, { status: 400 });
     }

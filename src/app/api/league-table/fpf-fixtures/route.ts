@@ -3,7 +3,8 @@ import { isAllowedLeagueTableUrl } from "@/lib/league-api-url";
 import { fetchFpfMatchesFromFixtureRounds } from "@/lib/league-import-fpf";
 
 export const runtime = "nodejs";
-export const maxDuration = 120;
+/** Hobby caps at ~10s; each POST should only fetch a small fixtureIds chunk (client chunks requests). */
+export const maxDuration = 10;
 
 export async function POST(req: Request) {
   try {

@@ -1469,7 +1469,18 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: u }),
       });
-      const data = await res.json();
+      const raw = await res.text();
+      let data: { ok?: boolean; error?: string; html?: string; url?: string; fetchedAt?: string };
+      try {
+        data = JSON.parse(raw) as typeof data;
+      } catch {
+        setLeagueTableFetchError(
+          res.status >= 500
+            ? `Servidor indisponível (${res.status}). A Vercel pode estar a limitar o pedido — tenta de novo dentro de instantes.`
+            : "Resposta inválida do servidor. Tenta de novo."
+        );
+        return;
+      }
       if (!data.ok) {
         setLeagueTableFetchError(typeof data.error === "string" ? data.error : "Could not update table.");
         return;
@@ -1497,22 +1508,49 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         competitionName = built.competitionName;
 
         if (built.host.includes("resultados.fpf.pt")) {
-          const r2 = await fetch("/api/league-table/fpf-fixtures", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              html,
-              url: pageUrl,
-              ...(built.fpfFixtureIdsForCoach?.length
-                ? { fixtureIds: built.fpfFixtureIdsForCoach }
-                : {}),
-            }),
-          });
-          const extra = await r2.json();
-          if (extra.ok && Array.isArray(extra.matches)) {
-            const merged = dedupeMatches([...matches, ...extra.matches]);
-            matches =
-              rows.length > 0 ? filterFpfMatchesToSeriesTeams(merged, rows) : merged;
+          try {
+            const fpfMod = await import("@/lib/league-import-fpf");
+            let fixtureIds =
+              built.fpfFixtureIdsForCoach?.length > 0
+                ? built.fpfFixtureIdsForCoach
+                : fpfMod.extractFpfFixtureIdsFromHtml(html);
+            const roundMap = fpfMod.extractFpfFixtureRoundMapFromHtml(html);
+            fixtureIds = [...fixtureIds].sort(
+              (a, b) => (roundMap.get(a) ?? 999) - (roundMap.get(b) ?? 999)
+            );
+
+            const CHUNK = 4;
+            let acc = matches;
+            for (let i = 0; i < fixtureIds.length; i += CHUNK) {
+              const chunk = fixtureIds.slice(i, i + CHUNK);
+              try {
+                const r2 = await fetch("/api/league-table/fpf-fixtures", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    html,
+                    url: pageUrl,
+                    fixtureIds: chunk,
+                  }),
+                });
+                const raw2 = await r2.text();
+                let extra: { ok?: boolean; matches?: LeagueImportedMatch[] };
+                try {
+                  extra = JSON.parse(raw2) as typeof extra;
+                } catch {
+                  extra = {};
+                }
+                if (extra.ok && Array.isArray(extra.matches)) {
+                  acc = dedupeMatches([...acc, ...extra.matches]);
+                  acc = rows.length > 0 ? filterFpfMatchesToSeriesTeams(acc, rows) : acc;
+                }
+              } catch (e) {
+                console.warn("fpf-fixtures chunk failed", e);
+              }
+            }
+            matches = acc;
+          } catch (e) {
+            console.warn("fpf-fixtures optional fetch failed", e);
           }
         }
       } catch (e) {
@@ -1535,7 +1573,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       );
       setLeagueTableLastFetched(data.fetchedAt ?? new Date().toISOString());
       setLeagueTableFetchError(null);
-    } catch {
+    } catch (e) {
+      console.error("refreshLeagueTable", e);
       setLeagueTableFetchError("Network error — try again.");
     }
   }, [leagueTableUrl, coachProfile.club]);
