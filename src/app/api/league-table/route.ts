@@ -1,31 +1,12 @@
 import { NextResponse } from "next/server";
-import type { LeagueImportedMatch, LeagueTableRow } from "@/types";
-import { parseStandingsFromHtml, isAllowedLeagueTableUrl } from "@/lib/league-table-parse";
-import {
-  dedupeMatches,
-  extractCompetitionLabelFromHtml,
-  extractFpfFixtureRoundMapFromHtml,
-  fetchFpfMatchesFromFixtureRounds,
-  parseFpfMatchesFromHtml,
-} from "@/lib/league-import-fpf";
-import {
-  extractZeroZeroCompetitionLabel,
-  fetchZeroZeroMatchesForAllRounds,
-  isZeroZeroHost,
-  parseZeroZeroMatchesFromPageHtml,
-  parseZeroZeroStandings,
-} from "@/lib/league-import-zerozero";
-import {
-  createZeroZeroFetchSession,
-  fetchZeroZeroPageOnce,
-  type ZeroZeroFetch,
-} from "@/lib/fetch-zerozero-session";
+import { isAllowedLeagueTableUrl } from "@/lib/league-table-parse";
+import { isZeroZeroHost } from "@/lib/league-import-zerozero";
+import { createZeroZeroFetchSession, fetchZeroZeroPageOnce } from "@/lib/fetch-zerozero-session";
 
-/** Cheerio + many upstream fetches require Node (not Edge). */
 export const runtime = "nodejs";
 
-/** FPF / ZeroZero: many round fetches. Pro plan can raise this; Hobby is capped (~10s). */
-export const maxDuration = 120;
+/** Fetch + return HTML only; parsing runs in the browser to stay under Hobby limits. */
+export const maxDuration = 60;
 
 const GENERIC_HTML_HEADERS: Record<string, string> = {
   "User-Agent":
@@ -41,7 +22,6 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     const url = typeof body?.url === "string" ? body.url.trim() : "";
-    const fullSeason = body?.fullSeason === true;
     if (!url || !isAllowedLeagueTableUrl(url)) {
       return NextResponse.json({ ok: false, error: "Enter a valid http(s) URL." }, { status: 400 });
     }
@@ -55,36 +35,23 @@ export async function POST(req: Request) {
     const host = parsed.hostname.toLowerCase();
 
     let res: Response;
-    let zzFetch: ZeroZeroFetch | null = null;
 
     if (isZeroZeroHost(host)) {
-      if (fullSeason) {
+      try {
+        res = await fetchZeroZeroPageOnce(url);
+      } catch {
+        return NextResponse.json(
+          { ok: false, error: "ZeroZero did not respond in time. Try again." },
+          { status: 400 }
+        );
+      }
+      if (res.status === 403 || res.status === 429) {
         const session = await createZeroZeroFetchSession();
-        zzFetch = session.fetch;
         res = await session.fetch(url);
         if (res.status === 403 || res.status === 429) {
           await new Promise((r) => setTimeout(r, 650));
           const retry = await createZeroZeroFetchSession();
-          zzFetch = retry.fetch;
           res = await retry.fetch(url);
-        }
-      } else {
-        try {
-          res = await fetchZeroZeroPageOnce(url);
-        } catch {
-          return NextResponse.json(
-            { ok: false, error: "ZeroZero did not respond in time. Try again." },
-            { status: 400 }
-          );
-        }
-        if (res.status === 403 || res.status === 429) {
-          const session = await createZeroZeroFetchSession();
-          res = await session.fetch(url);
-          if (res.status === 403 || res.status === 429) {
-            await new Promise((r) => setTimeout(r, 650));
-            const retry = await createZeroZeroFetchSession();
-            res = await retry.fetch(url);
-          }
         }
       }
     } else {
@@ -139,77 +106,21 @@ export async function POST(req: Request) {
       );
     }
 
-    let rows: LeagueTableRow[] = [];
-    try {
-      rows = parseStandingsFromHtml(html);
-    } catch (e) {
-      console.error("league-table: parseStandingsFromHtml", e);
-    }
-    let matches: LeagueImportedMatch[] = [];
-    let competitionName: string | null | undefined;
-
-    if (isZeroZeroHost(host)) {
-      try {
-        const zzRows = parseZeroZeroStandings(html);
-        if (zzRows.length > 0) rows = zzRows;
-      } catch (e) {
-        console.error("league-table ZeroZero standings", e);
-      }
-      try {
-        if (fullSeason && zzFetch) {
-          matches = await fetchZeroZeroMatchesForAllRounds(html, url, zzFetch);
-        } else {
-          matches = parseZeroZeroMatchesFromPageHtml(html, url);
-        }
-      } catch (e) {
-        console.error("league-table ZeroZero fixtures", e);
-        try {
-          matches = parseZeroZeroMatchesFromPageHtml(html, url);
-        } catch (e2) {
-          console.error("league-table ZeroZero page parse fallback", e2);
-        }
-      }
-      try {
-        competitionName = extractZeroZeroCompetitionLabel(html) ?? extractCompetitionLabelFromHtml(html);
-      } catch {
-        competitionName = extractCompetitionLabelFromHtml(html);
-      }
-    } else {
-      const roundMap = extractFpfFixtureRoundMapFromHtml(html);
-      matches = parseFpfMatchesFromHtml(html, url, roundMap);
-      try {
-        if (host.includes("resultados.fpf.pt")) {
-          const extra = await fetchFpfMatchesFromFixtureRounds(html, url, fetch);
-          matches = dedupeMatches([...matches, ...extra]);
-        }
-      } catch (e) {
-        console.error("league-table FPF fixture rounds", e);
-      }
-      competitionName = extractCompetitionLabelFromHtml(html);
-    }
-
-    if (rows.length === 0 && matches.length === 0) {
-      return NextResponse.json({
-        ok: false,
-        error:
-          "No table was found on this page, or it uses a format we can’t parse yet. Try another standings URL or a simpler HTML table page.",
-      });
+    const trimmed = html.length > 5_000_000 ? html.slice(0, 5_000_000) : html;
+    if (!trimmed.trim()) {
+      return NextResponse.json({ ok: false, error: "Empty page." }, { status: 400 });
     }
 
     return NextResponse.json({
       ok: true,
-      rows,
-      matches,
-      competitionName: competitionName ?? undefined,
+      html: trimmed,
+      url,
       fetchedAt: new Date().toISOString(),
-      ...(isZeroZeroHost(host)
-        ? { zeroZeroImportScope: fullSeason ? ("full" as const) : ("page" as const) }
-        : {}),
     });
   } catch (e) {
     console.error("league-table route", e);
     return NextResponse.json(
-      { ok: false, error: "Failed to fetch or parse the page. Check the URL and try again." },
+      { ok: false, error: "Failed to fetch the page. Check the URL and try again." },
       { status: 500 }
     );
   }

@@ -1474,10 +1474,60 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         setLeagueTableFetchError(typeof data.error === "string" ? data.error : "Could not update table.");
         return;
       }
-      setLeagueTableRows(data.rows ?? []);
-      setLeagueMatches(dedupeMatches(Array.isArray(data.matches) ? data.matches : []));
+      const html = typeof data.html === "string" ? data.html : "";
+      const pageUrl = typeof data.url === "string" ? data.url : u;
+      if (!html) {
+        setLeagueTableFetchError("Could not read the league page.");
+        return;
+      }
+
+      const { buildLeagueTableFromFetchedHtml, fetchZeroZeroFullSeasonMatches } = await import(
+        "@/lib/league-import-from-html"
+      );
+
+      let rows: LeagueTableRow[] = [];
+      let matches: LeagueImportedMatch[] = [];
+      let competitionName: string | null = null;
+
+      try {
+        const built = buildLeagueTableFromFetchedHtml(html, pageUrl);
+        rows = built.rows;
+        matches = built.matches;
+        competitionName = built.competitionName;
+
+        if (fullSeason === true && built.isZeroZero) {
+          const zzFull = await fetchZeroZeroFullSeasonMatches(html, pageUrl, fetch);
+          if (zzFull.length > 0) matches = zzFull;
+        }
+
+        if (built.host.includes("resultados.fpf.pt")) {
+          const r2 = await fetch("/api/league-table/fpf-fixtures", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ html, url: pageUrl }),
+          });
+          const extra = await r2.json();
+          if (extra.ok && Array.isArray(extra.matches)) {
+            matches = dedupeMatches([...matches, ...extra.matches]);
+          }
+        }
+      } catch (e) {
+        console.error("league table client parse", e);
+        setLeagueTableFetchError("Could not parse the league page.");
+        return;
+      }
+
+      if (rows.length === 0 && matches.length === 0) {
+        setLeagueTableFetchError(
+          "No table was found on this page, or it uses a format we can't parse yet. Try another standings URL or a simpler HTML table page."
+        );
+        return;
+      }
+
+      setLeagueTableRows(rows);
+      setLeagueMatches(dedupeMatches(matches));
       setLeagueCompetitionName(
-        typeof data.competitionName === "string" && data.competitionName.trim() ? data.competitionName.trim() : null
+        typeof competitionName === "string" && competitionName.trim() ? competitionName.trim() : null
       );
       setLeagueTableLastFetched(data.fetchedAt ?? new Date().toISOString());
       setLeagueTableFetchError(null);
