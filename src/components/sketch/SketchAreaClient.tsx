@@ -53,7 +53,12 @@ import {
   TASK_CATEGORY_LABELS,
 } from "./constants";
 import { cn } from "@/lib/utils";
-import { BOARD_COLORS, SketchBoardCanvas } from "./SketchBoardCanvas";
+import {
+  BOARD_COLORS,
+  NUMBERED_DISK_COLORS,
+  numberedDiskLabelTextColor,
+  SketchBoardCanvas,
+} from "./SketchBoardCanvas";
 import { SketchOpponentAnalysisPanel } from "./SketchOpponentAnalysisPanel";
 
 type TabId = "calendar" | "notes" | "tasks" | "files" | "board" | "watchlist" | "opponentAi";
@@ -66,6 +71,15 @@ const TABS: { id: TabId; label: string; icon: typeof Calendar }[] = [
   { id: "board", label: "Board", icon: LayoutGrid },
   { id: "watchlist", label: "Watchlist", icon: Users },
   { id: "opponentAi", label: "Análise Adversário AI", icon: Sparkles },
+];
+
+const SKETCH_BOARD_TOOLS: { id: SketchStrokeTool; label: string }[] = [
+  { id: "draw", label: "Draw" },
+  { id: "arrow", label: "Arrow" },
+  { id: "circle", label: "Circle" },
+  { id: "cone", label: "Cone" },
+  { id: "player", label: "Player" },
+  { id: "numbered", label: "Nº" },
 ];
 
 function sketchUid(prefix: string) {
@@ -170,6 +184,35 @@ export function SketchAreaClient() {
     const id = boardDraftId ?? sketchArea.boardDrafts[0]!.id;
     return sketchArea.boardDrafts.find((d) => d.id === id) ?? sketchArea.boardDrafts[0]!;
   }, [sketchArea.boardDrafts, boardDraftId]);
+
+  const numberedNextByColor = useMemo(() => {
+    if (!activeDraft) return new Map<string, number | null>();
+    const m = new Map<string, number | null>();
+    for (const c of NUMBERED_DISK_COLORS) {
+      const labels = activeDraft.strokes
+        .filter((s) => s.tool === "numbered" && s.color === c && s.label != null)
+        .map((s) => s.label!);
+      const max = labels.length ? Math.max(...labels) : 0;
+      m.set(c, max >= 24 ? null : max + 1);
+    }
+    return m;
+  }, [activeDraft]);
+
+  const nextNumberedLabel = useMemo(() => {
+    if (!activeDraft || boardTool !== "numbered") return undefined;
+    const n = numberedNextByColor.get(boardColor);
+    return n ?? undefined;
+  }, [activeDraft, boardTool, boardColor, numberedNextByColor]);
+
+  const canPlaceNumberedDisk = boardTool !== "numbered" || nextNumberedLabel != null;
+
+  useEffect(() => {
+    if (boardTool === "numbered") {
+      setBoardColor((c) => (NUMBERED_DISK_COLORS.includes(c) ? c : NUMBERED_DISK_COLORS[0]!));
+    } else {
+      setBoardColor((c) => (BOARD_COLORS.includes(c) ? c : BOARD_COLORS[0]!));
+    }
+  }, [boardTool]);
 
   const eventsForDay = useMemo(
     () =>
@@ -1158,38 +1201,75 @@ export function SketchAreaClient() {
                     <option value="half">Half pitch</option>
                     <option value="full">Full pitch</option>
                   </select>
-                  {(["draw", "arrow", "circle", "cone", "player"] as SketchStrokeTool[]).map((t) => (
+                  {SKETCH_BOARD_TOOLS.map(({ id: t, label }) => (
                     <Button
                       key={t}
                       type="button"
                       variant={boardTool === t ? "primary" : "secondary"}
-                      className="text-xs capitalize"
+                      className={cn("text-xs", t !== "numbered" && "capitalize")}
                       onClick={() => setBoardTool(t)}
                     >
-                      {t}
+                      {label}
                     </Button>
                   ))}
                 </div>
-                <div className="no-print flex flex-wrap gap-1">
-                  {BOARD_COLORS.map((c) => (
-                    <button
-                      key={c}
-                      type="button"
-                      className="h-7 w-7 rounded-full border border-zinc-600"
-                      style={{ backgroundColor: c, boxShadow: boardColor === c ? "0 0 0 2px white" : undefined }}
-                      onClick={() => setBoardColor(c)}
-                      aria-label={`colour ${c}`}
+                {boardTool === "numbered" ? (
+                  <div className="no-print space-y-2">
+                    <p className="text-xs text-zinc-500">
+                      Cada cor tem números 1–24; ao colocar um disco, o próximo valor para essa cor aparece na fila.
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {NUMBERED_DISK_COLORS.map((c) => {
+                        const next = numberedNextByColor.get(c);
+                        const sel = boardColor === c;
+                        return (
+                          <button
+                            key={c}
+                            type="button"
+                            className={cn(
+                              "relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 text-xs font-bold tabular-nums shadow-sm transition",
+                              sel ? "border-white ring-2 ring-white/40" : "border-zinc-600"
+                            )}
+                            style={{
+                              backgroundColor: c,
+                              color: next == null ? "rgba(161,161,170,0.95)" : numberedDiskLabelTextColor(c),
+                              textShadow: "0 1px 2px rgba(0,0,0,0.45)",
+                            }}
+                            onClick={() => setBoardColor(c)}
+                            aria-label={
+                              next == null
+                                ? `Cor numerada: já usou os 24 números nesta cor`
+                                : `Cor numerada, próximo número ${next}`
+                            }
+                          >
+                            {next == null ? "—" : next}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="no-print flex flex-wrap items-center gap-1">
+                    {BOARD_COLORS.map((c) => (
+                      <button
+                        key={c}
+                        type="button"
+                        className="h-7 w-7 rounded-full border border-zinc-600"
+                        style={{ backgroundColor: c, boxShadow: boardColor === c ? "0 0 0 2px white" : undefined }}
+                        onClick={() => setBoardColor(c)}
+                        aria-label={`colour ${c}`}
+                      />
+                    ))}
+                    <Input
+                      type="range"
+                      min={1}
+                      max={8}
+                      value={boardLine}
+                      onChange={(e) => setBoardLine(Number(e.target.value))}
+                      className="w-28"
                     />
-                  ))}
-                  <Input
-                    type="range"
-                    min={1}
-                    max={8}
-                    value={boardLine}
-                    onChange={(e) => setBoardLine(Number(e.target.value))}
-                    className="w-28"
-                  />
-                </div>
+                  </div>
+                )}
                 <textarea
                   className="no-print min-h-[64px] w-full rounded-xl border border-surface-border bg-surface-raised/50 px-3 py-2 text-sm"
                   placeholder="Note beside sketch (saved with this board)"
@@ -1218,6 +1298,8 @@ export function SketchAreaClient() {
                     color={boardColor}
                     lineWidth={boardLine}
                     expanded={boardExpanded}
+                    nextNumberLabel={nextNumberedLabel}
+                    canPlaceNumbered={canPlaceNumberedDisk}
                   />
                 </div>
                 <Button

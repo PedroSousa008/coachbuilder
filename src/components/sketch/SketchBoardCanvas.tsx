@@ -2,7 +2,66 @@
 
 import { useCallback, useEffect, useRef } from "react";
 import type { SketchPitchTemplate, SketchStroke, SketchStrokeTool } from "@/types";
+import { cn } from "@/lib/utils";
+
 export const BOARD_COLORS = ["#e4e4e7", "#22c55e", "#f59e0b", "#ef4444", "#3b82f6", "#a855f7"];
+
+/** Paleta para discos numerados (estilo tactical board): cada cor tem sequência 1→24 independente. */
+export const NUMBERED_DISK_COLORS = [
+  "#7f1d1d",
+  "#ca8a04",
+  "#9333ea",
+  "#16a34a",
+  "#2563eb",
+  "#dc2626",
+  "#ea580c",
+  "#0891b2",
+  "#fafafa",
+  "#3f3f46",
+];
+
+/** Cor do texto dentro do disco numerado (contraste com o fundo). */
+export function numberedDiskLabelTextColor(hex: string): string {
+  const n = hex.replace("#", "").trim();
+  const full =
+    n.length === 3
+      ? n
+          .split("")
+          .map((c) => c + c)
+          .join("")
+      : n.slice(0, 6);
+  if (full.length !== 6) return "#fff";
+  const r = parseInt(full.slice(0, 2), 16) / 255;
+  const g = parseInt(full.slice(2, 4), 16) / 255;
+  const b = parseInt(full.slice(4, 6), 16) / 255;
+  const L = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  return L > 0.55 ? "#171717" : "#ffffff";
+}
+
+const NUMBERED_DISK_RADIUS = 14;
+
+function drawNumberedDisk(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  color: string,
+  label: number
+) {
+  const r = NUMBERED_DISK_RADIUS;
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.fillStyle = color;
+  ctx.fill();
+  ctx.strokeStyle = "rgba(255,255,255,0.88)";
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  ctx.fillStyle = numberedDiskLabelTextColor(color);
+  const size = label > 9 ? 12 : 13;
+  ctx.font = `700 ${size}px system-ui, -apple-system, sans-serif`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(String(label), x, y);
+}
 
 function drawPitchBackground(ctx: CanvasRenderingContext2D, w: number, h: number, tpl: SketchPitchTemplate) {
   ctx.fillStyle = "#0f2918";
@@ -33,6 +92,35 @@ function drawStrokes(ctx: CanvasRenderingContext2D, strokes: SketchStroke[]) {
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
     const pts = s.points;
+    if (pts.length < 1) continue;
+
+    if (s.tool === "cone") {
+      const [x, y] = pts[pts.length - 1]!;
+      ctx.beginPath();
+      ctx.moveTo(x, y - 10);
+      ctx.lineTo(x - 8, y + 8);
+      ctx.lineTo(x + 8, y + 8);
+      ctx.closePath();
+      ctx.fillStyle = s.color;
+      ctx.fill();
+      continue;
+    }
+    if (s.tool === "player") {
+      const [x, y] = pts[pts.length - 1]!;
+      ctx.beginPath();
+      ctx.arc(x, y, 12, 0, Math.PI * 2);
+      ctx.fillStyle = s.color + "99";
+      ctx.fill();
+      ctx.strokeStyle = s.color;
+      ctx.stroke();
+      continue;
+    }
+    if (s.tool === "numbered" && s.label != null) {
+      const [x, y] = pts[pts.length - 1]!;
+      drawNumberedDisk(ctx, x, y, s.color, s.label);
+      continue;
+    }
+
     if (pts.length < 2) continue;
 
     if (s.tool === "draw") {
@@ -66,23 +154,6 @@ function drawStrokes(ctx: CanvasRenderingContext2D, strokes: SketchStroke[]) {
       ctx.beginPath();
       ctx.ellipse(cx, cy, Math.max(rx, 4), Math.max(ry, 4), 0, 0, Math.PI * 2);
       ctx.stroke();
-    } else if (s.tool === "cone") {
-      const [x, y] = pts[pts.length - 1]!;
-      ctx.beginPath();
-      ctx.moveTo(x, y - 10);
-      ctx.lineTo(x - 8, y + 8);
-      ctx.lineTo(x + 8, y + 8);
-      ctx.closePath();
-      ctx.fillStyle = s.color;
-      ctx.fill();
-    } else if (s.tool === "player") {
-      const [x, y] = pts[pts.length - 1]!;
-      ctx.beginPath();
-      ctx.arc(x, y, 12, 0, Math.PI * 2);
-      ctx.fillStyle = s.color + "99";
-      ctx.fill();
-      ctx.strokeStyle = s.color;
-      ctx.stroke();
     }
   }
 }
@@ -95,6 +166,8 @@ export function SketchBoardCanvas({
   color,
   lineWidth,
   expanded = false,
+  nextNumberLabel,
+  canPlaceNumbered = true,
 }: {
   pitchTemplate: SketchPitchTemplate;
   strokes: SketchStroke[];
@@ -104,6 +177,10 @@ export function SketchBoardCanvas({
   lineWidth: number;
   /** Taller canvas (fullscreen / mobile drawing area). */
   expanded?: boolean;
+  /** Próximo número a colocar quando `tool === "numbered"` (1–24). */
+  nextNumberLabel?: number;
+  /** Se false, não aceita novos discos numerados (já atingiu 24 nesta cor). */
+  canPlaceNumbered?: boolean;
 }) {
   const ref = useRef<HTMLCanvasElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -171,6 +248,7 @@ export function SketchBoardCanvas({
 
   const onPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (e.button !== 0 && e.pointerType === "mouse") return;
+    if (tool === "numbered" && (!canPlaceNumbered || nextNumberLabel == null)) return;
     e.preventDefault();
     const canvas = e.currentTarget;
     canvas.setPointerCapture(e.pointerId);
@@ -181,6 +259,7 @@ export function SketchBoardCanvas({
       color,
       lineWidth,
       points: [[x, y]],
+      ...(tool === "numbered" && nextNumberLabel != null ? { label: nextNumberLabel } : {}),
     };
     redraw();
   };
@@ -226,7 +305,10 @@ export function SketchBoardCanvas({
     >
       <canvas
         ref={ref}
-        className="touch-none cursor-crosshair rounded-xl border border-surface-border bg-[#0a0f0c]"
+        className={cn(
+          "touch-none rounded-xl border border-surface-border bg-[#0a0f0c]",
+          tool === "numbered" && !canPlaceNumbered ? "cursor-not-allowed" : "cursor-crosshair"
+        )}
         style={{ touchAction: "none" }}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}

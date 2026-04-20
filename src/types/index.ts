@@ -754,13 +754,15 @@ export interface SketchFileEntry {
 
 export type SketchPitchTemplate = "blank" | "half" | "full";
 
-export type SketchStrokeTool = "draw" | "arrow" | "circle" | "cone" | "player";
+export type SketchStrokeTool = "draw" | "arrow" | "circle" | "cone" | "player" | "numbered";
 
 export interface SketchStroke {
   tool: SketchStrokeTool;
   color: string;
   lineWidth: number;
   points: [number, number][];
+  /** Só para `numbered`: número dentro do círculo (1–24). */
+  label?: number;
 }
 
 export interface SketchBoardDraft {
