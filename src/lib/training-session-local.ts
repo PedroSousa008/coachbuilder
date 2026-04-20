@@ -170,6 +170,12 @@ export const THREE_V_TWO_FINISHING_DRILL_VIDEO_URL = "/videos/training/3v2-finis
 export const FIVE_TEAMS_3V3_ATTACKING_VIDEO_URL = "/videos/training/3v3-5-teams.mp4";
 
 /**
+ * Vídeo do exercício "Fixed Position Rondo".
+ * Coloca o ficheiro em `public/videos/training/fixed-position-rondo.mp4`.
+ */
+export const FIXED_POSITION_RONDO_VIDEO_URL = "/videos/training/fixed-position-rondo.mp4";
+
+/**
  * Vídeo do exercício "Short Corner Routine".
  * Coloca o ficheiro em `public/videos/training/short-corner.mp4` ou substitui por um link YouTube.
  */
@@ -249,6 +255,12 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
     "neutros nas linhas",
     "extremos fixos",
     "rondo 9v3",
+    "fixed position rondo",
+    "rondo posicional",
+    "posições definidas",
+    "posicoes definidas",
+    "movimentação sem bola",
+    "movimentacao sem bola",
     "9v3",
     "vantagem numérica no rondo",
     "vantagem numerica no rondo",
@@ -1319,6 +1331,28 @@ const MAIN_DRILLS: MainDrillDef[] = [
     }),
   },
   {
+    themes: ["possession", "pressing", "balanced"],
+    title: "Fixed Position Rondo",
+    describe: (pl, m) => ({
+      description: `O exercício é realizado com uma equipa de dez jogadores de campo, posicionados nas suas funções reais dentro do sistema, distribuídos pelo terreno. Cada jogador pode movimentar-se apenas horizontalmente ou verticalmente dentro da sua zona, sem abandonar o espaço definido. O objectivo é circular a bola, criar linhas de passe e ajustar posicionamentos, desenvolvendo noção espacial, ocupação racional do campo e relações entre sectores. A equipa adversária pressiona com cinco jogadores, estando limitada a um máximo de dois jogadores a pressionar por zona (existem quatro zonas de pressão), para condicionar a posse e obrigar decisões rápidas. O foco está na disciplina posicional, na circulação sob pressão e no entendimento colectivo dos espaços. (${m} min)`,
+      coachingPoints:
+        "Respeitar estritamente as fronteiras da zona (só deslocamento horizontal ou vertical permitido); apoio ao portador com corpo aberto e ângulos curtos; quando a pressão dobra num corredor, soltar a bola de primeira e ‘saltar’ o bloco com terceiro homem. Pressores: comunicar quem salta à pressão para nunca ultrapassar 2 por zona; fechar linhas de passe sem sair da regra.",
+      setup:
+        "Rectângulo grande (ex.: ~55×45 m ou 3/4 de campo); quatro zonas de pressão claramente marcadas (cones ou linhas); dez jogadores em posição segundo o teu sistema (com ou sem GR como início de jogo); cinco pressores com coletes; bolas de reserva à margem para manter fluidez.",
+      groupSplit:
+        pl.length >= 16
+          ? "10+5 no rondo; jogadores extra a aquecer nas linhas ou a alternar a última posição do sistema."
+          : pl.length >= 15
+            ? "10 em posição fixa + 5 pressores; se faltar um corpo, retira um setor ou usa treinador como fixo de baixo ritmo."
+            : pl.length >= 12
+              ? "Reduz para 8v4 com três zonas de pressão (máx. 2 por zona) ou mantém 10 zonas mais pequenas com funções agregadas."
+              : "Espaço reduzido; menos zonas (2–3) ou pressão com 3 jogadores e regra de 1 por zona.",
+      diagramHint:
+        "Quatro zonas; dez jogadores nas células do sistema; cinco pressores a entrar por quadrantes; linhas de passe entre sectores; regra: no máximo 2 pressores por zona.",
+      videoUrl: FIXED_POSITION_RONDO_VIDEO_URL,
+    }),
+  },
+  {
     themes: ["pressing", "defensive", "transition"],
     title: "Pressing Exercise",
     describe: (_pl, m) => ({
@@ -1539,6 +1573,7 @@ const SINGLE_DRILL_18_MIN_TITLES = new Set<string>(["Double Finishing Drill"]);
 const SINGLE_DRILL_15_MIN_TITLES = new Set<string>([
   "3v2 Fast Break",
   "5 Teams 3v3 Attacking",
+  "Fixed Position Rondo",
   "Between the Lines",
   "Defensive Recovery on Counter Attack",
   "Short Corner Routine",
@@ -1604,6 +1639,7 @@ function singleDrillProgressionVariationsForTitle(title: string): {
   const is3v2FastBreak = title === "3v2 Fast Break";
   const is3v2FinishingDrill = title === "3v2 Finishing Drill";
   const is5Teams3v3Attacking = title === "5 Teams 3v3 Attacking";
+  const isFixedPositionRondo = title === "Fixed Position Rondo";
   const isWarmUpWithBall = title === "Warm Up with Ball";
   const isPassingActivation = title === "Passing Activation";
   const isDualPassing = title === "Dual Passing";
@@ -1661,15 +1697,17 @@ function singleDrillProgressionVariationsForTitle(title: string): {
                                                 ? "Reduz a largura do terço para forçar decisão mais rápida; ou obriga finalização em ≤5 toques após a saída dos centrais; ou um defesa pode pressionar o portador após o primeiro passe (contacto leve)."
                                                 : is5Teams3v3Attacking
                                                   ? "Encurta os dois campos para forçar mais ritmo; ou obriga remate no máximo em 4 toques após recuperação; ou só entra a equipa de espera quando o treinador dá sinal (para trabalhar tempo morto); ou um jogador por equipa só pode finalizar de primeira num bloco de 4 minutos."
-                                                  : is3v2FastBreak
-                                                    ? "Encurta o eixo a ~24 m para decisões ainda mais rápidas; ou extremo com máximo 2 toques antes do cruzamento na 1.ª fase; ou defesa pode sair ao cruzamento com contacto leve."
-                                                    : isWarmUpWithBall
-                                                      ? "Acrescenta um 3.º cone no slalom; ou exige passe com o pé interior; ou sprint com mudança de direcção obrigatória ao desmarcar."
-                                                      : isPassingActivation
-                                                      ? "Aperta distâncias entre postes para exigir passes mais curtos e reacção mais rápida; ou fixa 2 toques máx.; ou alterna o pé obrigatório em cada série."
-                                                      : isDualPassing
-                                                        ? "Encolhe o hexágono para forçar primeiro toque ainda mais limpo; ou acrescenta um defensor ligeiro no centro por 45 s; ou exige só combinações com o pé não dominante."
-                                                        : "Aumenta espaço (mais difícil defender) ou reduz toques permitidos no rondo. Alterna pé fraco em passes fixos.";
+                                                  : isFixedPositionRondo
+                                                    ? "Aperta as zonas para exigir passes ainda mais curtos; ou equipa em posse com máximo 2 toques; ou permite apenas deslocamento horizontal numa série e só vertical na seguinte; ou aumenta para 3 pressores numa zona durante 60 s (alerta de risco)."
+                                                    : is3v2FastBreak
+                                                      ? "Encurta o eixo a ~24 m para decisões ainda mais rápidas; ou extremo com máximo 2 toques antes do cruzamento na 1.ª fase; ou defesa pode sair ao cruzamento com contacto leve."
+                                                      : isWarmUpWithBall
+                                                        ? "Acrescenta um 3.º cone no slalom; ou exige passe com o pé interior; ou sprint com mudança de direcção obrigatória ao desmarcar."
+                                                        : isPassingActivation
+                                                          ? "Aperta distâncias entre postes para exigir passes mais curtos e reacção mais rápida; ou fixa 2 toques máx.; ou alterna o pé obrigatório em cada série."
+                                                          : isDualPassing
+                                                            ? "Encolhe o hexágono para forçar primeiro toque ainda mais limpo; ou acrescenta um defensor ligeiro no centro por 45 s; ou exige só combinações com o pé não dominante."
+                                                            : "Aumenta espaço (mais difícil defender) ou reduz toques permitidos no rondo. Alterna pé fraco em passes fixos.";
 
   if (isDualPassing) return { progression };
 
@@ -1725,13 +1763,15 @@ function singleDrillProgressionVariationsForTitle(title: string): {
                                               ? "Após golo ou saída, nova bola imediata pelos centrais; ou centrais obrigados a 1 toque na saída; ou zona mínima de remate (ex.: só dentro da meia-lua) numa série."
                                               : is5Teams3v3Attacking
                                                 ? "Dois tempos com troca da equipa de espera entre o corredor central dos dois campos; ou golo sofrido obriga saída em sprint até à zona neutra; ou mini-torneio por pontos entre as cinco equipas; ou golo marcado em ≤8 s após entrada vale duplo."
-                                                : is3v2FastBreak
-                                                  ? "1.ª fase só cruzamento rasteiro; ou médio/treinador serve a 2.ª bola em profundidade para o extremo entrar ao eixo; ou GR activo nas duas fases com saída ao primeiro passe."
-                                                  : isWarmUpWithBall
-                                                    ? "Duas filas opostas a cruzar sem colidir; ou volteio extra entre cones; ou após o sprint, regressar a pé ao fim da fila com ball mastery leve."
-                                                    : isPassingActivation
-                                                      ? "Dois coletes com passes obrigatórios entre cores; ou inverte o sentido da rotação a cada minuto; ou acrescenta um jogador 'defensor' a tapar uma linha de passe por 30 s."
-                                                      : "Reduz jogadores no meio; ou acrescenta neutro exterior; ou pontua por X passes seguidos.";
+                                                : isFixedPositionRondo
+                                                  ? "Rotação completa das funções após X passes consecutivos; ou meta de 12 passes sem perda antes de trocar pressores; ou neutro no meio que só pode jogar de primeira; ou disputar por quadrantes: equipa que recupera na zona X sai e entra outro quinteto."
+                                                  : is3v2FastBreak
+                                                    ? "1.ª fase só cruzamento rasteiro; ou médio/treinador serve a 2.ª bola em profundidade para o extremo entrar ao eixo; ou GR activo nas duas fases com saída ao primeiro passe."
+                                                    : isWarmUpWithBall
+                                                      ? "Duas filas opostas a cruzar sem colidir; ou volteio extra entre cones; ou após o sprint, regressar a pé ao fim da fila com ball mastery leve."
+                                                      : isPassingActivation
+                                                        ? "Dois coletes com passes obrigatórios entre cores; ou inverte o sentido da rotação a cada minuto; ou acrescenta um jogador 'defensor' a tapar uma linha de passe por 30 s."
+                                                        : "Reduz jogadores no meio; ou acrescenta neutro exterior; ou pontua por X passes seguidos.";
 
   return { progression, variations };
 }
