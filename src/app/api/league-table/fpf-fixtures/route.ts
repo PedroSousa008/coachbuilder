@@ -17,7 +17,13 @@ export async function POST(req: Request) {
     if (!host.includes("resultados.fpf.pt")) {
       return NextResponse.json({ ok: false, error: "Not an FPF results URL." }, { status: 400 });
     }
-    const matches = await fetchFpfMatchesFromFixtureRounds(html, url, fetch);
+    const rawIds = body?.fixtureIds;
+    const fixtureIds = Array.isArray(rawIds)
+      ? rawIds.map((x) => String(x)).filter((x) => /^\d+$/.test(x))
+      : undefined;
+    const matches = await fetchFpfMatchesFromFixtureRounds(html, url, fetch, {
+      ...(fixtureIds?.length ? { fixtureIds } : {}),
+    });
     return NextResponse.json({ ok: true, matches });
   } catch (e) {
     console.error("fpf-fixtures route", e);

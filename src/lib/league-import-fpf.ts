@@ -1,6 +1,9 @@
 import * as cheerio from "cheerio";
-import type { LeagueImportedMatch } from "@/types";
+import type { Cheerio } from "cheerio";
+import type { AnyNode } from "domhandler";
+import type { LeagueImportedMatch, LeagueTableRow } from "@/types";
 import { dedupeMatches } from "@/lib/league-match-dedupe";
+import { normalizeTeamLabel, pickBestTeamMatch } from "@/lib/team-match";
 import { wallClockLisbonToUtcIso } from "@/lib/lisbon-date";
 
 export { dedupeMatches };
@@ -111,6 +114,223 @@ export function extractFpfFixtureRoundMapFromHtml(html: string): Map<string, num
 
 export function extractFpfFixtureIdFromUrl(pageUrl: string): string | undefined {
   return pageUrl.match(/[?&]fixtureId=(\d+)/i)?.[1];
+}
+
+function classificationRowFromDiv(
+  $: ReturnType<typeof cheerio.load>,
+  el: AnyNode
+): LeagueTableRow | null {
+  const $el = $(el);
+  const cells: string[] = [];
+  $el.children("div").each((__, child) => {
+    cells.push($(child).text().trim().replace(/\s+/g, " "));
+  });
+  if (cells.length < 4) return null;
+
+  const posRaw = cells[0].replace(/[^\d]/g, "");
+  const position = posRaw ? parseInt(posRaw, 10) : NaN;
+  const team = cells[1] ?? "";
+  if (!team || team.length < 2 || !Number.isFinite(position)) return null;
+
+  const nums = cells.slice(2).map((c) => {
+    const m = c.match(/^-?\d+$/);
+    return m ? parseInt(m[0], 10) : NaN;
+  });
+  const validNums = nums.filter((n) => !isNaN(n));
+  const points = validNums.length >= 1 ? validNums[validNums.length - 1] : undefined;
+
+  let played: number | undefined;
+  let won: number | undefined;
+  let drawn: number | undefined;
+  let lost: number | undefined;
+  let goalsFor: number | undefined;
+  let goalsAgainst: number | undefined;
+  if (validNums.length >= 7) {
+    [played, won, drawn, lost, goalsFor, goalsAgainst] = validNums.slice(0, 6);
+  }
+
+  let goalDifference: number | undefined;
+  if (goalsFor !== undefined && goalsAgainst !== undefined) {
+    goalDifference = goalsFor - goalsAgainst;
+  }
+
+  return {
+    position,
+    team: team.slice(0, 80),
+    played,
+    won,
+    drawn,
+    lost,
+    goalsFor,
+    goalsAgainst,
+    goalDifference,
+    points,
+    cells,
+  };
+}
+
+/** All `div.game.classification` rows under a container, in DOM order. */
+export function parseFpfClassificationRowsInScope(
+  $: ReturnType<typeof cheerio.load>,
+  $root: Cheerio<AnyNode>
+): LeagueTableRow[] {
+  const out: LeagueTableRow[] = [];
+  $root.find("div.game.classification").each((_, el) => {
+    const row = classificationRowFromDiv($, el);
+    if (row) out.push(row);
+  });
+  return out;
+}
+
+function groupRowsIntoTables(rows: LeagueTableRow[]): LeagueTableRow[][] {
+  const groups: LeagueTableRow[][] = [];
+  let current: LeagueTableRow[] = [];
+  for (const row of rows) {
+    if (row.position === 1 && current.length > 0) {
+      groups.push(current);
+      current = [];
+    }
+    current.push(row);
+  }
+  if (current.length) groups.push(current);
+  return groups;
+}
+
+function extractSeriesLabelFromColumn($: ReturnType<typeof cheerio.load>, $col: Cheerio<AnyNode>): string {
+  const h = $col
+    .find("h1, h2, h3, h4, h5, .section-title, .club-title")
+    .filter((_, el) => /SERIE|SÉRIE/i.test($(el).text()))
+    .first()
+    .text()
+    .trim()
+    .replace(/\s+/g, " ");
+  if (h) return h.slice(0, 80);
+  const any = $col.find("h3, h4").first().text().trim().replace(/\s+/g, " ");
+  return any ? any.slice(0, 80) : "";
+}
+
+export type FpfSeriesSection = { label: string; html: string; rows: LeagueTableRow[] };
+
+/**
+ * Multi-column FPF pages (Serie A/B/C): one block per grid column.
+ * Single-column pages: split consecutive mini-tables (each restarts at position 1).
+ */
+export function enumerateFpfSeriesSections(html: string): FpfSeriesSection[] {
+  const $ = cheerio.load(html);
+  const colCandidates = $("div.row")
+    .children("div")
+    .filter((_, el) => $(el).find("div.game.classification").length > 0);
+
+  if (colCandidates.length >= 2) {
+    const out: FpfSeriesSection[] = [];
+    colCandidates.each((_, el) => {
+      const $c = $(el);
+      const rows = parseFpfClassificationRowsInScope($, $c);
+      if (rows.length === 0) return;
+      const label = extractSeriesLabelFromColumn($, $c) || "Série";
+      out.push({ label, html: $.html($c), rows });
+    });
+    if (out.length > 0) return out;
+  }
+
+  const allRows = parseFpfClassificationRowsInScope($, $("body"));
+  if (allRows.length === 0) return [];
+  const groups = groupRowsIntoTables(allRows);
+  return groups.map((rows, i) => ({
+    label: `Série ${i + 1}`,
+    html,
+    rows,
+  }));
+}
+
+export function pickFpfSeriesForClub(
+  sections: FpfSeriesSection[],
+  clubName: string
+): FpfSeriesSection | null {
+  if (sections.length === 0) return null;
+  const club = clubName.trim();
+  if (!club) {
+    const sorted = [...sections].sort((a, b) => b.rows.length - a.rows.length);
+    return sorted[0]!;
+  }
+
+  let best: { section: FpfSeriesSection; score: number } | null = null;
+  for (const s of sections) {
+    const names = s.rows.map((r) => r.team);
+    const pick = pickBestTeamMatch(club, names);
+    const score = pick?.score ?? 0;
+    if (!best || score > best.score) best = { section: s, score };
+  }
+  if (best && best.score >= 0.42) return best.section;
+  return [...sections].sort((a, b) => b.rows.length - a.rows.length)[0]!;
+}
+
+function normalizeSerieLabel(s: string): string {
+  return s
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .replace(/\s+/g, " ");
+}
+
+function seriesLabelForFixtureLink($: ReturnType<typeof cheerio.load>, el: AnyNode): string {
+  const $link = $(el);
+  const $col = $link.closest('div[class*="col-"]');
+  if ($col.length) {
+    const fromSerie = $col
+      .find("h1, h2, h3, h4, h5")
+      .filter((_, h) => /SERIE|SÉRIE/i.test($(h).text()))
+      .first()
+      .text()
+      .trim();
+    if (fromSerie) return fromSerie.replace(/\s+/g, " ");
+    const any = $col.find("h3, h4").first().text().trim();
+    if (any) return any.replace(/\s+/g, " ");
+  }
+  return "";
+}
+
+/** Fixture IDs whose tab/link sits under the same column / heading as the chosen SERIE label. */
+export function extractFpfFixtureIdsForSeries(html: string, seriesLabel: string): string[] {
+  const want = normalizeSerieLabel(seriesLabel);
+  if (!want) return [];
+
+  const $ = cheerio.load(html);
+  const ids = new Set<string>();
+
+  $('a[href*="fixtureId="]').each((_, el) => {
+    const href = ($(el).attr("href") ?? "").trim();
+    const fid = href.match(/fixtureId=(\d+)/i)?.[1];
+    if (!fid) return;
+    const lab = normalizeSerieLabel(seriesLabelForFixtureLink($, el));
+    if (!lab) return;
+    if (lab === want || lab.includes(want) || want.includes(lab)) {
+      ids.add(fid);
+      return;
+    }
+    const wa = want.replace(/^serie\s*/i, "").trim();
+    const lb = lab.replace(/^serie\s*/i, "").trim();
+    if (wa.length >= 1 && lb.length >= 1 && (wa === lb || lb.includes(wa) || wa.includes(lb))) {
+      ids.add(fid);
+    }
+  });
+
+  return [...ids];
+}
+
+/** Keep only matches where both clubs appear in the series standings (same group). */
+export function filterFpfMatchesToSeriesTeams(
+  matches: LeagueImportedMatch[],
+  rows: LeagueTableRow[]
+): LeagueImportedMatch[] {
+  if (rows.length === 0) return matches;
+  const teamSet = new Set(rows.map((r) => normalizeTeamLabel(r.team)));
+  return matches.filter(
+    (m) =>
+      teamSet.has(normalizeTeamLabel(m.homeTeam)) && teamSet.has(normalizeTeamLabel(m.awayTeam))
+  );
 }
 
 type FpfMatchMeta = { fpfRound?: number; fpfFixtureId?: string };
@@ -281,11 +501,13 @@ const DEFAULT_FETCH_HEADERS: Record<string, string> = {
 
 /**
  * Main competition pages often omit match rows (AJAX). Fetch each matchday fragment and merge.
+ * When `fixtureIds` is set (e.g. one SERIE on multi-series pages), only those rounds are fetched.
  */
 export async function fetchFpfMatchesFromFixtureRounds(
   mainHtml: string,
   competitionPageUrl: string,
-  fetchImpl: typeof fetch
+  fetchImpl: typeof fetch,
+  options?: { fixtureIds?: string[] }
 ): Promise<LeagueImportedMatch[]> {
   let host: string;
   try {
@@ -295,7 +517,11 @@ export async function fetchFpfMatchesFromFixtureRounds(
   }
   if (!host.includes("resultados.fpf.pt")) return [];
 
-  const ids = extractFpfFixtureIdsFromHtml(mainHtml);
+  let ids = extractFpfFixtureIdsFromHtml(mainHtml);
+  if (options?.fixtureIds?.length) {
+    const allow = new Set(options.fixtureIds);
+    ids = ids.filter((id) => allow.has(id));
+  }
   if (ids.length === 0) return [];
 
   const roundMap = extractFpfFixtureRoundMapFromHtml(mainHtml);

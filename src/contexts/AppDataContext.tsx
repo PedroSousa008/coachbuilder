@@ -242,7 +242,7 @@ type AppDataContextValue = {
   leagueCompetitionName: string | null;
   leagueTableLastFetched: string | null;
   leagueTableFetchError: string | null;
-  refreshLeagueTable: (fullSeason?: boolean) => Promise<void>;
+  refreshLeagueTable: () => Promise<void>;
 
   coachProfile: CoachProfileState;
   setCoachProfile: (patch: Partial<CoachProfileState>) => void;
@@ -1456,7 +1456,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setCoachProfileState((prev) => normalizeCoachProfileState({ ...prev, ...patch }));
   }, []);
 
-  const refreshLeagueTable = useCallback(async (fullSeason?: boolean) => {
+  const refreshLeagueTable = useCallback(async () => {
     const u = leagueTableUrl.trim();
     if (!u) {
       setLeagueTableFetchError("Paste a standings page URL first.");
@@ -1467,7 +1467,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       const res = await fetch("/api/league-table", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: u, fullSeason: fullSeason === true }),
+        body: JSON.stringify({ url: u }),
       });
       const data = await res.json();
       if (!data.ok) {
@@ -1481,7 +1481,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      const { buildLeagueTableFromFetchedHtml, fetchZeroZeroFullSeasonMatches } = await import(
+      const { buildLeagueTableFromFetchedHtml, filterFpfMatchesToSeriesTeams } = await import(
         "@/lib/league-import-from-html"
       );
 
@@ -1490,25 +1490,29 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       let competitionName: string | null = null;
 
       try {
-        const built = buildLeagueTableFromFetchedHtml(html, pageUrl);
+        const clubHint = coachProfile.club.trim();
+        const built = buildLeagueTableFromFetchedHtml(html, pageUrl, clubHint);
         rows = built.rows;
         matches = built.matches;
         competitionName = built.competitionName;
-
-        if (fullSeason === true && built.isZeroZero) {
-          const zzFull = await fetchZeroZeroFullSeasonMatches(html, pageUrl, fetch);
-          if (zzFull.length > 0) matches = zzFull;
-        }
 
         if (built.host.includes("resultados.fpf.pt")) {
           const r2 = await fetch("/api/league-table/fpf-fixtures", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ html, url: pageUrl }),
+            body: JSON.stringify({
+              html,
+              url: pageUrl,
+              ...(built.fpfFixtureIdsForCoach?.length
+                ? { fixtureIds: built.fpfFixtureIdsForCoach }
+                : {}),
+            }),
           });
           const extra = await r2.json();
           if (extra.ok && Array.isArray(extra.matches)) {
-            matches = dedupeMatches([...matches, ...extra.matches]);
+            const merged = dedupeMatches([...matches, ...extra.matches]);
+            matches =
+              rows.length > 0 ? filterFpfMatchesToSeriesTeams(merged, rows) : merged;
           }
         }
       } catch (e) {
@@ -1534,7 +1538,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     } catch {
       setLeagueTableFetchError("Network error — try again.");
     }
-  }, [leagueTableUrl]);
+  }, [leagueTableUrl, coachProfile.club]);
 
   const unreadMessagesCount = useMemo(
     () => conversations.reduce((n, c) => n + (c.unread ?? 0), 0),

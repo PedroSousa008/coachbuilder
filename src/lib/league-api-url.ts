@@ -15,8 +15,3 @@ export function isAllowedLeagueTableUrl(urlStr: string): boolean {
     return false;
   }
 }
-
-export function isZeroZeroHost(hostname: string): boolean {
-  const h = hostname.toLowerCase();
-  return h === "zerozero.pt" || h.endsWith(".zerozero.pt") || h === "www.zerozero.pt";
-}

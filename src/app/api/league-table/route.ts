@@ -1,17 +1,12 @@
 import { NextResponse } from "next/server";
-import { isAllowedLeagueTableUrl, isZeroZeroHost } from "@/lib/league-api-url";
-import { createZeroZeroFetchSession } from "@/lib/fetch-zerozero-session";
+import { isAllowedLeagueTableUrl } from "@/lib/league-api-url";
 
 export const runtime = "nodejs";
 
-/**
- * Hobby: hard cap ~10s wall time. Anything that waits longer (e.g. fetch timeout 12s) → platform 502.
- * Pro can raise maxDuration; keep this aligned with the smallest plan.
- */
+/** Hobby: ~10s wall time — keep upstream fetch under this budget. */
 export const maxDuration = 10;
 
 const GENERIC_FETCH_MS = 7500;
-const ZEROZERO_TARGET_MS = 5500;
 
 const GENERIC_HTML_HEADERS: Record<string, string> = {
   "User-Agent":
@@ -27,7 +22,7 @@ const GENERIC_HTML_HEADERS: Record<string, string> = {
 export async function GET() {
   return NextResponse.json({
     ok: true,
-    leagueTableApi: "fetch-html-v3",
+    leagueTableApi: "fpf-fetch-html-v1",
     maxDurationSec: maxDuration,
   });
 }
@@ -46,50 +41,27 @@ export async function POST(req: Request) {
     } catch {
       return NextResponse.json({ ok: false, error: "Invalid URL." }, { status: 400 });
     }
-    const host = parsed.hostname.toLowerCase();
 
     let res: Response;
-
-    if (isZeroZeroHost(host)) {
-      try {
-        const session = await createZeroZeroFetchSession();
-        res = await session.fetch(url, {
-          signal:
-            typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function"
-              ? AbortSignal.timeout(ZEROZERO_TARGET_MS)
-              : undefined,
-        });
-      } catch {
-        return NextResponse.json(
-          {
-            ok: false,
-            error:
-              "O ZeroZero não respondeu a tempo. Tenta de novo dentro de momentos ou verifica se o URL da competição está correto.",
-          },
-          { status: 400 }
-        );
-      }
-    } else {
-      try {
-        res = await fetch(url, {
-          headers: GENERIC_HTML_HEADERS,
-          redirect: "follow",
-          cache: "no-store",
-          signal:
-            typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function"
-              ? AbortSignal.timeout(GENERIC_FETCH_MS)
-              : undefined,
-        });
-      } catch {
-        return NextResponse.json(
-          {
-            ok: false,
-            error:
-              "A página demorou demasiado a carregar (limite do servidor). Tenta outro URL ou mais tarde.",
-          },
-          { status: 400 }
-        );
-      }
+    try {
+      res = await fetch(url, {
+        headers: GENERIC_HTML_HEADERS,
+        redirect: "follow",
+        cache: "no-store",
+        signal:
+          typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function"
+            ? AbortSignal.timeout(GENERIC_FETCH_MS)
+            : undefined,
+      });
+    } catch {
+      return NextResponse.json(
+        {
+          ok: false,
+          error:
+            "A página demorou demasiado a carregar (limite do servidor). Tenta outro URL ou mais tarde.",
+        },
+        { status: 400 }
+      );
     }
 
     if (!res.ok) {
@@ -109,7 +81,7 @@ export async function POST(req: Request) {
         {
           ok: false,
           error:
-            "The URL did not return HTML. Try the public standings page for your league, or paste a page that contains a table.",
+            "The URL did not return HTML. Paste a resultados.fpf.pt competition page that contains the league table.",
         },
         { status: 400 }
       );
