@@ -6,6 +6,8 @@
 const CHROME_UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
 
+const ORIGIN = "https://www.zerozero.pt";
+
 function baseHeaders(): Record<string, string> {
   return {
     "User-Agent": CHROME_UA,
@@ -40,10 +42,32 @@ function cookiesFromResponse(res: Response): string {
 export type ZeroZeroFetch = (input: string | URL, init?: RequestInit) => Promise<Response>;
 
 /**
+ * Single GET (no cookie warm). Keeps Hobby serverless runs under ~10s — the warm + fetch path was too slow.
+ * On 403/429 the route can retry with `createZeroZeroFetchSession`.
+ */
+export async function fetchZeroZeroPageOnce(url: string): Promise<Response> {
+  const signal =
+    typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function"
+      ? AbortSignal.timeout(8000)
+      : undefined;
+  return fetch(url, {
+    method: "GET",
+    redirect: "follow",
+    cache: "no-store",
+    signal,
+    headers: {
+      ...baseHeaders(),
+      "Sec-Fetch-Site": "none",
+      Referer: `${ORIGIN}/`,
+    },
+  });
+}
+
+/**
  * One session = one cookie jar. Call `warm()` then use `fetch` for all ZeroZero URLs in that request.
  */
 export async function createZeroZeroFetchSession(): Promise<{ fetch: ZeroZeroFetch; cookie: string }> {
-  const origin = "https://www.zerozero.pt";
+  const origin = ORIGIN;
 
   let cookie = "";
   try {

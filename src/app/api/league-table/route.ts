@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import type { LeagueImportedMatch } from "@/types";
+import type { LeagueImportedMatch, LeagueTableRow } from "@/types";
 import { parseStandingsFromHtml, isAllowedLeagueTableUrl } from "@/lib/league-table-parse";
 import {
   dedupeMatches,
@@ -15,7 +15,11 @@ import {
   parseZeroZeroMatchesFromPageHtml,
   parseZeroZeroStandings,
 } from "@/lib/league-import-zerozero";
-import { createZeroZeroFetchSession, type ZeroZeroFetch } from "@/lib/fetch-zerozero-session";
+import {
+  createZeroZeroFetchSession,
+  fetchZeroZeroPageOnce,
+  type ZeroZeroFetch,
+} from "@/lib/fetch-zerozero-session";
 
 /** Cheerio + many upstream fetches require Node (not Edge). */
 export const runtime = "nodejs";
@@ -54,21 +58,52 @@ export async function POST(req: Request) {
     let zzFetch: ZeroZeroFetch | null = null;
 
     if (isZeroZeroHost(host)) {
-      const session = await createZeroZeroFetchSession();
-      zzFetch = session.fetch;
-      res = await session.fetch(url);
-      if (res.status === 403 || res.status === 429) {
-        await new Promise((r) => setTimeout(r, 650));
-        const retry = await createZeroZeroFetchSession();
-        zzFetch = retry.fetch;
-        res = await retry.fetch(url);
+      if (fullSeason) {
+        const session = await createZeroZeroFetchSession();
+        zzFetch = session.fetch;
+        res = await session.fetch(url);
+        if (res.status === 403 || res.status === 429) {
+          await new Promise((r) => setTimeout(r, 650));
+          const retry = await createZeroZeroFetchSession();
+          zzFetch = retry.fetch;
+          res = await retry.fetch(url);
+        }
+      } else {
+        try {
+          res = await fetchZeroZeroPageOnce(url);
+        } catch {
+          return NextResponse.json(
+            { ok: false, error: "ZeroZero did not respond in time. Try again." },
+            { status: 400 }
+          );
+        }
+        if (res.status === 403 || res.status === 429) {
+          const session = await createZeroZeroFetchSession();
+          res = await session.fetch(url);
+          if (res.status === 403 || res.status === 429) {
+            await new Promise((r) => setTimeout(r, 650));
+            const retry = await createZeroZeroFetchSession();
+            res = await retry.fetch(url);
+          }
+        }
       }
     } else {
-      res = await fetch(url, {
-        headers: GENERIC_HTML_HEADERS,
-        redirect: "follow",
-        cache: "no-store",
-      });
+      try {
+        res = await fetch(url, {
+          headers: GENERIC_HTML_HEADERS,
+          redirect: "follow",
+          cache: "no-store",
+          signal:
+            typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function"
+              ? AbortSignal.timeout(12000)
+              : undefined,
+        });
+      } catch {
+        return NextResponse.json(
+          { ok: false, error: "The page did not load in time. Try again or use a simpler URL." },
+          { status: 400 }
+        );
+      }
     }
 
     if (!res.ok) {
@@ -94,15 +129,32 @@ export async function POST(req: Request) {
       );
     }
 
-    const html = await res.text();
+    let html: string;
+    try {
+      html = await res.text();
+    } catch {
+      return NextResponse.json(
+        { ok: false, error: "Could not read the page body. Try again." },
+        { status: 400 }
+      );
+    }
 
-    let rows = parseStandingsFromHtml(html);
+    let rows: LeagueTableRow[] = [];
+    try {
+      rows = parseStandingsFromHtml(html);
+    } catch (e) {
+      console.error("league-table: parseStandingsFromHtml", e);
+    }
     let matches: LeagueImportedMatch[] = [];
     let competitionName: string | null | undefined;
 
     if (isZeroZeroHost(host)) {
-      const zzRows = parseZeroZeroStandings(html);
-      if (zzRows.length > 0) rows = zzRows;
+      try {
+        const zzRows = parseZeroZeroStandings(html);
+        if (zzRows.length > 0) rows = zzRows;
+      } catch (e) {
+        console.error("league-table ZeroZero standings", e);
+      }
       try {
         if (fullSeason && zzFetch) {
           matches = await fetchZeroZeroMatchesForAllRounds(html, url, zzFetch);
@@ -117,7 +169,11 @@ export async function POST(req: Request) {
           console.error("league-table ZeroZero page parse fallback", e2);
         }
       }
-      competitionName = extractZeroZeroCompetitionLabel(html) ?? extractCompetitionLabelFromHtml(html);
+      try {
+        competitionName = extractZeroZeroCompetitionLabel(html) ?? extractCompetitionLabelFromHtml(html);
+      } catch {
+        competitionName = extractCompetitionLabelFromHtml(html);
+      }
     } else {
       const roundMap = extractFpfFixtureRoundMapFromHtml(html);
       matches = parseFpfMatchesFromHtml(html, url, roundMap);
