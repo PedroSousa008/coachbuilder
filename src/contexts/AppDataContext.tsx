@@ -1510,9 +1510,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         if (built.host.includes("resultados.fpf.pt")) {
           try {
             const fpfMod = await import("@/lib/league-import-fpf");
+            const coachFixtureIds = built.fpfFixtureIdsForCoach;
             let fixtureIds =
-              built.fpfFixtureIdsForCoach?.length > 0
-                ? built.fpfFixtureIdsForCoach
+              coachFixtureIds && coachFixtureIds.length > 0
+                ? coachFixtureIds
                 : fpfMod.extractFpfFixtureIdsFromHtml(html);
             const roundMap = fpfMod.extractFpfFixtureRoundMapFromHtml(html);
             fixtureIds = [...fixtureIds].sort(
