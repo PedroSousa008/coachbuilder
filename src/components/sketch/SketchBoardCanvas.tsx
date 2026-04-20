@@ -323,10 +323,13 @@ export function SketchBoardCanvas({
     if (!c) return;
     const ctx = c.getContext("2d");
     if (!ctx) return;
-    const w = c.width;
-    const h = c.height;
+    // c.width/height are buffer pixels; ctx is scaled by dpr so drawing uses CSS pixels (same as pointer coords).
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const w = c.width / dpr;
+    const h = c.height / dpr;
+    if (w < 1 || h < 1) return;
     ctx.clearRect(0, 0, w, h);
-    if (pitchTemplate !== "blank") drawPitchBackground(ctx, w, h, pitchTemplate);
+    drawPitchBackground(ctx, w, h, pitchTemplate);
     drawStrokes(ctx, strokes);
     if (currentStroke.current) drawStrokes(ctx, [currentStroke.current]);
   }, [pitchTemplate, strokes]);
