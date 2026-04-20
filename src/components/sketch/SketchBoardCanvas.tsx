@@ -79,7 +79,12 @@ function drawPitchBackground(ctx: CanvasRenderingContext2D, w: number, h: number
   const cx = (xL + xR) / 2;
   const cy = (yT + yB) / 2;
 
-  // Relva com riscas verticais (estilo tactical board)
+  if (tpl === "half") {
+    drawHalfPitchBackground(ctx, w, h);
+    return;
+  }
+
+  // Relva com riscas verticais (campo completo / blank)
   const stripes = 14;
   for (let i = 0; i < stripes; i++) {
     const x0 = xL + (i * pitchW) / stripes;
@@ -98,7 +103,21 @@ function drawPitchBackground(ctx: CanvasRenderingContext2D, w: number, h: number
     return;
   }
 
-  // Escala FIFA: comprimento 105 m (eixo X), largura 68 m (eixo Y)
+  drawFullPitchBackground(ctx, xL, yT, xR, yB, pitchW, pitchH, cx, cy);
+}
+
+/** Campo completo: 105×68 m, balizas nos dois lados. */
+function drawFullPitchBackground(
+  ctx: CanvasRenderingContext2D,
+  xL: number,
+  yT: number,
+  xR: number,
+  yB: number,
+  pitchW: number,
+  pitchH: number,
+  cx: number,
+  cy: number
+) {
   const sx = pitchW / 105;
   const sy = pitchH / 68;
 
@@ -107,40 +126,33 @@ function drawPitchBackground(ctx: CanvasRenderingContext2D, w: number, h: number
   ctx.lineJoin = "miter";
   ctx.lineCap = "butt";
 
-  // Contorno
   ctx.strokeRect(xL, yT, pitchW, pitchH);
 
-  // Linha de meio-campo (vertical)
   ctx.beginPath();
   ctx.moveTo(cx, yT);
   ctx.lineTo(cx, yB);
   ctx.stroke();
 
-  // Círculo central (raio 9,15 m)
   const rCenter = 9.15 * sx;
   ctx.beginPath();
   ctx.arc(cx, cy, rCenter, 0, Math.PI * 2);
   ctx.stroke();
 
-  // Ponto central
   ctx.fillStyle = LINE;
   ctx.beginPath();
   ctx.arc(cx, cy, Math.max(1.2, pitchW * 0.004), 0, Math.PI * 2);
   ctx.fill();
 
-  // Grandes áreas (16,5 × 40,32 m)
   const dPen = 16.5 * sx;
   const wPen = 40.32 * sy;
   ctx.strokeRect(xL, cy - wPen / 2, dPen, wPen);
   ctx.strokeRect(xR - dPen, cy - wPen / 2, dPen, wPen);
 
-  // Pequenas áreas (5,5 × 18,32 m)
   const dGa = 5.5 * sx;
   const wGa = 18.32 * sy;
   ctx.strokeRect(xL, cy - wGa / 2, dGa, wGa);
   ctx.strokeRect(xR - dGa, cy - wGa / 2, dGa, wGa);
 
-  // Marca de penálti (11 m da linha de golo)
   const pm = 11 * sx;
   const spotR = Math.max(1, pitchW * 0.0035);
   ctx.beginPath();
@@ -150,7 +162,6 @@ function drawPitchBackground(ctx: CanvasRenderingContext2D, w: number, h: number
   ctx.arc(xR - pm, cy, spotR, 0, Math.PI * 2);
   ctx.fill();
 
-  // Arcos de penálti (raio 9,15 m a partir da marca; parte fora da grande área)
   const rPen = 9.15 * sx;
   const edgeL = xL + dPen;
   const dxL = edgeL - (xL + pm);
@@ -169,11 +180,9 @@ function drawPitchBackground(ctx: CanvasRenderingContext2D, w: number, h: number
     ctx.stroke();
   }
 
-  // Cantos (raio ~1 m)
   const rc = 1 * sx;
   drawCornerArcs(ctx, xL, yT, xR, yB, rc);
 
-  // Balizas (largura 7,32 m na linha de golo)
   const wGoal = 7.32 * sy;
   const gW = Math.max(2, pitchW * 0.012);
   ctx.fillStyle = "rgba(255,255,255,0.22)";
@@ -183,11 +192,94 @@ function drawPitchBackground(ctx: CanvasRenderingContext2D, w: number, h: number
   ctx.lineWidth = Math.max(1, pitchW * 0.0018);
   ctx.strokeRect(xL - gW * 0.35, cy - wGoal / 2, gW * 0.85, wGoal);
   ctx.strokeRect(xR - gW * 0.5, cy - wGoal / 2, gW * 0.85, wGoal);
+}
 
-  if (tpl === "half") {
-    ctx.fillStyle = "rgba(0, 0, 0, 0.22)";
-    ctx.fillRect(cx, yT, xR - cx, pitchH);
+/**
+ * Meio-campo: só uma metade (52,5×68 m), golo à esquerda e linha de meio à direita.
+ * Círculo central como semicírculo na linha de meio-campo.
+ */
+function drawHalfPitchBackground(ctx: CanvasRenderingContext2D, w: number, h: number) {
+  const m = Math.max(16, Math.min(28, Math.round(Math.min(w, h) * 0.04)));
+  const xL = m;
+  const xR = w - m;
+  const yT = m;
+  const yB = h - m;
+  const pitchW = xR - xL;
+  const pitchH = yB - yT;
+  const cy = (yT + yB) / 2;
+
+  const sx = pitchW / 52.5;
+  const sy = pitchH / 68;
+
+  const stripes = 7;
+  for (let i = 0; i < stripes; i++) {
+    const x0 = xL + (i * pitchW) / stripes;
+    const x1 = xL + ((i + 1) * pitchW) / stripes;
+    ctx.fillStyle = i % 2 === 0 ? GRASS_A : GRASS_B;
+    ctx.fillRect(x0, yT, x1 - x0 + 0.5, pitchH);
   }
+
+  ctx.strokeStyle = LINE;
+  ctx.lineWidth = Math.max(1.5, Math.min(2.5, pitchW * 0.0025));
+  ctx.lineJoin = "miter";
+  ctx.lineCap = "butt";
+
+  ctx.strokeRect(xL, yT, pitchW, pitchH);
+
+  ctx.beginPath();
+  ctx.moveTo(xR, yT);
+  ctx.lineTo(xR, yB);
+  ctx.stroke();
+
+  const rCenter = 9.15 * sx;
+  ctx.beginPath();
+  ctx.arc(xR, cy, rCenter, Math.PI / 2, (3 * Math.PI) / 2, true);
+  ctx.stroke();
+
+  ctx.fillStyle = LINE;
+  ctx.beginPath();
+  ctx.arc(xR, cy, Math.max(1.2, pitchW * 0.004), 0, Math.PI * 2);
+  ctx.fill();
+
+  const dPen = 16.5 * sx;
+  const wPen = 40.32 * sy;
+  ctx.strokeRect(xL, cy - wPen / 2, dPen, wPen);
+
+  const dGa = 5.5 * sx;
+  const wGa = 18.32 * sy;
+  ctx.strokeRect(xL, cy - wGa / 2, dGa, wGa);
+
+  const pm = 11 * sx;
+  const spotR = Math.max(1, pitchW * 0.0035);
+  ctx.beginPath();
+  ctx.arc(xL + pm, cy, spotR, 0, Math.PI * 2);
+  ctx.fill();
+
+  const rPen = 9.15 * sx;
+  const edgeL = xL + dPen;
+  const dxL = edgeL - (xL + pm);
+  if (rPen > Math.abs(dxL)) {
+    const phiL = Math.acos(Math.min(1, Math.max(-1, dxL / rPen)));
+    ctx.beginPath();
+    ctx.arc(xL + pm, cy, rPen, phiL, Math.PI * 2 - phiL, true);
+    ctx.stroke();
+  }
+
+  const rc = 1 * sx;
+  ctx.beginPath();
+  ctx.arc(xL + rc, yT + rc, rc, Math.PI, Math.PI * 1.5, false);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(xL + rc, yB - rc, rc, Math.PI * 0.5, Math.PI, false);
+  ctx.stroke();
+
+  const wGoal = 7.32 * sy;
+  const gW = Math.max(2, pitchW * 0.012);
+  ctx.fillStyle = "rgba(255,255,255,0.22)";
+  ctx.fillRect(xL - gW * 0.35, cy - wGoal / 2, gW * 0.85, wGoal);
+  ctx.strokeStyle = LINE;
+  ctx.lineWidth = Math.max(1, pitchW * 0.0018);
+  ctx.strokeRect(xL - gW * 0.35, cy - wGoal / 2, gW * 0.85, wGoal);
 }
 
 function drawCornerArcs(
