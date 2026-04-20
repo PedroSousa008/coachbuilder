@@ -9,12 +9,8 @@ import { wallClockLisbonToUtcIso } from "@/lib/lisbon-date";
 type LoadedCheerio = ReturnType<typeof cheerio.load>;
 type CheerioSel = Cheerio<AnyNode>;
 
-const DEFAULT_HEADERS: Record<string, string> = {
-  "User-Agent":
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-  Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-  "Accept-Language": "pt-PT,pt;q=0.9,en-GB;q=0.8,en;q=0.7",
-};
+/** Small delay between jornada batches to reduce rate limits. */
+const BETWEEN_BATCH_MS = 180;
 
 export function isZeroZeroHost(hostname: string): boolean {
   const h = hostname.toLowerCase();
@@ -314,8 +310,11 @@ export async function fetchZeroZeroMatchesForAllRounds(
   if (maxJ < 1) return [];
 
   const all: LeagueImportedMatch[] = [];
-  const batchSize = 6;
+  const batchSize = 3;
   for (let start = 1; start <= maxJ; start += batchSize) {
+    if (start > 1) {
+      await new Promise((r) => setTimeout(r, BETWEEN_BATCH_MS));
+    }
     const batch: Promise<LeagueImportedMatch[]>[] = [];
     for (let j = start; j < start + batchSize && j <= maxJ; j++) {
       const u = `${origin}/edition.php?id_edicao=${encodeURIComponent(params.idEdicao)}&fase=${encodeURIComponent(params.fase)}&jornada_in=${j}`;
@@ -323,9 +322,9 @@ export async function fetchZeroZeroMatchesForAllRounds(
         (async () => {
           try {
             const r = await fetchImpl(u, {
-              headers: DEFAULT_HEADERS,
               cache: "no-store",
               redirect: "follow",
+              headers: { Referer: pageUrl },
             });
             if (!r.ok) return [];
             const h = await r.text();

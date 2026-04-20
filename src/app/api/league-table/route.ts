@@ -14,9 +14,20 @@ import {
   isZeroZeroHost,
   parseZeroZeroStandings,
 } from "@/lib/league-import-zerozero";
+import { createZeroZeroFetchSession } from "@/lib/fetch-zerozero-session";
 
 /** FPF loads many matchday fragments; allow enough time on cold starts. */
 export const maxDuration = 120;
+
+const GENERIC_HTML_HEADERS: Record<string, string> = {
+  "User-Agent":
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+  "Accept-Language": "pt-PT,pt;q=0.9,en-GB;q=0.8,en;q=0.7",
+  "Accept-Encoding": "gzip, deflate, br",
+  "Cache-Control": "max-age=0",
+  "Upgrade-Insecure-Requests": "1",
+};
 
 export async function POST(req: Request) {
   try {
@@ -26,21 +37,43 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Enter a valid http(s) URL." }, { status: 400 });
     }
 
-    const res = await fetch(url, {
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        "Accept-Language": "pt-PT,pt;q=0.9,en-GB;q=0.8,en;q=0.7",
-      },
-      redirect: "follow",
-      cache: "no-store",
-    });
+    let parsed: URL;
+    try {
+      parsed = new URL(url);
+    } catch {
+      return NextResponse.json({ ok: false, error: "Invalid URL." }, { status: 400 });
+    }
+    const host = parsed.hostname.toLowerCase();
+
+    let res: Response;
+    let zzFetch: typeof fetch | null = null;
+
+    if (isZeroZeroHost(host)) {
+      const session = await createZeroZeroFetchSession();
+      zzFetch = session.fetch;
+      res = await session.fetch(url);
+      if (res.status === 403 || res.status === 429) {
+        await new Promise((r) => setTimeout(r, 650));
+        const retry = await createZeroZeroFetchSession();
+        zzFetch = retry.fetch;
+        res = await retry.fetch(url);
+      }
+    } else {
+      res = await fetch(url, {
+        headers: GENERIC_HTML_HEADERS,
+        redirect: "follow",
+        cache: "no-store",
+      });
+    }
 
     if (!res.ok) {
+      const hint =
+        res.status === 403
+          ? " The site may block automated requests from cloud servers; try again later or use a league page that allows public access."
+          : "";
       return NextResponse.json(
-        { ok: false, error: `Could not load page (HTTP ${res.status}).` },
-        { status: 502 }
+        { ok: false, error: `Could not load page (HTTP ${res.status}).${hint}` },
+        { status: 400 }
       );
     }
 
@@ -57,7 +90,6 @@ export async function POST(req: Request) {
     }
 
     const html = await res.text();
-    const host = new URL(url).hostname.toLowerCase();
 
     let rows = parseStandingsFromHtml(html);
     let matches: LeagueImportedMatch[] = [];
@@ -67,7 +99,8 @@ export async function POST(req: Request) {
       const zzRows = parseZeroZeroStandings(html);
       if (zzRows.length > 0) rows = zzRows;
       try {
-        matches = await fetchZeroZeroMatchesForAllRounds(html, url, fetch);
+        const fetchRounds = zzFetch ?? fetch;
+        matches = await fetchZeroZeroMatchesForAllRounds(html, url, fetchRounds);
       } catch (e) {
         console.error("league-table ZeroZero fixture rounds", e);
       }
