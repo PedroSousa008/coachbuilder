@@ -34,6 +34,7 @@ const TRAINING_EXERCISE_PRINT_IMAGE_BY_TITLE: Record<string, string> = {
   "Pressing Exercise": "pressing-exercise.png",
   "3v2 Fast Break": "3v2-fast-break.png",
   "3v2 Finishing Drill": "3v2-finishing-drill.png",
+  "(2+1)v1 Transition": "2+1v1-transition.png",
   "Defensive Recovery on Counter Attack": "defensive-recovery.png",
 };
 

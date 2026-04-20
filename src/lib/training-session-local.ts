@@ -110,6 +110,12 @@ export const RONDO_5V3_VIDEO_URL = "/videos/training/rondo-5v3.mp4";
 export const BREAKOUT_RONDO_VIDEO_URL = "/videos/training/breakout-rondo.mp4";
 
 /**
+ * Vídeo do exercício "(2+1)v1 Transition".
+ * Coloca o ficheiro em `public/videos/training/2+1v1-transition.mp4` ou substitui por um link YouTube.
+ */
+export const TWO_PLUS_ONE_V_ONE_TRANSITION_VIDEO_URL = "/videos/training/2+1v1-transition.mp4";
+
+/**
  * Vídeo do exercício "Build up into Counter Attack".
  * Coloca o ficheiro em `public/videos/training/build-up-into-counter-attack.mp4` ou substitui por um link YouTube.
  */
@@ -282,6 +288,9 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
     "fitness rondo into finishing",
     "rondo to counter attack",
     "rondo to counter",
+    "2+1v1 transition",
+    "(2+1)v1 transition",
+    "3v1",
     "fitness rondo",
     "rondo com finalização",
     "rondo com finalizacao",
@@ -386,6 +395,14 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
     "transicao apos roubo",
     "reação à perda",
     "reacao a perda",
+    "recuperação de bola rápida",
+    "recuperacao de bola rapida",
+    "decisão após recuperação",
+    "decisao apos recuperacao",
+    "reação rápida à perda",
+    "reacao rapida a perda",
+    "2+1v1 transition",
+    "(2+1)v1 transition",
     "três balizas",
     "tres balizas",
     "goal kick",
@@ -417,6 +434,7 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
     "build up into counter attack",
     "fitness rondo into finishing",
     "rondo to counter attack",
+    "2+1 v1",
     "4v2",
     "contra ataque",
     "recuperação rápida",
@@ -1044,6 +1062,26 @@ const MAIN_DRILLS: MainDrillDef[] = [
     }),
   },
   {
+    themes: ["possession", "pressing", "transition", "finishing"],
+    title: "(2+1)v1 Transition",
+    describe: (pl, m) => ({
+      description: `O exercício é dividido em 4 zonas, onde em cada uma existe uma situação de 2v1, com apoio de um terceiro jogador neutro, que vai rodando entre zonas para oferecer mais uma linha de passe. À volta das zonas estão colocadas 4 balizas pequenas. A equipa em posse deve manter a bola, criar linhas de passe constantes e variar o jogo rapidamente entre zonas, aproveitando a superioridade numérica. A equipa defensora procura fechar linhas de passe e recuperar a bola o mais rápido possível. Assim que recupera, deve finalizar imediatamente numa das 4 balizas. O foco está na posse orientada, mobilidade, mudança rápida de corredor e reação à recuperação da bola. (${m} min)`,
+      coachingPoints:
+        "Em posse: corpo aberto, triângulos curtos e voz para pedir linha antes do passe; usar o neutro em rotação para criar 3ª linha e mudar o corredor com poucos toques. Defesa: fechar canto e canal ao portador, saltar em coordenação ao passe previsível; ao roubar, primeiro olhar à mini-baliza mais próxima e remate em 1–2 toques.",
+      setup:
+        "Quatro zonas rectangulares (~10×12 m cada, ajustáveis) dispostas em quadrado ou fila, com 1 mini-baliza junto a cada zona; 1 neutro partilhado a migrar entre zonas; bolas em cada zona e coletes (posse vs 1 defesa por zona).",
+      groupSplit:
+        pl.length >= 16
+          ? "Quatro zonas activas com rotação de neutro a cada 90 s e troca posse/defesa a cada 4–6 repetições."
+          : pl.length >= 12
+            ? "Três zonas activas + uma em espera, ou zonas mais pequenas com a mesma lógica (2+1)v1."
+            : "Duas zonas em alternância; coach como neutro ou 2v1 simples sem rotação entre quatro quadrados.",
+      diagramHint:
+        "4 zonas em 2v1+1 neutro a circular; mini-balizas à volta; setas de circulação rápida entre zonas; após recuperação, seta imediata ao remate na mini-baliza mais próxima.",
+      videoUrl: TWO_PLUS_ONE_V_ONE_TRANSITION_VIDEO_URL,
+    }),
+  },
+  {
     themes: ["possession", "transition", "finishing", "pressing"],
     title: "Build up into Counter Attack",
     describe: (pl, m) => ({
@@ -1458,6 +1496,7 @@ const SINGLE_DRILL_10_MIN_TITLES = new Set<string>([
   "Full Back Overlap - Striker",
   "Pressing Exercise",
   "3v2 Finishing Drill",
+  "(2+1)v1 Transition",
 ]);
 const SINGLE_DRILL_8_MIN_TITLES = new Set<string>(["Passing Activation", "Dual Passing"]);
 const SINGLE_DRILL_5_MIN_TITLES = new Set<string>(["Rondo 9v3", "Warm Up with Ball"]);
@@ -1489,6 +1528,7 @@ function singleDrillProgressionVariationsForTitle(title: string): {
   const isRondo9v3 = title === "Rondo 9v3";
   const isRondo5v3 = title === "Rondo 5v3";
   const isBreakoutRondo = title === "Breakout Rondo";
+  const is2Plus1V1Transition = title === "(2+1)v1 Transition";
   const isBuildUpIntoCounterAttack = title === "Build up into Counter Attack";
   const isRondoToCounterAttack = title === "Rondo to Counter Attack";
   const isFitnessRondoIntoFinishing = title === "Fitness Rondo into Finishing";
@@ -1532,7 +1572,9 @@ function singleDrillProgressionVariationsForTitle(title: string): {
                             ? "Meta de 7 passes antes da viragem; ou máximo 6 s para o grupo de 3 roubar; ou zona central com 1 toque obrigatório para os 2 fixos."
                             : isBreakoutRondo
                               ? "Sobe a meta para 8 passes no interior; ou após recuperação da equipa branca exige remate em ≤4 toques; ou interior só com 1 toque até à saída para o exterior."
-                              : isBuildUpIntoCounterAttack
+                              : is2Plus1V1Transition
+                                ? "Encurta cada zona para forçar decisão mais rápida; ou o neutro só pode jogar em 1 toque ao entrar na zona; ou após recuperação, remate obrigatório numa mini-baliza em ≤4 s."
+                                : isBuildUpIntoCounterAttack
                                 ? "Reduz o tempo de ligação entre setores (ex.: 6 s); ou limita a saída a 2 toques por jogador; ou no 3v2 ofensivo obriga remate em ≤5 s após receção."
                                 : isRondoToCounterAttack
                                   ? "Sobe a meta para 12 passes antes da equipa em posse poder finalizar; ou limita a saída do 4v2 a 6 s; ou obriga a equipa que recupera a jogar de primeira no primeiro passe do contra-ataque."
@@ -1590,7 +1632,9 @@ function singleDrillProgressionVariationsForTitle(title: string): {
                           ? "Quadrados mais estreitos para forçar viragem longa; ou quarto jogador a saltar à pressão no último minuto; ou viragem obrigatória só após combinação triangular."
                           : isBreakoutRondo
                             ? "Anel exterior mais estreito para decisão mais rápida; ou golo após roubo branco vale duplo se vier em ≤3 passes; ou neutro no interior que só pode orientar com 1 toque."
-                            : isBuildUpIntoCounterAttack
+                            : is2Plus1V1Transition
+                              ? "Só 3 mini-balizas activas por blocos de 2 min; ou após recuperação o defensor deve tocar noutra zona antes de rematar; ou equipa em posse deve ligar obrigatoriamente a 2 zonas diferentes em ≤8 passes."
+                              : isBuildUpIntoCounterAttack
                               ? "Aumenta pressão para 3+1 no setor de saída por blocos curtos; ou no setor ofensivo troca para 3v3 com golo a valer apenas após passe extra; ou equipa que recupera deve finalizar em ≤4 s para contar."
                               : isRondoToCounterAttack
                                 ? "Troca o 4v2 por 4v3 com recuperação defensiva atrasada; ou golo após 10 passes vale duplo para a equipa em posse; ou só conta o contra-ataque se houver remate em ≤5 s após o roubo."
