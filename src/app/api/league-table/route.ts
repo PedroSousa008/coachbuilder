@@ -1,12 +1,11 @@
 import { NextResponse } from "next/server";
-import { isAllowedLeagueTableUrl } from "@/lib/league-table-parse";
-import { isZeroZeroHost } from "@/lib/league-import-zerozero";
-import { createZeroZeroFetchSession, fetchZeroZeroPageOnce } from "@/lib/fetch-zerozero-session";
+import { isAllowedLeagueTableUrl, isZeroZeroHost } from "@/lib/league-api-url";
+import { createZeroZeroFetchSession } from "@/lib/fetch-zerozero-session";
 
 export const runtime = "nodejs";
 
-/** Fetch + return HTML only; parsing runs in the browser to stay under Hobby limits. */
-export const maxDuration = 60;
+/** Fetch + return HTML only; parsing runs in the browser. Hobby caps execution ~10s — keep imports cheerio-free. */
+export const maxDuration = 10;
 
 const GENERIC_HTML_HEADERS: Record<string, string> = {
   "User-Agent":
@@ -37,22 +36,20 @@ export async function POST(req: Request) {
     let res: Response;
 
     if (isZeroZeroHost(host)) {
+      // One path only: warm + cookie + target (avoids 6s + 3.5s + 6s sequential → >10s Hobby limit → 502).
       try {
-        res = await fetchZeroZeroPageOnce(url);
+        const session = await createZeroZeroFetchSession();
+        res = await session.fetch(url, {
+          signal:
+            typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function"
+              ? AbortSignal.timeout(6500)
+              : undefined,
+        });
       } catch {
         return NextResponse.json(
           { ok: false, error: "ZeroZero did not respond in time. Try again." },
           { status: 400 }
         );
-      }
-      if (res.status === 403 || res.status === 429) {
-        const session = await createZeroZeroFetchSession();
-        res = await session.fetch(url);
-        if (res.status === 403 || res.status === 429) {
-          await new Promise((r) => setTimeout(r, 650));
-          const retry = await createZeroZeroFetchSession();
-          res = await retry.fetch(url);
-        }
       }
     } else {
       try {
@@ -106,7 +103,8 @@ export async function POST(req: Request) {
       );
     }
 
-    const trimmed = html.length > 5_000_000 ? html.slice(0, 5_000_000) : html;
+    // Stay under Vercel serverless response body limits (~4.5MB); JSON adds overhead.
+    const trimmed = html.length > 3_500_000 ? html.slice(0, 3_500_000) : html;
     if (!trimmed.trim()) {
       return NextResponse.json({ ok: false, error: "Empty page." }, { status: 400 });
     }

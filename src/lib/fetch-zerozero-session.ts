@@ -48,7 +48,7 @@ export type ZeroZeroFetch = (input: string | URL, init?: RequestInit) => Promise
 export async function fetchZeroZeroPageOnce(url: string): Promise<Response> {
   const signal =
     typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function"
-      ? AbortSignal.timeout(8000)
+      ? AbortSignal.timeout(6000)
       : undefined;
   return fetch(url, {
     method: "GET",
@@ -75,6 +75,10 @@ export async function createZeroZeroFetchSession(): Promise<{ fetch: ZeroZeroFet
       method: "GET",
       redirect: "follow",
       cache: "no-store",
+      signal:
+        typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function"
+          ? AbortSignal.timeout(3000)
+          : undefined,
       headers: {
         ...baseHeaders(),
         "Sec-Fetch-Site": "none",

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { isAllowedLeagueTableUrl } from "@/lib/league-table-parse";
+import { isAllowedLeagueTableUrl } from "@/lib/league-api-url";
 import { fetchFpfMatchesFromFixtureRounds } from "@/lib/league-import-fpf";
 
 export const runtime = "nodejs";

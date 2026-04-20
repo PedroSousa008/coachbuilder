@@ -16,10 +16,7 @@ type CheerioSel = Cheerio<AnyNode>;
  */
 const ZEROZERO_FETCH_CONCURRENCY = 30;
 
-export function isZeroZeroHost(hostname: string): boolean {
-  const h = hostname.toLowerCase();
-  return h === "zerozero.pt" || h.endsWith(".zerozero.pt") || h === "www.zerozero.pt";
-}
+export { isZeroZeroHost } from "@/lib/league-api-url";
 
 export function extractZeroZeroCompetitionLabel(html: string): string | null {
   const $ = cheerio.load(html);
