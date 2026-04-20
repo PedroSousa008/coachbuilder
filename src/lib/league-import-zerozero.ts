@@ -1,8 +1,13 @@
 import * as cheerio from "cheerio";
+import type { Cheerio } from "cheerio";
+import type { AnyNode } from "domhandler";
 import type { LeagueImportedMatch, LeagueTableRow } from "@/types";
 import { dedupeMatches } from "@/lib/league-match-dedupe";
 import { extractSeasonYearsFromHtml } from "@/lib/league-import-fpf";
 import { wallClockLisbonToUtcIso } from "@/lib/lisbon-date";
+
+type LoadedCheerio = ReturnType<typeof cheerio.load>;
+type CheerioSel = Cheerio<AnyNode>;
 
 const DEFAULT_HEADERS: Record<string, string> = {
   "User-Agent":
@@ -150,15 +155,15 @@ function parseDdMmYear(
   return { y, m: month1, d };
 }
 
-function firstJogoHref($mid: cheerio.Cheerio): string {
+function firstJogoHref($mid: CheerioSel): string {
   const a = $mid.find('a[href*="/jogo/"]').first();
   const href = (a.attr("href") ?? "").trim();
   return href;
 }
 
 function parseZeroZeroFixtureRow(
-  $: cheerio.CheerioAPI,
-  $tr: cheerio.Cheerio,
+  $: LoadedCheerio,
+  $tr: CheerioSel,
   dateCarry: string,
   seasonStart: number,
   seasonEnd: number,
@@ -247,7 +252,7 @@ function parseZeroZeroFixtureRow(
   };
 }
 
-function buildTeamLabel($: cheerio.CheerioAPI, $td: cheerio.Cheerio): string {
+function buildTeamLabel($: LoadedCheerio, $td: CheerioSel): string {
   const $a = $td.find("a").first();
   let name = $a.length ? $a.text().trim() : $td.text().trim();
   const suf = $td.find("span.small_faded").first().text().trim();
