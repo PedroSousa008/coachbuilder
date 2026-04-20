@@ -10,7 +10,14 @@ import { Badge } from "@/components/ui/Badge";
 import { Input } from "@/components/ui/Input";
 import { FixtureFormModal } from "@/components/calendar/FixtureFormModal";
 import { formatKickoff } from "@/lib/format";
-import { collectUniqueTeamNames, pickBestTeamMatch, userClubMatchesOfficialTeam } from "@/lib/team-match";
+import { matchFingerprintOrderInsensitive } from "@/lib/league-match-dedupe";
+import {
+  collectUniqueTeamNames,
+  matchInvolvesResolvedClub,
+  normalizeTeamLabel,
+  opponentAndVenueForCoach,
+  pickBestTeamMatch,
+} from "@/lib/team-match";
 import { inferCompetitionKind, type CompetitionKind } from "@/lib/competition-kind";
 import { useScheduleNow } from "@/hooks/useScheduleNow";
 import { isImportedMatchUpcoming, isKickoffInFuture } from "@/lib/lisbon-date";
@@ -42,16 +49,12 @@ function outcomeForMyTeam(
   candidates: string[]
 ): { opponent: string; short: string; outcome: "W" | "D" | "L" } | null {
   if (m.homeScore === undefined || m.awayScore === undefined) return null;
-  const homeHit =
-    userClubMatchesOfficialTeam(label, m.homeTeam, candidates) ||
-    (!!profileClub && userClubMatchesOfficialTeam(profileClub, m.homeTeam, candidates));
-  const awayHit =
-    userClubMatchesOfficialTeam(label, m.awayTeam, candidates) ||
-    (!!profileClub && userClubMatchesOfficialTeam(profileClub, m.awayTeam, candidates));
-  if (!homeHit && !awayHit) return null;
+  const ov = opponentAndVenueForCoach(m, label, profileClub, candidates);
+  if (!ov) return null;
+  const homeHit = ov.venue === "home";
   const gf = homeHit ? m.homeScore : m.awayScore;
   const ga = homeHit ? m.awayScore : m.homeScore;
-  const opp = homeHit ? m.awayTeam : m.homeTeam;
+  const opp = ov.opponent;
   let outcome: "W" | "D" | "L";
   if (gf > ga) outcome = "W";
   else if (gf < ga) outcome = "L";
@@ -81,24 +84,97 @@ function neutralResultLine(m: LeagueImportedMatch): string {
   return `${m.homeTeam} vs ${m.awayTeam}`;
 }
 
-/** Canonical table name first; fall back to profile spelling so we never miss the club. */
+/** One canonical club name must appear on a side (same rule as API filter). */
 function myTeamPlaysMatch(
   m: LeagueImportedMatch,
   profileClub: string,
   label: string,
   candidates: string[]
 ): boolean {
-  const primary =
-    userClubMatchesOfficialTeam(label, m.homeTeam, candidates) ||
-    userClubMatchesOfficialTeam(label, m.awayTeam, candidates);
-  if (primary) return true;
-  if (profileClub && label !== profileClub) {
-    return (
-      userClubMatchesOfficialTeam(profileClub, m.homeTeam, candidates) ||
-      userClubMatchesOfficialTeam(profileClub, m.awayTeam, candidates)
-    );
+  const hint = label.trim() || profileClub.trim();
+  if (!hint) return false;
+  return matchInvolvesResolvedClub(m, hint, candidates);
+}
+
+function sortNextRowsByKickoff(next: NextRow[]): NextRow[] {
+  return [...next].sort((a, b) => {
+    const ta = a.kind === "manual" ? new Date(a.fixture.kickoff).getTime() : new Date(a.match.kickoff).getTime();
+    const tb = b.kind === "manual" ? new Date(b.fixture.kickoff).getTime() : new Date(b.match.kickoff).getTime();
+    if (ta !== tb) return ta - tb;
+    const ra = a.kind === "imported" ? (a.match.fpfRound ?? 9999) : 99999;
+    const rb = b.kind === "imported" ? (b.match.fpfRound ?? 9999) : 99999;
+    return ra - rb;
+  });
+}
+
+function dedupeImportedNextRows(rows: NextRow[]): NextRow[] {
+  const seen = new Set<string>();
+  const out: NextRow[] = [];
+  for (const row of rows) {
+    if (row.kind !== "imported") {
+      out.push(row);
+      continue;
+    }
+    const key = matchFingerprintOrderInsensitive(row.match);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(row);
   }
-  return false;
+  return out;
+}
+
+/** FPF sometimes repeats the same fixture with different jornada metadata; keep one per round (prefer exact name match). */
+function collapseOneImportedPerRound(
+  rows: NextRow[],
+  teamLabel: string,
+  profileClub: string,
+  candidates: string[]
+): NextRow[] {
+  const hint = teamLabel.trim() || profileClub.trim();
+  const best = hint ? pickBestTeamMatch(hint, candidates) : null;
+  const canonical = best?.name ?? "";
+
+  const manual: NextRow[] = [];
+  const noRound: NextRow[] = [];
+  const byRound = new Map<number, NextRow[]>();
+
+  for (const row of rows) {
+    if (row.kind === "manual") {
+      manual.push(row);
+      continue;
+    }
+    const r = row.match.fpfRound;
+    if (r == null) {
+      noRound.push(row);
+      continue;
+    }
+    const arr = byRound.get(r) ?? [];
+    arr.push(row);
+    byRound.set(r, arr);
+  }
+
+  const collapsed: NextRow[] = [];
+  for (const arr of byRound.values()) {
+    if (arr.length === 1) {
+      collapsed.push(arr[0]!);
+      continue;
+    }
+    const exact = canonical
+      ? arr.filter((row) => {
+          const m = row.match;
+          const b = normalizeTeamLabel(canonical);
+          return normalizeTeamLabel(m.homeTeam) === b || normalizeTeamLabel(m.awayTeam) === b;
+        })
+      : [];
+    if (exact.length === 1) {
+      collapsed.push(exact[0]!);
+      continue;
+    }
+    arr.sort((a, b) => new Date(a.match.kickoff).getTime() - new Date(b.match.kickoff).getTime());
+    collapsed.push(arr[0]!);
+  }
+
+  return [...manual, ...noRound, ...collapsed];
 }
 
 export function CalendarPageClient() {
@@ -187,10 +263,8 @@ export function CalendarPageClient() {
         if (o) {
           prev.push({ kind: "imported", match: m, outcome: o.outcome, line: o.short });
         } else {
-          const homeHit =
-            userClubMatchesOfficialTeam(teamLabel, m.homeTeam, candidates) ||
-            (!!club && userClubMatchesOfficialTeam(club, m.homeTeam, candidates));
-          const opp = homeHit ? m.awayTeam : m.homeTeam;
+          const ov = opponentAndVenueForCoach(m, teamLabel, club, candidates);
+          const opp = ov?.opponent ?? m.awayTeam;
           prev.push({
             kind: "imported-neutral",
             match: m,
@@ -213,14 +287,12 @@ export function CalendarPageClient() {
       else prev.push({ kind: "manual", fixture: f });
     }
 
-    next.sort((a, b) => {
-      const ra = a.kind === "imported" ? (a.match.fpfRound ?? 9999) : 99999;
-      const rb = b.kind === "imported" ? (b.match.fpfRound ?? 9999) : 99999;
-      const ta = a.kind === "manual" ? new Date(a.fixture.kickoff).getTime() : new Date(a.match.kickoff).getTime();
-      const tb = b.kind === "manual" ? new Date(b.fixture.kickoff).getTime() : new Date(b.match.kickoff).getTime();
-      if (ra !== rb) return ra - rb;
-      return ta - tb;
-    });
+    let nextSorted = sortNextRowsByKickoff(next);
+    if (club) {
+      nextSorted = dedupeImportedNextRows(nextSorted);
+      nextSorted = collapseOneImportedPerRound(nextSorted, teamLabel, club, candidates);
+      nextSorted = sortNextRowsByKickoff(nextSorted);
+    }
     prev.sort((a, b) => {
       const ra =
         a.kind === "manual"
@@ -240,7 +312,7 @@ export function CalendarPageClient() {
       return tb - ta;
     });
 
-    return { nextGameRows: next, previousGameRows: prev };
+    return { nextGameRows: nextSorted, previousGameRows: prev };
   }, [leagueMatches, fixtures, club, teamLabel, candidates, pageScheduleKind, nowMs]);
 
   const showFullStats = leagueTableRows.some((r) => r.played != null);
@@ -483,14 +555,12 @@ export function CalendarPageClient() {
                       </li>
                     );
                   }
-                  const homeHit =
-                    userClubMatchesOfficialTeam(teamLabel, m.homeTeam, candidates) ||
-                    (!!club && userClubMatchesOfficialTeam(club, m.homeTeam, candidates));
-                  const venue = homeHit ? "home" : "away";
-                  const opp = homeHit ? m.awayTeam : m.homeTeam;
+                  const ov = opponentAndVenueForCoach(m, teamLabel, club, candidates);
+                  const venue = ov?.venue ?? "home";
+                  const opp = ov?.opponent ?? `${m.homeTeam} / ${m.awayTeam}`;
                   return (
                     <li
-                      key={`next-imp-${m.id}`}
+                      key={`next-imp-${m.id}-${m.fpfRound ?? "x"}`}
                       className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-900 bg-black px-4 py-3 text-white shadow-sm"
                     >
                       <div>

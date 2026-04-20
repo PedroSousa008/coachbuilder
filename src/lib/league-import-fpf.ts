@@ -5,9 +5,9 @@ import type { LeagueImportedMatch, LeagueTableRow } from "@/types";
 import { dedupeMatches } from "@/lib/league-match-dedupe";
 import {
   collectUniqueTeamNames,
+  matchInvolvesResolvedClub,
   normalizeTeamLabel,
   pickBestTeamMatch,
-  userClubMatchesOfficialTeam,
 } from "@/lib/team-match";
 import { wallClockLisbonToUtcIso } from "@/lib/lisbon-date";
 
@@ -571,7 +571,7 @@ export async function fetchFpfMatchesFromFixtureRounds(
 
 /**
  * Mantém apenas jogos em que o clube do perfil participa (casa ou fora).
- * Usa o mesmo critério que o calendário (`userClubMatchesOfficialTeam`) para não
+ * Usa o mesmo critério que o calendário (`matchInvolvesResolvedClub`) para não
  * confundir clubes (substring / fuzzy) quando há lista de equipas da página.
  */
 export function filterLeagueMatchesByClubName(
@@ -585,9 +585,5 @@ export function filterLeagueMatchesByClubName(
     rosterNames && rosterNames.length > 0
       ? rosterNames
       : collectUniqueTeamNames({ tableRows: [], matches });
-  return matches.filter(
-    (m) =>
-      userClubMatchesOfficialTeam(hint, m.homeTeam, uniq) ||
-      userClubMatchesOfficialTeam(hint, m.awayTeam, uniq)
-  );
+  return matches.filter((m) => matchInvolvesResolvedClub(m, hint, uniq));
 }
