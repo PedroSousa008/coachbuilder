@@ -9,14 +9,23 @@ function esc(s: string): string {
     .replace(/"/g, "&quot;");
 }
 
+/** Rodapé de geração: "CoachBuilder" ou "CoachBuilder. Nome" quando há treinador. */
+function coachBuilderAttribution(coachPrintName: string | undefined): string {
+  const t = coachPrintName?.trim();
+  if (!t) return "CoachBuilder";
+  return `CoachBuilder. ${esc(t)}`;
+}
+
 export function buildFullSessionDocumentHtml(params: {
   plan: AiFullTrainingSession;
   durationMin: number;
   playerLines: string[];
   generatedAt: string;
   assetBaseUrl?: string;
+  /** Nome do treinador (ex. perfil); aparece como "CoachBuilder. Nome" no PDF. */
+  coachPrintName?: string;
 }): string {
-  const { plan, durationMin, playerLines, generatedAt, assetBaseUrl } = params;
+  const { plan, durationMin, playerLines, generatedAt, assetBaseUrl, coachPrintName } = params;
   const blocksHtml = plan.blocks
     .map((b, i) => {
       const phase =
@@ -73,7 +82,7 @@ export function buildFullSessionDocumentHtml(params: {
 </head>
 <body>
   <h1>${esc(plan.sessionTitle)}</h1>
-  <p class="sub">Duração total: ${durationMin} min · Gerado: ${esc(generatedAt)} · CoachBuilder</p>
+  <p class="sub">Duração total: ${durationMin} min · Gerado: ${esc(generatedAt)} · ${coachBuilderAttribution(coachPrintName)}</p>
   <p>${esc(plan.summary)}</p>
   <h3>Plantel considerado (${playerLines.length} jogadores)</h3>
   ${roster}
@@ -90,8 +99,9 @@ export function buildSingleDrillDocumentHtml(params: {
   drill: AiSingleDrill;
   generatedAt: string;
   assetBaseUrl?: string;
+  coachPrintName?: string;
 }): string {
-  const { drill, generatedAt, assetBaseUrl } = params;
+  const { drill, generatedAt, assetBaseUrl, coachPrintName } = params;
   const imageRelPath = trainingExercisePrintImageForTitle(drill.title);
   const exerciseImageSrc = imageRelPath && assetBaseUrl ? `${assetBaseUrl}${imageRelPath}` : imageRelPath;
   return `<!DOCTYPE html>
@@ -110,7 +120,7 @@ export function buildSingleDrillDocumentHtml(params: {
 </head>
 <body>
   <h1>${esc(drill.title)}</h1>
-  <p class="meta">${drill.durationMin} min · ${esc(generatedAt)} · CoachBuilder</p>
+  <p class="meta">${drill.durationMin} min · ${esc(generatedAt)} · ${coachBuilderAttribution(coachPrintName)}</p>
   <p><strong>Objetivo:</strong> ${esc(drill.objective)}</p>
   <p><strong>Exercício:</strong> ${esc(drill.description)}</p>
   ${exerciseImageSrc ? `<p><strong>Explicação:</strong></p>` : ""}

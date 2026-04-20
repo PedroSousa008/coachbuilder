@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { AddTrainingSessionModal } from "@/components/training/AddTrainingSessionModal";
 import { useAppData } from "@/contexts/AppDataContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 import { formatPlayerPositions, sortSquadRoster } from "@/lib/player-positions";
 import {
@@ -57,7 +58,14 @@ export function TrainingPlansClient() {
     addSavedTrainingExercise,
     updateSavedTrainingExercise,
     removeSavedTrainingExercise,
+    coachProfile,
   } = useAppData();
+  const { user } = useAuth();
+
+  const coachPrintName = useMemo(
+    () => coachProfile.name.trim() || user?.name?.trim() || "",
+    [coachProfile.name, user?.name]
+  );
 
   const [labTab, setLabTab] = useState<"full" | "drill" | "library" | "catalog">("full");
   const [durationMin, setDurationMin] = useState<(typeof DURATIONS)[number]>(60);
@@ -263,9 +271,10 @@ export function TrainingPlansClient() {
       playerLines,
       generatedAt: new Date().toLocaleString("pt-PT"),
       assetBaseUrl,
+      coachPrintName,
     });
     openPrintableHtml(html);
-  }, [fullPlan, fullMeta, selectedPlayers]);
+  }, [fullPlan, fullMeta, selectedPlayers, coachPrintName]);
 
   const printDrill = useCallback(() => {
     if (!singleDrill) return;
@@ -274,9 +283,10 @@ export function TrainingPlansClient() {
       drill: singleDrill,
       generatedAt: new Date().toLocaleString("pt-PT"),
       assetBaseUrl,
+      coachPrintName,
     });
     openPrintableHtml(html);
-  }, [singleDrill]);
+  }, [singleDrill, coachPrintName]);
 
   const saveFullAsSession = () => {
     if (!fullPlan || !fullMeta) return;
