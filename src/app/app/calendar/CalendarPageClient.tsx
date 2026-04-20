@@ -366,8 +366,7 @@ export function CalendarPageClient() {
               Your fixtures
             </CardTitle>
             <CardDescription>
-              Import FPF: resultado na página → Previous; resto pela data/hora. O nome do clube no perfil escolhe a série
-              certa quando há várias (ex.: Série A/B/C).
+              Import FPF: resultado na página → Previous; resto pela data/hora. Perfil = filtro da equipa.
             </CardDescription>
           </div>
           <Button
@@ -611,8 +610,10 @@ export function CalendarPageClient() {
             League table
           </CardTitle>
           <CardDescription>
-            Paste a public resultados.fpf.pt competition page. With several series on the same page, we match your
-            club name from Profile to the right table and fixtures (past and upcoming jornadas via FPF fragments).
+            Paste the public URL of your league standings page. We fetch it on this server and parse HTML tables or
+            known layouts (e.g. FPF resultados.fpf.pt classificações). Your <strong>Profile → Club</strong> name selects
+            your series when the page has multiple tables (Série A/B/…) and filters imported fixtures to your team.
+            Heavy JavaScript-only pages may not work until we add a dedicated integration.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -625,7 +626,7 @@ export function CalendarPageClient() {
                 id="league-url"
                 value={urlDraft}
                 onChange={(e) => setUrlDraft(e.target.value)}
-                placeholder="https://resultados.fpf.pt/Competition/Details?competitionId=12345"
+                placeholder="https://…"
                 className="mt-1.5"
               />
             </div>

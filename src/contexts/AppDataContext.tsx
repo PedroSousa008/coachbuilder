@@ -1467,115 +1467,21 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       const res = await fetch("/api/league-table", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: u }),
+        body: JSON.stringify({ url: u, clubName: coachProfile.club.trim() }),
       });
-      const raw = await res.text();
-      let data: { ok?: boolean; error?: string; html?: string; url?: string; fetchedAt?: string };
-      try {
-        data = JSON.parse(raw) as typeof data;
-      } catch {
-        setLeagueTableFetchError(
-          res.status >= 500
-            ? `Servidor indisponível (${res.status}). A Vercel pode estar a limitar o pedido — tenta de novo dentro de instantes.`
-            : "Resposta inválida do servidor. Tenta de novo."
-        );
-        return;
-      }
+      const data = await res.json();
       if (!data.ok) {
         setLeagueTableFetchError(typeof data.error === "string" ? data.error : "Could not update table.");
         return;
       }
-      const html = typeof data.html === "string" ? data.html : "";
-      const pageUrl = typeof data.url === "string" ? data.url : u;
-      if (!html) {
-        setLeagueTableFetchError("Could not read the league page.");
-        return;
-      }
-
-      const { buildLeagueTableFromFetchedHtml, filterFpfMatchesToSeriesTeams } = await import(
-        "@/lib/league-import-from-html"
-      );
-
-      let rows: LeagueTableRow[] = [];
-      let matches: LeagueImportedMatch[] = [];
-      let competitionName: string | null = null;
-
-      try {
-        const clubHint = coachProfile.club.trim();
-        const built = buildLeagueTableFromFetchedHtml(html, pageUrl, clubHint);
-        rows = built.rows;
-        matches = built.matches;
-        competitionName = built.competitionName;
-
-        if (built.host.includes("resultados.fpf.pt")) {
-          try {
-            const fpfMod = await import("@/lib/league-import-fpf");
-            const coachFixtureIds = built.fpfFixtureIdsForCoach;
-            let fixtureIds =
-              coachFixtureIds && coachFixtureIds.length > 0
-                ? coachFixtureIds
-                : fpfMod.extractFpfFixtureIdsFromHtml(html);
-            const roundMap = fpfMod.extractFpfFixtureRoundMapFromHtml(html);
-            fixtureIds = [...fixtureIds].sort(
-              (a, b) => (roundMap.get(a) ?? 999) - (roundMap.get(b) ?? 999)
-            );
-
-            const CHUNK = 4;
-            let acc = matches;
-            for (let i = 0; i < fixtureIds.length; i += CHUNK) {
-              const chunk = fixtureIds.slice(i, i + CHUNK);
-              try {
-                const r2 = await fetch("/api/league-table/fpf-fixtures", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    html,
-                    url: pageUrl,
-                    fixtureIds: chunk,
-                  }),
-                });
-                const raw2 = await r2.text();
-                let extra: { ok?: boolean; matches?: LeagueImportedMatch[] };
-                try {
-                  extra = JSON.parse(raw2) as typeof extra;
-                } catch {
-                  extra = {};
-                }
-                if (extra.ok && Array.isArray(extra.matches)) {
-                  acc = dedupeMatches([...acc, ...extra.matches]);
-                  acc = rows.length > 0 ? filterFpfMatchesToSeriesTeams(acc, rows) : acc;
-                }
-              } catch (e) {
-                console.warn("fpf-fixtures chunk failed", e);
-              }
-            }
-            matches = acc;
-          } catch (e) {
-            console.warn("fpf-fixtures optional fetch failed", e);
-          }
-        }
-      } catch (e) {
-        console.error("league table client parse", e);
-        setLeagueTableFetchError("Could not parse the league page.");
-        return;
-      }
-
-      if (rows.length === 0 && matches.length === 0) {
-        setLeagueTableFetchError(
-          "No table was found on this page, or it uses a format we can't parse yet. Try another standings URL or a simpler HTML table page."
-        );
-        return;
-      }
-
-      setLeagueTableRows(rows);
-      setLeagueMatches(dedupeMatches(matches));
+      setLeagueTableRows(data.rows ?? []);
+      setLeagueMatches(dedupeMatches(Array.isArray(data.matches) ? data.matches : []));
       setLeagueCompetitionName(
-        typeof competitionName === "string" && competitionName.trim() ? competitionName.trim() : null
+        typeof data.competitionName === "string" && data.competitionName.trim() ? data.competitionName.trim() : null
       );
       setLeagueTableLastFetched(data.fetchedAt ?? new Date().toISOString());
       setLeagueTableFetchError(null);
-    } catch (e) {
-      console.error("refreshLeagueTable", e);
+    } catch {
       setLeagueTableFetchError("Network error — try again.");
     }
   }, [leagueTableUrl, coachProfile.club]);
