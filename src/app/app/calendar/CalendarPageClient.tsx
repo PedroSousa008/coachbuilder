@@ -67,6 +67,8 @@ type NextRow =
   | { kind: "manual"; fixture: MatchFixture }
   | { kind: "imported"; match: LeagueImportedMatch; scheduleKind: CompetitionKind };
 
+type ImportedNextRow = Extract<NextRow, { kind: "imported" }>;
+
 type PrevRow =
   | { kind: "manual"; fixture: MatchFixture }
   | {
@@ -134,22 +136,23 @@ function collapseOneImportedPerRound(
   const best = hint ? pickBestTeamMatch(hint, candidates) : null;
   const canonical = best?.name ?? "";
 
-  const manual: NextRow[] = [];
-  const noRound: NextRow[] = [];
-  const byRound = new Map<number, NextRow[]>();
+  const manual: Extract<NextRow, { kind: "manual" }>[] = [];
+  const noRound: ImportedNextRow[] = [];
+  const byRound = new Map<number, ImportedNextRow[]>();
 
   for (const row of rows) {
     if (row.kind === "manual") {
       manual.push(row);
       continue;
     }
-    const r = row.match.fpfRound;
+    const importedRow = row;
+    const r = importedRow.match.fpfRound;
     if (r == null) {
-      noRound.push(row);
+      noRound.push(importedRow);
       continue;
     }
-    const arr = byRound.get(r) ?? [];
-    arr.push(row);
+    const arr: ImportedNextRow[] = byRound.get(r) ?? [];
+    arr.push(importedRow);
     byRound.set(r, arr);
   }
 
