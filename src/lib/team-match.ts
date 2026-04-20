@@ -159,6 +159,8 @@ export function userClubMatchesOfficialTeam(
   if (best) {
     if (normalizeTeamLabel(best.name) === normalizeTeamLabel(officialTeam)) return true;
     if (teamNameSimilarity(best.name, officialTeam) >= 0.9) return true;
+    /** Do not fall back to `teamNamesMatch(u, officialTeam)` — it matches unrelated clubs via substring (e.g. Merelinense vs Ninense). */
+    return false;
   }
   return teamNamesMatch(u, officialTeam);
 }

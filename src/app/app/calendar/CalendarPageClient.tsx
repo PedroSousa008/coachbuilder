@@ -136,7 +136,7 @@ export function CalendarPageClient() {
   useEffect(() => {
     if (!hydrated || !leagueTableUrl.trim()) return;
     void refreshLeagueTable();
-  }, [hydrated, leagueTableUrl, refreshLeagueTable]);
+  }, [hydrated, leagueTableUrl, refreshLeagueTable, coachProfile.club]);
 
   useEffect(() => {
     if (!leagueTableUrl.trim()) return;

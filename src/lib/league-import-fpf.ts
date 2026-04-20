@@ -3,7 +3,12 @@ import type { Cheerio } from "cheerio";
 import type { AnyNode } from "domhandler";
 import type { LeagueImportedMatch, LeagueTableRow } from "@/types";
 import { dedupeMatches } from "@/lib/league-match-dedupe";
-import { normalizeTeamLabel, pickBestTeamMatch, teamNamesMatch } from "@/lib/team-match";
+import {
+  collectUniqueTeamNames,
+  normalizeTeamLabel,
+  pickBestTeamMatch,
+  userClubMatchesOfficialTeam,
+} from "@/lib/team-match";
 import { wallClockLisbonToUtcIso } from "@/lib/lisbon-date";
 
 export { dedupeMatches };
@@ -564,14 +569,25 @@ export async function fetchFpfMatchesFromFixtureRounds(
   return dedupeMatches(all);
 }
 
-/** Mantém apenas jogos em que o clube do perfil participa (casa ou fora). */
+/**
+ * Mantém apenas jogos em que o clube do perfil participa (casa ou fora).
+ * Usa o mesmo critério que o calendário (`userClubMatchesOfficialTeam`) para não
+ * confundir clubes (substring / fuzzy) quando há lista de equipas da página.
+ */
 export function filterLeagueMatchesByClubName(
   matches: LeagueImportedMatch[],
-  clubName: string | undefined
+  clubName: string | undefined,
+  rosterNames?: string[]
 ): LeagueImportedMatch[] {
   const hint = clubName?.trim();
   if (!hint) return matches;
+  const uniq =
+    rosterNames && rosterNames.length > 0
+      ? rosterNames
+      : collectUniqueTeamNames({ tableRows: [], matches });
   return matches.filter(
-    (m) => teamNamesMatch(hint, m.homeTeam) || teamNamesMatch(hint, m.awayTeam)
+    (m) =>
+      userClubMatchesOfficialTeam(hint, m.homeTeam, uniq) ||
+      userClubMatchesOfficialTeam(hint, m.awayTeam, uniq)
   );
 }

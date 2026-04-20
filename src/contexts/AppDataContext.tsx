@@ -47,6 +47,8 @@ import {
   ptMemberCountSubtitle,
 } from "@/lib/group-chat-messages-pt";
 import { dedupeMatches } from "@/lib/league-match-dedupe";
+import { filterLeagueMatchesByClubName } from "@/lib/league-import-fpf";
+import { collectUniqueTeamNames } from "@/lib/team-match";
 import { formatPlayerPositions } from "@/lib/player-positions";
 import {
   getAllUserDataKeys,
@@ -1474,8 +1476,16 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         setLeagueTableFetchError(typeof data.error === "string" ? data.error : "Could not update table.");
         return;
       }
-      setLeagueTableRows(data.rows ?? []);
-      setLeagueMatches(dedupeMatches(Array.isArray(data.matches) ? data.matches : []));
+      const rawRows = Array.isArray(data.rows) ? (data.rows as LeagueTableRow[]) : [];
+      const rawMatches = Array.isArray(data.matches) ? (data.matches as LeagueImportedMatch[]) : [];
+      const roster = collectUniqueTeamNames({ tableRows: rawRows, matches: rawMatches });
+      const forClub = filterLeagueMatchesByClubName(
+        rawMatches,
+        coachProfile.club.trim() || undefined,
+        roster
+      );
+      setLeagueTableRows(rawRows);
+      setLeagueMatches(dedupeMatches(forClub));
       setLeagueCompetitionName(
         typeof data.competitionName === "string" && data.competitionName.trim() ? data.competitionName.trim() : null
       );

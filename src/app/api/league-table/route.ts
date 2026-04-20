@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { parseStandingsFromHtml, isAllowedLeagueTableUrl } from "@/lib/league-table-parse";
+import { collectUniqueTeamNames } from "@/lib/team-match";
 import {
   dedupeMatches,
   extractCompetitionLabelFromHtml,
@@ -64,7 +65,8 @@ export async function POST(req: Request) {
     } catch (e) {
       console.error("league-table FPF fixture rounds", e);
     }
-    matches = filterLeagueMatchesByClubName(matches, clubName || undefined);
+    const roster = collectUniqueTeamNames({ tableRows: rows, matches });
+    matches = filterLeagueMatchesByClubName(matches, clubName || undefined, roster);
     const competitionName = extractCompetitionLabelFromHtml(html);
 
     if (rows.length === 0 && matches.length === 0) {
