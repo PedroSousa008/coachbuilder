@@ -308,7 +308,7 @@ export async function fetchFpfMatchesFromFixtureRounds(
   }
 
   const all: LeagueImportedMatch[] = [];
-  const batchSize = 6;
+  const batchSize = 12;
   for (let i = 0; i < ids.length; i += batchSize) {
     const batch = ids.slice(i, i + batchSize);
     const settled = await Promise.all(

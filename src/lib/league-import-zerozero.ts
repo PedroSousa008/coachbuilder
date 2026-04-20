@@ -10,8 +10,11 @@ import type { ZeroZeroFetch } from "@/lib/fetch-zerozero-session";
 type LoadedCheerio = ReturnType<typeof cheerio.load>;
 type CheerioSel = Cheerio<AnyNode>;
 
-/** Small delay between jornada batches to reduce rate limits. */
-const BETWEEN_BATCH_MS = 180;
+/**
+ * Fetch all jornada pages in parallel (wall-clock ~1 slow request, not 10+ sequential waves).
+ * Required for Vercel Hobby (~10s serverless cap); serial batches were exceeding the limit → 502.
+ */
+const ZEROZERO_FETCH_CONCURRENCY = 30;
 
 export function isZeroZeroHost(hostname: string): boolean {
   const h = hostname.toLowerCase();
@@ -310,33 +313,28 @@ export async function fetchZeroZeroMatchesForAllRounds(
   const maxJ = extractMaxJornadaFromHtml(mainHtml);
   if (maxJ < 1) return [];
 
+  const jornadas = Array.from({ length: maxJ }, (_, i) => i + 1);
+
+  async function fetchOneRound(j: number): Promise<LeagueImportedMatch[]> {
+    const u = `${origin}/edition.php?id_edicao=${encodeURIComponent(params.idEdicao)}&fase=${encodeURIComponent(params.fase)}&jornada_in=${j}`;
+    try {
+      const r = await fetchImpl(u, {
+        cache: "no-store",
+        redirect: "follow",
+        headers: { Referer: pageUrl },
+      });
+      if (!r.ok) return [];
+      const h = await r.text();
+      return parseZeroZeroMatchesFromHtml(h, u, j);
+    } catch {
+      return [];
+    }
+  }
+
   const all: LeagueImportedMatch[] = [];
-  const batchSize = 3;
-  for (let start = 1; start <= maxJ; start += batchSize) {
-    if (start > 1) {
-      await new Promise((r) => setTimeout(r, BETWEEN_BATCH_MS));
-    }
-    const batch: Promise<LeagueImportedMatch[]>[] = [];
-    for (let j = start; j < start + batchSize && j <= maxJ; j++) {
-      const u = `${origin}/edition.php?id_edicao=${encodeURIComponent(params.idEdicao)}&fase=${encodeURIComponent(params.fase)}&jornada_in=${j}`;
-      batch.push(
-        (async () => {
-          try {
-            const r = await fetchImpl(u, {
-              cache: "no-store",
-              redirect: "follow",
-              headers: { Referer: pageUrl },
-            });
-            if (!r.ok) return [];
-            const h = await r.text();
-            return parseZeroZeroMatchesFromHtml(h, u, j);
-          } catch {
-            return [];
-          }
-        })()
-      );
-    }
-    const settled = await Promise.all(batch);
+  for (let i = 0; i < jornadas.length; i += ZEROZERO_FETCH_CONCURRENCY) {
+    const slice = jornadas.slice(i, i + ZEROZERO_FETCH_CONCURRENCY);
+    const settled = await Promise.all(slice.map((j) => fetchOneRound(j)));
     for (const arr of settled) all.push(...arr);
   }
 

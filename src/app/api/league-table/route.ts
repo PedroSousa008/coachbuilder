@@ -16,7 +16,10 @@ import {
 } from "@/lib/league-import-zerozero";
 import { createZeroZeroFetchSession, type ZeroZeroFetch } from "@/lib/fetch-zerozero-session";
 
-/** FPF loads many matchday fragments; allow enough time on cold starts. */
+/** Cheerio + many upstream fetches require Node (not Edge). */
+export const runtime = "nodejs";
+
+/** FPF / ZeroZero: many round fetches. Pro plan can raise this; Hobby is capped (~10s). */
 export const maxDuration = 120;
 
 const GENERIC_HTML_HEADERS: Record<string, string> = {
