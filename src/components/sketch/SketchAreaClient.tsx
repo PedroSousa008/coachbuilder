@@ -170,7 +170,7 @@ export function SketchAreaClient() {
   const [boardTool, setBoardTool] = useState<SketchStrokeTool>("draw");
   const [boardColor, setBoardColor] = useState(BOARD_COLORS[0]!);
   const [boardLine, setBoardLine] = useState(3);
-  const [boardPitch, setBoardPitch] = useState<SketchPitchTemplate>("half");
+  const [boardPitch, setBoardPitch] = useState<SketchPitchTemplate>("full");
   const [boardNote, setBoardNote] = useState("");
   const [externalWatchForm, setExternalWatchForm] = useState({
     name: "",
