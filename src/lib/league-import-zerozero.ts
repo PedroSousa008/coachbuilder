@@ -103,7 +103,9 @@ export function parseZeroZeroStandings(html: string): LeagueTableRow[] {
     if (dgM) goalDifference = parseInt(dgM[0]!, 10);
 
     const cells: string[] = [];
-    tds.each((__, td) => cells.push($(td).text().trim().replace(/\s+/g, " ")));
+    tds.each((__, td) => {
+      cells.push($(td).text().trim().replace(/\s+/g, " "));
+    });
 
     out.push({
       position,
