@@ -10,14 +10,8 @@ import { Badge } from "@/components/ui/Badge";
 import { Input } from "@/components/ui/Input";
 import { FixtureFormModal } from "@/components/calendar/FixtureFormModal";
 import { formatKickoff } from "@/lib/format";
-import { matchFingerprintOrderInsensitive } from "@/lib/league-match-dedupe";
-import {
-  collectUniqueTeamNames,
-  matchInvolvesResolvedClub,
-  normalizeTeamLabel,
-  opponentAndVenueForCoach,
-  pickBestTeamMatch,
-} from "@/lib/team-match";
+import { collectUniqueTeamNames, pickBestTeamMatch, userClubMatchesOfficialTeam } from "@/lib/team-match";
+import { cn } from "@/lib/utils";
 import { inferCompetitionKind, type CompetitionKind } from "@/lib/competition-kind";
 import { useScheduleNow } from "@/hooks/useScheduleNow";
 import { isImportedMatchUpcoming, isKickoffInFuture } from "@/lib/lisbon-date";
@@ -49,12 +43,16 @@ function outcomeForMyTeam(
   candidates: string[]
 ): { opponent: string; short: string; outcome: "W" | "D" | "L" } | null {
   if (m.homeScore === undefined || m.awayScore === undefined) return null;
-  const ov = opponentAndVenueForCoach(m, label, profileClub, candidates);
-  if (!ov) return null;
-  const homeHit = ov.venue === "home";
+  const homeHit =
+    userClubMatchesOfficialTeam(label, m.homeTeam, candidates) ||
+    (!!profileClub && userClubMatchesOfficialTeam(profileClub, m.homeTeam, candidates));
+  const awayHit =
+    userClubMatchesOfficialTeam(label, m.awayTeam, candidates) ||
+    (!!profileClub && userClubMatchesOfficialTeam(profileClub, m.awayTeam, candidates));
+  if (!homeHit && !awayHit) return null;
   const gf = homeHit ? m.homeScore : m.awayScore;
   const ga = homeHit ? m.awayScore : m.homeScore;
-  const opp = ov.opponent;
+  const opp = homeHit ? m.awayTeam : m.homeTeam;
   let outcome: "W" | "D" | "L";
   if (gf > ga) outcome = "W";
   else if (gf < ga) outcome = "L";
@@ -66,8 +64,6 @@ function outcomeForMyTeam(
 type NextRow =
   | { kind: "manual"; fixture: MatchFixture }
   | { kind: "imported"; match: LeagueImportedMatch; scheduleKind: CompetitionKind };
-
-type ImportedNextRow = Extract<NextRow, { kind: "imported" }>;
 
 type PrevRow =
   | { kind: "manual"; fixture: MatchFixture }
@@ -86,98 +82,24 @@ function neutralResultLine(m: LeagueImportedMatch): string {
   return `${m.homeTeam} vs ${m.awayTeam}`;
 }
 
-/** One canonical club name must appear on a side (same rule as API filter). */
+/** Canonical table name first; fall back to profile spelling so we never miss the club. */
 function myTeamPlaysMatch(
   m: LeagueImportedMatch,
   profileClub: string,
   label: string,
   candidates: string[]
 ): boolean {
-  const hint = label.trim() || profileClub.trim();
-  if (!hint) return false;
-  return matchInvolvesResolvedClub(m, hint, candidates);
-}
-
-function sortNextRowsByKickoff(next: NextRow[]): NextRow[] {
-  return [...next].sort((a, b) => {
-    const ta = a.kind === "manual" ? new Date(a.fixture.kickoff).getTime() : new Date(a.match.kickoff).getTime();
-    const tb = b.kind === "manual" ? new Date(b.fixture.kickoff).getTime() : new Date(b.match.kickoff).getTime();
-    if (ta !== tb) return ta - tb;
-    const ra = a.kind === "imported" ? (a.match.fpfRound ?? 9999) : 99999;
-    const rb = b.kind === "imported" ? (b.match.fpfRound ?? 9999) : 99999;
-    return ra - rb;
-  });
-}
-
-function dedupeImportedNextRows(rows: NextRow[]): NextRow[] {
-  const seen = new Set<string>();
-  const out: NextRow[] = [];
-  for (const row of rows) {
-    if (row.kind !== "imported") {
-      out.push(row);
-      continue;
-    }
-    const key = matchFingerprintOrderInsensitive(row.match);
-    if (seen.has(key)) continue;
-    seen.add(key);
-    out.push(row);
+  const primary =
+    userClubMatchesOfficialTeam(label, m.homeTeam, candidates) ||
+    userClubMatchesOfficialTeam(label, m.awayTeam, candidates);
+  if (primary) return true;
+  if (profileClub && label !== profileClub) {
+    return (
+      userClubMatchesOfficialTeam(profileClub, m.homeTeam, candidates) ||
+      userClubMatchesOfficialTeam(profileClub, m.awayTeam, candidates)
+    );
   }
-  return out;
-}
-
-/** FPF sometimes repeats the same fixture with different jornada metadata; keep one per round (prefer exact name match). */
-function collapseOneImportedPerRound(
-  rows: NextRow[],
-  teamLabel: string,
-  profileClub: string,
-  candidates: string[]
-): NextRow[] {
-  const hint = teamLabel.trim() || profileClub.trim();
-  const best = hint ? pickBestTeamMatch(hint, candidates) : null;
-  const canonical = best?.name ?? "";
-
-  const manual: Extract<NextRow, { kind: "manual" }>[] = [];
-  const noRound: ImportedNextRow[] = [];
-  const byRound = new Map<number, ImportedNextRow[]>();
-
-  for (const row of rows) {
-    if (row.kind === "manual") {
-      manual.push(row);
-      continue;
-    }
-    const importedRow = row;
-    const r = importedRow.match.fpfRound;
-    if (r == null) {
-      noRound.push(importedRow);
-      continue;
-    }
-    const arr: ImportedNextRow[] = byRound.get(r) ?? [];
-    arr.push(importedRow);
-    byRound.set(r, arr);
-  }
-
-  const collapsed: NextRow[] = [];
-  for (const arr of byRound.values()) {
-    if (arr.length === 1) {
-      collapsed.push(arr[0]!);
-      continue;
-    }
-    const exact = canonical
-      ? arr.filter((row) => {
-          const m = row.match;
-          const b = normalizeTeamLabel(canonical);
-          return normalizeTeamLabel(m.homeTeam) === b || normalizeTeamLabel(m.awayTeam) === b;
-        })
-      : [];
-    if (exact.length === 1) {
-      collapsed.push(exact[0]!);
-      continue;
-    }
-    arr.sort((a, b) => new Date(a.match.kickoff).getTime() - new Date(b.match.kickoff).getTime());
-    collapsed.push(arr[0]!);
-  }
-
-  return [...manual, ...noRound, ...collapsed];
+  return false;
 }
 
 export function CalendarPageClient() {
@@ -215,7 +137,7 @@ export function CalendarPageClient() {
   useEffect(() => {
     if (!hydrated || !leagueTableUrl.trim()) return;
     void refreshLeagueTable();
-  }, [hydrated, leagueTableUrl, refreshLeagueTable, coachProfile.club]);
+  }, [hydrated, leagueTableUrl, refreshLeagueTable]);
 
   useEffect(() => {
     if (!leagueTableUrl.trim()) return;
@@ -239,6 +161,18 @@ export function CalendarPageClient() {
 
   /** Official name from the league import (classificação + jogos), not only the Profile spelling. */
   const teamLabel = (resolvedClub?.name ?? club).trim();
+
+  const isMyTeamInTable = useMemo(() => {
+    return (tableTeamName: string) => {
+      if (!club) return false;
+      const t = tableTeamName.trim();
+      if (!t) return false;
+      return (
+        userClubMatchesOfficialTeam(teamLabel, t, candidates) ||
+        userClubMatchesOfficialTeam(club, t, candidates)
+      );
+    };
+  }, [club, teamLabel, candidates]);
 
   const pageScheduleKind = useMemo(
     () => inferCompetitionKind(leagueCompetitionName ?? ""),
@@ -266,8 +200,10 @@ export function CalendarPageClient() {
         if (o) {
           prev.push({ kind: "imported", match: m, outcome: o.outcome, line: o.short });
         } else {
-          const ov = opponentAndVenueForCoach(m, teamLabel, club, candidates);
-          const opp = ov?.opponent ?? m.awayTeam;
+          const homeHit =
+            userClubMatchesOfficialTeam(teamLabel, m.homeTeam, candidates) ||
+            (!!club && userClubMatchesOfficialTeam(club, m.homeTeam, candidates));
+          const opp = homeHit ? m.awayTeam : m.homeTeam;
           prev.push({
             kind: "imported-neutral",
             match: m,
@@ -290,12 +226,14 @@ export function CalendarPageClient() {
       else prev.push({ kind: "manual", fixture: f });
     }
 
-    let nextSorted = sortNextRowsByKickoff(next);
-    if (club) {
-      nextSorted = dedupeImportedNextRows(nextSorted);
-      nextSorted = collapseOneImportedPerRound(nextSorted, teamLabel, club, candidates);
-      nextSorted = sortNextRowsByKickoff(nextSorted);
-    }
+    next.sort((a, b) => {
+      const ra = a.kind === "imported" ? (a.match.fpfRound ?? 9999) : 99999;
+      const rb = b.kind === "imported" ? (b.match.fpfRound ?? 9999) : 99999;
+      const ta = a.kind === "manual" ? new Date(a.fixture.kickoff).getTime() : new Date(a.match.kickoff).getTime();
+      const tb = b.kind === "manual" ? new Date(b.fixture.kickoff).getTime() : new Date(b.match.kickoff).getTime();
+      if (ra !== rb) return ra - rb;
+      return ta - tb;
+    });
     prev.sort((a, b) => {
       const ra =
         a.kind === "manual"
@@ -315,7 +253,7 @@ export function CalendarPageClient() {
       return tb - ta;
     });
 
-    return { nextGameRows: nextSorted, previousGameRows: prev };
+    return { nextGameRows: next, previousGameRows: prev };
   }, [leagueMatches, fixtures, club, teamLabel, candidates, pageScheduleKind, nowMs]);
 
   const showFullStats = leagueTableRows.some((r) => r.played != null);
@@ -558,12 +496,14 @@ export function CalendarPageClient() {
                       </li>
                     );
                   }
-                  const ov = opponentAndVenueForCoach(m, teamLabel, club, candidates);
-                  const venue = ov?.venue ?? "home";
-                  const opp = ov?.opponent ?? `${m.homeTeam} / ${m.awayTeam}`;
+                  const homeHit =
+                    userClubMatchesOfficialTeam(teamLabel, m.homeTeam, candidates) ||
+                    (!!club && userClubMatchesOfficialTeam(club, m.homeTeam, candidates));
+                  const venue = homeHit ? "home" : "away";
+                  const opp = homeHit ? m.awayTeam : m.homeTeam;
                   return (
                     <li
-                      key={`next-imp-${m.id}-${m.fpfRound ?? "x"}`}
+                      key={`next-imp-${m.id}`}
                       className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-900 bg-black px-4 py-3 text-white shadow-sm"
                     >
                       <div>
@@ -684,9 +624,9 @@ export function CalendarPageClient() {
           </CardTitle>
           <CardDescription>
             Paste the public URL of your league standings page. We fetch it on this server and parse HTML tables or
-            known layouts (e.g. FPF resultados.fpf.pt classificações). Your <strong>Profile → Club</strong> name selects
-            your series when the page has multiple tables (Série A/B/…) and filters imported fixtures to your team.
-            Heavy JavaScript-only pages may not work until we add a dedicated integration.
+            known layouts (e.g. FPF resultados.fpf.pt classificações). Heavy JavaScript-only pages may not work until we
+            add a dedicated integration. With your club set in Profile, that row is highlighted and labelled in the
+            table.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -760,26 +700,103 @@ export function CalendarPageClient() {
                   </tr>
                 </thead>
                 <tbody>
-                  {leagueTableRows.map((row, i) => (
-                    <tr key={`${row.team}-${i}`} className="border-b border-surface-border/60 last:border-0">
-                      <td className="px-3 py-2.5 text-zinc-400">{row.position}</td>
-                      <td className="px-3 py-2.5 font-medium text-white">{row.team}</td>
+                  {leagueTableRows.map((row, i) => {
+                    const mine = isMyTeamInTable(row.team);
+                    return (
+                    <tr
+                      key={`${row.team}-${i}`}
+                      aria-current={mine ? "true" : undefined}
+                      title={mine ? "A tua equipa (Perfil)" : undefined}
+                      className={cn(
+                        "border-b border-surface-border/60 last:border-0 transition-colors",
+                        mine &&
+                          "border-l-4 border-l-accent bg-accent/10 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]"
+                      )}
+                    >
+                      <td className={cn("px-3 py-2.5 text-zinc-400", mine && "font-semibold text-accent")}>
+                        {row.position}
+                      </td>
+                      <td className="px-3 py-2.5">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className={cn("font-medium text-white", mine && "font-semibold")}>{row.team}</span>
+                          {mine && (
+                            <Badge variant="accent" className="shrink-0 text-[10px] uppercase tracking-wide">
+                              A tua equipa
+                            </Badge>
+                          )}
+                        </div>
+                      </td>
                       {showFullStats && (
                         <>
-                          <td className="px-2 py-2.5 text-center tabular-nums text-zinc-400">{row.played ?? "—"}</td>
-                          <td className="px-2 py-2.5 text-center tabular-nums text-zinc-400">{row.won ?? "—"}</td>
-                          <td className="px-2 py-2.5 text-center tabular-nums text-zinc-400">{row.drawn ?? "—"}</td>
-                          <td className="px-2 py-2.5 text-center tabular-nums text-zinc-400">{row.lost ?? "—"}</td>
-                          <td className="px-2 py-2.5 text-center tabular-nums text-zinc-400">{row.goalsFor ?? "—"}</td>
-                          <td className="px-2 py-2.5 text-center tabular-nums text-zinc-400">{row.goalsAgainst ?? "—"}</td>
-                          <td className="px-2 py-2.5 text-center tabular-nums text-zinc-400">
+                          <td
+                            className={cn(
+                              "px-2 py-2.5 text-center tabular-nums text-zinc-400",
+                              mine && "text-zinc-200"
+                            )}
+                          >
+                            {row.played ?? "—"}
+                          </td>
+                          <td
+                            className={cn(
+                              "px-2 py-2.5 text-center tabular-nums text-zinc-400",
+                              mine && "text-zinc-200"
+                            )}
+                          >
+                            {row.won ?? "—"}
+                          </td>
+                          <td
+                            className={cn(
+                              "px-2 py-2.5 text-center tabular-nums text-zinc-400",
+                              mine && "text-zinc-200"
+                            )}
+                          >
+                            {row.drawn ?? "—"}
+                          </td>
+                          <td
+                            className={cn(
+                              "px-2 py-2.5 text-center tabular-nums text-zinc-400",
+                              mine && "text-zinc-200"
+                            )}
+                          >
+                            {row.lost ?? "—"}
+                          </td>
+                          <td
+                            className={cn(
+                              "px-2 py-2.5 text-center tabular-nums text-zinc-400",
+                              mine && "text-zinc-200"
+                            )}
+                          >
+                            {row.goalsFor ?? "—"}
+                          </td>
+                          <td
+                            className={cn(
+                              "px-2 py-2.5 text-center tabular-nums text-zinc-400",
+                              mine && "text-zinc-200"
+                            )}
+                          >
+                            {row.goalsAgainst ?? "—"}
+                          </td>
+                          <td
+                            className={cn(
+                              "px-2 py-2.5 text-center tabular-nums text-zinc-400",
+                              mine && "text-zinc-200"
+                            )}
+                          >
                             {row.goalDifference ?? "—"}
                           </td>
                         </>
                       )}
-                      <td className="px-3 py-2.5 text-right tabular-nums text-zinc-300">{row.points ?? "—"}</td>
+                      <td
+                        className={cn(
+                          "px-3 py-2.5 text-right tabular-nums text-zinc-300",
+                          mine && "font-semibold text-white"
+                        )}
+                      >
+                        {row.points ?? "—"}
+                      </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
