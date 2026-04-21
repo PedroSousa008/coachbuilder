@@ -1855,6 +1855,7 @@ function primarySaveCategoryFromFilters(cats: SavedExerciseCategory[]): SavedExe
   const order: SavedExerciseCategory[] = [
     "goalKick",
     "setPiece",
+    "stretching",
     "finishing",
     "defensive",
     "pressing",
@@ -1931,8 +1932,8 @@ export function getTrainingCatalogItems(players: Player[]): TrainingCatalogItem[
       "Caminhada 2 minutos; alongamentos dinâmicos leves em pares; respiração controlada. Hidratação e recapitulação de 1 ponto-chave do treino.",
     coachingPoints: "Sem forçar amplitude máxima; foco em costas e posteriores de coxa.",
     setup: "Relvado ou final do campo.",
-    filterCategories: [],
-    defaultSaveCategory: "mixed",
+    filterCategories: ["stretching"],
+    defaultSaveCategory: "stretching",
   };
 
   /** Mapeamento explícito dos filtros da aba "Todos os exercícios", conforme pedido do treinador. */

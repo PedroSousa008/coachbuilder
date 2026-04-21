@@ -285,6 +285,7 @@ export interface TrainingSession {
 /** Categoria para filtrar a biblioteca pessoal de exercícios (dados só da conta do treinador). */
 export type SavedExerciseCategory =
   | "warmup"
+  | "stretching"
   | "possession"
   | "goalKick"
   | "setPiece"

@@ -16,12 +16,14 @@ export function suggestSavedExerciseCategory(params: {
 }): SavedExerciseCategory {
   if (isGoalKickExercise(params.title, params.videoUrl)) return "goalKick";
   const ph = params.phase;
-  if (ph === "warmup" || ph === "cooldown") return "warmup";
+  if (ph === "warmup") return "warmup";
+  if (ph === "cooldown") return "stretching";
   return "mixed";
 }
 
 export const SAVED_EXERCISE_CATEGORIES: readonly SavedExerciseCategory[] = [
   "warmup",
+  "stretching",
   "possession",
   "goalKick",
   "setPiece",
@@ -35,6 +37,7 @@ export const SAVED_EXERCISE_CATEGORIES: readonly SavedExerciseCategory[] = [
 
 export const SAVED_EXERCISE_CATEGORY_LABELS: Record<SavedExerciseCategory, string> = {
   warmup: "Aquecimento / activação",
+  stretching: "Alongamento",
   possession: "Posse de bola",
   goalKick: "Pontapé de baliza",
   setPiece: "Bola Parada",
