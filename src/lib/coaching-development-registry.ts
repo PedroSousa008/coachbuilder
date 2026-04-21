@@ -684,6 +684,26 @@ export const COACHING_LESSON_DEVELOPMENTS: CoachingLessonDevelopmentDef[] = [
       "technical-ability-short-passing",
     ],
   },
+  {
+    lessonId: "day-031",
+    title: "Pep Guardiola - Importance of Short Passes - Coaches’ Vision",
+    skillIds: [
+      "technical-ability-passing-accuracy",
+      "technical-ability-short-passing",
+      "tactical-intelligence-positioning",
+      "tactical-intelligence-spatial-awareness",
+      "tactical-intelligence-decision-making",
+      "tactical-intelligence-compactness-understanding",
+      "attacking-skills-movement-off-ball",
+      "midfield-mastery-dictating-possession",
+      "midfield-mastery-recycling-possession",
+      "data-modern-football-metrics-possession-retention",
+      "advanced-technical-one-touch-passing",
+      "midfield-mastery-support-angle-creation",
+      "attacking-skills-link-up-play",
+      "tactical-intelligence-tactical-discipline",
+    ],
+  },
 ];
 
 const LESSON_BY_ID: Map<string, CoachingLessonDevelopmentDef> = new Map(
