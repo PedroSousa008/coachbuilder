@@ -42,6 +42,7 @@ const TRAINING_EXERCISE_PRINT_IMAGE_BY_TITLE: Record<string, string> = {
   "Short Corner by Newcastle": "short-corner-newcastle.png",
   "Short Corner by Empoli": "short-corner-empoli.png",
   "Free Kick Routine": "free-kick-routine.png",
+  "Short Free Kick - Winger Movement": "short-free-kick.png",
   "Defensive Recovery on Counter Attack": "defensive-recovery.png",
 };
 

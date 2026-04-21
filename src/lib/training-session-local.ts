@@ -205,6 +205,12 @@ export const SHORT_CORNER_ROUTINE_VIDEO_URL = "/videos/training/short-corner.mp4
 export const FREE_KICK_ROUTINE_VIDEO_URL = "/videos/training/free-kick-routine.mp4";
 
 /**
+ * Vídeo do exercício "Short Free Kick - Winger Movement".
+ * Coloca o ficheiro em `public/videos/training/short-free-kick.mp4`.
+ */
+export const SHORT_FREE_KICK_WINGER_MOVEMENT_VIDEO_URL = "/videos/training/short-free-kick.mp4";
+
+/**
  * Vídeo do exercício "Full Back Overlap - Striker".
  * Coloca o ficheiro em `public/videos/training/full-back-overlap-2.mp4` ou substitui por um link YouTube.
  */
@@ -1240,6 +1246,26 @@ const MAIN_DRILLS: MainDrillDef[] = [
     }),
   },
   {
+    themes: ["wide", "finishing", "balanced"],
+    title: "Short Free Kick - Winger Movement",
+    describe: (pl, m) => ({
+      description: `A jogada inicia com 2 jogadores na bola, 1 jogador junto à barreira e 1 jogador aberto na esquina da área, preparado para acelerar nas costas da defesa. Na área, 5 jogadores atacam o segundo poste, arrastando a linha defensiva. Em simultâneo, um desses jogadores surge em corrida para a entrada da área. O executante toca curto para o jogador que recebe, que pica a bola de primeira para o colega que veio a correr da esquina da área em direcção ao segundo poste. Esse jogador tem três decisões: (1) rematar à baliza, se tiver espaço; (2) cruzar para o segundo poste, onde entram os 4 colegas; (3) ligar curto no jogador que está na entrada da área, criando nova combinação. O foco está no efeito surpresa, timing das movimentações e rapidez na decisão final. (${m} min)`,
+      coachingPoints:
+        "Executante e receptor do toque curto: ritmo e ângulo para o pique ir por cima ou à volta da barreira para o corredor do extremo. Extremo: arranque após gatilho (toque ou gesto) para não antecipar o fora-de-jogo; procura linha de passe nas costas. Bloco de 5: arrastar o 2.º poste sem colapsar cedo demais; um a atacar a entrada da área em simultâneo. Receptor final: ler remate vs cruzamento vs ligação curta na frontal em ≤3 toques.",
+      setup:
+        "Livre curto frontal à área com GR e barreira; 2 na bola, 1 junto à barreira (combinação / distração), 1 na esquina da área para arranque do extremo; 5 no bloco ofensivo (movimento ao 2.º poste + entrada na área); bolas e coletes.",
+      groupSplit:
+        pl.length >= 14
+          ? "Dois grupos alternados com barreira viva ou manequinhos; trabalhar centro–direita e centro–esquerda em blocos separados."
+          : pl.length >= 9
+            ? "Rodar executante, primeiro receptor, extremo em movimento e finalizador a cada 4–6 repetições; defesa fixa na barreira 3–4 repetições antes de trocar pressão."
+            : "Espaço reduzido; treinador como extremo ou primeiro receptor; manter o pique e a decisão final mesmo com menos jogadores na área.",
+      diagramHint:
+        "Toque curto → pique de 1.º tempo → extremo desde a esquina em curva ao 2.º poste; 5 a arrastar linha; setas remate frontal / cruzamento / passe à entrada da área.",
+      videoUrl: SHORT_FREE_KICK_WINGER_MOVEMENT_VIDEO_URL,
+    }),
+  },
+  {
     themes: ["possession", "transition", "finishing", "pressing"],
     title: "Build up into Counter Attack",
     describe: (pl, m) => ({
@@ -1702,6 +1728,7 @@ const SINGLE_DRILL_10_MIN_TITLES = new Set<string>([
   "3v2 Finishing Drill",
   "(2+1)v1 Transition",
   "Free Kick Routine",
+  "Short Free Kick - Winger Movement",
 ]);
 const SINGLE_DRILL_8_MIN_TITLES = new Set<string>(["Dual Passing"]);
 const SINGLE_DRILL_5_MIN_TITLES = new Set<string>([
@@ -1744,6 +1771,7 @@ function singleDrillProgressionVariationsForTitle(title: string): {
   const isShortCornerByNewcastle = title === "Short Corner by Newcastle";
   const isShortCornerByEmpoli = title === "Short Corner by Empoli";
   const isFreeKickRoutine = title === "Free Kick Routine";
+  const isShortFreeKickWingerMovement = title === "Short Free Kick - Winger Movement";
   const isBuildUpIntoCounterAttack = title === "Build up into Counter Attack";
   const isRondoToCounterAttack = title === "Rondo to Counter Attack";
   const isFitnessRondoIntoFinishing = title === "Fitness Rondo into Finishing";
@@ -1800,6 +1828,8 @@ function singleDrillProgressionVariationsForTitle(title: string): {
                                       ? "Aumenta a velocidade da sequência (apoio curto + cruzamento em ≤4 s); ou força corrida ao 2.º poste apenas após gesto de chamada do batedor; ou obriga reposicionamento imediato dos 2 jogadores de segurança após cada repetição."
                                     : isFreeKickRoutine
                                       ? "Encurta o tempo entre o toque curto e o passe à entrada da área (ex.: ≤2 s); ou obriga o jogador da esquina a jogar obrigatoriamente com o pé interior na 1.ª série; ou acrescenta defesa móvel na frontal para forçar leitura entre remate e cruzamento."
+                                    : isShortFreeKickWingerMovement
+                                      ? "Exige altura mínima no pique (por cima da linha da barreira simulada); ou o extremo só arranca no toque do executante (sem movimento ilegal); ou acrescenta lateral a percorrer com o extremo na corrida às costas."
                                 : isBuildUpIntoCounterAttack
                                 ? "Reduz o tempo de ligação entre setores (ex.: 6 s); ou limita a saída a 2 toques por jogador; ou no 3v2 ofensivo obriga remate em ≤5 s após receção."
                                 : isRondoToCounterAttack
@@ -1874,6 +1904,8 @@ function singleDrillProgressionVariationsForTitle(title: string): {
                                     ? "Criar chamada de engano para reforçar atração no 1.º poste antes da bola entrar curta; ou alternar atacante do 2.º poste entre lateral/extremo para variar perfil de finalização; ou condicionar finalização em 1 toque no 2.º poste."
                               : isFreeKickRoutine
                                 ? "Espelhar a mesma estrutura do outro lado do campo; ou definir chamadas (A/B/C) para remate direto, cruzamento ao 2.º poste e combinação junto à barreira; ou golo só conta se a jogada tiver começado com toque curto obrigatório."
+                              : isShortFreeKickWingerMovement
+                                ? "Espelhar com extremo canhoto no lado direito e destro no esquerdo; ou variar o pique rasteiro vs pendulado para o mesmo corredor; ou jogador na entrada da área com remate obrigatório de 1.ª numa série e passe de interior na seguinte."
                               : isBuildUpIntoCounterAttack
                               ? "Aumenta pressão para 3+1 no setor de saída por blocos curtos; ou no setor ofensivo troca para 3v3 com golo a valer apenas após passe extra; ou equipa que recupera deve finalizar em ≤4 s para contar."
                               : isRondoToCounterAttack
@@ -2064,6 +2096,7 @@ export function getTrainingCatalogItems(players: Player[]): TrainingCatalogItem[
     "Short Corner by Newcastle": ["finishing", "setPiece"],
     "Short Corner by Empoli": ["finishing", "setPiece"],
     "Free Kick Routine": ["finishing", "setPiece"],
+    "Short Free Kick - Winger Movement": ["finishing", "setPiece"],
     "Build up into Counter Attack": ["finishing", "transition"],
     "Fitness Rondo into Finishing": ["finishing", "pressing", "physical"],
     "Midfielder Run Behind Defense": ["finishing"],

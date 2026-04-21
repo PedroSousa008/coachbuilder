@@ -43,5 +43,6 @@ Expected file names:
 - `short-corner-newcastle.png`
 - `short-corner-empoli.png`
 - `free-kick-routine.png`
+- `short-free-kick.png`
 - `pressing-exercise.png`
 - `defensive-recovery.png`
