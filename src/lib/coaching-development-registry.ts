@@ -603,6 +603,33 @@ export const COACHING_LESSON_DEVELOPMENTS: CoachingLessonDevelopmentDef[] = [
       "attacking-skills-link-up-play",
     ],
   },
+  {
+    lessonId: "day-028",
+    title: "Xavi Hernández - Offensive Midfield Options- Coaches’ Vision",
+    skillIds: [
+      "tactical-intelligence-numerical-superiority-recognition",
+      "tactical-intelligence-line-breaking-vision",
+      "midfield-mastery-dictating-possession",
+      "advanced-tactical-creating-passing-angles",
+      "advanced-tactical-between-line-positioning",
+      "midfield-mastery-recycling-possession",
+      "technical-ability-passing-accuracy",
+      "midfielder-elite-habits-passing-rhythm",
+      "midfield-mastery-passing-lane-manipulation",
+      "attacking-skills-movement-off-ball",
+      "tactical-intelligence-timing-of-runs",
+      "advanced-tactical-double-movement-timing",
+      "advanced-tactical-decoy-runs",
+      "midfielder-elite-habits-receive-between-lines",
+      "tactical-intelligence-decision-making",
+      "advanced-tactical-width-management",
+      "advanced-tactical-switch-of-play-timing",
+      "attacking-skills-chance-creation",
+      "attacking-specialist-final-third-decisions",
+      "attacking-skills-killer-instinct",
+      "midfield-mastery-vertical-progression",
+    ],
+  },
 ];
 
 const LESSON_BY_ID: Map<string, CoachingLessonDevelopmentDef> = new Map(
