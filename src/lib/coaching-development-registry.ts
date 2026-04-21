@@ -736,6 +736,29 @@ export const COACHING_LESSON_DEVELOPMENTS: CoachingLessonDevelopmentDef[] = [
       "defensive-specialist-defensive-body-shape",
     ],
   },
+  {
+    lessonId: "day-033",
+    title: "Freddie Ljungberg - Playing as a Team, Without Egos - Coaches’ Voice",
+    skillIds: [
+      "mental-attributes-discipline",
+      "mental-attributes-winning-mentality",
+      "mental-attributes-responsibility",
+      "mental-attributes-determination",
+      "communication-leadership-organising-teammates",
+      "communication-leadership-positive-energy",
+      "communication-leadership-accountability-standards",
+      "coach-development-metrics-team-motivation-skill",
+      "coach-development-metrics-leadership-presence-as-coach",
+      "communication-leadership-vocal-leadership",
+      "communication-leadership-trigger-communication",
+      "communication-leadership-motivation-of-teammates",
+      "mental-attributes-confidence",
+      "communication-leadership-calmness-to-team",
+      "coach-evaluation-development-coachability",
+      "attacking-skills-final-pass",
+      "midfielder-elite-habits-scanning",
+    ],
+  },
 ];
 
 const LESSON_BY_ID: Map<string, CoachingLessonDevelopmentDef> = new Map(
