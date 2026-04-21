@@ -858,24 +858,19 @@ const MAIN_DRILLS: MainDrillDef[] = [
     themes: ["physical", "balanced"],
     title: "Passing Activation",
     describe: (pl, m) => ({
-      description: `Circuito dinâmico de aquecimento focado em coordenação, agilidade e ativação física. Os jogadores passam por diferentes estações em sequência:
-• Escada de agilidade: skipping rápido, com frequência elevada de pés
-• Cones: contornar rapidamente, trabalhando mudanças de direção
-• Barreira de mobilidade: saltos com os dois pés, focando explosão e coordenação
-• Cones finais: sprint em vaivém, com aceleração e travagem rápida
-O foco está na mobilidade, velocidade de pés, coordenação e preparação física para o treino. (${m} min)`,
+      description: `Circuito dinâmico de aquecimento focado em coordenação, agilidade e ativação física. Os jogadores passam por diferentes estações em sequência: escada de agilidade (skipping rápido, frequência elevada de pés); cones (contornar rapidamente, mudanças de direção); barreira de mobilidade (saltos com os dois pés, explosão e coordenação); cones finais (sprint em vaivém com aceleração e travagem rápida). O foco está na mobilidade, velocidade de pés, coordenação e preparação física para o treino. (${m} min)`,
       coachingPoints:
-        "Qualidade de movimento em cada estação (postura, ritmo de pés, amplitude controlada); progressão gradual da intensidade nas primeiras voltas; travagens seguras na parte de velocidade; transições rápidas entre estações sem cortar o circuito.",
+        "Qualidade de apoios nos saltos e na escada (não \"atropelar\" padrões); mudanças de direção baixas e explosivas nos cones; saltos na barreira com estabilidade no aterragem; vaivém final com aceleração máxima e travagem controlada; ritmo elevado com técnica limpa.",
       setup:
-        "Corridor ou linha de estações: escada de agilidade (ou marcas), cones para slalom, barreira baixa para saltos bilaterais e cones finais para vaivém em sprint; espaço proporcional ao grupo (repetições por volta claramente delimitadas).",
+        "Linha ou circuito com escada de agilidade (ou marcas no chão), série de cones para slalom, barreira/hurdle baixo para saltos bilaterais e zona final para vaivém em sprint; distâncias ajustáveis ao espaço disponível.",
       groupSplit:
         pl.length >= 14
-          ? "Dois grupos em circuitos paralelos ou mesma fila com saídas escalonadas (10–15 s) para segurança e fluxo."
+          ? "Duas filas em circuitos paralelos (mesma sequência), escalonadas no arranque para evitar cruzamentos na zaga de saltos."
           : pl.length >= 8
-            ? "Uma fila; saídas em sequência com recuperação activa ao regressar ao início do circuito."
-            : "Circuito mais curto ou menos estações; pausa rápida entre voltas se o grupo for muito reduzido.",
+            ? "Uma fila por estação com rotação ao fim do percurso; repetições contínuas com descanso activo ao regressar ao início."
+            : "Circuito mais curto ou duas passagens por estação; treinador pode dar o ritmo com apito a cada troca.",
       diagramHint:
-        "Estações em linha: agilidade → slalom cones → saltos barreira → vaivém sprint; setas de progressão e retorno ao início.",
+        "Sequência linear: escada → slalom cones → saltos barreira → vaivém sprint final; seta de retorno ao ponto inicial entre séries.",
       videoUrl: PASSING_ACTIVATION_VIDEO_URL,
     }),
   },
@@ -1663,6 +1658,7 @@ const SINGLE_DRILL_15_MIN_TITLES = new Set<string>([
   "Short Corner Routine",
 ]);
 const SINGLE_DRILL_10_MIN_TITLES = new Set<string>([
+  "Passing Activation",
   "Back Four Shifting",
   "Compact Defending Transition",
   "Cross and Strike",
@@ -1679,7 +1675,6 @@ const SINGLE_DRILL_10_MIN_TITLES = new Set<string>([
   "Pressing Exercise",
   "3v2 Finishing Drill",
   "(2+1)v1 Transition",
-  "Passing Activation",
 ]);
 const SINGLE_DRILL_8_MIN_TITLES = new Set<string>(["Dual Passing"]);
 const SINGLE_DRILL_5_MIN_TITLES = new Set<string>([
@@ -1804,7 +1799,7 @@ function singleDrillProgressionVariationsForTitle(title: string): {
                                                       : isWarmUpWithBall
                                                         ? "Acrescenta um 3.º cone no slalom; ou exige passe com o pé interior; ou sprint com mudança de direcção obrigatória ao desmarcar."
                                                         : isPassingActivation
-                                                          ? "Encurta distâncias entre estações para leitura e mudanças de direção mais rápidas; ou acrescenta uma segunda passagem na escada com ritmo máximo de pés nos últimos 2 degraus; ou na zona de sprint exige travagem completa antes da mudança de direcção."
+                                                          ? "Encurta distâncias entre estações para subir frequência; ou acrescenta segunda passagem na escada em sentido inverso; ou na zona final exige arranque após meio vaivém (parada–explosão)."
                                                           : isDualPassing
                                                             ? "Encolhe o hexágono para forçar primeiro toque ainda mais limpo; ou acrescenta um defensor ligeiro no centro por 45 s; ou exige só combinações com o pé não dominante."
                                                             : "Aumenta espaço (mais difícil defender) ou reduz toques permitidos no rondo. Alterna pé fraco em passes fixos.";
@@ -1876,7 +1871,7 @@ function singleDrillProgressionVariationsForTitle(title: string): {
                                                     : isWarmUpWithBall
                                                       ? "Duas filas opostas a cruzar sem colidir; ou volteio extra entre cones; ou após o sprint, regressar a pé ao fim da fila com ball mastery leve."
                                                       : isPassingActivation
-                                                        ? "Inverte a ordem das estações a cada bloco; ou acrescenta uma volta de mobilidade (ankle hops) ao início; ou na barreira alterna saltos unilateral vs bilateral por série; ou duas filas em paralelo com cronómetro de ritmo crescente."
+                                                        ? "Trocar ordem das estações (ex.: slalom antes da escada); ou séries cronometradas (45–60 s) com mudança de pé na escada; ou saltos laterais na barreira numa ronda e só à frente na seguinte."
                                                         : "Reduz jogadores no meio; ou acrescenta neutro exterior; ou pontua por X passes seguidos.";
 
   return { progression, variations };
