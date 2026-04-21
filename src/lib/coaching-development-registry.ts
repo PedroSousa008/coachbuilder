@@ -686,7 +686,7 @@ export const COACHING_LESSON_DEVELOPMENTS: CoachingLessonDevelopmentDef[] = [
   },
   {
     lessonId: "day-031",
-    title: "Pep Guardiola - Importance of Short Passes - Coaches’ Vision",
+    title: "Pep Guardiola - Importance of Short Passes - Sky Sports",
     skillIds: [
       "technical-ability-passing-accuracy",
       "technical-ability-short-passing",
