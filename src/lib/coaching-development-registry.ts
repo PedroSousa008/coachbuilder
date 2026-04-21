@@ -759,6 +759,29 @@ export const COACHING_LESSON_DEVELOPMENTS: CoachingLessonDevelopmentDef[] = [
       "midfielder-elite-habits-scanning",
     ],
   },
+  {
+    lessonId: "day-034",
+    title: "Freddie Ljungberg - Understanding the Team Ideas (giving Confidence to players) - Coaches’ Voice",
+    skillIds: [
+      "mental-attributes-confidence",
+      "mental-attributes-winning-mentality",
+      "mental-attributes-self-belief",
+      "mental-attributes-consistency",
+      "communication-leadership-positive-energy",
+      "communication-leadership-calmness-to-team",
+      "communication-leadership-motivation-of-teammates",
+      "coach-development-metrics-team-motivation-skill",
+      "coach-development-metrics-leadership-presence-as-coach",
+      "tactical-intelligence-game-reading",
+      "tactical-intelligence-tactical-discipline",
+      "coach-evaluation-development-match-application",
+      "advanced-tactical-game-state-management",
+      "coach-development-metrics-in-game-adaptation",
+      "coach-evaluation-development-growth-potential",
+      "coach-development-metrics-individual-development-focus",
+      "coach-development-metrics-detail-orientation",
+    ],
+  },
 ];
 
 const LESSON_BY_ID: Map<string, CoachingLessonDevelopmentDef> = new Map(
