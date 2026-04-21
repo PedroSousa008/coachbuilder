@@ -6,7 +6,7 @@ They are not rendered in the normal website UI.
 Expected file names:
 
 - `warm-up.png`
-- `passing-activation.png`
+- `passing-activity.png`
 - `dual-passing.png`
 - `rondo-pressao-condicionada.png`
 - `jogo-4x4-transicao-imediata.png`

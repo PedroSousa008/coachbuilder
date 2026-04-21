@@ -31,9 +31,9 @@ export const DEFENSIVE_RECOVERY_ON_COUNTER_ATTACK_VIDEO_URL =
 
 /**
  * Vídeo do exercício "Passing Activation".
- * Coloca o ficheiro em `public/videos/training/passing-activation.mp4` ou substitui por um link YouTube.
+ * Coloca o ficheiro em `public/videos/training/passing-activity.mp4` ou substitui por um link YouTube.
  */
-export const PASSING_ACTIVATION_VIDEO_URL = "/videos/training/passing-activation.mp4";
+export const PASSING_ACTIVATION_VIDEO_URL = "/videos/training/passing-activity.mp4";
 
 /**
  * Vídeo do exercício "Warm Up with Ball".
@@ -855,14 +855,27 @@ const MAIN_DRILLS: MainDrillDef[] = [
     }),
   },
   {
-    themes: ["possession", "physical", "balanced"],
+    themes: ["physical", "balanced"],
     title: "Passing Activation",
-    describe: (_pl, m) => ({
-      description: `Colocam-se 6 postes formando uma estrutura, com 5 jogadores posicionados (um poste fica sempre livre). O jogador em posse passa a bola a um colega e, de imediato, desloca-se para o poste livre. O exercício continua em sequência, mantendo sempre um poste vazio. O objectivo é garantir passe e movimento constante, com boa qualidade técnica, timing e ocupação de espaço. (${m} min)`,
+    describe: (pl, m) => ({
+      description: `Circuito dinâmico de aquecimento focado em coordenação, agilidade e ativação física. Os jogadores passam por diferentes estações em sequência:
+• Escada de agilidade: skipping rápido, com frequência elevada de pés
+• Cones: contornar rapidamente, trabalhando mudanças de direção
+• Barreira de mobilidade: saltos com os dois pés, focando explosão e coordenação
+• Cones finais: sprint em vaivém, com aceleração e travagem rápida
+O foco está na mobilidade, velocidade de pés, coordenação e preparação física para o treino. (${m} min)`,
       coachingPoints:
-        "Passe firme e jogável; arranque ao poste livre no instante após soltar a bola; cabeça levantada para antecipar o próximo espaço livre; ritmo alto sem sacrificar precisão.",
-      setup: "6 postes ou cones + bolas ao pé; área compacta (ex. ~12×10 m ou hexágono proporcional ao grupo).",
-      diagramHint: "Seis marcas; cinco jogadores; após cada passe, corrida ao único poste livre; sequência contínua.",
+        "Qualidade de movimento em cada estação (postura, ritmo de pés, amplitude controlada); progressão gradual da intensidade nas primeiras voltas; travagens seguras na parte de velocidade; transições rápidas entre estações sem cortar o circuito.",
+      setup:
+        "Corridor ou linha de estações: escada de agilidade (ou marcas), cones para slalom, barreira baixa para saltos bilaterais e cones finais para vaivém em sprint; espaço proporcional ao grupo (repetições por volta claramente delimitadas).",
+      groupSplit:
+        pl.length >= 14
+          ? "Dois grupos em circuitos paralelos ou mesma fila com saídas escalonadas (10–15 s) para segurança e fluxo."
+          : pl.length >= 8
+            ? "Uma fila; saídas em sequência com recuperação activa ao regressar ao início do circuito."
+            : "Circuito mais curto ou menos estações; pausa rápida entre voltas se o grupo for muito reduzido.",
+      diagramHint:
+        "Estações em linha: agilidade → slalom cones → saltos barreira → vaivém sprint; setas de progressão e retorno ao início.",
       videoUrl: PASSING_ACTIVATION_VIDEO_URL,
     }),
   },
@@ -1666,8 +1679,9 @@ const SINGLE_DRILL_10_MIN_TITLES = new Set<string>([
   "Pressing Exercise",
   "3v2 Finishing Drill",
   "(2+1)v1 Transition",
+  "Passing Activation",
 ]);
-const SINGLE_DRILL_8_MIN_TITLES = new Set<string>(["Passing Activation", "Dual Passing"]);
+const SINGLE_DRILL_8_MIN_TITLES = new Set<string>(["Dual Passing"]);
 const SINGLE_DRILL_5_MIN_TITLES = new Set<string>([
   "Aquecimento com Bola - Movimentação",
   "Short Corner by Empoli",
@@ -1790,7 +1804,7 @@ function singleDrillProgressionVariationsForTitle(title: string): {
                                                       : isWarmUpWithBall
                                                         ? "Acrescenta um 3.º cone no slalom; ou exige passe com o pé interior; ou sprint com mudança de direcção obrigatória ao desmarcar."
                                                         : isPassingActivation
-                                                          ? "Aperta distâncias entre postes para exigir passes mais curtos e reacção mais rápida; ou fixa 2 toques máx.; ou alterna o pé obrigatório em cada série."
+                                                          ? "Encurta distâncias entre estações para leitura e mudanças de direção mais rápidas; ou acrescenta uma segunda passagem na escada com ritmo máximo de pés nos últimos 2 degraus; ou na zona de sprint exige travagem completa antes da mudança de direcção."
                                                           : isDualPassing
                                                             ? "Encolhe o hexágono para forçar primeiro toque ainda mais limpo; ou acrescenta um defensor ligeiro no centro por 45 s; ou exige só combinações com o pé não dominante."
                                                             : "Aumenta espaço (mais difícil defender) ou reduz toques permitidos no rondo. Alterna pé fraco em passes fixos.";
@@ -1862,7 +1876,7 @@ function singleDrillProgressionVariationsForTitle(title: string): {
                                                     : isWarmUpWithBall
                                                       ? "Duas filas opostas a cruzar sem colidir; ou volteio extra entre cones; ou após o sprint, regressar a pé ao fim da fila com ball mastery leve."
                                                       : isPassingActivation
-                                                        ? "Dois coletes com passes obrigatórios entre cores; ou inverte o sentido da rotação a cada minuto; ou acrescenta um jogador 'defensor' a tapar uma linha de passe por 30 s."
+                                                        ? "Inverte a ordem das estações a cada bloco; ou acrescenta uma volta de mobilidade (ankle hops) ao início; ou na barreira alterna saltos unilateral vs bilateral por série; ou duas filas em paralelo com cronómetro de ritmo crescente."
                                                         : "Reduz jogadores no meio; ou acrescenta neutro exterior; ou pontua por X passes seguidos.";
 
   return { progression, variations };

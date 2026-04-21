@@ -4,7 +4,7 @@
  */
 const TRAINING_EXERCISE_PRINT_IMAGE_BY_TITLE: Record<string, string> = {
   "Warm Up with Ball": "warm-up.png",
-  "Passing Activation": "passing-activation.png",
+  "Passing Activation": "passing-activity.png",
   "Dual Passing": "dual-passing.png",
   "Rondo com pressão condicionada": "rondo-pressao-condicionada.png",
   "Jogo 4+4 vs 4+4 com transição imediata": "jogo-4x4-transicao-imediata.png",
