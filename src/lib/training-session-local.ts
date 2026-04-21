@@ -176,6 +176,12 @@ export const FIVE_TEAMS_3V3_ATTACKING_VIDEO_URL = "/videos/training/3v3-5-teams.
 export const FIXED_POSITION_RONDO_VIDEO_URL = "/videos/training/fixed-position-rondo.mp4";
 
 /**
+ * Vídeo do exercício "Aquecimento com Bola - Movimentação".
+ * Coloca o ficheiro em `public/videos/training/aquecimento-com-movimentação.mp4`.
+ */
+export const WARM_UP_WITH_MOVEMENT_VIDEO_URL = "/videos/training/aquecimento-com-movimentação.mp4";
+
+/**
  * Vídeo do exercício "Short Corner Routine".
  * Coloca o ficheiro em `public/videos/training/short-corner.mp4` ou substitui por um link YouTube.
  */
@@ -234,6 +240,8 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
     "posse rapida",
     "warm up",
     "warmup",
+    "aquecimento com bola movimentacao",
+    "aquecimento com bola movimentação",
     "futsal",
     "futebol rápido",
     "futebol rapido",
@@ -857,6 +865,26 @@ const MAIN_DRILLS: MainDrillDef[] = [
       setup: "Hexágono proporcional ao grupo (ex. 10–14 m por lado); 7 jogadores; bolas extra para manter fluidez.",
       diagramHint: "Seis nos vértices; um no centro (apoio/devolução); circulação no anel + combinações interiores; um jogador atrás do ponto de primeira saída.",
       videoUrl: DUAL_PASSING_VIDEO_URL,
+    }),
+  },
+  {
+    themes: ["physical", "possession", "balanced"],
+    title: "Aquecimento com Bola - Movimentação",
+    describe: (pl, m) => ({
+      description: `Os jogadores posicionam-se em circulação, abrindo para receber a bola em largura. Devem receber bem orientados e, em máximo de 2 toques, realizar de imediato o passe para o colega seguinte. Após o passe, o jogador sai em sprint para o cone vazio, mantendo rotação constante e intensidade no exercício. O foco está na receção orientada, qualidade de passe, mobilidade e aceleração após ação técnica. (${m} min)`,
+      coachingPoints:
+        "Receção orientada com o corpo aberto para jogar para a frente do circuito; máximo de 2 toques (controlar e soltar); passe tenso e jogável no pé de apoio; sprint imediato ao cone vazio após passe sem quebrar ritmo do grupo.",
+      setup:
+        "Círculo ou quadrado alargado com cones (1 cone vazio em permanência), bolas suficientes para reposição rápida e coletes por subgrupos.",
+      groupSplit:
+        pl.length >= 12
+          ? "Dois circuitos paralelos para manter alta intensidade e poucas esperas."
+          : pl.length >= 8
+            ? "Um circuito com rotação contínua e reposição de bola no ponto inicial."
+            : "Espaço reduzido com menos cones; treinador serve como apoio para manter ritmo.",
+      diagramHint:
+        "Jogadores em circuito com 1 cone vazio; passe em 2 toques máx.; após passe sprint para o cone livre; rotação contínua.",
+      videoUrl: WARM_UP_WITH_MOVEMENT_VIDEO_URL,
     }),
   },
   {
@@ -1597,7 +1625,11 @@ const SINGLE_DRILL_10_MIN_TITLES = new Set<string>([
   "(2+1)v1 Transition",
 ]);
 const SINGLE_DRILL_8_MIN_TITLES = new Set<string>(["Passing Activation", "Dual Passing"]);
-const SINGLE_DRILL_5_MIN_TITLES = new Set<string>(["Rondo 9v3", "Warm Up with Ball"]);
+const SINGLE_DRILL_5_MIN_TITLES = new Set<string>([
+  "Aquecimento com Bola - Movimentação",
+  "Rondo 9v3",
+  "Warm Up with Ball",
+]);
 
 function singleDrillDurationForTitle(title: string, briefLength: number): number {
   if (SINGLE_DRILL_20_MIN_TITLES.has(title)) return 20;
@@ -1640,6 +1672,7 @@ function singleDrillProgressionVariationsForTitle(title: string): {
   const is3v2FinishingDrill = title === "3v2 Finishing Drill";
   const is5Teams3v3Attacking = title === "5 Teams 3v3 Attacking";
   const isFixedPositionRondo = title === "Fixed Position Rondo";
+  const isWarmUpWithMovement = title === "Aquecimento com Bola - Movimentação";
   const isWarmUpWithBall = title === "Warm Up with Ball";
   const isPassingActivation = title === "Passing Activation";
   const isDualPassing = title === "Dual Passing";
@@ -1699,6 +1732,8 @@ function singleDrillProgressionVariationsForTitle(title: string): {
                                                   ? "Encurta os dois campos para forçar mais ritmo; ou obriga remate no máximo em 4 toques após recuperação; ou só entra a equipa de espera quando o treinador dá sinal (para trabalhar tempo morto); ou um jogador por equipa só pode finalizar de primeira num bloco de 4 minutos."
                                                   : isFixedPositionRondo
                                                     ? "Aperta as zonas para exigir passes ainda mais curtos; ou equipa em posse com máximo 2 toques; ou permite apenas deslocamento horizontal numa série e só vertical na seguinte; ou aumenta para 3 pressores numa zona durante 60 s (alerta de risco)."
+                                                    : isWarmUpWithMovement
+                                                      ? "Reduz o espaço entre cones para forçar decisões mais rápidas; ou alterna pé dominante/não dominante a cada 90 s; ou obriga o passe de primeira em uma série curta para aumentar velocidade de circulação."
                                                     : is3v2FastBreak
                                                       ? "Encurta o eixo a ~24 m para decisões ainda mais rápidas; ou extremo com máximo 2 toques antes do cruzamento na 1.ª fase; ou defesa pode sair ao cruzamento com contacto leve."
                                                       : isWarmUpWithBall
@@ -1765,6 +1800,8 @@ function singleDrillProgressionVariationsForTitle(title: string): {
                                                 ? "Dois tempos com troca da equipa de espera entre o corredor central dos dois campos; ou golo sofrido obriga saída em sprint até à zona neutra; ou mini-torneio por pontos entre as cinco equipas; ou golo marcado em ≤8 s após entrada vale duplo."
                                                 : isFixedPositionRondo
                                                   ? "Rotação completa das funções após X passes consecutivos; ou meta de 12 passes sem perda antes de trocar pressores; ou neutro no meio que só pode jogar de primeira; ou disputar por quadrantes: equipa que recupera na zona X sai e entra outro quinteto."
+                                              : isWarmUpWithMovement
+                                                ? "Cronometrar blocos curtos (45–60 s) e pontuar execução técnica limpa sem perder ritmo; ou inserir mudança de direção obrigatória no sprint ao cone vazio; ou variar formato do circuito (quadrado/hexágono) mantendo 2 toques máximos."
                                                   : is3v2FastBreak
                                                     ? "1.ª fase só cruzamento rasteiro; ou médio/treinador serve a 2.ª bola em profundidade para o extremo entrar ao eixo; ou GR activo nas duas fases com saída ao primeiro passe."
                                                     : isWarmUpWithBall
