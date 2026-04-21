@@ -580,6 +580,29 @@ export const COACHING_LESSON_DEVELOPMENTS: CoachingLessonDevelopmentDef[] = [
       "attacking-skills-link-up-play",
     ],
   },
+  {
+    lessonId: "day-027",
+    title: "Xavi Hernández - Build up Play Superiority - Coaches’ Vision",
+    skillIds: [
+      "goalkeeper-specific-distribution",
+      "centre-back-build-up-passing",
+      "centre-back-ball-carrying-from-back",
+      "midfield-mastery-deep-build-up-composure",
+      "midfield-mastery-dictating-possession",
+      "advanced-tactical-creating-passing-angles",
+      "technical-ability-long-passing",
+      "technical-ability-short-passing",
+      "tactical-intelligence-numerical-superiority-recognition",
+      "advanced-tactical-between-line-positioning",
+      "advanced-tactical-occupying-half-spaces",
+      "midfielder-elite-habits-passing-rhythm",
+      "midfield-mastery-vertical-progression",
+      "tactical-intelligence-decision-making",
+      "attacking-skills-movement-off-ball",
+      "attacking-skills-combination-play",
+      "attacking-skills-link-up-play",
+    ],
+  },
 ];
 
 const LESSON_BY_ID: Map<string, CoachingLessonDevelopmentDef> = new Map(
