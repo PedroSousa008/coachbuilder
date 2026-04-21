@@ -660,6 +660,30 @@ export const COACHING_LESSON_DEVELOPMENTS: CoachingLessonDevelopmentDef[] = [
       "defensive-specialist-2v1-defending",
     ],
   },
+  {
+    lessonId: "day-030",
+    title: "Xavi Hernández - Keeping Possession - Coaches’ Vision",
+    skillIds: [
+      "midfield-mastery-recycling-possession",
+      "midfield-mastery-rhythm-setting",
+      "midfield-mastery-deep-build-up-composure",
+      "midfield-mastery-dictating-possession",
+      "data-modern-football-metrics-possession-retention",
+      "technical-ability-passing-accuracy",
+      "tactical-intelligence-press-resistance",
+      "advanced-technical-one-touch-passing",
+      "mental-attributes-confidence",
+      "mental-attributes-concentration",
+      "mental-attributes-self-belief",
+      "attacking-skills-improvisation",
+      "tactical-intelligence-line-breaking-vision",
+      "midfielder-elite-habits-scanning",
+      "midfielder-elite-habits-pre-scanning",
+      "midfield-mastery-passing-lane-manipulation",
+      "advanced-technical-two-footed-passing",
+      "technical-ability-short-passing",
+    ],
+  },
 ];
 
 const LESSON_BY_ID: Map<string, CoachingLessonDevelopmentDef> = new Map(
