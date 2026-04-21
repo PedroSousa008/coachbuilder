@@ -1935,12 +1935,51 @@ export function getTrainingCatalogItems(players: Player[]): TrainingCatalogItem[
     defaultSaveCategory: "warmup",
   };
 
-  const warmupFilterTitles = new Set<string>([
-    "Warm Up with Ball",
-    "Passing Activation",
-    "Dual Passing",
-    "Aquecimento com Bola - Movimentação",
-  ]);
+  /**
+   * Mapeamento explícito dos filtros da aba "Todos os exercícios", conforme pedido do treinador.
+   * Nota: não existe categoria separada "Bola Parada" no modelo atual, por isso esses exercícios entram em "goalKick".
+   */
+  const explicitFilterCategoriesByTitle: Partial<Record<string, readonly SavedExerciseCategory[]>> = {
+    // Aquecimento / activação
+    "Warm Up with Ball": ["warmup"],
+    "Passing Activation": ["warmup"],
+    "Dual Passing": ["warmup"],
+    "Aquecimento com Bola - Movimentação": ["warmup"],
+
+    // Posse de bola
+    "Offensive Between Lines": ["possession", "transition"],
+    "Between the Lines": ["possession", "pressing"],
+    "Rondo 9v3": ["possession", "pressing", "transition", "physical"],
+    "Rondo 5v3": ["possession", "pressing", "transition", "physical"],
+    "Breakout Rondo": ["possession", "pressing", "transition", "physical"],
+    "(2+1)v1 Transition": ["possession", "transition", "physical"],
+    "Rondo to Counter Attack": ["possession", "pressing", "transition"],
+    "Goal Kick 1": ["possession", "goalKick"],
+    "Goal Kick 2": ["possession", "goalKick"],
+    "Fixed Position Rondo": ["possession", "pressing"],
+
+    // Finalização
+    "Defensive Recovery on Counter Attack": ["finishing", "defensive", "transition"],
+    "9v9 + 2 Game": ["finishing"],
+    "Double Finishing Drill": ["finishing"],
+    "Finishing Transition": ["finishing", "transition", "physical"],
+    "Cross and Strike": ["finishing"],
+    "4 Finishing Drills": ["finishing", "physical"],
+    "Short Corner Routine": ["finishing", "goalKick"], // "Bola Parada" mapeado para goalKick
+    "Build up into Counter Attack": ["finishing", "transition"],
+    "Fitness Rondo into Finishing": ["finishing", "pressing", "physical"],
+    "Midfielder Run Behind Defense": ["finishing"],
+    "Full Back Overlap - Winger": ["finishing"],
+    "Full Back Overlap - Striker": ["finishing"],
+    "3v2 Fast Break": ["finishing", "defensive", "transition", "physical"],
+    "3v2 Finishing Drill": ["finishing", "defensive"],
+    "5 Teams 3v3 Attacking": ["finishing", "transition", "physical"],
+
+    // Organização defensiva
+    "Back Four Shifting": ["defensive", "pressing"],
+    "Compact Defending Transition": ["defensive", "pressing", "transition"],
+    "Pressing Exercise": ["defensive", "pressing"],
+  };
 
   const mains: TrainingCatalogItem[] = MAIN_DRILLS.filter((def) => def.title !== "Warm Up with Ball").map((def) => {
     const mins = singleDrillDurationForTitle(def.title, 40);
@@ -1951,8 +1990,9 @@ export function getTrainingCatalogItems(players: Player[]): TrainingCatalogItem[
     const withGoalKick = isGoalKickExercise(def.title, body.videoUrl)
       ? [...new Set<SavedExerciseCategory>([...fcBase, "goalKick"])]
       : fcBase;
-    const fc = warmupFilterTitles.has(def.title)
-      ? [...new Set<SavedExerciseCategory>([...withGoalKick, "warmup"])]
+    const explicit = explicitFilterCategoriesByTitle[def.title];
+    const fc = explicit
+      ? [...new Set<SavedExerciseCategory>([...withGoalKick, ...explicit])]
       : withGoalKick;
     return {
       catalogId: `main:${def.title}`,
