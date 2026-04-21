@@ -41,5 +41,6 @@ Expected file names:
 - `2+1v1-transition.png`
 - `short-corner.png`
 - `short-corner-newcastle.png`
+- `short-corner-empoli.png`
 - `pressing-exercise.png`
 - `defensive-recovery.png`

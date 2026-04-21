@@ -40,6 +40,7 @@ const TRAINING_EXERCISE_PRINT_IMAGE_BY_TITLE: Record<string, string> = {
   "(2+1)v1 Transition": "2+1v1-transition.png",
   "Short Corner Routine": "short-corner.png",
   "Short Corner by Newcastle": "short-corner-newcastle.png",
+  "Short Corner by Empoli": "short-corner-empoli.png",
   "Defensive Recovery on Counter Attack": "defensive-recovery.png",
 };
 

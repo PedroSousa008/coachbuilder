@@ -187,6 +187,12 @@ export const WARM_UP_WITH_MOVEMENT_VIDEO_URL = "/videos/training/aquecimento-com
 export const SHORT_CORNER_BY_NEWCASTLE_VIDEO_URL = "/videos/training/short-corner-newcastle.mp4";
 
 /**
+ * Vídeo do exercício "Short Corner by Empoli".
+ * Coloca o ficheiro em `public/videos/training/short-corner-empoli.mp4`.
+ */
+export const SHORT_CORNER_BY_EMPOLI_VIDEO_URL = "/videos/training/short-corner-empoli.mp4";
+
+/**
  * Vídeo do exercício "Short Corner Routine".
  * Coloca o ficheiro em `public/videos/training/short-corner.mp4` ou substitui por um link YouTube.
  */
@@ -1184,6 +1190,22 @@ const MAIN_DRILLS: MainDrillDef[] = [
     }),
   },
   {
+    themes: ["wide", "finishing", "balanced"],
+    title: "Short Corner by Empoli",
+    describe: (_pl, m) => ({
+      description: `A jogada começa com vários jogadores a arrastar movimentações para o primeiro poste, concentrando aí a atenção defensiva. Em simultâneo, o jogador mais afastado da área inicia corrida discreta para o segundo poste. Após o passe curto para o jogador de apoio, a equipa adversária é atraída ainda mais para a zona do primeiro poste, enquanto continua a movimentação de ataque ao segundo poste. Ao mesmo tempo, o jogador que estava inicialmente no primeiro poste faz o movimento inverso, recuando para garantir novamente dois jogadores atrás da linha da bola e prevenir o contra-ataque. O objetivo final é criar espaço para que um jogador surja completamente sozinho no segundo poste, pronto para finalizar sem marcação. O foco está no timing das movimentações, atração da marcação e finalização no segundo poste. (${m} min)`,
+      coachingPoints:
+        "Arraste coordenado ao 1.º poste para fixar a linha defensiva; passe curto com qualidade para atrair mais pressão; corrida ao 2.º poste com timing de surpresa (nem cedo demais nem atrasado); garantir sempre dois jogadores de segurança atrás da linha da bola após a inversão do movimento.",
+      setup:
+        "Zona de canto com baliza e GR; batedor + apoio curto; bloco de 4–6 jogadores para movimentos no 1.º poste/pequena área; 1 referência de ataque ao 2.º poste; 2 jogadores de prevenção em transição defensiva; bolas extra junto à bandeirola.",
+      groupSplit:
+        "Rodar funções (batedor, apoio, arraste ao 1.º poste, atacante do 2.º poste e segurança) a cada 3–5 repetições; alternar canto esquerdo/direito para treinar simetria.",
+      diagramHint:
+        "Movimentos iniciais ao 1.º poste para arrastar marcação; passe curto de apoio; corrida oculta ao 2.º poste; jogador do 1.º poste recua para formar 2 atrás da linha da bola; finalização livre no 2.º poste.",
+      videoUrl: SHORT_CORNER_BY_EMPOLI_VIDEO_URL,
+    }),
+  },
+  {
     themes: ["possession", "transition", "finishing", "pressing"],
     title: "Build up into Counter Attack",
     describe: (pl, m) => ({
@@ -1648,6 +1670,7 @@ const SINGLE_DRILL_10_MIN_TITLES = new Set<string>([
 const SINGLE_DRILL_8_MIN_TITLES = new Set<string>(["Passing Activation", "Dual Passing"]);
 const SINGLE_DRILL_5_MIN_TITLES = new Set<string>([
   "Aquecimento com Bola - Movimentação",
+  "Short Corner by Empoli",
   "Short Corner by Newcastle",
   "Rondo 9v3",
   "Warm Up with Ball",
@@ -1683,6 +1706,7 @@ function singleDrillProgressionVariationsForTitle(title: string): {
   const is2Plus1V1Transition = title === "(2+1)v1 Transition";
   const isShortCornerRoutine = title === "Short Corner Routine";
   const isShortCornerByNewcastle = title === "Short Corner by Newcastle";
+  const isShortCornerByEmpoli = title === "Short Corner by Empoli";
   const isBuildUpIntoCounterAttack = title === "Build up into Counter Attack";
   const isRondoToCounterAttack = title === "Rondo to Counter Attack";
   const isFitnessRondoIntoFinishing = title === "Fitness Rondo into Finishing";
@@ -1735,6 +1759,8 @@ function singleDrillProgressionVariationsForTitle(title: string): {
                                   ? "Limita o canto curto a 2 toques até ao passe de retorno; ou obriga remate de 1.ª na frontal em ≤4 s; ou alterna bloqueio no eixo e meio-espaço para variar referência defensiva."
                                   : isShortCornerByNewcastle
                                     ? "Encurta tempo entre receção curta e decisão final; ou obriga o batedor a decidir em no máximo 2 toques; ou alterna bloqueio no 1.º e 2.º defensor para variar o corredor livre."
+                                    : isShortCornerByEmpoli
+                                      ? "Aumenta a velocidade da sequência (apoio curto + cruzamento em ≤4 s); ou força corrida ao 2.º poste apenas após gesto de chamada do batedor; ou obriga reposicionamento imediato dos 2 jogadores de segurança após cada repetição."
                                 : isBuildUpIntoCounterAttack
                                 ? "Reduz o tempo de ligação entre setores (ex.: 6 s); ou limita a saída a 2 toques por jogador; ou no 3v2 ofensivo obriga remate em ≤5 s após receção."
                                 : isRondoToCounterAttack
@@ -1805,6 +1831,8 @@ function singleDrillProgressionVariationsForTitle(title: string): {
                                 ? "No lado esquerdo, sequência obrigatória com batedor destro e apoio canhoto (e inverso no lado direito); ou o bloqueador troca posição com finalizador a cada repetição; ou só conta golo se o remate sair de 1.ª na frontal."
                                 : isShortCornerByNewcastle
                                   ? "Definir duas chamadas (A/B): A para passe tenso na zona de penálti e B para cruzamento ao 2.º poste; ou variar o jogador que arranca do 2.º poste para a marca; ou condicionar 4v4 no 2.º poste com marcação mista."
+                                  : isShortCornerByEmpoli
+                                    ? "Criar chamada de engano para reforçar atração no 1.º poste antes da bola entrar curta; ou alternar atacante do 2.º poste entre lateral/extremo para variar perfil de finalização; ou condicionar finalização em 1 toque no 2.º poste."
                               : isBuildUpIntoCounterAttack
                               ? "Aumenta pressão para 3+1 no setor de saída por blocos curtos; ou no setor ofensivo troca para 3v3 com golo a valer apenas após passe extra; ou equipa que recupera deve finalizar em ≤4 s para contar."
                               : isRondoToCounterAttack
@@ -1993,6 +2021,7 @@ export function getTrainingCatalogItems(players: Player[]): TrainingCatalogItem[
     "4 Finishing Drills": ["finishing", "physical"],
     "Short Corner Routine": ["finishing", "setPiece"],
     "Short Corner by Newcastle": ["finishing", "setPiece"],
+    "Short Corner by Empoli": ["finishing", "setPiece"],
     "Build up into Counter Attack": ["finishing", "transition"],
     "Fitness Rondo into Finishing": ["finishing", "pressing", "physical"],
     "Midfielder Run Behind Defense": ["finishing"],
