@@ -434,6 +434,31 @@ export const COACHING_LESSON_DEVELOPMENTS: CoachingLessonDevelopmentDef[] = [
       "striker-one-chance-one-goal-mentality",
     ],
   },
+  {
+    lessonId: "day-021",
+    title: "Vítor Pereira - Between the Lines - Coaches’ Vision",
+    skillIds: [
+      "tactical-intelligence-line-breaking-vision",
+      "midfielder-elite-habits-receive-between-lines",
+      "advanced-tactical-between-line-positioning",
+      "midfield-mastery-vertical-progression",
+      "centre-back-build-up-passing",
+      "tactical-intelligence-positioning",
+      "midfielder-elite-habits-open-body-shape",
+      "midfielder-elite-habits-half-turn-receiving",
+      "technical-ability-first-touch",
+      "advanced-technical-touch-into-space",
+      "tactical-intelligence-decision-making",
+      "advanced-tactical-trigger-press-recognition",
+      "midfield-mastery-tempo-acceleration",
+      "tactical-intelligence-game-reading",
+      "tactical-intelligence-zone-occupation",
+      "tactical-intelligence-press-resistance",
+      "advanced-tactical-press-trap-understanding",
+      "advanced-tactical-weak-side-exploitation",
+      "midfielder-elite-habits-passing-rhythm",
+    ],
+  },
 ];
 
 const LESSON_BY_ID: Map<string, CoachingLessonDevelopmentDef> = new Map(
