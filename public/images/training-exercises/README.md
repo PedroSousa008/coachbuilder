@@ -40,5 +40,6 @@ Expected file names:
 - `aquecimento-com-movimentação.png`
 - `2+1v1-transition.png`
 - `short-corner.png`
+- `short-corner-newcastle.png`
 - `pressing-exercise.png`
 - `defensive-recovery.png`

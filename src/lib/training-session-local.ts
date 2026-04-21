@@ -181,6 +181,12 @@ export const FIXED_POSITION_RONDO_VIDEO_URL = "/videos/training/fixed-position-r
 export const WARM_UP_WITH_MOVEMENT_VIDEO_URL = "/videos/training/aquecimento-com-movimentação.mp4";
 
 /**
+ * Vídeo do exercício "Short Corner by Newcastle".
+ * Coloca o ficheiro em `public/videos/training/short-corner-newcastle.mp4`.
+ */
+export const SHORT_CORNER_BY_NEWCASTLE_VIDEO_URL = "/videos/training/short-corner-newcastle.mp4";
+
+/**
  * Vídeo do exercício "Short Corner Routine".
  * Coloca o ficheiro em `public/videos/training/short-corner.mp4` ou substitui por um link YouTube.
  */
@@ -1162,6 +1168,22 @@ const MAIN_DRILLS: MainDrillDef[] = [
     }),
   },
   {
+    themes: ["wide", "finishing", "balanced"],
+    title: "Short Corner by Newcastle",
+    describe: (_pl, m) => ({
+      description: `A jogada inicia com organização prévia: 1 jogador no segundo poste, 1 junto ao guarda-redes, 1 na esquina da área para apoio curto, 2 na pequena área, 2 à entrada da área para movimentos e 2 no meio-campo para prevenir contra-ataque. No arranque, o jogador junto ao guarda-redes aproxima-se do batedor para receber curto, enquanto o jogador da esquina também se aproxima para atrair marcação. Em simultâneo, os dois jogadores da entrada da área atacam o segundo poste. Quando a bola entra no apoio curto, o jogador que estava no segundo poste arranca para a zona da marca de penálti. Ao mesmo tempo, os jogadores em movimento fazem bloqueio legal ao defesa que o seguia. Depois, a bola é devolvida ao batedor, que decide rapidamente entre passe tenso para a zona de penálti ou cruzamento para o segundo poste em contexto de 4v4. O foco está no timing das movimentações, bloqueios, criação de espaço e decisão rápida do batedor. (${m} min)`,
+      coachingPoints:
+        "Movimentos sincronizados no momento do passe curto; bloqueios legais com postura estável e sem carga pelas costas; batedor com leitura rápida entre passe tenso na marca de penálti e cruzamento ao 2.º poste; jogadores de prevenção em transição defensiva atentos à segunda bola.",
+      setup:
+        "Zona de canto com baliza e GR; 1 batedor, 1 apoio curto, 1 referência junto ao GR, 2 na pequena área, 2 à entrada da área, 1 no 2.º poste e 2 jogadores de segurança no meio-campo; bolas extra junto à bandeirola.",
+      groupSplit:
+        "Rodar funções (batedor, apoio curto, bloqueadores, finalizador e segurança) a cada 3–5 repetições; alternar lado esquerdo/direito para manter simetria tática.",
+      diagramHint:
+        "Canto curto: aproximação do apoio junto ao GR + apoio da esquina; atacantes da frontal atacam 2.º poste; referência do 2.º poste ataca zona de penálti com bloqueio legal; devolução ao batedor e decisão passe tenso vs cruzamento.",
+      videoUrl: SHORT_CORNER_BY_NEWCASTLE_VIDEO_URL,
+    }),
+  },
+  {
     themes: ["possession", "transition", "finishing", "pressing"],
     title: "Build up into Counter Attack",
     describe: (pl, m) => ({
@@ -1626,6 +1648,7 @@ const SINGLE_DRILL_10_MIN_TITLES = new Set<string>([
 const SINGLE_DRILL_8_MIN_TITLES = new Set<string>(["Passing Activation", "Dual Passing"]);
 const SINGLE_DRILL_5_MIN_TITLES = new Set<string>([
   "Aquecimento com Bola - Movimentação",
+  "Short Corner by Newcastle",
   "Rondo 9v3",
   "Warm Up with Ball",
 ]);
@@ -1659,6 +1682,7 @@ function singleDrillProgressionVariationsForTitle(title: string): {
   const isBreakoutRondo = title === "Breakout Rondo";
   const is2Plus1V1Transition = title === "(2+1)v1 Transition";
   const isShortCornerRoutine = title === "Short Corner Routine";
+  const isShortCornerByNewcastle = title === "Short Corner by Newcastle";
   const isBuildUpIntoCounterAttack = title === "Build up into Counter Attack";
   const isRondoToCounterAttack = title === "Rondo to Counter Attack";
   const isFitnessRondoIntoFinishing = title === "Fitness Rondo into Finishing";
@@ -1709,6 +1733,8 @@ function singleDrillProgressionVariationsForTitle(title: string): {
                                 ? "Encurta cada zona para forçar decisão mais rápida; ou o neutro só pode jogar em 1 toque ao entrar na zona; ou após recuperação, remate obrigatório numa mini-baliza em ≤4 s."
                                 : isShortCornerRoutine
                                   ? "Limita o canto curto a 2 toques até ao passe de retorno; ou obriga remate de 1.ª na frontal em ≤4 s; ou alterna bloqueio no eixo e meio-espaço para variar referência defensiva."
+                                  : isShortCornerByNewcastle
+                                    ? "Encurta tempo entre receção curta e decisão final; ou obriga o batedor a decidir em no máximo 2 toques; ou alterna bloqueio no 1.º e 2.º defensor para variar o corredor livre."
                                 : isBuildUpIntoCounterAttack
                                 ? "Reduz o tempo de ligação entre setores (ex.: 6 s); ou limita a saída a 2 toques por jogador; ou no 3v2 ofensivo obriga remate em ≤5 s após receção."
                                 : isRondoToCounterAttack
@@ -1777,6 +1803,8 @@ function singleDrillProgressionVariationsForTitle(title: string): {
                               ? "Só 3 mini-balizas activas por blocos de 2 min; ou após recuperação o defensor deve tocar noutra zona antes de rematar; ou equipa em posse deve ligar obrigatoriamente a 2 zonas diferentes em ≤8 passes."
                               : isShortCornerRoutine
                                 ? "No lado esquerdo, sequência obrigatória com batedor destro e apoio canhoto (e inverso no lado direito); ou o bloqueador troca posição com finalizador a cada repetição; ou só conta golo se o remate sair de 1.ª na frontal."
+                                : isShortCornerByNewcastle
+                                  ? "Definir duas chamadas (A/B): A para passe tenso na zona de penálti e B para cruzamento ao 2.º poste; ou variar o jogador que arranca do 2.º poste para a marca; ou condicionar 4v4 no 2.º poste com marcação mista."
                               : isBuildUpIntoCounterAttack
                               ? "Aumenta pressão para 3+1 no setor de saída por blocos curtos; ou no setor ofensivo troca para 3v3 com golo a valer apenas após passe extra; ou equipa que recupera deve finalizar em ≤4 s para contar."
                               : isRondoToCounterAttack
@@ -1964,6 +1992,7 @@ export function getTrainingCatalogItems(players: Player[]): TrainingCatalogItem[
     "Cross and Strike": ["finishing"],
     "4 Finishing Drills": ["finishing", "physical"],
     "Short Corner Routine": ["finishing", "setPiece"],
+    "Short Corner by Newcastle": ["finishing", "setPiece"],
     "Build up into Counter Attack": ["finishing", "transition"],
     "Fitness Rondo into Finishing": ["finishing", "pressing", "physical"],
     "Midfielder Run Behind Defense": ["finishing"],

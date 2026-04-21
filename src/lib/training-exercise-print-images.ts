@@ -39,6 +39,7 @@ const TRAINING_EXERCISE_PRINT_IMAGE_BY_TITLE: Record<string, string> = {
   "Aquecimento com Bola - Movimentação": "aquecimento-com-movimentação.png",
   "(2+1)v1 Transition": "2+1v1-transition.png",
   "Short Corner Routine": "short-corner.png",
+  "Short Corner by Newcastle": "short-corner-newcastle.png",
   "Defensive Recovery on Counter Attack": "defensive-recovery.png",
 };
 
