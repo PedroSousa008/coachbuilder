@@ -532,6 +532,31 @@ export const COACHING_LESSON_DEVELOPMENTS: CoachingLessonDevelopmentDef[] = [
       "tactical-intelligence-tactical-discipline",
     ],
   },
+  {
+    lessonId: "day-025",
+    title: "Sean Dyche - Compact Defense on the Box - Coaches’ Vision",
+    skillIds: [
+      "defensive-specialist-box-defending",
+      "defensive-skills-defensive-positioning",
+      "defensive-skills-compact-defending",
+      "defensive-specialist-cross-prevention",
+      "defensive-skills-tackling",
+      "tactical-intelligence-compactness-understanding",
+      "advanced-tactical-compactness-recovery",
+      "tactical-intelligence-marking-intelligence",
+      "tactical-intelligence-covering-space",
+      "communication-leadership-trigger-communication",
+      "centre-back-line-control",
+      "advanced-tactical-depth-management",
+      "defensive-specialist-defensive-body-shape",
+      "mental-attributes-work-ethic",
+      "physical-attributes-stamina",
+      "communication-leadership-motivation-of-teammates",
+      "physical-attributes-endurance",
+      "advanced-physical-recovery-capacity",
+      "tactical-intelligence-counter-attack-recognition",
+    ],
+  },
 ];
 
 const LESSON_BY_ID: Map<string, CoachingLessonDevelopmentDef> = new Map(
