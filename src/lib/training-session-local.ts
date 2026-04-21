@@ -4,7 +4,6 @@
  */
 
 import type { Player, SavedExerciseCategory } from "@/types";
-import { isGoalKickExercise } from "@/lib/saved-exercise-categories";
 import type {
   AiFullTrainingSession,
   AiSingleDrill,
@@ -1855,6 +1854,7 @@ function themesToFilterCategories(themes: TrainingThemeId[]): SavedExerciseCateg
 function primarySaveCategoryFromFilters(cats: SavedExerciseCategory[]): SavedExerciseCategory {
   const order: SavedExerciseCategory[] = [
     "goalKick",
+    "setPiece",
     "finishing",
     "defensive",
     "pressing",
@@ -1916,7 +1916,7 @@ export function getTrainingCatalogItems(players: Player[]): TrainingCatalogItem[
     videoUrl: WARM_UP_WITH_BALL_VIDEO_URL,
     progression: warmPv.progression,
     ...(warmPv.variations !== undefined ? { variations: warmPv.variations } : {}),
-    filterCategories: ["warmup", "possession", "physical"],
+    filterCategories: ["warmup"],
     defaultSaveCategory: "warmup",
   };
 
@@ -1931,14 +1931,11 @@ export function getTrainingCatalogItems(players: Player[]): TrainingCatalogItem[
       "Caminhada 2 minutos; alongamentos dinâmicos leves em pares; respiração controlada. Hidratação e recapitulação de 1 ponto-chave do treino.",
     coachingPoints: "Sem forçar amplitude máxima; foco em costas e posteriores de coxa.",
     setup: "Relvado ou final do campo.",
-    filterCategories: ["warmup", "physical"],
-    defaultSaveCategory: "warmup",
+    filterCategories: [],
+    defaultSaveCategory: "mixed",
   };
 
-  /**
-   * Mapeamento explícito dos filtros da aba "Todos os exercícios", conforme pedido do treinador.
-   * Nota: não existe categoria separada "Bola Parada" no modelo atual, por isso esses exercícios entram em "goalKick".
-   */
+  /** Mapeamento explícito dos filtros da aba "Todos os exercícios", conforme pedido do treinador. */
   const explicitFilterCategoriesByTitle: Partial<Record<string, readonly SavedExerciseCategory[]>> = {
     // Aquecimento / activação
     "Warm Up with Ball": ["warmup"],
@@ -1954,8 +1951,8 @@ export function getTrainingCatalogItems(players: Player[]): TrainingCatalogItem[
     "Breakout Rondo": ["possession", "pressing", "transition", "physical"],
     "(2+1)v1 Transition": ["possession", "transition", "physical"],
     "Rondo to Counter Attack": ["possession", "pressing", "transition"],
-    "Goal Kick 1": ["possession", "goalKick"],
-    "Goal Kick 2": ["possession", "goalKick"],
+    "Goal Kick 1": ["possession", "goalKick", "setPiece"],
+    "Goal Kick 2": ["possession", "goalKick", "setPiece"],
     "Fixed Position Rondo": ["possession", "pressing"],
 
     // Finalização
@@ -1965,7 +1962,7 @@ export function getTrainingCatalogItems(players: Player[]): TrainingCatalogItem[
     "Finishing Transition": ["finishing", "transition", "physical"],
     "Cross and Strike": ["finishing"],
     "4 Finishing Drills": ["finishing", "physical"],
-    "Short Corner Routine": ["finishing", "goalKick"], // "Bola Parada" mapeado para goalKick
+    "Short Corner Routine": ["finishing", "setPiece"],
     "Build up into Counter Attack": ["finishing", "transition"],
     "Fitness Rondo into Finishing": ["finishing", "pressing", "physical"],
     "Midfielder Run Behind Defense": ["finishing"],
@@ -1986,14 +1983,8 @@ export function getTrainingCatalogItems(players: Player[]): TrainingCatalogItem[
     const body = def.describe(players, mins);
     const { progression, variations } = singleDrillProgressionVariationsForTitle(def.title);
     const brief = body.description.replace(/\s*\(\d+\s*min\)\s*\.?$/iu, "").trim();
-    const fcBase = themesToFilterCategories(def.themes);
-    const withGoalKick = isGoalKickExercise(def.title, body.videoUrl)
-      ? [...new Set<SavedExerciseCategory>([...fcBase, "goalKick"])]
-      : fcBase;
     const explicit = explicitFilterCategoriesByTitle[def.title];
-    const fc = explicit
-      ? [...new Set<SavedExerciseCategory>([...withGoalKick, ...explicit])]
-      : withGoalKick;
+    const fc = explicit ? [...new Set<SavedExerciseCategory>(explicit)] : [];
     return {
       catalogId: `main:${def.title}`,
       title: def.title,

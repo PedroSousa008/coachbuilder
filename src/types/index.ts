@@ -287,6 +287,7 @@ export type SavedExerciseCategory =
   | "warmup"
   | "possession"
   | "goalKick"
+  | "setPiece"
   | "pressing"
   | "finishing"
   | "defensive"
