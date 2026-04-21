@@ -1935,15 +1935,25 @@ export function getTrainingCatalogItems(players: Player[]): TrainingCatalogItem[
     defaultSaveCategory: "warmup",
   };
 
+  const warmupFilterTitles = new Set<string>([
+    "Warm Up with Ball",
+    "Passing Activation",
+    "Dual Passing",
+    "Aquecimento com Bola - Movimentação",
+  ]);
+
   const mains: TrainingCatalogItem[] = MAIN_DRILLS.filter((def) => def.title !== "Warm Up with Ball").map((def) => {
     const mins = singleDrillDurationForTitle(def.title, 40);
     const body = def.describe(players, mins);
     const { progression, variations } = singleDrillProgressionVariationsForTitle(def.title);
     const brief = body.description.replace(/\s*\(\d+\s*min\)\s*\.?$/iu, "").trim();
     const fcBase = themesToFilterCategories(def.themes);
-    const fc = isGoalKickExercise(def.title, body.videoUrl)
+    const withGoalKick = isGoalKickExercise(def.title, body.videoUrl)
       ? [...new Set<SavedExerciseCategory>([...fcBase, "goalKick"])]
       : fcBase;
+    const fc = warmupFilterTitles.has(def.title)
+      ? [...new Set<SavedExerciseCategory>([...withGoalKick, "warmup"])]
+      : withGoalKick;
     return {
       catalogId: `main:${def.title}`,
       title: def.title,
