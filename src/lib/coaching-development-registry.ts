@@ -557,6 +557,29 @@ export const COACHING_LESSON_DEVELOPMENTS: CoachingLessonDevelopmentDef[] = [
       "tactical-intelligence-counter-attack-recognition",
     ],
   },
+  {
+    lessonId: "day-026",
+    title: "Xavi Hernández - Importance of Positioning  - Coaches’ Vision",
+    skillIds: [
+      "tactical-intelligence-tempo-control",
+      "midfielder-elite-habits-scanning",
+      "midfield-mastery-dictating-possession",
+      "midfield-mastery-recycling-possession",
+      "midfield-mastery-deep-build-up-composure",
+      "midfield-mastery-passing-lane-manipulation",
+      "tactical-intelligence-spatial-awareness",
+      "tactical-intelligence-zone-occupation",
+      "advanced-tactical-width-management",
+      "advanced-tactical-depth-management",
+      "tactical-intelligence-numerical-superiority-recognition",
+      "advanced-tactical-between-line-positioning",
+      "midfield-mastery-vertical-progression",
+      "advanced-tactical-creating-passing-angles",
+      "attacking-skills-movement-off-ball",
+      "attacking-skills-combination-play",
+      "attacking-skills-link-up-play",
+    ],
+  },
 ];
 
 const LESSON_BY_ID: Map<string, CoachingLessonDevelopmentDef> = new Map(
