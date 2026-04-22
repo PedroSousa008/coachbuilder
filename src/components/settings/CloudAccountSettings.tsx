@@ -16,7 +16,7 @@ export function CloudAccountSettings() {
   const [diag, setDiag] = useState<AdminDiag | null>(null);
 
   useEffect(() => {
-    if (!shouldUseCloudClientApis(user) || !authReady || !user) {
+    if (!shouldUseCloudClientApis(user) || !authReady || !user || user.role !== "admin") {
       setDiag(null);
       return;
     }
@@ -48,7 +48,7 @@ export function CloudAccountSettings() {
           {isAdmin ? "Administrador (vês o menu Admin)" : "Utilizador"}
         </span>
       </p>
-      {diag ? (
+      {isAdmin && diag ? (
         <div className="mt-3 space-y-1 rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-xs text-zinc-500">
           <p>
             Servidor vê <code className="text-zinc-400">ADMIN_OWNER_EMAIL</code>:{" "}
@@ -76,29 +76,30 @@ export function CloudAccountSettings() {
           ) : null}
         </div>
       ) : null}
-      {!isAdmin ? (
-        <p className="mt-3 text-xs leading-relaxed text-zinc-500">
-          Se és o dono do projeto, na Vercel define a variável{" "}
-          <code className="rounded bg-black/40 px-1 text-zinc-400">ADMIN_OWNER_EMAIL</code> exatamente como o email
-          acima (sem aspas a mais), em <strong>Production</strong>, e faz <strong>Redeploy</strong>. Depois carrega em
-          &quot;Atualizar sessão&quot; abaixo ou volta a entrar.
-        </p>
+      {isAdmin ? (
+        <>
+          <p className="mt-3 text-xs leading-relaxed text-zinc-500">
+            Se o <code className="rounded bg-black/40 px-1 text-zinc-400">ADMIN_OWNER_EMAIL</code> na Vercel não
+            coincidir com o email da sessão, corrige em <strong>Production</strong> e faz <strong>Redeploy</strong>.
+            Depois carrega em &quot;Atualizar sessão&quot; ou volta a entrar.
+          </p>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={async () => {
+              setMsg(null);
+              setBusy(true);
+              const r = await refreshUserFromCloud();
+              setBusy(false);
+              setMsg(r.ok ? "Sessão atualizada." : r.error || "Falhou.");
+            }}
+            className="mt-4 rounded-xl border border-surface-border bg-white/5 px-4 py-2 text-xs font-medium text-zinc-200 transition-colors hover:border-zinc-600 hover:bg-white/10 disabled:opacity-50"
+          >
+            {busy ? "A atualizar…" : "Atualizar sessão com o servidor"}
+          </button>
+          {msg ? <p className="mt-2 text-xs text-zinc-500">{msg}</p> : null}
+        </>
       ) : null}
-      <button
-        type="button"
-        disabled={busy}
-        onClick={async () => {
-          setMsg(null);
-          setBusy(true);
-          const r = await refreshUserFromCloud();
-          setBusy(false);
-          setMsg(r.ok ? "Sessão atualizada." : r.error || "Falhou.");
-        }}
-        className="mt-4 rounded-xl border border-surface-border bg-white/5 px-4 py-2 text-xs font-medium text-zinc-200 transition-colors hover:border-zinc-600 hover:bg-white/10 disabled:opacity-50"
-      >
-        {busy ? "A atualizar…" : "Atualizar sessão com o servidor"}
-      </button>
-      {msg ? <p className="mt-2 text-xs text-zinc-500">{msg}</p> : null}
     </div>
   );
 }

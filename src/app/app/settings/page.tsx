@@ -31,15 +31,15 @@ export default function SettingsPage() {
 
   return (
     <div className="mx-auto max-w-4xl space-y-10">
+      <Suspense fallback={<p className="text-sm text-zinc-500">A carregar subscrição…</p>}>
+        <SubscriptionSettings />
+      </Suspense>
+
       <LanguageSettings />
 
       <TeamAccentSettings />
 
       <DataPersistenceNotice />
-
-      <Suspense fallback={<p className="text-sm text-zinc-500">A carregar subscrição…</p>}>
-        <SubscriptionSettings />
-      </Suspense>
 
       <Card>
         <CardHeader>
