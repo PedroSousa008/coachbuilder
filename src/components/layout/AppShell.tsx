@@ -1,10 +1,17 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import { useAuth } from "@/contexts/AuthContext";
 import { AppSidebar } from "./AppSidebar";
 import { AppHeader } from "./AppHeader";
 import { CustomPriceBanner } from "@/components/subscription/CustomPriceBanner";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { cn } from "@/lib/utils";
+import { isClubPresident, isPresidentAppPath } from "@/lib/president-mode";
+import { presidentPageTitle } from "@/lib/president-nav";
+import { PresidentSidebar } from "@/components/president/PresidentSidebar";
+import { PresidentHeader } from "@/components/president/PresidentHeader";
+import { PresidenteNavRedirect } from "@/components/president/PresidenteNavRedirect";
 
 function shellTitle(pathname: string, t: ReturnType<typeof useLanguage>["t"]): string {
   if (pathname.startsWith("/app/admin/database")) return t("shell.database");
@@ -26,19 +33,34 @@ function shellTitle(pathname: string, t: ReturnType<typeof useLanguage>["t"]): s
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const { user } = useAuth();
   const { t } = useLanguage();
-  const title = shellTitle(pathname, t);
+  const presidentMode = isClubPresident(user) && isPresidentAppPath(pathname);
+  const title = presidentMode ? presidentPageTitle(pathname) : shellTitle(pathname, t);
 
   return (
-    <div className="min-h-screen bg-[#0a0d10] lg:pl-64 print:bg-white print:pl-0">
+    <div
+      className={cn(
+        "min-h-screen bg-[#0a0d10] print:bg-white",
+        presidentMode ? "lg:pl-[280px] print:pl-0" : "lg:pl-64 print:pl-0"
+      )}
+    >
+      <PresidenteNavRedirect />
       <div className="print:hidden">
-        <AppSidebar />
-        <AppHeader title={title} />
+        {presidentMode ? (
+          <>
+            <PresidentSidebar />
+            <PresidentHeader title={title} />
+          </>
+        ) : (
+          <>
+            <AppSidebar />
+            <AppHeader title={title} />
+          </>
+        )}
       </div>
       <div className="px-4 py-6 lg:px-8 print:px-4 print:py-4">
-        <div className="print:hidden">
-          <CustomPriceBanner />
-        </div>
+        <div className="print:hidden">{!presidentMode ? <CustomPriceBanner /> : null}</div>
         {children}
       </div>
     </div>
