@@ -47,6 +47,14 @@ export function AppHeader({ title }: { title: string }) {
     [coachProfile.club, canonicalClub?.name, leagueCompetitionName, leagueMatches, fixtures, teamCandidateNames, nowMs]
   );
 
+  const nextMatchFromCalendar = useMemo(() => {
+    const rows = fixtures
+      .map((f) => ({ title: `vs ${f.opponent}`, kickoff: f.kickoff, t: new Date(f.kickoff).getTime(), source: "calendar" as const }))
+      .filter((r) => Number.isFinite(r.t) && r.t > nowMs)
+      .sort((a, b) => a.t - b.t);
+    return rows[0] ?? null;
+  }, [fixtures, nowMs]);
+
   const nextMatchFromSketch = useMemo(() => {
     const rows = sketchArea.calendarEvents
       .filter((e) => e.category === "match")
@@ -60,13 +68,13 @@ export function AppHeader({ title }: { title: string }) {
   }, [sketchArea.calendarEvents, nowMs]);
 
   const nextMatchNotification = useMemo(() => {
-    const fromFixtures = nextMatch
-      ? { title: `vs ${nextMatch.opponent}`, kickoff: nextMatch.kickoff, t: new Date(nextMatch.kickoff).getTime(), source: "fixtures" as const }
+    if (nextMatchFromCalendar) return nextMatchFromCalendar;
+    if (nextMatchFromSketch) return nextMatchFromSketch;
+    const fromResolved = nextMatch
+      ? { title: `vs ${nextMatch.opponent}`, kickoff: nextMatch.kickoff, t: new Date(nextMatch.kickoff).getTime(), source: "calendar" as const }
       : null;
-    if (!fromFixtures) return nextMatchFromSketch;
-    if (!nextMatchFromSketch) return fromFixtures;
-    return nextMatchFromSketch.t < fromFixtures.t ? nextMatchFromSketch : fromFixtures;
-  }, [nextMatch, nextMatchFromSketch]);
+    return fromResolved;
+  }, [nextMatch, nextMatchFromCalendar, nextMatchFromSketch]);
 
   const nextMatchDaysLeft = useMemo(() => {
     if (!nextMatchNotification) return null;
@@ -99,11 +107,32 @@ export function AppHeader({ title }: { title: string }) {
     return reminders;
   }, [sketchArea.calendarEvents, nowMs]);
 
+  const calendarTimeReminders = useMemo(() => {
+    const reminders: { id: string; title: string; whenLabel: string; startsAt: string }[] = [];
+    for (const f of fixtures) {
+      const startMs = new Date(f.kickoff).getTime();
+      if (!Number.isFinite(startMs) || startMs <= nowMs) continue;
+      const diff = startMs - nowMs;
+      const whenLabel =
+        diff <= 30 * 60 * 1000 ? "em 30 min" : diff <= 2 * 60 * 60 * 1000 ? "em 2 horas" : diff <= 24 * 60 * 60 * 1000 ? "em 1 dia" : null;
+      if (!whenLabel) continue;
+      reminders.push({
+        id: `fixture:${f.id}:${whenLabel}`,
+        title: `Jogo vs ${f.opponent}`,
+        whenLabel,
+        startsAt: f.kickoff,
+      });
+    }
+    reminders.sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime());
+    return reminders;
+  }, [fixtures, nowMs]);
+
   const unreadConversations = useMemo(
     () => conversations.filter((c) => (c.unread ?? 0) > 0),
     [conversations]
   );
-  const notificationBadgeCount = (nextMatchNotification ? 1 : 0) + sketchTimeReminders.length + unreadConversations.length;
+  const notificationBadgeCount =
+    (nextMatchNotification ? 1 : 0) + sketchTimeReminders.length + calendarTimeReminders.length + unreadConversations.length;
 
   const mobileLinks = useMemo(() => {
     const mobileLinksBase = [
@@ -176,10 +205,20 @@ export function AppHeader({ title }: { title: string }) {
                       {nextMatchNotification.title} · faltam {nextMatchDaysLeft ?? 0} dia(s)
                     </p>
                     <p className="mt-0.5 text-xs text-zinc-500">
-                      {new Date(nextMatchNotification.kickoff).toLocaleString("pt-PT")} · {nextMatchNotification.source === "sketch" ? "Sketch" : "Calendário"}
+                      {new Date(nextMatchNotification.kickoff).toLocaleString("pt-PT")} ·{" "}
+                      {nextMatchNotification.source === "sketch" ? "Sketch" : "Calendário"}
                     </p>
                   </div>
                 ) : null}
+
+                {calendarTimeReminders.map((r) => (
+                  <div key={r.id} className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
+                    <p className="text-xs text-zinc-500">Calendário</p>
+                    <p className="text-sm font-medium text-zinc-200">
+                      {r.title} · lembrete {r.whenLabel}
+                    </p>
+                  </div>
+                ))}
 
                 {sketchTimeReminders.map((r) => (
                   <div key={r.id} className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
