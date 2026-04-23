@@ -26,7 +26,17 @@ function labelFor(a: ChatAttachment, isPt: boolean): string {
     case "training_catalog":
       return isPt ? "Vídeo do catálogo" : "Catalog video";
     case "sketch_board":
-      return "Sketch";
+      return isPt ? "Sketch (tudo)" : "Sketch (full)";
+    case "sketch_note":
+      return isPt ? "Nota (Sketch)" : "Sketch note";
+    case "sketch_saved_file":
+      return isPt ? "Ficheiro (Sketch)" : "Sketch file";
+    case "sketch_board_draft":
+      return isPt ? "Quadro (Sketch)" : "Sketch board";
+    case "sketch_task":
+      return isPt ? "Tarefa (Sketch)" : "Sketch task";
+    case "sketch_calendar_event":
+      return isPt ? "Evento (Sketch)" : "Sketch event";
     default:
       return isPt ? "Ficheiro" : "File";
   }
@@ -301,6 +311,49 @@ function AttachmentRow({
         >
           <ExternalLink className="h-3.5 w-3.5" aria-hidden />
           {trainingCta}
+        </Link>
+      </div>
+    );
+  }
+
+  if (
+    a.kind === "sketch_note" ||
+    a.kind === "sketch_saved_file" ||
+    a.kind === "sketch_board_draft" ||
+    a.kind === "sketch_task" ||
+    a.kind === "sketch_calendar_event"
+  ) {
+    const typeLabel =
+      a.kind === "sketch_note"
+        ? isPt
+          ? "Nota"
+          : "Note"
+        : a.kind === "sketch_saved_file"
+          ? isPt
+            ? "Ficheiro"
+            : "File"
+          : a.kind === "sketch_board_draft"
+            ? isPt
+              ? "Quadro táctico"
+              : "Tactics board"
+            : a.kind === "sketch_task"
+              ? isPt
+                ? "Tarefa"
+                : "Task"
+              : isPt
+                ? "Evento"
+                : "Event";
+    return (
+      <div className={card}>
+        <p className="font-medium text-zinc-200">{name}</p>
+        <p className="mt-0.5 text-[10px] font-medium uppercase tracking-wide text-zinc-500">{typeLabel}</p>
+        <p className="mt-1 text-[11px] text-zinc-500">{appSnapshotHint}</p>
+        <Link
+          href="/app/sketch"
+          className="mt-2 inline-flex items-center gap-1 text-[11px] font-medium text-accent hover:underline"
+        >
+          <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+          {sketchCta}
         </Link>
       </div>
     );

@@ -52,6 +52,14 @@ export function messagePreviewLine(body: string, attachments?: ChatAttachment[] 
       a.kind === "training_catalog" ||
       (a.kind === "saved_exercise" && a.payloadJson?.includes('"videoUrl"'));
     if (hasVideo) return n ? `▶ ${n}` : "▶ Video";
+    const sketchItem =
+      a.kind === "sketch_note" ||
+      a.kind === "sketch_saved_file" ||
+      a.kind === "sketch_board_draft" ||
+      a.kind === "sketch_task" ||
+      a.kind === "sketch_calendar_event" ||
+      a.kind === "sketch_board";
+    if (sketchItem) return n ? `📋 ${n}` : "📋 Sketch";
     return n ? `📎 ${n}` : "📎 Anexo";
   }
   return `📎 ${attachments.length} anexos`;
@@ -92,7 +100,12 @@ function isChatAttachmentKind(k: unknown): k is ChatAttachmentKind {
     k === "training_session" ||
     k === "saved_exercise" ||
     k === "training_catalog" ||
-    k === "sketch_board"
+    k === "sketch_board" ||
+    k === "sketch_note" ||
+    k === "sketch_saved_file" ||
+    k === "sketch_board_draft" ||
+    k === "sketch_task" ||
+    k === "sketch_calendar_event"
   );
 }
 

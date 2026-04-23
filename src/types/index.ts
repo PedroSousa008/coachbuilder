@@ -370,7 +370,14 @@ export type ChatAttachmentKind =
   | "training_session"
   | "saved_exercise"
   | "training_catalog"
-  | "sketch_board";
+  /** Full Sketch Area workspace snapshot (legacy / bulk). */
+  | "sketch_board"
+  /** Single saved item from Sketch Area for the group. */
+  | "sketch_note"
+  | "sketch_saved_file"
+  | "sketch_board_draft"
+  | "sketch_task"
+  | "sketch_calendar_event";
 
 export interface ChatAttachment {
   id: string;

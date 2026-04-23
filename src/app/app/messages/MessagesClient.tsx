@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Paperclip } from "lucide-react";
 import { ChatConversationItem } from "@/components/messages/ChatConversationItem";
 import { GroupEditorModal } from "@/components/messages/GroupEditorModal";
@@ -100,6 +101,33 @@ export function MessagesClient() {
     [players]
   );
 
+  const sketchNotesPicker = useMemo(
+    () =>
+      [...sketchArea.notes].sort(
+        (a, b) => Number(b.pinned) - Number(a.pinned) || (b.updatedAt ?? "").localeCompare(a.updatedAt ?? "")
+      ),
+    [sketchArea.notes]
+  );
+  const sketchFilesPicker = useMemo(
+    () => [...sketchArea.files].sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? "")),
+    [sketchArea.files]
+  );
+  const sketchBoardsPicker = useMemo(
+    () => [...sketchArea.boardDrafts].sort((a, b) => (b.updatedAt ?? "").localeCompare(a.updatedAt ?? "")),
+    [sketchArea.boardDrafts]
+  );
+  const sketchTasksPicker = useMemo(
+    () => [...sketchArea.tasks].sort((a, b) => (b.updatedAt ?? "").localeCompare(a.updatedAt ?? "")),
+    [sketchArea.tasks]
+  );
+  const sketchEventsPicker = useMemo(
+    () =>
+      [...sketchArea.calendarEvents].sort(
+        (a, b) => `${b.date ?? ""}${b.timeStart ?? ""}`.localeCompare(`${a.date ?? ""}${a.timeStart ?? ""}`)
+      ),
+    [sketchArea.calendarEvents]
+  );
+
   const [tab, setTab] = useState<"group" | "dm">("group");
   const filtered = useMemo(
     () => conversations.filter((c) => (tab === "group" ? c.type === "group" : c.type === "dm")),
@@ -111,6 +139,10 @@ export function MessagesClient() {
   const [pendingAttachments, setPendingAttachments] = useState<ChatAttachment[]>([]);
   const [attachMenuOpen, setAttachMenuOpen] = useState(false);
   const fileAttachRef = useRef<HTMLInputElement>(null);
+  /** Anchor for fixed attach menu (escapes parent `overflow:hidden` on large layouts). */
+  const attachWrapRef = useRef<HTMLDivElement>(null);
+  const attachMenuPortalRef = useRef<HTMLDivElement>(null);
+  const [attachMenuCoords, setAttachMenuCoords] = useState<{ left: number; bottom: number } | null>(null);
   const [dmPickerOpen, setDmPickerOpen] = useState(false);
   const [createGroupOpen, setCreateGroupOpen] = useState(false);
   const [manageGroupOpen, setManageGroupOpen] = useState(false);
@@ -132,6 +164,36 @@ export function MessagesClient() {
   const scrollThreadPendingRef = useRef(false);
 
   const coachUserId = user?.id ?? mockCoach.id;
+
+  useLayoutEffect(() => {
+    if (!attachMenuOpen) {
+      setAttachMenuCoords(null);
+      return;
+    }
+    const el = attachWrapRef.current;
+    if (!el) return;
+    const update = () => {
+      const r = el.getBoundingClientRect();
+      const menuW = 256;
+      const left = Math.max(8, Math.min(r.left, window.innerWidth - menuW - 8));
+      setAttachMenuCoords({ left, bottom: window.innerHeight - r.top + 4 });
+    };
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, [attachMenuOpen]);
+
+  useEffect(() => {
+    if (!attachMenuOpen) return;
+    const onDown = (e: MouseEvent) => {
+      const n = e.target as Node;
+      if (attachWrapRef.current?.contains(n)) return;
+      if (attachMenuPortalRef.current?.contains(n)) return;
+      setAttachMenuOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [attachMenuOpen]);
 
   const openThreadLastId =
     activeId && (messagesByConv[activeId]?.length ?? 0) > 0
@@ -475,23 +537,43 @@ export function MessagesClient() {
     return activeDmLegacyRosterId ? rosterIdHasCloudAccount(activeDmLegacyRosterId) : false;
   }, [activeConv, activeDmPeerCloudId, activeDmLegacyRosterId, rosterIdHasCloudAccount]);
 
-  const onAttachFiles = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
-    const att = await buildChatAttachmentFromFile(file);
-    if (!att) return;
-    const next = [...pendingAttachments, att];
-    const err = validateAttachmentPayload(next);
-    if (err) return;
-    setPendingAttachments(next);
-  }, [pendingAttachments]);
+  const pushPendingAttachment = useCallback(
+    (att: ChatAttachment) => {
+      const next = [...pendingAttachments, att];
+      const err = validateAttachmentPayload(next);
+      if (err) {
+        alert(err);
+        return;
+      }
+      setPendingAttachments(next);
+      setAttachMenuOpen(false);
+    },
+    [pendingAttachments]
+  );
+
+  const onAttachFiles = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      e.target.value = "";
+      if (!file) return;
+      const att = await buildChatAttachmentFromFile(file);
+      if (!att) return;
+      const next = [...pendingAttachments, att];
+      const err = validateAttachmentPayload(next);
+      if (err) {
+        alert(err);
+        return;
+      }
+      setPendingAttachments(next);
+    },
+    [pendingAttachments]
+  );
 
   const addTrainingAttachment = useCallback(
     (sessionId: string) => {
       const s = trainingSessions.find((x) => x.id === sessionId);
       if (!s) return;
-      const att: ChatAttachment = {
+      pushPendingAttachment({
         id: uidAttachment(),
         kind: "training_session",
         name: s.title,
@@ -501,20 +583,16 @@ export function MessagesClient() {
           date: s.date,
           durationMin: s.durationMin,
         }),
-      };
-      const next = [...pendingAttachments, att];
-      if (validateAttachmentPayload(next)) return;
-      setPendingAttachments(next);
-      setAttachMenuOpen(false);
+      });
     },
-    [pendingAttachments, trainingSessions]
+    [pushPendingAttachment, trainingSessions]
   );
 
   const addExerciseAttachment = useCallback(
     (exerciseId: string) => {
       const ex = savedTrainingExercises.find((x) => x.id === exerciseId);
       if (!ex) return;
-      const att: ChatAttachment = {
+      pushPendingAttachment({
         id: uidAttachment(),
         kind: "saved_exercise",
         name: ex.title,
@@ -525,20 +603,16 @@ export function MessagesClient() {
           category: ex.category,
           ...(ex.videoUrl?.trim() ? { videoUrl: ex.videoUrl.trim() } : {}),
         }),
-      };
-      const next = [...pendingAttachments, att];
-      if (validateAttachmentPayload(next)) return;
-      setPendingAttachments(next);
-      setAttachMenuOpen(false);
+      });
     },
-    [pendingAttachments, savedTrainingExercises]
+    [pushPendingAttachment, savedTrainingExercises]
   );
 
   const addCatalogVideoAttachment = useCallback(
     (catalogId: string) => {
       const item = catalogItemsWithVideo.find((x) => x.catalogId === catalogId);
       if (!item?.videoUrl?.trim()) return;
-      const att: ChatAttachment = {
+      pushPendingAttachment({
         id: uidAttachment(),
         kind: "training_catalog",
         name: item.title,
@@ -550,28 +624,91 @@ export function MessagesClient() {
           phase: item.phase,
           durationMin: item.durationMin,
         }),
-      };
-      const next = [...pendingAttachments, att];
-      if (validateAttachmentPayload(next)) return;
-      setPendingAttachments(next);
-      setAttachMenuOpen(false);
+      });
     },
-    [pendingAttachments, catalogItemsWithVideo]
+    [pushPendingAttachment, catalogItemsWithVideo]
   );
 
-  const addSketchAttachment = useCallback(() => {
-    const att: ChatAttachment = {
+  const addSketchFullWorkspaceAttachment = useCallback(() => {
+    pushPendingAttachment({
       id: uidAttachment(),
       kind: "sketch_board",
-      name: "Sketch",
+      name: isPt ? "Sketch Area (completo)" : "Sketch Area (full)",
       payloadJson: JSON.stringify(sketchArea),
-    };
-    const next = [...pendingAttachments, att];
-    const err = validateAttachmentPayload(next);
-    if (err) return;
-    setPendingAttachments(next);
-    setAttachMenuOpen(false);
-  }, [pendingAttachments, sketchArea]);
+    });
+  }, [pushPendingAttachment, sketchArea, isPt]);
+
+  const addSketchNoteToChat = useCallback(
+    (noteId: string) => {
+      const n = sketchArea.notes.find((x) => x.id === noteId);
+      if (!n) return;
+      pushPendingAttachment({
+        id: uidAttachment(),
+        kind: "sketch_note",
+        name: n.title.trim() || (isPt ? "Nota" : "Note"),
+        payloadJson: JSON.stringify(n),
+      });
+    },
+    [sketchArea.notes, pushPendingAttachment, isPt]
+  );
+
+  const addSketchFileToChat = useCallback(
+    (fileId: string) => {
+      const f = sketchArea.files.find((x) => x.id === fileId);
+      if (!f) return;
+      pushPendingAttachment({
+        id: uidAttachment(),
+        kind: "sketch_saved_file",
+        name: f.name.trim() || (isPt ? "Ficheiro" : "File"),
+        mimeType: f.mimeType,
+        sizeBytes: f.sizeBytes,
+        payloadJson: JSON.stringify(f),
+      });
+    },
+    [sketchArea.files, pushPendingAttachment, isPt]
+  );
+
+  const addSketchBoardDraftToChat = useCallback(
+    (draftId: string) => {
+      const d = sketchArea.boardDrafts.find((x) => x.id === draftId);
+      if (!d) return;
+      pushPendingAttachment({
+        id: uidAttachment(),
+        kind: "sketch_board_draft",
+        name: d.title.trim() || (isPt ? "Quadro" : "Board"),
+        payloadJson: JSON.stringify(d),
+      });
+    },
+    [sketchArea.boardDrafts, pushPendingAttachment, isPt]
+  );
+
+  const addSketchTaskToChat = useCallback(
+    (taskId: string) => {
+      const t = sketchArea.tasks.find((x) => x.id === taskId);
+      if (!t) return;
+      pushPendingAttachment({
+        id: uidAttachment(),
+        kind: "sketch_task",
+        name: t.title.trim() || (isPt ? "Tarefa" : "Task"),
+        payloadJson: JSON.stringify(t),
+      });
+    },
+    [sketchArea.tasks, pushPendingAttachment, isPt]
+  );
+
+  const addSketchCalendarEventToChat = useCallback(
+    (eventId: string) => {
+      const ev = sketchArea.calendarEvents.find((x) => x.id === eventId);
+      if (!ev) return;
+      pushPendingAttachment({
+        id: uidAttachment(),
+        kind: "sketch_calendar_event",
+        name: ev.title.trim() || (isPt ? "Evento" : "Event"),
+        payloadJson: JSON.stringify(ev),
+      });
+    },
+    [sketchArea.calendarEvents, pushPendingAttachment, isPt]
+  );
 
   const send = async () => {
     const trimmed = draft.trim();
@@ -1181,7 +1318,7 @@ export function MessagesClient() {
                   </div>
                 ) : null}
                 <div className="flex gap-2">
-                  <div className="relative flex shrink-0">
+                  <div ref={attachWrapRef} className="relative flex shrink-0">
                     <input
                       ref={fileAttachRef}
                       type="file"
@@ -1196,87 +1333,194 @@ export function MessagesClient() {
                       className="px-2.5"
                       disabled={activeConv.type === "dm" && !canSendDm}
                       aria-label={isPt ? "Anexar" : "Attach"}
+                      aria-expanded={attachMenuOpen}
                       onClick={() => setAttachMenuOpen((o) => !o)}
                     >
                       <Paperclip className="h-4 w-4" />
                     </Button>
-                    {attachMenuOpen ? (
-                      <div className="absolute bottom-full left-0 z-30 mb-1 w-60 rounded-xl border border-surface-border bg-surface p-2 shadow-xl">
-                        <button
-                          type="button"
-                          className="block w-full rounded-lg px-2 py-1.5 text-left text-xs text-zinc-200 hover:bg-white/10"
-                          onClick={() => {
-                            fileAttachRef.current?.click();
-                            setAttachMenuOpen(false);
-                          }}
-                        >
-                          {isPt ? "Ficheiro do dispositivo" : "File from device"}
-                        </button>
-                        {trainingSessions.length > 0 ? (
-                          <select
-                            className="mt-1 w-full rounded-lg border border-surface-border bg-surface-raised px-2 py-1.5 text-xs text-white"
-                            defaultValue=""
-                            onChange={(e) => {
-                              const v = e.target.value;
-                              e.currentTarget.value = "";
-                              if (v) addTrainingAttachment(v);
+                    {attachMenuOpen && attachMenuCoords
+                      ? createPortal(
+                          <div
+                            ref={attachMenuPortalRef}
+                            role="menu"
+                            className="max-h-[min(420px,72vh)] w-64 overflow-y-auto rounded-xl border border-surface-border bg-surface p-2 shadow-2xl"
+                            style={{
+                              position: "fixed",
+                              left: attachMenuCoords.left,
+                              bottom: attachMenuCoords.bottom,
+                              zIndex: 220,
                             }}
                           >
-                            <option value="">{isPt ? "Treino guardado…" : "Saved training…"}</option>
-                            {trainingSessions.map((s) => (
-                              <option key={s.id} value={s.id}>
-                                {s.title}
-                              </option>
-                            ))}
-                          </select>
-                        ) : null}
-                        {savedTrainingExercises.length > 0 ? (
-                          <select
-                            className="mt-1 w-full rounded-lg border border-surface-border bg-surface-raised px-2 py-1.5 text-xs text-white"
-                            defaultValue=""
-                            onChange={(e) => {
-                              const v = e.target.value;
-                              e.currentTarget.value = "";
-                              if (v) addExerciseAttachment(v);
-                            }}
-                          >
-                            <option value="">{isPt ? "Exercício guardado…" : "Saved exercise…"}</option>
-                            {savedTrainingExercises.map((s) => (
-                              <option key={s.id} value={s.id}>
-                                {s.title}
-                              </option>
-                            ))}
-                          </select>
-                        ) : null}
-                        {catalogItemsWithVideo.length > 0 ? (
-                          <select
-                            className="mt-1 max-h-32 w-full rounded-lg border border-surface-border bg-surface-raised px-2 py-1.5 text-xs text-white"
-                            defaultValue=""
-                            onChange={(e) => {
-                              const v = e.target.value;
-                              e.currentTarget.value = "";
-                              if (v) addCatalogVideoAttachment(v);
-                            }}
-                          >
-                            <option value="">
-                              {isPt ? "Vídeo do catálogo (MP4)…" : "Catalog video (MP4)…"}
-                            </option>
-                            {catalogItemsWithVideo.map((item) => (
-                              <option key={item.catalogId} value={item.catalogId}>
-                                {item.title}
-                              </option>
-                            ))}
-                          </select>
-                        ) : null}
-                        <button
-                          type="button"
-                          className="mt-1 block w-full rounded-lg px-2 py-1.5 text-left text-xs text-zinc-200 hover:bg-white/10"
-                          onClick={() => addSketchAttachment()}
-                        >
-                          {isPt ? "Sketch (táctica)" : "Sketch (tactics board)"}
-                        </button>
-                      </div>
-                    ) : null}
+                            <button
+                              type="button"
+                              className="block w-full rounded-lg px-2 py-1.5 text-left text-xs text-zinc-200 hover:bg-white/10"
+                              onClick={() => {
+                                fileAttachRef.current?.click();
+                                setAttachMenuOpen(false);
+                              }}
+                            >
+                              {isPt ? "Ficheiro do dispositivo" : "File from device"}
+                            </button>
+                            {trainingSessions.length > 0 ? (
+                              <select
+                                className="mt-1 w-full rounded-lg border border-surface-border bg-surface-raised px-2 py-1.5 text-xs text-white"
+                                defaultValue=""
+                                onChange={(e) => {
+                                  const v = e.target.value;
+                                  e.currentTarget.value = "";
+                                  if (v) addTrainingAttachment(v);
+                                }}
+                              >
+                                <option value="">{isPt ? "Treino guardado…" : "Saved training…"}</option>
+                                {trainingSessions.map((s) => (
+                                  <option key={s.id} value={s.id}>
+                                    {s.title}
+                                  </option>
+                                ))}
+                              </select>
+                            ) : null}
+                            {savedTrainingExercises.length > 0 ? (
+                              <select
+                                className="mt-1 w-full rounded-lg border border-surface-border bg-surface-raised px-2 py-1.5 text-xs text-white"
+                                defaultValue=""
+                                onChange={(e) => {
+                                  const v = e.target.value;
+                                  e.currentTarget.value = "";
+                                  if (v) addExerciseAttachment(v);
+                                }}
+                              >
+                                <option value="">{isPt ? "Exercício guardado…" : "Saved exercise…"}</option>
+                                {savedTrainingExercises.map((s) => (
+                                  <option key={s.id} value={s.id}>
+                                    {s.title}
+                                  </option>
+                                ))}
+                              </select>
+                            ) : null}
+                            {catalogItemsWithVideo.length > 0 ? (
+                              <select
+                                className="mt-1 max-h-32 w-full rounded-lg border border-surface-border bg-surface-raised px-2 py-1.5 text-xs text-white"
+                                defaultValue=""
+                                onChange={(e) => {
+                                  const v = e.target.value;
+                                  e.currentTarget.value = "";
+                                  if (v) addCatalogVideoAttachment(v);
+                                }}
+                              >
+                                <option value="">
+                                  {isPt ? "Vídeo do catálogo (MP4)…" : "Catalog video (MP4)…"}
+                                </option>
+                                {catalogItemsWithVideo.map((item) => (
+                                  <option key={item.catalogId} value={item.catalogId}>
+                                    {item.title}
+                                  </option>
+                                ))}
+                              </select>
+                            ) : null}
+                            <p className="mt-2 border-t border-surface-border pt-2 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+                              {isPt ? "Sketch Area" : "Sketch Area"}
+                            </p>
+                            {sketchNotesPicker.length > 0 ? (
+                              <select
+                                className="mt-1 w-full rounded-lg border border-surface-border bg-surface-raised px-2 py-1.5 text-xs text-white"
+                                defaultValue=""
+                                onChange={(e) => {
+                                  const v = e.target.value;
+                                  e.currentTarget.value = "";
+                                  if (v) addSketchNoteToChat(v);
+                                }}
+                              >
+                                <option value="">{isPt ? "Nota…" : "Note…"}</option>
+                                {sketchNotesPicker.map((n) => (
+                                  <option key={n.id} value={n.id}>
+                                    {n.title || n.id}
+                                  </option>
+                                ))}
+                              </select>
+                            ) : null}
+                            {sketchFilesPicker.length > 0 ? (
+                              <select
+                                className="mt-1 w-full rounded-lg border border-surface-border bg-surface-raised px-2 py-1.5 text-xs text-white"
+                                defaultValue=""
+                                onChange={(e) => {
+                                  const v = e.target.value;
+                                  e.currentTarget.value = "";
+                                  if (v) addSketchFileToChat(v);
+                                }}
+                              >
+                                <option value="">{isPt ? "Ficheiro / documento…" : "File / document…"}</option>
+                                {sketchFilesPicker.map((f) => (
+                                  <option key={f.id} value={f.id}>
+                                    {f.name}
+                                  </option>
+                                ))}
+                              </select>
+                            ) : null}
+                            {sketchBoardsPicker.length > 0 ? (
+                              <select
+                                className="mt-1 w-full rounded-lg border border-surface-border bg-surface-raised px-2 py-1.5 text-xs text-white"
+                                defaultValue=""
+                                onChange={(e) => {
+                                  const v = e.target.value;
+                                  e.currentTarget.value = "";
+                                  if (v) addSketchBoardDraftToChat(v);
+                                }}
+                              >
+                                <option value="">{isPt ? "Quadro táctico…" : "Tactics board…"}</option>
+                                {sketchBoardsPicker.map((d) => (
+                                  <option key={d.id} value={d.id}>
+                                    {d.title}
+                                  </option>
+                                ))}
+                              </select>
+                            ) : null}
+                            {sketchTasksPicker.length > 0 ? (
+                              <select
+                                className="mt-1 w-full rounded-lg border border-surface-border bg-surface-raised px-2 py-1.5 text-xs text-white"
+                                defaultValue=""
+                                onChange={(e) => {
+                                  const v = e.target.value;
+                                  e.currentTarget.value = "";
+                                  if (v) addSketchTaskToChat(v);
+                                }}
+                              >
+                                <option value="">{isPt ? "Tarefa…" : "Task…"}</option>
+                                {sketchTasksPicker.map((t) => (
+                                  <option key={t.id} value={t.id}>
+                                    {t.completed ? `✓ ${t.title}` : t.title}
+                                  </option>
+                                ))}
+                              </select>
+                            ) : null}
+                            {sketchEventsPicker.length > 0 ? (
+                              <select
+                                className="mt-1 w-full rounded-lg border border-surface-border bg-surface-raised px-2 py-1.5 text-xs text-white"
+                                defaultValue=""
+                                onChange={(e) => {
+                                  const v = e.target.value;
+                                  e.currentTarget.value = "";
+                                  if (v) addSketchCalendarEventToChat(v);
+                                }}
+                              >
+                                <option value="">{isPt ? "Evento de calendário…" : "Calendar event…"}</option>
+                                {sketchEventsPicker.map((ev) => (
+                                  <option key={ev.id} value={ev.id}>
+                                    {ev.title} · {ev.date}
+                                  </option>
+                                ))}
+                              </select>
+                            ) : null}
+                            <button
+                              type="button"
+                              className="mt-1 block w-full rounded-lg px-2 py-1.5 text-left text-xs text-zinc-200 hover:bg-white/10"
+                              onClick={() => addSketchFullWorkspaceAttachment()}
+                            >
+                              {isPt ? "Toda a Sketch Area (snapshot)" : "Full Sketch Area (snapshot)"}
+                            </button>
+                          </div>,
+                          document.body
+                        )
+                      : null}
                   </div>
                   <Input
                     ref={draftInputRef}
