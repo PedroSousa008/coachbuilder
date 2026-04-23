@@ -1,5 +1,4 @@
 import Link from "next/link";
-import Image from "next/image";
 
 export function LandingFooter() {
   return (
@@ -9,7 +8,7 @@ export function LandingFooter() {
           <div>
             <div className="flex items-center gap-2">
               <span className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-xl border border-surface-border/70 bg-white">
-                <Image src="/icon.svg" alt="CoachBuilder logo" width={36} height={36} className="h-full w-full object-cover" />
+                <img src="/icon.svg" alt="CoachBuilder logo" className="h-full w-full object-contain" />
               </span>
               <span className="font-display font-semibold text-white">CoachBuilder</span>
             </div>
