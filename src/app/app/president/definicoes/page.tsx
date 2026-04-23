@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
-import { presidentSeats } from "@/data/president-mock";
+import { PRESIDENT_EXTRA_SEAT_PRICE_EUR, PRESIDENT_INCLUDED_COACH_SEATS } from "@/lib/president-constants";
 
 export default function PresidentDefinicoesPage() {
   return (
@@ -25,12 +25,12 @@ export default function PresidentDefinicoesPage() {
           </CardHeader>
           <CardContent className="space-y-4 text-sm text-zinc-300">
             <p>
-              O teu plano inclui <strong className="text-white">{presidentSeats.included} lugares</strong> de treinador
-              principal (contas criadas por ti, sem mensalidade extra por treinador). Lugares em uso:{" "}
-              <strong className="text-white">{presidentSeats.used}</strong>.
+              O teu plano inclui <strong className="text-white">{PRESIDENT_INCLUDED_COACH_SEATS} lugares</strong> de
+              treinador principal (contas criadas por ti, sem mensalidade extra por treinador). Lugares em uso:{" "}
+              <strong className="text-white">0</strong> — convida a equipa técnica quando estiveres pronto.
             </p>
             <p className="text-zinc-500">
-              Cada lugar adicional: <strong className="text-zinc-200">{presidentSeats.extraSeatPriceEUR}€</strong>{" "}
+              Cada lugar adicional: <strong className="text-zinc-200">{PRESIDENT_EXTRA_SEAT_PRICE_EUR}€</strong>{" "}
               pagamento único — permanece activo sem custo mensal associado a esse login.
             </p>
             <Button type="button" variant="secondary" size="sm" disabled>

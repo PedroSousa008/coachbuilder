@@ -7,7 +7,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useAppData } from "@/contexts/AppDataContext";
 import { cn } from "@/lib/utils";
 import { PRESIDENT_NAV } from "@/lib/president-nav";
-import { presidentSeats } from "@/data/president-mock";
+import { PRESIDENT_EXTRA_SEAT_PRICE_EUR, PRESIDENT_INCLUDED_COACH_SEATS } from "@/lib/president-constants";
 
 export function PresidentSidebar() {
   const pathname = usePathname();
@@ -59,10 +59,10 @@ export function PresidentSidebar() {
         <div className="rounded-xl border border-surface-border bg-surface-raised/40 px-3 py-2">
           <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">Lugares de treinador</p>
           <p className="mt-1 text-sm font-medium text-white">
-            {presidentSeats.used} / {presidentSeats.included} em uso
+            0 / {PRESIDENT_INCLUDED_COACH_SEATS} lugares ocupados
           </p>
           <p className="mt-1 text-[11px] leading-snug text-zinc-500">
-            Cada lugar extra: {presidentSeats.extraSeatPriceEUR}€ (pagamento único, sem mensalidade adicional por
+            Cada lugar extra: {PRESIDENT_EXTRA_SEAT_PRICE_EUR}€ (pagamento único, sem mensalidade adicional por
             treinador).
           </p>
         </div>

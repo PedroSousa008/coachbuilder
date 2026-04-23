@@ -2,8 +2,6 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { Badge } from "@/components/ui/Badge";
-import { presidentCoaches } from "@/data/president-mock";
 
 export default function PresidentTreinadoresPage() {
   return (
@@ -12,7 +10,8 @@ export default function PresidentTreinadoresPage() {
         <div>
           <h2 className="font-display text-2xl font-semibold text-white">Treinadores</h2>
           <p className="mt-1 text-sm text-zinc-500">
-            Lista consolidada da equipa técnica. Comparação lado a lado e fichas completas em desenvolvimento.
+            Lista da equipa técnica do clube. Adiciona treinadores e preenche os dados — a comparação lado a lado virá
+            numa fase seguinte.
           </p>
         </div>
         <Button type="button" variant="secondary" disabled className="shrink-0">
@@ -21,9 +20,8 @@ export default function PresidentTreinadoresPage() {
       </div>
 
       <Card className="border-surface-border bg-surface-raised/30">
-        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
+        <CardHeader>
           <CardTitle className="text-base text-white">Plantel técnico</CardTitle>
-          <Badge variant="muted">Dados de demonstração</Badge>
         </CardHeader>
         <CardContent className="overflow-x-auto p-0 sm:p-6">
           <table className="w-full min-w-[920px] text-left text-sm">
@@ -42,40 +40,20 @@ export default function PresidentTreinadoresPage() {
               </tr>
             </thead>
             <tbody>
-              {presidentCoaches.map((c) => (
-                <tr key={c.id} className="border-b border-surface-border/60 last:border-0">
-                  <td className="px-4 py-3 font-medium text-white">{c.name}</td>
-                  <td className="px-4 py-3 text-zinc-400">{c.birthDate}</td>
-                  <td className="px-4 py-3 text-zinc-300">{c.role}</td>
-                  <td className="px-4 py-3 text-zinc-300">{c.team}</td>
-                  <td className="px-4 py-3 font-mono text-zinc-200">{c.winPct}%</td>
-                  <td className="px-4 py-3 tabular-nums text-zinc-300">{c.sessionsCreated}</td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={
-                        c.activityLevel === "Alta"
-                          ? "text-accent"
-                          : c.activityLevel === "Média"
-                            ? "text-amber-300/90"
-                            : "text-red-300/90"
-                      }
-                    >
-                      {c.activityLevel}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 tabular-nums text-zinc-300">{c.parentRating.toFixed(1)} / 5</td>
-                  <td className="px-4 py-3 tabular-nums text-zinc-200">#{c.internalRank}</td>
-                  <td className="px-4 py-3 text-xs text-zinc-400">{c.contractStatus}</td>
-                </tr>
-              ))}
+              <tr>
+                <td colSpan={10} className="px-4 py-16 text-center text-sm text-zinc-500">
+                  Ainda não há treinadores registados. Cria lugares e convida a equipa técnica a partir das definições
+                  do modo clube.
+                </td>
+              </tr>
             </tbody>
           </table>
         </CardContent>
       </Card>
 
       <p className="text-center text-xs text-zinc-600">
-        Ficha individual: histórico de estatísticas, percurso, troféus, metodologia, pontos fortes e notas internas —
-        disponível na próxima iteração.
+        Ficha individual (estatísticas, percurso, troféus, metodologia, notas) ficará disponível quando abrires o
+        perfil de cada treinador.
       </p>
     </div>
   );

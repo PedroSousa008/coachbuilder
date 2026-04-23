@@ -1,38 +1,13 @@
 "use client";
 
-import {
-  Users,
-  UsersRound,
-  Wallet,
-  AlertTriangle,
-  Percent,
-  Layers,
-  Sparkles,
-  Lightbulb,
-} from "lucide-react";
+import { Users, UsersRound, Wallet, AlertTriangle, Percent, Layers, Sparkles, Lightbulb } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
-import { Badge } from "@/components/ui/Badge";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { PresidentBarChart } from "@/components/president/PresidentBarChart";
-import {
-  presidentExecutiveKpis,
-  presidentRevenue12m,
-  presidentPlayerGrowth,
-  presidentWinRateByCategory,
-  presidentPaymentCollection,
-  presidentInsights,
-  presidentAlerts,
-} from "@/data/president-mock";
 import { useAppData } from "@/contexts/AppDataContext";
 
 const eur = (n: number) =>
   new Intl.NumberFormat("pt-PT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(n);
-
-const severityStyles = {
-  alto: "border-red-500/30 bg-red-500/10 text-red-200",
-  médio: "border-amber-500/25 bg-amber-500/10 text-amber-100",
-  baixo: "border-zinc-600/50 bg-zinc-800/40 text-zinc-200",
-} as const;
 
 export default function PresidentExecutiveDashboardPage() {
   const { coachProfile } = useAppData();
@@ -43,72 +18,56 @@ export default function PresidentExecutiveDashboardPage() {
       <div>
         <h2 className="font-display text-2xl font-semibold text-white">Painel executivo</h2>
         <p className="mt-1 text-sm text-zinc-500">
-          {club} · visão consolidada de desporto, equipas técnicas, finanças e operações. Dados de demonstração.
+          {club} · visão consolidada de desporto, equipas técnicas, finanças e operações. Os números preenchem-se
+          quando adicionares dados nas respetivas áreas do modo clube.
         </p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <StatCard
           label="Total de treinadores"
-          value={presidentExecutiveKpis.totalCoaches}
-          hint="Lugares incluídos no plano do presidente"
+          value={0}
+          hint="Treinadores com lugar activo no teu plano"
           icon={Users}
         />
-        <StatCard
-          label="Total de jogadores"
-          value={presidentExecutiveKpis.totalPlayers}
-          hint="Todos os escalões federados"
-          icon={UsersRound}
-        />
+        <StatCard label="Total de jogadores" value={0} hint="Inscritos no clube (todas as equipas)" icon={UsersRound} />
         <StatCard
           label="Receita mensal (estimada)"
-          value={eur(presidentExecutiveKpis.monthlyRevenueEUR)}
-          hint="Quotas, jogos, patrocínios e eventos"
+          value={eur(0)}
+          hint="Quotas, jogos, patrocínios e eventos — após configuração financeira"
           icon={Wallet}
-          trend={{ positive: true, text: "+8% vs. mês anterior" }}
         />
         <StatCard
           label="Quotas em falta"
-          value={eur(presidentExecutiveKpis.unpaidFeesEUR)}
+          value={eur(0)}
           hint="Valor agregado por cobrar"
           icon={AlertTriangle}
-          trend={{ positive: false, text: "Ação recomendada: contactar famílias" }}
         />
-        <StatCard
-          label="Taxa de vitória global"
-          value={`${presidentExecutiveKpis.globalWinRatePct}%`}
-          hint="Jogos oficiais — época em curso"
-          icon={Percent}
-        />
-        <StatCard
-          label="Equipas ativas"
-          value={presidentExecutiveKpis.activeTeams}
-          hint="Escalões com plantéis confirmados"
-          icon={Layers}
-        />
+        <StatCard label="Taxa de vitória global" value="—" hint="Com jogos oficiais registados" icon={Percent} />
+        <StatCard label="Equipas ativas" value={0} hint="Escalões com plantéis confirmados" icon={Layers} />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <PresidentBarChart
           title="Receita nos últimos 12 meses"
-          subtitle="Valores indexados (índice 0–50). Integração financeira completa em breve."
-          data={presidentRevenue12m.map((x) => ({ label: x.month, value: x.value }))}
+          subtitle="Histórico mensal após introduzires movimentos financeiros."
+          data={[]}
         />
         <PresidentBarChart
           title="Crescimento do clube (jogadores)"
           subtitle="Evolução do número de atletas inscritos."
-          data={presidentPlayerGrowth.map((x) => ({ label: x.month, value: x.players }))}
+          data={[]}
         />
         <PresidentBarChart
           title="Taxa de vitória por escalão"
-          subtitle="Percentagem aproximada por categoria."
-          data={presidentWinRateByCategory.map((x) => ({ label: x.label, value: x.pct }))}
+          subtitle="Percentagem por categoria, com base em resultados registados."
+          data={[]}
           valueSuffix="%"
         />
         <PresidentBarChart
           title="Taxa de cobrança de quotas"
-          subtitle="Semanas recentes — percentagem de adimplência."
-          data={presidentPaymentCollection.map((x) => ({ label: x.label, value: x.pct }))}
+          subtitle="Adimplência assim que activares o módulo de pagamentos."
+          data={[]}
           valueSuffix="%"
           barClassName="from-emerald-500/30 to-emerald-400/70"
         />
@@ -121,24 +80,16 @@ export default function PresidentExecutiveDashboardPage() {
               <Sparkles className="h-4 w-4 text-amber-400" strokeWidth={1.75} />
               Insights estratégicos
             </CardTitle>
-            <p className="text-xs text-zinc-500">Leitura automática a partir dos dados do clube (mock).</p>
+            <p className="text-xs text-zinc-500">
+              Sugestões automáticas com base nos dados do clube (disponíveis quando houver informação suficiente).
+            </p>
           </CardHeader>
-          <CardContent className="space-y-3 text-sm">
-            <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">Melhor equipa</p>
-              <p className="text-zinc-200">{presidentInsights.bestTeam}</p>
-            </div>
-            <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">Melhor treinador</p>
-              <p className="text-zinc-200">{presidentInsights.bestCoach}</p>
-            </div>
-            <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">Equipa em decréscimo</p>
-              <p className="text-zinc-200">{presidentInsights.decliningTeam}</p>
-            </div>
-            <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">Jogadores em risco de saída</p>
-              <p className="text-zinc-200">{presidentInsights.playersAtRisk} atletas com sinais de insatisfação ou atrasos.</p>
+          <CardContent>
+            <div className="flex min-h-[200px] items-center justify-center rounded-xl border border-dashed border-surface-border bg-surface-raised/20 px-4 py-8">
+              <p className="max-w-sm text-center text-sm text-zinc-500">
+                Ainda sem insights. Quando tiveres equipas, treinadores e resultados ligados, aparecerão aqui leituras
+                como melhor equipa, melhor treinador e sinais de alerta desportivos.
+              </p>
             </div>
           </CardContent>
         </Card>
@@ -149,23 +100,15 @@ export default function PresidentExecutiveDashboardPage() {
               <Lightbulb className="h-4 w-4 text-accent" strokeWidth={1.75} />
               Alertas prioritários
             </CardTitle>
-            <p className="text-xs text-zinc-500">Resumo do que precisa da tua atenção hoje.</p>
+            <p className="text-xs text-zinc-500">Avisos que requerem a tua atenção.</p>
           </CardHeader>
-          <CardContent className="space-y-2">
-            {presidentAlerts.map((a) => (
-              <div
-                key={a.id}
-                className={`rounded-xl border px-3 py-2.5 text-sm ${severityStyles[a.severity]}`}
-              >
-                <div className="flex flex-wrap items-center gap-2">
-                  <Badge variant="muted" className="text-[10px]">
-                    {a.type}
-                  </Badge>
-                  <span className="text-[10px] uppercase tracking-wide opacity-80">{a.severity}</span>
-                </div>
-                <p className="mt-1 leading-snug">{a.text}</p>
-              </div>
-            ))}
+          <CardContent>
+            <div className="flex min-h-[200px] items-center justify-center rounded-xl border border-dashed border-surface-border bg-surface-raised/20 px-4 py-8">
+              <p className="max-w-sm text-center text-sm text-zinc-500">
+                Sem alertas por agora. Pagamentos em atraso, lesões, contratos a expirar ou documentos em falta
+                mostrar-se-ão aqui automaticamente quando os módulos estiverem configurados.
+              </p>
+            </div>
           </CardContent>
         </Card>
       </div>

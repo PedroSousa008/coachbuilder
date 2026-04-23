@@ -11,13 +11,31 @@ export function PresidentBarChart({
   data,
   valueSuffix = "",
   barClassName,
+  emptyMessage = "Sem dados. Assim que registares informação nesta área, o gráfico aparece aqui.",
 }: {
   title: string;
   subtitle?: string;
   data: Datum[];
   valueSuffix?: string;
   barClassName?: string;
+  emptyMessage?: string;
 }) {
+  if (data.length === 0) {
+    return (
+      <Card className="border-surface-border bg-surface-raised/30">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base font-semibold text-white">{title}</CardTitle>
+          {subtitle ? <p className="text-xs text-zinc-500">{subtitle}</p> : null}
+        </CardHeader>
+        <CardContent>
+          <div className="flex h-44 items-center justify-center rounded-xl border border-dashed border-surface-border bg-surface-raised/20 px-4">
+            <p className="text-center text-sm text-zinc-500">{emptyMessage}</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   const max = Math.max(...data.map((d) => d.value), 1);
   return (
     <Card className="border-surface-border bg-surface-raised/30">
