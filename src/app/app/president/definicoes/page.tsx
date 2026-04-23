@@ -1,19 +1,52 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { PRESIDENT_EXTRA_SEAT_PRICE_EUR, PRESIDENT_INCLUDED_COACH_SEATS } from "@/lib/president-constants";
+import { useAppData } from "@/contexts/AppDataContext";
+import { usePresidentClub } from "@/contexts/PresidentClubContext";
 
 export default function PresidentDefinicoesPage() {
+  const { coachProfile, setCoachProfile } = useAppData();
+  const { state, patchSettings, setLogoDataUrl } = usePresidentClub();
+  const [clubName, setClubName] = useState("");
+  const [clubNotes, setClubNotes] = useState("");
+
+  useEffect(() => {
+    setClubName(state.settings.clubDisplayName || coachProfile.club || "");
+    setClubNotes(state.settings.clubNotes || "");
+  }, [state.settings.clubDisplayName, state.settings.clubNotes, coachProfile.club]);
+
+  const seatsUsed = state.coaches.length;
+
+  const saveIdentity = () => {
+    const name = clubName.trim();
+    patchSettings({ clubDisplayName: name, clubNotes: clubNotes.trim() });
+    if (name) setCoachProfile({ club: name });
+  };
+
+  const onLogoFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !file.type.startsWith("image/")) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const r = reader.result;
+      if (typeof r === "string") setLogoDataUrl(r);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  };
+
   return (
     <div className="mx-auto max-w-6xl space-y-8">
       <div>
         <h2 className="font-display text-2xl font-semibold text-white">Definições</h2>
         <p className="mt-1 text-sm text-zinc-500">
-          Identidade do clube, subscrição, lugares de treinador e permissões. Área em expansão — alguns campos são
-          apenas demonstrativos.
+          Identidade do clube no modo Presidente e lugares de treinador. Os dados do clube sincronizam com o nome do
+          clube no perfil do treinador quando guardas.
         </p>
       </div>
 
@@ -26,12 +59,15 @@ export default function PresidentDefinicoesPage() {
           <CardContent className="space-y-4 text-sm text-zinc-300">
             <p>
               O teu plano inclui <strong className="text-white">{PRESIDENT_INCLUDED_COACH_SEATS} lugares</strong> de
-              treinador principal (contas criadas por ti, sem mensalidade extra por treinador). Lugares em uso:{" "}
-              <strong className="text-white">0</strong> — convida a equipa técnica quando estiveres pronto.
+              treinador principal. Lugares em uso na tua lista do modo clube:{" "}
+              <strong className="text-white">
+                {seatsUsed}/{PRESIDENT_INCLUDED_COACH_SEATS}
+              </strong>
+              .
             </p>
             <p className="text-zinc-500">
               Cada lugar adicional: <strong className="text-zinc-200">{PRESIDENT_EXTRA_SEAT_PRICE_EUR}€</strong>{" "}
-              pagamento único — permanece activo sem custo mensal associado a esse login.
+              pagamento único (integração de pagamento em breve).
             </p>
             <Button type="button" variant="secondary" size="sm" disabled>
               Adquirir lugares extra (em breve)
@@ -43,19 +79,40 @@ export default function PresidentDefinicoesPage() {
           <CardHeader>
             <CardTitle className="text-base text-white">Marca do clube</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-4">
             <label className="block space-y-1">
               <span className="text-xs text-zinc-500">Nome oficial do clube</span>
-              <Input readOnly placeholder="Ex.: Atlético Clube de Lisboa" className="bg-surface-raised/80" />
+              <Input value={clubName} onChange={(e) => setClubName(e.target.value)} placeholder="Ex.: Atlético Clube de Lisboa" />
             </label>
             <label className="block space-y-1">
-              <span className="text-xs text-zinc-500">Logótipo (URL ou ficheiro)</span>
-              <Input readOnly placeholder="Em breve: upload na cloud" className="bg-surface-raised/80" />
+              <span className="text-xs text-zinc-500">Notas internas</span>
+              <textarea
+                className="min-h-[88px] w-full rounded-xl border border-surface-border bg-surface-raised/90 px-4 py-3 text-sm text-zinc-100 focus:border-accent/50 focus:outline-none focus:ring-2 focus:ring-accent/20"
+                value={clubNotes}
+                onChange={(e) => setClubNotes(e.target.value)}
+              />
             </label>
-            <p className="text-xs text-zinc-600">
-              Cores e identidade visual seguirão o mesmo sistema de design CoachBuilder para manter consistência com a
-              app dos treinadores.
-            </p>
+            <label className="block space-y-1">
+              <span className="text-xs text-zinc-500">Logótipo (ficheiro — guardado neste browser)</span>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={onLogoFile}
+                className="w-full text-sm text-zinc-400 file:mr-3 file:rounded-lg file:border-0 file:bg-surface-raised file:px-3 file:py-2 file:text-zinc-200"
+              />
+            </label>
+            {state.settings.logoDataUrl ? (
+              <div className="flex items-center gap-3">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={state.settings.logoDataUrl} alt="Logo" className="h-14 w-14 rounded-lg object-contain ring-1 ring-surface-border" />
+                <Button type="button" variant="ghost" size="sm" onClick={() => setLogoDataUrl(undefined)}>
+                  Remover logo
+                </Button>
+              </div>
+            ) : null}
+            <Button type="button" onClick={saveIdentity}>
+              Guardar identidade
+            </Button>
           </CardContent>
         </Card>
 
@@ -65,8 +122,8 @@ export default function PresidentDefinicoesPage() {
           </CardHeader>
           <CardContent>
             <p className="text-sm text-zinc-400">
-              Configuração fina (tesoureiro, director desportivo, secretariado) será adicionada aqui — com trilhos de
-              auditoria e aprovação em duas etapas para operações sensíveis.
+              Configuração fina (tesoureiro, director desportivo, secretariado) com trilhos de auditoria será
+              adicionada aqui. Por agora, toda a gestão do modo clube fica acessível à tua conta de presidente.
             </p>
           </CardContent>
         </Card>
