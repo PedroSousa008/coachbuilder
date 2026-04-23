@@ -279,13 +279,19 @@ const DEFAULT_FETCH_HEADERS: Record<string, string> = {
   "Accept-Language": "pt-PT,pt;q=0.9,en-GB;q=0.8,en;q=0.7",
 };
 
+export type FetchFpfMatchesFromFixtureRoundsOptions = {
+  /** When set, only these fixture IDs (from the same main HTML) are fetched — used to chunk server requests. */
+  fixtureIds?: string[];
+};
+
 /**
  * Main competition pages often omit match rows (AJAX). Fetch each matchday fragment and merge.
  */
 export async function fetchFpfMatchesFromFixtureRounds(
   mainHtml: string,
   competitionPageUrl: string,
-  fetchImpl: typeof fetch
+  fetchImpl: typeof fetch,
+  options?: FetchFpfMatchesFromFixtureRoundsOptions
 ): Promise<LeagueImportedMatch[]> {
   let host: string;
   try {
@@ -295,7 +301,11 @@ export async function fetchFpfMatchesFromFixtureRounds(
   }
   if (!host.includes("resultados.fpf.pt")) return [];
 
-  const ids = extractFpfFixtureIdsFromHtml(mainHtml);
+  let ids = extractFpfFixtureIdsFromHtml(mainHtml);
+  if (options?.fixtureIds?.length) {
+    const allow = new Set(options.fixtureIds);
+    ids = ids.filter((id) => allow.has(id));
+  }
   if (ids.length === 0) return [];
 
   const roundMap = extractFpfFixtureRoundMapFromHtml(mainHtml);
