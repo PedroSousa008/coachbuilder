@@ -34,6 +34,10 @@ model User {
   clubPresidentUserId     String?
   clubPresident           User?     @relation("ClubPresidentCoaches", fields: [clubPresidentUserId], references: [id], onDelete: SetNull)
   coachesLinkedToClub     User[]    @relation("ClubPresidentCoaches")
+  /** Lugar numerado (0–9) criado pelo presidente; null = ligação manual sem lugar fixo. */
+  trainerSeatIndex        Int?
+  /** Se false, o treinador não entra nem recebe Pro via presidente (revogado). */
+  trainerSeatActive       Boolean   @default(true)
 
   workspace                     Workspace?
   appEvents                     AppEvent[]

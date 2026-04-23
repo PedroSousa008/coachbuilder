@@ -37,7 +37,7 @@ export async function GET() {
     }
 
     const linked = await prisma.user.findMany({
-      where: { clubPresidentUserId: presidentId },
+      where: { clubPresidentUserId: presidentId, trainerSeatActive: true },
       select: { id: true, email: true },
       take: 50,
     });

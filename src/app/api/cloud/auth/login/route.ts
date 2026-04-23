@@ -10,7 +10,7 @@ import {
 } from "@/lib/bootstrap-owner-account";
 import { recordUserLoginSafe } from "@/lib/server-analytics";
 import { toCloudUserPublic } from "@/lib/cloud-user-public";
-import { computeSubscriptionAccess } from "@/lib/subscription-access";
+import { resolveSubscriptionAccessForCloudUser } from "@/lib/president-trainer-seat-subscription";
 import { transitionExpiredSubscriptionState } from "@/lib/subscription-transition";
 import { ensureUserNametagIfMissing } from "@/lib/user-nametag";
 
@@ -57,6 +57,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Email ou palavra-passe incorretos." }, { status: 401 });
     }
 
+    if (user.clubPresidentUserId && user.trainerSeatActive === false) {
+      return NextResponse.json(
+        { ok: false, error: "Esta conta foi desactivada pelo presidente do clube. Contacta a direcção." },
+        { status: 403 }
+      );
+    }
+
     if (isOwnerAdminEmail(user.email) && user.role?.trim().toLowerCase() !== "admin") {
       await prisma.user.update({
         where: { id: user.id },
@@ -74,7 +81,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Erro interno." }, { status: 500 });
     }
     const withNametag = (await ensureUserNametagIfMissing(prisma, transitioned.id)) ?? transitioned;
-    const subscriptionAccess = computeSubscriptionAccess(withNametag);
+    const subscriptionAccess = await resolveSubscriptionAccessForCloudUser(prisma, withNametag);
 
     return NextResponse.json({
       ok: true,

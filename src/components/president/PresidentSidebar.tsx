@@ -2,18 +2,46 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { LogOut } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAppData } from "@/contexts/AppDataContext";
 import { cn } from "@/lib/utils";
 import { PRESIDENT_NAV } from "@/lib/president-nav";
 import { PRESIDENT_EXTRA_SEAT_PRICE_EUR, PRESIDENT_INCLUDED_COACH_SEATS } from "@/lib/president-constants";
+import { shouldUseCloudClientApis } from "@/lib/cloud-config";
 
 export function PresidentSidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { user, logout } = useAuth();
   const { coachProfile } = useAppData();
+  const [cloudSeatsUsed, setCloudSeatsUsed] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!user || !shouldUseCloudClientApis(user)) {
+      setCloudSeatsUsed(null);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch("/api/cloud/president/trainer-seats", { credentials: "include" });
+        const data = (await res.json()) as { ok?: boolean; slots?: { status: string }[] };
+        if (cancelled || !res.ok || !data.ok || !Array.isArray(data.slots)) {
+          if (!cancelled) setCloudSeatsUsed(null);
+          return;
+        }
+        const n = data.slots.filter((s) => s.status === "active").length;
+        if (!cancelled) setCloudSeatsUsed(n);
+      } catch {
+        if (!cancelled) setCloudSeatsUsed(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
 
   const displayName = coachProfile.name.trim() || user?.name.trim() || user?.email || "";
   const showEmailUnderName = Boolean(user?.email && displayName !== user.email);
@@ -56,16 +84,19 @@ export function PresidentSidebar() {
       </nav>
 
       <div className="border-t border-surface-border p-4">
-        <div className="rounded-xl border border-surface-border bg-surface-raised/40 px-3 py-2">
+        <Link
+          href="/app/president/definicoes#lugares-treinador"
+          className="block rounded-xl border border-surface-border bg-surface-raised/40 px-3 py-2 transition-colors hover:border-zinc-600 hover:bg-surface-raised/60"
+        >
           <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">Lugares de treinador</p>
           <p className="mt-1 text-sm font-medium text-white">
-            0 / {PRESIDENT_INCLUDED_COACH_SEATS} lugares ocupados
+            {cloudSeatsUsed === null ? "—" : cloudSeatsUsed} / {PRESIDENT_INCLUDED_COACH_SEATS} lugares cloud ocupados
           </p>
           <p className="mt-1 text-[11px] leading-snug text-zinc-500">
             Cada lugar extra: {PRESIDENT_EXTRA_SEAT_PRICE_EUR}€ (pagamento único, sem mensalidade adicional por
             treinador).
           </p>
-        </div>
+        </Link>
         {user ? (
           <div className="mt-3 min-w-0">
             <p className="truncate text-xs font-medium text-zinc-200" title={displayName}>

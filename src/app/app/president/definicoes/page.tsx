@@ -9,11 +9,13 @@ import { PRESIDENT_EXTRA_SEAT_PRICE_EUR, PRESIDENT_INCLUDED_COACH_SEATS } from "
 import { useAppData } from "@/contexts/AppDataContext";
 import { usePresidentClub } from "@/contexts/PresidentClubContext";
 import { usePresidentLinkedRoster } from "@/hooks/usePresidentLinkedRoster";
+import { PresidentTrainerSeatsPanel } from "@/components/president/PresidentTrainerSeatsPanel";
 
 export default function PresidentDefinicoesPage() {
   const { coachProfile, setCoachProfile } = useAppData();
   const { state, patchSettings, setLogoDataUrl } = usePresidentClub();
   const roster = usePresidentLinkedRoster();
+  const [activeSeatCount, setActiveSeatCount] = useState(0);
   const [clubName, setClubName] = useState("");
   const [clubNotes, setClubNotes] = useState("");
 
@@ -22,7 +24,7 @@ export default function PresidentDefinicoesPage() {
     setClubNotes(state.settings.clubNotes || "");
   }, [state.settings.clubDisplayName, state.settings.clubNotes, coachProfile.club]);
 
-  const seatsUsed = roster.coaches.length + state.coaches.length;
+  const seatsUsed = activeSeatCount + state.coaches.length;
 
   const saveIdentity = () => {
     const name = clubName.trim();
@@ -61,7 +63,7 @@ export default function PresidentDefinicoesPage() {
           <CardContent className="space-y-4 text-sm text-zinc-300">
             <p>
               O teu plano inclui <strong className="text-white">{PRESIDENT_INCLUDED_COACH_SEATS} lugares</strong> de
-              treinador principal. Lugares em uso (contas ligadas na cloud + registos manuais na lista):{" "}
+              treinador na cloud. Lugares em uso (lugares cloud ocupados + registos manuais na lista local):{" "}
               <strong className="text-white">
                 {seatsUsed}/{PRESIDENT_INCLUDED_COACH_SEATS}
               </strong>
@@ -117,6 +119,8 @@ export default function PresidentDefinicoesPage() {
             </Button>
           </CardContent>
         </Card>
+
+        <PresidentTrainerSeatsPanel onActiveSeatCount={setActiveSeatCount} onRosterChanged={() => void roster.refresh()} />
 
         <Card className="border-surface-border bg-surface-raised/30 lg:col-span-2">
           <CardHeader>

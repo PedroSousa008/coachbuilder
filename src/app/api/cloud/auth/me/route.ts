@@ -4,7 +4,7 @@ import { isCloudSyncEnabledServer } from "@/lib/cloud-config";
 import { readSessionFromCookies } from "@/lib/cloud-session";
 import { isOwnerAdminEmail, parseAdminOwnerEmailsFromEnv } from "@/lib/admin-owner";
 import { toCloudUserPublic } from "@/lib/cloud-user-public";
-import { computeSubscriptionAccess } from "@/lib/subscription-access";
+import { resolveSubscriptionAccessForCloudUser } from "@/lib/president-trainer-seat-subscription";
 import { transitionExpiredSubscriptionState } from "@/lib/subscription-transition";
 import { ensureUserNametagIfMissing } from "@/lib/user-nametag";
 
@@ -36,7 +36,7 @@ export async function GET() {
       return NextResponse.json({ ok: false, error: "Sessão inválida." }, { status: 401 });
     }
     const withNametag = (await ensureUserNametagIfMissing(prisma, transitioned.id)) ?? transitioned;
-    const subscriptionAccess = computeSubscriptionAccess(withNametag);
+    const subscriptionAccess = await resolveSubscriptionAccessForCloudUser(prisma, withNametag);
     return NextResponse.json({
       ok: true,
       cloud: true,
