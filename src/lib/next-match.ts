@@ -1,6 +1,6 @@
 import type { LeagueImportedMatch, MatchFixture } from "@/types";
 import { isImportedMatchUpcoming, isKickoffInFuture } from "@/lib/lisbon-date";
-import { matchInvolvesResolvedClub, opponentAndVenueForCoach } from "@/lib/team-match";
+import { userClubMatchesOfficialTeam } from "@/lib/team-match";
 
 export type ResolvedNextMatch = {
   opponent: string;
@@ -48,18 +48,19 @@ export function resolveNextMatchForCoach(args: {
   }
 
   if (club.length > 0) {
-    const teamLabel = (args.coachClubCanonical?.trim() || club).trim();
     for (const m of args.leagueMatches) {
       if (!isImportedMatchUpcoming(m, nowMs)) continue;
-      if (!matchInvolvesResolvedClub(m, club, names)) continue;
-      const ov = opponentAndVenueForCoach(m, teamLabel, args.coachClub.trim(), names);
-      if (!ov) continue;
       const t = new Date(m.kickoff).getTime();
+      const homeHit = userClubMatchesOfficialTeam(club, m.homeTeam, names);
+      const awayHit = userClubMatchesOfficialTeam(club, m.awayTeam, names);
+      if (!homeHit && !awayHit) continue;
+      const venue: "home" | "away" = homeHit ? "home" : "away";
+      const opponent = homeHit ? m.awayTeam : m.homeTeam;
       cands.push({
-        opponent: ov.opponent,
+        opponent,
         competition: comp,
         kickoff: m.kickoff,
-        venue: ov.venue,
+        venue,
         source: "league",
         t,
       });

@@ -1,12 +1,10 @@
 import { NextResponse } from "next/server";
 import { parseStandingsFromHtml, isAllowedLeagueTableUrl } from "@/lib/league-table-parse";
-import { collectUniqueTeamNames } from "@/lib/team-match";
 import {
   dedupeMatches,
   extractCompetitionLabelFromHtml,
   extractFpfFixtureRoundMapFromHtml,
   fetchFpfMatchesFromFixtureRounds,
-  filterLeagueMatchesByClubName,
   parseFpfMatchesFromHtml,
 } from "@/lib/league-import-fpf";
 
@@ -17,7 +15,6 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     const url = typeof body?.url === "string" ? body.url.trim() : "";
-    const clubName = typeof body?.clubName === "string" ? body.clubName.trim() : "";
     if (!url || !isAllowedLeagueTableUrl(url)) {
       return NextResponse.json({ ok: false, error: "Enter a valid http(s) URL." }, { status: 400 });
     }
@@ -53,7 +50,7 @@ export async function POST(req: Request) {
     }
 
     const html = await res.text();
-    const rows = parseStandingsFromHtml(html, clubName ? { clubNameHint: clubName } : undefined);
+    const rows = parseStandingsFromHtml(html);
     const roundMap = extractFpfFixtureRoundMapFromHtml(html);
     let matches = parseFpfMatchesFromHtml(html, url, roundMap);
     try {
@@ -65,8 +62,6 @@ export async function POST(req: Request) {
     } catch (e) {
       console.error("league-table FPF fixture rounds", e);
     }
-    const roster = collectUniqueTeamNames({ tableRows: rows, matches });
-    matches = filterLeagueMatchesByClubName(matches, clubName || undefined, roster);
     const competitionName = extractCompetitionLabelFromHtml(html);
 
     if (rows.length === 0 && matches.length === 0) {

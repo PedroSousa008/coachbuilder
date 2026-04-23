@@ -33,6 +33,7 @@ import type {
   TeamDoubleRoleId,
   TeamRoles,
   TeamSingleRoleId,
+  TeamCallupState,
   TrainingSession,
 } from "@/types";
 import { tallyForTactic } from "@/lib/tactics-match-stats";
@@ -47,8 +48,6 @@ import {
   ptMemberCountSubtitle,
 } from "@/lib/group-chat-messages-pt";
 import { dedupeMatches } from "@/lib/league-match-dedupe";
-import { filterLeagueMatchesByClubName } from "@/lib/league-import-fpf";
-import { collectUniqueTeamNames } from "@/lib/team-match";
 import { formatPlayerPositions } from "@/lib/player-positions";
 import {
   getAllUserDataKeys,
@@ -66,6 +65,7 @@ import {
 } from "@/lib/workspace-snapshot";
 import { buildWorkspaceSnapshotV1 } from "@/lib/build-workspace-snapshot";
 import { emptySketchAreaState } from "@/lib/sketch-area";
+import { emptyTeamCallupState, mergeTeamCallup } from "@/lib/team-callup";
 import { useAuth } from "@/contexts/AuthContext";
 import { withNormalizedCareerSeasonsInProfile } from "@/lib/coach-career-season-normalize";
 import { withNormalizedHonorCategories } from "@/lib/coach-honor-migration";
@@ -262,6 +262,9 @@ type AppDataContextValue = {
 
   sketchArea: SketchAreaState;
   setSketchArea: Dispatch<SetStateAction<SketchAreaState>>;
+
+  teamCallup: TeamCallupState;
+  setTeamCallup: Dispatch<SetStateAction<TeamCallupState>>;
 };
 
 const AppDataContext = createContext<AppDataContextValue | null>(null);
@@ -325,6 +328,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [tacticPlayerNotes, setTacticPlayerNotesState] = useState<Record<string, TacticPlayerAnalysisNote>>({});
   const [savedTrainingExercises, setSavedTrainingExercises] = useState<SavedTrainingExercise[]>([]);
   const [sketchArea, setSketchArea] = useState<SketchAreaState>(() => emptySketchAreaState());
+  const [teamCallup, setTeamCallup] = useState<TeamCallupState>(() => emptyTeamCallupState());
 
   const [cloudRemoteReady, setCloudRemoteReady] = useState(() => !isCloudSyncEnabledClient());
 
@@ -365,6 +369,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       setTacticPlayerNotesState({});
       setSavedTrainingExercises([]);
       setSketchArea(emptySketchAreaState());
+      setTeamCallup(emptyTeamCallupState());
       setHydrated(true);
       return;
     }
@@ -411,6 +416,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setTacticPlayerNotesState(loadJSON<Record<string, TacticPlayerAnalysisNote>>(ks.tacticPlayerNotes, {}));
     setSavedTrainingExercises(loadJSON<SavedTrainingExercise[]>(ks.savedTrainingExercises, []));
     setSketchArea(mergeSketchArea(loadJSON<unknown>(ks.sketchArea, null), emptySketchAreaState()));
+    setTeamCallup(mergeTeamCallup(loadJSON<unknown>(ks.teamCallup, null), emptyTeamCallupState()));
     setHydrated(true);
   }, [authReady, user?.id, ks]);
 
@@ -457,6 +463,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           setTacticPlayerNotesState(s.tacticPlayerNotes);
           setSavedTrainingExercises(s.savedTrainingExercises ?? []);
           setSketchArea(mergeSketchArea(s.sketchArea, emptySketchAreaState()));
+          const mergedCallup = mergeTeamCallup((s as Partial<{ teamCallup?: unknown }>).teamCallup, emptyTeamCallupState());
+          setTeamCallup(mergedCallup);
           writeWorkspaceSnapshotToLocalStorage(user.id, {
             ...s,
             conversations: loadedConvs,
@@ -467,6 +475,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
             },
             savedTrainingExercises: s.savedTrainingExercises ?? [],
             sketchArea: mergeSketchArea(s.sketchArea, emptySketchAreaState()),
+            teamCallup: mergedCallup,
           });
         } else {
           const local = collectWorkspaceFromLocalStorage(user.id);
@@ -511,6 +520,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       tacticPlayerNotes,
       savedTrainingExercises,
       sketchArea,
+      teamCallup,
     });
     const t = window.setTimeout(() => {
       void fetch("/api/cloud/workspace", {
@@ -545,6 +555,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     tacticPlayerNotes,
     savedTrainingExercises,
     sketchArea,
+    teamCallup,
   ]);
 
   useEffect(() => {
@@ -642,6 +653,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     if (!hydrated || !ks) return;
     saveJSON(ks.sketchArea, sketchArea);
   }, [sketchArea, hydrated, ks]);
+
+  useEffect(() => {
+    if (!hydrated || !ks) return;
+    saveJSON(ks.teamCallup, teamCallup);
+  }, [teamCallup, hydrated, ks]);
 
   /** Mantém `matchesUsed` / vitórias / empates / derrotas nas táticas alinhados com os jogos registados. */
   useEffect(() => {
@@ -1469,23 +1485,15 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       const res = await fetch("/api/league-table", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: u, clubName: coachProfile.club.trim() }),
+        body: JSON.stringify({ url: u }),
       });
       const data = await res.json();
       if (!data.ok) {
         setLeagueTableFetchError(typeof data.error === "string" ? data.error : "Could not update table.");
         return;
       }
-      const rawRows = Array.isArray(data.rows) ? (data.rows as LeagueTableRow[]) : [];
-      const rawMatches = Array.isArray(data.matches) ? (data.matches as LeagueImportedMatch[]) : [];
-      const roster = collectUniqueTeamNames({ tableRows: rawRows, matches: rawMatches });
-      const forClub = filterLeagueMatchesByClubName(
-        rawMatches,
-        coachProfile.club.trim() || undefined,
-        roster
-      );
-      setLeagueTableRows(rawRows);
-      setLeagueMatches(dedupeMatches(forClub));
+      setLeagueTableRows(data.rows ?? []);
+      setLeagueMatches(dedupeMatches(Array.isArray(data.matches) ? data.matches : []));
       setLeagueCompetitionName(
         typeof data.competitionName === "string" && data.competitionName.trim() ? data.competitionName.trim() : null
       );
@@ -1494,7 +1502,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     } catch {
       setLeagueTableFetchError("Network error — try again.");
     }
-  }, [leagueTableUrl, coachProfile.club]);
+  }, [leagueTableUrl]);
 
   const unreadMessagesCount = useMemo(
     () => conversations.reduce((n, c) => n + (c.unread ?? 0), 0),
@@ -1563,6 +1571,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       setTacticPlayerAnalysisNote,
       sketchArea,
       setSketchArea,
+      teamCallup,
+      setTeamCallup,
     }),
     [
       hydrated,
@@ -1625,6 +1635,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       setTacticPlayerAnalysisNote,
       sketchArea,
       setSketchArea,
+      teamCallup,
+      setTeamCallup,
     ]
   );
 

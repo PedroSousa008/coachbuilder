@@ -30,11 +30,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const title = shellTitle(pathname, t);
 
   return (
-    <div className="min-h-screen bg-[#0a0d10] lg:pl-64">
-      <AppSidebar />
-      <AppHeader title={title} />
-      <div className="px-4 py-6 lg:px-8">
-        <CustomPriceBanner />
+    <div className="min-h-screen bg-[#0a0d10] lg:pl-64 print:bg-white print:pl-0">
+      <div className="print:hidden">
+        <AppSidebar />
+        <AppHeader title={title} />
+      </div>
+      <div className="px-4 py-6 lg:px-8 print:px-4 print:py-4">
+        <div className="print:hidden">
+          <CustomPriceBanner />
+        </div>
         {children}
       </div>
     </div>

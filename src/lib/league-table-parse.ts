@@ -1,24 +1,11 @@
 import type { LeagueTableRow } from "@/types";
 import * as cheerio from "cheerio";
-import { teamNamesMatch } from "@/lib/team-match";
-
-export type ParseStandingsOptions = {
-  /**
-   * Nome do clube (ex.: Perfil do utilizador). Quando há várias séries/tabelas na mesma página,
-   * escolhe o bloco onde este nome corresponde a uma equipa.
-   */
-  clubNameHint?: string;
-};
 
 /**
  * FPF resultados.fpf.pt — standings use `div.game.classification` (no <table>).
- * Pages often contain several mini-tables (Série A, B, C…); we pick the block that contains
- * `clubNameHint` when set, otherwise the largest block.
+ * Pages often contain several mini-tables (Série 1, Série 2…); we return the largest block.
  */
-function parseFpfClassificationGrid(
-  $: ReturnType<typeof cheerio.load>,
-  clubNameHint?: string
-): LeagueTableRow[] {
+function parseFpfClassificationGrid($: ReturnType<typeof cheerio.load>): LeagueTableRow[] {
   const parsed: LeagueTableRow[] = [];
 
   $("div.game.classification").each((_, el) => {
@@ -85,45 +72,54 @@ function parseFpfClassificationGrid(
   }
   if (current.length) groups.push(current);
 
-  return selectGroupByTeamHint(groups, clubNameHint);
-}
-
-function selectGroupByTeamHint(
-  groups: LeagueTableRow[][],
-  clubNameHint: string | undefined
-): LeagueTableRow[] {
-  const hint = clubNameHint?.trim();
-  if (!hint || groups.length === 0) {
-    groups.sort((a, b) => b.length - a.length);
-    return groups[0]!.slice(0, 30);
-  }
-  for (const g of groups) {
-    for (const row of g) {
-      if (teamNamesMatch(hint, row.team)) {
-        return g.slice(0, 30);
-      }
-    }
-  }
   groups.sort((a, b) => b.length - a.length);
   return groups[0]!.slice(0, 30);
 }
 
-/** Converte matriz de células de uma <table> em linhas de classificação (mesma heurística que antes). */
-function parseLeagueRowsFromTableMatrix(bestRows: string[][]): LeagueTableRow[] {
-  if (bestRows.length === 0) return [];
+/**
+ * Extract the largest HTML table and map rows to standings (best-effort).
+ * Many league sites use different markup; we surface raw cells when unsure.
+ */
+export function parseStandingsFromHtml(html: string): LeagueTableRow[] {
+  const $ = cheerio.load(html);
+  let best: { rows: string[][]; n: number } = { rows: [], n: 0 };
+
+  $("table").each((_, table) => {
+    const rows: string[][] = [];
+    $(table)
+      .find("tr")
+      .each((__, tr) => {
+        const cells: string[] = [];
+        $(tr)
+          .find("th, td")
+          .each((___, cell) => {
+            cells.push($(cell).text().trim().replace(/\s+/g, " "));
+          });
+        if (cells.length >= 2) rows.push(cells);
+      });
+    if (rows.length > best.n) {
+      best = { rows, n: rows.length };
+    }
+  });
+
+  if (best.rows.length === 0) {
+    const fromFpf = parseFpfClassificationGrid($);
+    if (fromFpf.length > 0) return fromFpf;
+    return [];
+  }
 
   let start = 0;
-  const headerJoin = bestRows[0]!.join(" ").toLowerCase();
-  if (/pos|team|club|#/i.test(headerJoin) || bestRows[0]!.some((c) => /^team$/i.test(c))) {
+  const headerJoin = best.rows[0].join(" ").toLowerCase();
+  if (/pos|team|club|#/i.test(headerJoin) || best.rows[0].some((c) => /^team$/i.test(c))) {
     start = 1;
   }
 
   const out: LeagueTableRow[] = [];
-  for (let i = start; i < bestRows.length; i++) {
-    const cells = bestRows[i]!.filter((c) => c.length > 0);
+  for (let i = start; i < best.rows.length; i++) {
+    const cells = best.rows[i].filter((c) => c.length > 0);
     if (cells.length < 2) continue;
 
-    const posRaw = cells[0]!.replace(/[^\d]/g, "");
+    const posRaw = cells[0].replace(/[^\d]/g, "");
     const position = posRaw ? parseInt(posRaw, 10) : out.length + 1;
     const team =
       cells.find(
@@ -154,71 +150,8 @@ function parseLeagueRowsFromTableMatrix(bestRows: string[][]): LeagueTableRow[] 
     }
   }
 
-  return out;
-}
-
-function pickBestTableFromCandidates(
-  candidates: { rows: string[][]; n: number }[],
-  clubNameHint: string | undefined
-): { rows: string[][]; n: number } | null {
-  if (candidates.length === 0) return null;
-  const hint = clubNameHint?.trim();
-  if (hint) {
-    for (const c of candidates) {
-      const parsed = parseLeagueRowsFromTableMatrix(c.rows);
-      if (parsed.some((r) => teamNamesMatch(hint, r.team))) {
-        return c;
-      }
-    }
-  }
-  candidates.sort((a, b) => b.n - a.n);
-  return candidates[0] ?? null;
-}
-
-/**
- * Extract HTML tables and map rows to standings (best-effort).
- * Many league sites use different markup; we surface raw cells when unsure.
- */
-export function parseStandingsFromHtml(html: string, options?: ParseStandingsOptions): LeagueTableRow[] {
-  const clubNameHint = options?.clubNameHint;
-  const $ = cheerio.load(html);
-
-  // FPF: prefer classification divs when present (várias séries no mesmo URL).
-  if ($("div.game.classification").length > 0) {
-    const fromFpf = parseFpfClassificationGrid($, clubNameHint);
-    if (fromFpf.length > 0) return fromFpf;
-  }
-
-  const candidates: { rows: string[][]; n: number }[] = [];
-  $("table").each((_, table) => {
-    const rows: string[][] = [];
-    $(table)
-      .find("tr")
-      .each((__, tr) => {
-        const cells: string[] = [];
-        $(tr)
-          .find("th, td")
-          .each((___, cell) => {
-            cells.push($(cell).text().trim().replace(/\s+/g, " "));
-          });
-        if (cells.length >= 2) rows.push(cells);
-      });
-    if (rows.length >= 2) {
-      candidates.push({ rows, n: rows.length });
-    }
-  });
-
-  const picked = pickBestTableFromCandidates(candidates, clubNameHint);
-  if (!picked) {
-    const fromFpf = parseFpfClassificationGrid($, clubNameHint);
-    if (fromFpf.length > 0) return fromFpf;
-    return [];
-  }
-
-  const out = parseLeagueRowsFromTableMatrix(picked.rows);
-
   if (out.length === 0) {
-    const fromFpf = parseFpfClassificationGrid($, clubNameHint);
+    const fromFpf = parseFpfClassificationGrid($);
     if (fromFpf.length > 0) return fromFpf;
   }
 

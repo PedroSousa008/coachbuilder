@@ -8,17 +8,19 @@ import type {
   Player,
   SavedTrainingExercise,
   StaffMember,
-  TeamRoles,
   SketchAreaState,
   Tactic,
   TacticMatch,
   TacticPlayerAnalysisNote,
+  TeamCallupState,
+  TeamRoles,
   TrainingSession,
 } from "@/types";
 import { safeLoadJSON, safeSaveJSON } from "@/lib/coachbuilder-persist";
 import { getAllUserDataKeys } from "@/lib/user-storage-keys";
 import { dedupeMatches } from "@/lib/league-match-dedupe";
 import { emptySketchAreaState } from "@/lib/sketch-area";
+import { emptyTeamCallupState, mergeTeamCallup } from "@/lib/team-callup";
 
 export const WORKSPACE_SNAPSHOT_VERSION = 1 as const;
 
@@ -49,6 +51,7 @@ export type WorkspaceSnapshotV1 = {
   tacticPlayerNotes: Record<string, TacticPlayerAnalysisNote>;
   savedTrainingExercises: SavedTrainingExercise[];
   sketchArea: SketchAreaState;
+  teamCallup: TeamCallupState;
 };
 
 export function emptyWorkspaceSnapshot(): WorkspaceSnapshotV1 {
@@ -86,6 +89,7 @@ export function emptyWorkspaceSnapshot(): WorkspaceSnapshotV1 {
     tacticPlayerNotes: {},
     savedTrainingExercises: [],
     sketchArea: emptySketchAreaState(),
+    teamCallup: emptyTeamCallupState(),
   };
 }
 
@@ -118,6 +122,9 @@ export function snapshotHasMeaningfulData(s: WorkspaceSnapshotV1 | null | undefi
       sk.watchlist.length > 0)
   )
     return true;
+  const tc = s.teamCallup;
+  if (tc && (tc.clubLogoDataUrl || tc.selectedPlayerIds.length > 0)) return true;
+  if (tc && Object.values(tc.form).some((v) => String(v).trim() !== "")) return true;
   return false;
 }
 
@@ -140,6 +147,7 @@ export function writeWorkspaceSnapshotToLocalStorage(userId: string, s: Workspac
   safeSaveJSON(ks.tacticPlayerNotes, s.tacticPlayerNotes);
   safeSaveJSON(ks.savedTrainingExercises, s.savedTrainingExercises);
   safeSaveJSON(ks.sketchArea, s.sketchArea);
+  safeSaveJSON(ks.teamCallup, s.teamCallup);
 }
 
 export function collectWorkspaceFromLocalStorage(userId: string): WorkspaceSnapshotV1 {
@@ -177,6 +185,7 @@ export function collectWorkspaceFromLocalStorage(userId: string): WorkspaceSnaps
     tacticPlayerNotes: safeLoadJSON<Record<string, TacticPlayerAnalysisNote>>(ks.tacticPlayerNotes, {}),
     savedTrainingExercises: safeLoadJSON<SavedTrainingExercise[]>(ks.savedTrainingExercises, []),
     sketchArea: mergeSketchArea(safeLoadJSON<unknown>(ks.sketchArea, null), emptySketchAreaState()),
+    teamCallup: mergeTeamCallup(safeLoadJSON<unknown>(ks.teamCallup, null), emptyTeamCallupState()),
   };
 }
 
@@ -245,6 +254,7 @@ export function parseWorkspacePayload(raw: unknown): WorkspaceSnapshotV1 | null 
       ? (o.savedTrainingExercises as SavedTrainingExercise[])
       : e.savedTrainingExercises,
     sketchArea: mergeSketchArea(o.sketchArea, e.sketchArea),
+    teamCallup: mergeTeamCallup(o.teamCallup, e.teamCallup),
   };
 }
 

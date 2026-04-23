@@ -1,0 +1,297 @@
+"use client";
+
+import { useCallback, useMemo } from "react";
+import { useAppData } from "@/contexts/AppDataContext";
+import { useLanguage } from "@/contexts/LanguageContext";
+import type { TeamCallupCalendarForm } from "@/types";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Printer } from "lucide-react";
+
+const MAX_CALLUP = 18;
+const MAX_LOGO_BYTES = 450_000;
+
+type PrintRow = { number: string; name: string; obs: string };
+
+export function TeamCallupPanel() {
+  const { players, coachProfile, teamCallup, setTeamCallup } = useAppData();
+  const { language } = useLanguage();
+  const isPt = language === "pt-PT";
+
+  const teamDisplayName = useMemo(() => {
+    const c = coachProfile.club.trim();
+    const n = coachProfile.name.trim();
+    if (c) return c;
+    if (n) return n;
+    return isPt ? "Equipa" : "Team";
+  }, [coachProfile.club, coachProfile.name, isPt]);
+
+  const setForm = useCallback(
+    (patch: Partial<TeamCallupCalendarForm>) => {
+      setTeamCallup((prev) => ({ ...prev, form: { ...prev.form, ...patch } }));
+    },
+    [setTeamCallup]
+  );
+
+  const onLogoFile = useCallback(
+    (file: File | null) => {
+      if (!file) return;
+      if (!file.type.startsWith("image/")) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        const dataUrl = String(reader.result ?? "");
+        if (dataUrl.length > MAX_LOGO_BYTES) {
+          alert(isPt ? "Imagem demasiado grande (máx. ~450 KB)." : "Image too large (max ~450 KB).");
+          return;
+        }
+        setTeamCallup((prev) => ({ ...prev, clubLogoDataUrl: dataUrl }));
+      };
+      reader.readAsDataURL(file);
+    },
+    [isPt, setTeamCallup]
+  );
+
+  const togglePlayer = (id: string) => {
+    setTeamCallup((prev) => {
+      const sel = prev.selectedPlayerIds;
+      if (sel.includes(id)) {
+        const nextObs = { ...prev.observationsByPlayerId };
+        delete nextObs[id];
+        return { ...prev, selectedPlayerIds: sel.filter((x) => x !== id), observationsByPlayerId: nextObs };
+      }
+      if (sel.length >= MAX_CALLUP) return prev;
+      return { ...prev, selectedPlayerIds: [...sel, id] };
+    });
+  };
+
+  const sortedSelected = useMemo(() => {
+    const set = new Set(teamCallup.selectedPlayerIds);
+    return players.filter((p) => set.has(p.id)).sort((a, b) => a.number - b.number);
+  }, [players, teamCallup.selectedPlayerIds]);
+
+  const printRows: PrintRow[] = useMemo(() => {
+    const rows: PrintRow[] = sortedSelected.map((p) => ({
+      number: String(p.number),
+      name: p.name,
+      obs: teamCallup.observationsByPlayerId[p.id] ?? "",
+    }));
+    while (rows.length < MAX_CALLUP) {
+      rows.push({ number: "", name: "", obs: "" });
+    }
+    return rows.slice(0, MAX_CALLUP);
+  }, [sortedSelected, teamCallup.observationsByPlayerId]);
+
+  const sortedAllForPicker = useMemo(() => [...players].sort((a, b) => a.number - b.number), [players]);
+
+  const printCallup = () => {
+    window.print();
+  };
+
+  const f = teamCallup.form;
+
+  return (
+    <div className="space-y-8">
+      <div className="print:hidden space-y-8">
+        <div className="rounded-2xl border border-surface-border bg-surface-raised/30 p-4 sm:p-6">
+          <h3 className="font-display text-lg font-semibold text-white">Calendário</h3>
+          <p className="mt-1 text-sm text-zinc-500">
+            {isPt
+              ? "Preenche os dados do jogo e da logística. O nome da equipa vem do teu perfil (clube ou nome)."
+              : "Fill match and logistics details. Team name comes from your profile (club or name)."}
+          </p>
+          <div className="mt-6 grid gap-4 sm:grid-cols-2">
+            <label className="block space-y-1">
+              <span className="text-xs text-zinc-400">{isPt ? "Equipa (automático)" : "Team (automatic)"}</span>
+              <Input readOnly value={teamDisplayName} className="bg-surface-raised/80 text-zinc-300" />
+            </label>
+            <label className="block space-y-1">
+              <span className="text-xs text-zinc-400">{isPt ? "Logótipo da equipa" : "Team logo"}</span>
+              <div className="flex flex-wrap items-center gap-3">
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="text-xs text-zinc-400 file:mr-2 file:rounded-lg file:border-0 file:bg-accent/15 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-accent"
+                  onChange={(e) => onLogoFile(e.target.files?.[0] ?? null)}
+                />
+                {teamCallup.clubLogoDataUrl ? (
+                  <Button type="button" variant="secondary" className="text-xs" onClick={() => setTeamCallup((p) => ({ ...p, clubLogoDataUrl: undefined }))}>
+                    {isPt ? "Remover logótipo" : "Remove logo"}
+                  </Button>
+                ) : null}
+              </div>
+              {teamCallup.clubLogoDataUrl ? (
+                <img src={teamCallup.clubLogoDataUrl} alt="" className="mt-2 h-16 w-auto max-w-[120px] rounded-lg border border-surface-border object-contain" />
+              ) : null}
+            </label>
+            <label className="block space-y-1 sm:col-span-2">
+              <span className="text-xs text-zinc-400">Jogo</span>
+              <Input value={f.jogo} onChange={(e) => setForm({ jogo: e.target.value })} placeholder={isPt ? "ex.: vs Sporting CP" : "e.g. vs …"} />
+            </label>
+            <label className="block space-y-1">
+              <span className="text-xs text-zinc-400">Jornada</span>
+              <Input value={f.jornada} onChange={(e) => setForm({ jornada: e.target.value })} placeholder="—" />
+            </label>
+            <label className="block space-y-1">
+              <span className="text-xs text-zinc-400">Data</span>
+              <Input value={f.data} onChange={(e) => setForm({ data: e.target.value })} placeholder={isPt ? "ex.: 26/04/2026" : "e.g. 2026-04-26"} />
+            </label>
+            <label className="block space-y-1 sm:col-span-2">
+              <span className="text-xs text-zinc-400">Ponto de Encontro</span>
+              <Input value={f.pontoEncontro} onChange={(e) => setForm({ pontoEncontro: e.target.value })} />
+            </label>
+            <label className="block space-y-1 sm:col-span-2">
+              <span className="text-xs text-zinc-400">Maps</span>
+              <Input value={f.maps} onChange={(e) => setForm({ maps: e.target.value })} placeholder="https://…" />
+            </label>
+            <label className="block space-y-1">
+              <span className="text-xs text-zinc-400">Hora de Encontro</span>
+              <Input value={f.horaEncontro} onChange={(e) => setForm({ horaEncontro: e.target.value })} />
+            </label>
+            <label className="block space-y-1">
+              <span className="text-xs text-zinc-400">Chegada ao Jogo</span>
+              <Input value={f.chegadaJogo} onChange={(e) => setForm({ chegadaJogo: e.target.value })} />
+            </label>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-surface-border bg-surface-raised/30 p-4 sm:p-6">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h3 className="font-display text-lg font-semibold text-white">{isPt ? "Jogadores convocados" : "Squad call-up"}</h3>
+              <p className="mt-1 text-sm text-zinc-500">
+                {isPt ? `Até ${MAX_CALLUP} jogadores. Na impressão ficam ordenados por número.` : `Up to ${MAX_CALLUP} players. Print order is by shirt number.`}
+              </p>
+            </div>
+            <p className="text-sm font-medium text-accent">
+              {teamCallup.selectedPlayerIds.length}/{MAX_CALLUP}
+            </p>
+          </div>
+          <div className="mt-4 overflow-x-auto rounded-xl border border-surface-border">
+            <table className="w-full min-w-[520px] text-left text-sm">
+              <thead className="border-b border-surface-border bg-surface-raised/50 text-xs uppercase tracking-wide text-zinc-500">
+                <tr>
+                  <th className="px-3 py-2">{isPt ? "Incluir" : "Include"}</th>
+                  <th className="px-3 py-2">#</th>
+                  <th className="px-3 py-2">{isPt ? "Nome" : "Name"}</th>
+                  <th className="px-3 py-2">{isPt ? "Observações" : "Notes"}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sortedAllForPicker.map((p) => {
+                  const checked = teamCallup.selectedPlayerIds.includes(p.id);
+                  const disabled = !checked && teamCallup.selectedPlayerIds.length >= MAX_CALLUP;
+                  return (
+                    <tr key={p.id} className="border-b border-surface-border/60 last:border-0">
+                      <td className="px-3 py-2">
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          disabled={disabled}
+                          onChange={() => togglePlayer(p.id)}
+                          className="h-4 w-4 rounded border-surface-border"
+                        />
+                      </td>
+                      <td className="px-3 py-2 font-mono text-zinc-300">{p.number}</td>
+                      <td className="px-3 py-2 text-white">{p.name}</td>
+                      <td className="px-3 py-2">
+                        {checked ? (
+                          <Input
+                            value={teamCallup.observationsByPlayerId[p.id] ?? ""}
+                            onChange={(e) =>
+                              setTeamCallup((prev) => ({
+                                ...prev,
+                                observationsByPlayerId: { ...prev.observationsByPlayerId, [p.id]: e.target.value },
+                              }))
+                            }
+                            placeholder="—"
+                            className="h-9 text-xs"
+                          />
+                        ) : (
+                          <span className="text-zinc-600">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          <Button type="button" onClick={printCallup}>
+            <Printer className="mr-2 h-4 w-4" />
+            {isPt ? "Imprimir convocatória" : "Print call-up sheet"}
+          </Button>
+        </div>
+      </div>
+
+      {/* Impressão: A4-friendly, texto preto */}
+      <div className="hidden print:block print:bg-white print:text-black print:[color-scheme:light]">
+        <div className="mx-auto max-w-[210mm] print:px-6 print:py-8">
+          <header className="mb-6 flex flex-wrap items-start justify-between gap-4 border-b border-black pb-4">
+            <div className="flex min-w-0 items-start gap-4">
+              <div className="flex h-24 w-24 shrink-0 items-center justify-center border border-black bg-white">
+                {teamCallup.clubLogoDataUrl ? (
+                  <img src={teamCallup.clubLogoDataUrl} alt="" className="max-h-[90px] max-w-[90px] object-contain" />
+                ) : (
+                  <span className="px-2 text-center text-[10px] text-neutral-500">{isPt ? "Logótipo" : "Logo"}</span>
+                )}
+              </div>
+              <div>
+                <h1 className="text-xl font-bold uppercase tracking-wide">{teamDisplayName}</h1>
+                <p className="mt-1 text-sm font-semibold">{isPt ? "Convocatória" : "Match call-up"}</p>
+              </div>
+            </div>
+          </header>
+
+          <section className="mb-6 grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+            <div>
+              <span className="font-semibold">Jogo:</span> <span className="whitespace-pre-wrap">{f.jogo || "—"}</span>
+            </div>
+            <div>
+              <span className="font-semibold">Jornada:</span> {f.jornada || "—"}
+            </div>
+            <div>
+              <span className="font-semibold">Data:</span> {f.data || "—"}
+            </div>
+            <div>
+              <span className="font-semibold">Hora de Encontro:</span> {f.horaEncontro || "—"}
+            </div>
+            <div className="col-span-2">
+              <span className="font-semibold">Ponto de Encontro:</span>{" "}
+              <span className="whitespace-pre-wrap">{f.pontoEncontro || "—"}</span>
+            </div>
+            <div className="col-span-2">
+              <span className="font-semibold">Maps:</span> <span className="break-all">{f.maps || "—"}</span>
+            </div>
+            <div className="col-span-2">
+              <span className="font-semibold">Chegada ao Jogo:</span> {f.chegadaJogo || "—"}
+            </div>
+          </section>
+
+          <table className="w-full border-collapse border border-black text-sm">
+            <thead>
+              <tr className="bg-neutral-100">
+                <th className="border border-black px-2 py-2 text-left font-semibold">#</th>
+                <th className="border border-black px-2 py-2 text-left font-semibold">{isPt ? "Nome" : "Name"}</th>
+                <th className="border border-black px-2 py-2 text-left font-semibold">{isPt ? "Assinatura" : "Signature"}</th>
+                <th className="border border-black px-2 py-2 text-left font-semibold">{isPt ? "Observações" : "Notes"}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {printRows.map((row, i) => (
+                <tr key={i}>
+                  <td className="border border-black px-2 py-3 font-mono">{row.number}</td>
+                  <td className="border border-black px-2 py-3">{row.name}</td>
+                  <td className="border border-black px-2 py-8" />
+                  <td className="border border-black px-2 py-3 text-xs whitespace-pre-wrap">{row.obs}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}

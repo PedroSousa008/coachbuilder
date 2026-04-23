@@ -272,6 +272,28 @@ export interface TeamRoles {
   cornerLeft: string[];
 }
 
+/** Dados do jogo / logística para impressão da convocatória. */
+export interface TeamCallupCalendarForm {
+  jogo: string;
+  jornada: string;
+  data: string;
+  pontoEncontro: string;
+  maps: string;
+  horaEncontro: string;
+  chegadaJogo: string;
+}
+
+/** Convocatória: logótipo opcional, formulário, até 18 jogadores, observações por jogador. */
+export interface TeamCallupState {
+  /** Data URL da imagem do logótipo da equipa (opcional). */
+  clubLogoDataUrl?: string;
+  form: TeamCallupCalendarForm;
+  /** Ids dos jogadores convocados (máx. 18; na impressão ordenados por número da camisola). */
+  selectedPlayerIds: string[];
+  /** Texto livre por jogador (coluna Observações na impressão). */
+  observationsByPlayerId: Record<string, string>;
+}
+
 export interface TrainingSession {
   id: string;
   title: string;

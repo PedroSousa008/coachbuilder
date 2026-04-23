@@ -7,6 +7,7 @@ import { AddPlayerModal } from "@/components/players/AddPlayerModal";
 import { PlayerDetailModal } from "@/components/players/PlayerDetailModal";
 import { AddStaffModal } from "@/components/team/AddStaffModal";
 import { StaffDetailModal } from "@/components/team/StaffDetailModal";
+import { TeamCallupPanel } from "@/components/team/TeamCallupPanel";
 import { playerHasPosition, sortSquadRoster, type SquadSortBy } from "@/lib/player-positions";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
@@ -67,7 +68,7 @@ export default function TeamPage() {
   const [q, setQ] = useState("");
   const [pos, setPos] = useState<Position | "all">("all");
   const [sortBy, setSortBy] = useState<SquadSortBy>("number");
-  const [tab, setTab] = useState<"players" | "staff" | "roles">("players");
+  const [tab, setTab] = useState<"players" | "staff" | "roles" | "callup">("players");
   const [detailId, setDetailId] = useState<string | null>(null);
   const [detailStaffId, setDetailStaffId] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
@@ -118,6 +119,7 @@ export default function TeamPage() {
         }}
       />
 
+      <div className="print:hidden">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h2 className="font-display text-lg font-semibold text-white">Squad roster</h2>
@@ -136,12 +138,16 @@ export default function TeamPage() {
               className="sm:w-56"
             />
           ) : null}
-          <Button type="button" onClick={() => setAddOpen(true)}>
-            {isPt ? "Adicionar jogador" : "Add player"}
-          </Button>
-          <Button type="button" variant="secondary" onClick={() => setAddStaffOpen(true)}>
-            {isPt ? "Adicionar staff" : "Add staff"}
-          </Button>
+          {tab !== "callup" ? (
+            <>
+              <Button type="button" onClick={() => setAddOpen(true)}>
+                {isPt ? "Adicionar jogador" : "Add player"}
+              </Button>
+              <Button type="button" variant="secondary" onClick={() => setAddStaffOpen(true)}>
+                {isPt ? "Adicionar staff" : "Add staff"}
+              </Button>
+            </>
+          ) : null}
         </div>
       </div>
 
@@ -173,9 +179,20 @@ export default function TeamPage() {
         >
           Funções
         </button>
+        <button
+          type="button"
+          onClick={() => setTab("callup")}
+          className={`-mb-px border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
+            tab === "callup" ? "border-accent text-white" : "border-transparent text-zinc-500 hover:text-zinc-300"
+          }`}
+        >
+          Convocatória
+        </button>
+      </div>
       </div>
 
       {tab === "players" ? (
+        <div className="print:hidden">
         <>
           <div className="space-y-3">
             <div>
@@ -260,10 +277,11 @@ export default function TeamPage() {
             )}
           </section>
         </>
+        </div>
       ) : null}
 
       {tab === "staff" ? (
-        <section className="space-y-4">
+        <section className="space-y-4 print:hidden">
           <div className="flex items-end justify-between gap-2">
             <h3 className="font-display text-base font-semibold text-white">Staff</h3>
           </div>
@@ -306,8 +324,10 @@ export default function TeamPage() {
         </section>
       ) : null}
 
+      {tab === "callup" ? <TeamCallupPanel /> : null}
+
       {tab === "roles" ? (
-        <section className="space-y-6">
+        <section className="space-y-6 print:hidden">
           <div className="grid gap-6 lg:grid-cols-2">
             <article className="rounded-2xl border border-surface-border bg-surface-raised/50 p-4">
               <h3 className="font-display text-base font-semibold text-white">{isPt ? "Capitania" : "Captaincy"}</h3>

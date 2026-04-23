@@ -19,28 +19,9 @@ export function matchFingerprint(m: LeagueImportedMatch): string {
   return `${h}|${a}|${day}|${hm}`;
 }
 
-/**
- * Same match can be merged from different FPF fragments with home/away order preserved differently;
- * FPF usually keeps order, but dedupe key is stable on sorted pair.
- */
-export function matchFingerprintOrderInsensitive(m: LeagueImportedMatch): string {
-  const h = normalizeTeamLabel(m.homeTeam);
-  const a = normalizeTeamLabel(m.awayTeam);
-  const pair = h <= a ? `${h}|${a}` : `${a}|${h}`;
-  const t = new Date(m.kickoff);
-  const day = t.toLocaleDateString("en-CA", { timeZone: "Europe/Lisbon" });
-  const hm = t.toLocaleTimeString("en-GB", {
-    timeZone: "Europe/Lisbon",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  });
-  return `${pair}|${day}|${hm}`;
-}
-
 function betterMatch(a: LeagueImportedMatch, b: LeagueImportedMatch): LeagueImportedMatch {
   const rank = (m: LeagueImportedMatch) =>
-    (m.fpfFixtureId ? 8 : 0) + (m.matchId ? 4 : 0) + (m.homeScore != null && m.awayScore != null ? 2 : 0) + (m.venue ? 1 : 0);
+    (m.matchId ? 4 : 0) + (m.homeScore != null && m.awayScore != null ? 2 : 0) + (m.venue ? 1 : 0);
   const ra = rank(a);
   const rb = rank(b);
   if (ra !== rb) return ra >= rb ? a : b;
@@ -50,7 +31,7 @@ function betterMatch(a: LeagueImportedMatch, b: LeagueImportedMatch): LeagueImpo
 export function dedupeMatches(matches: LeagueImportedMatch[]): LeagueImportedMatch[] {
   const map = new Map<string, LeagueImportedMatch>();
   for (const m of matches) {
-    const key = matchFingerprintOrderInsensitive(m);
+    const key = matchFingerprint(m);
     const existing = map.get(key);
     if (!existing) {
       map.set(key, m);

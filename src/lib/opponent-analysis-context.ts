@@ -1,7 +1,7 @@
 import type { CoachProfileState, LeagueImportedMatch, LeagueTableRow, MatchFixture, Player, Position } from "@/types";
 import { getPlayerPositions } from "@/lib/player-positions";
 import { calendarDayLisbon, isImportedMatchUpcoming, isKickoffInFuture } from "@/lib/lisbon-date";
-import { matchInvolvesResolvedClub, opponentAndVenueForCoach, teamNameSimilarity } from "@/lib/team-match";
+import { teamNameSimilarity, userClubMatchesOfficialTeam } from "@/lib/team-match";
 
 export function upcomingFixturesSorted(fixtures: MatchFixture[]): MatchFixture[] {
   const t0 = Date.now() - 36 * 60 * 60 * 1000;
@@ -43,14 +43,13 @@ export function mergedUpcomingFixturesForCoach(args: {
   const manualForDedup = cands.map(({ t: _t, ...rest }) => rest);
 
   if (club.length > 0) {
-    const teamLabel = (args.coachClubCanonical?.trim() || club).trim();
     for (const m of args.leagueMatches) {
       if (!isImportedMatchUpcoming(m, args.nowMs)) continue;
-      if (!matchInvolvesResolvedClub(m, club, names)) continue;
-      const ov = opponentAndVenueForCoach(m, teamLabel, args.coachClub.trim(), names);
-      if (!ov) continue;
-      const opponent = ov.opponent;
-      const venue = ov.venue;
+      const homeHit = userClubMatchesOfficialTeam(club, m.homeTeam, names);
+      const awayHit = userClubMatchesOfficialTeam(club, m.awayTeam, names);
+      if (!homeHit && !awayHit) continue;
+      const venue: "home" | "away" = homeHit ? "home" : "away";
+      const opponent = homeHit ? m.awayTeam : m.homeTeam;
       const dup = manualForDedup.some(
         (f) =>
           calendarDayLisbon(f.kickoff) === calendarDayLisbon(m.kickoff) &&

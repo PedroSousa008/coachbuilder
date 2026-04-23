@@ -159,63 +159,6 @@ export function userClubMatchesOfficialTeam(
   if (best) {
     if (normalizeTeamLabel(best.name) === normalizeTeamLabel(officialTeam)) return true;
     if (teamNameSimilarity(best.name, officialTeam) >= 0.9) return true;
-    /** Do not fall back to `teamNamesMatch(u, officialTeam)` — it matches unrelated clubs via substring (e.g. Merelinense vs Ninense). */
-    return false;
   }
   return teamNamesMatch(u, officialTeam);
-}
-
-/**
- * True if this fixture involves the coach’s club: after resolving the profile name against
- * `rosterCandidates`, one side must equal that canonical name (normalized). Stops other teams’
- * games in the same FPF fragment from passing fuzzy-only checks.
- */
-export function matchInvolvesResolvedClub(
-  m: { homeTeam: string; awayTeam: string },
-  clubHint: string,
-  rosterCandidates: string[]
-): boolean {
-  const u = clubHint.trim();
-  if (!u.length) return false;
-  const uniq = [...new Set(rosterCandidates.map((x) => x.trim()).filter(Boolean))];
-  if (uniq.length === 0) {
-    return teamNamesMatch(u, m.homeTeam) || teamNamesMatch(u, m.awayTeam);
-  }
-  const best = pickBestTeamMatch(u, uniq);
-  if (best) {
-    const b = normalizeTeamLabel(best.name);
-    const h = normalizeTeamLabel(m.homeTeam);
-    const a = normalizeTeamLabel(m.awayTeam);
-    return h === b || a === b;
-  }
-  return teamNamesMatch(u, m.homeTeam) || teamNamesMatch(u, m.awayTeam);
-}
-
-/**
- * Home/away + opponent label for UI. Disambiguates when fuzzy logic would match both sides.
- */
-export function opponentAndVenueForCoach(
-  m: { homeTeam: string; awayTeam: string },
-  teamLabel: string,
-  profileClub: string,
-  candidates: string[]
-): { venue: "home" | "away"; opponent: string } | null {
-  const hH =
-    userClubMatchesOfficialTeam(teamLabel, m.homeTeam, candidates) ||
-    (!!profileClub.trim() && userClubMatchesOfficialTeam(profileClub, m.homeTeam, candidates));
-  const aH =
-    userClubMatchesOfficialTeam(teamLabel, m.awayTeam, candidates) ||
-    (!!profileClub.trim() && userClubMatchesOfficialTeam(profileClub, m.awayTeam, candidates));
-  if (!hH && !aH) return null;
-  if (hH && !aH) return { venue: "home", opponent: m.awayTeam };
-  if (!hH && aH) return { venue: "away", opponent: m.homeTeam };
-  const best = pickBestTeamMatch(teamLabel.trim() || profileClub.trim(), candidates);
-  if (best) {
-    const b = normalizeTeamLabel(best.name);
-    const h = normalizeTeamLabel(m.homeTeam);
-    const a = normalizeTeamLabel(m.awayTeam);
-    if (h === b) return { venue: "home", opponent: m.awayTeam };
-    if (a === b) return { venue: "away", opponent: m.homeTeam };
-  }
-  return { venue: "home", opponent: m.awayTeam };
 }

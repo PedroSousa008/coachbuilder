@@ -25,6 +25,7 @@ export function clearPerUserImportFlag(userId: string): void {
 export type UserDataKeyId =
   | "players"
   | "staff"
+  | "teamCallup"
   | "teamRoles"
   | "conversations"
   | "messages"
@@ -44,6 +45,7 @@ export type UserDataKeyId =
 const LEGACY_MAP: Record<UserDataKeyId, string> = {
   players: "coachbuilder-players",
   staff: "coachbuilder-staff",
+  teamCallup: "coachbuilder-team-callup-v1",
   teamRoles: "coachbuilder-team-roles-v1",
   conversations: "coachbuilder-conversations",
   messages: "coachbuilder-messages",
@@ -69,6 +71,7 @@ export function getAllUserDataKeys(userId: string): Record<UserDataKeyId, string
   return {
     players: userDataKey(userId, "players"),
     staff: userDataKey(userId, "staff"),
+    teamCallup: userDataKey(userId, "teamCallup"),
     teamRoles: userDataKey(userId, "teamRoles"),
     conversations: userDataKey(userId, "conversations"),
     messages: userDataKey(userId, "messages"),

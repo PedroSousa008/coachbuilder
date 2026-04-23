@@ -112,6 +112,7 @@ export function AdminDatabaseClient() {
     tacticPlayerNotes,
     savedTrainingExercises,
     sketchArea,
+    teamCallup,
   } = useAppData();
 
   const isAdmin = Boolean(user?.role === "admin" || (user?.email && clientEmailShowsAdminNav(user.email)));
@@ -250,6 +251,7 @@ export function AdminDatabaseClient() {
         tacticPlayerNotes,
         savedTrainingExercises,
         sketchArea,
+        teamCallup,
       }),
     [
       players,
@@ -272,6 +274,7 @@ export function AdminDatabaseClient() {
       tacticPlayerNotes,
       savedTrainingExercises,
       sketchArea,
+      teamCallup,
     ]
   );
 
