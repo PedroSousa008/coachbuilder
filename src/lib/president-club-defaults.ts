@@ -93,14 +93,18 @@ export function mergePresidentClubState(raw: unknown, fallback: PresidentClubSta
       availability: str(m.availability, ""),
       savedAt: str(m.savedAt, ""),
     })).filter((m) => m.id),
-    financeMovements: arr<PresidentFinanceMovement>(o.financeMovements).map((f) => ({
-      id: str(f.id, ""),
-      kind: f.kind === "expense" ? "expense" : "income",
-      category: str(f.category, ""),
-      amountEUR: num(f.amountEUR, 0),
-      date: str(f.date, ""),
-      note: str(f.note, ""),
-    })).filter((f) => f.id),
+    financeMovements: arr<PresidentFinanceMovement>(o.financeMovements)
+      .map(
+        (f): PresidentFinanceMovement => ({
+          id: str(f.id, ""),
+          kind: f.kind === "expense" ? "expense" : "income",
+          category: str(f.category, ""),
+          amountEUR: num(f.amountEUR, 0),
+          date: str(f.date, ""),
+          note: str(f.note, ""),
+        })
+      )
+      .filter((f) => f.id),
     payments: arr<PresidentPayment>(o.payments).map((p) => ({
       id: str(p.id, ""),
       playerName: str(p.playerName, ""),
