@@ -7,6 +7,7 @@ alwaysApply: true
 
 ## Default: always ship to Vercel (via Git)
 
+- **Push automático:** Sempre que houver alterações de código ou config que devam ir para produção, o agente faz **commit + push para `origin` no fim da tarefa**, sem esperar que o utilizador peça “faz push” — exceto se o utilizador disser explicitamente para não fazer push.
 - **User expectation:** From here on, **the agent** (not the user) does **commit + push** after meaningful edits, except when the user explicitly opts out (“não faças push”, “só local”, “não commits yet”). Do not assume the user will use Source Control or Terminal to push.
 - **Unless the user explicitly says not to push** (e.g. “local only”, “don’t commit yet”), finish every substantive coding task by **committing and pushing** to `origin` on the branch Vercel watches. That push is what triggers **automatic Vercel deployment** — no separate “deploy to Vercel” button is required when Git integration is connected.
 - Work in the **git root** for this app: the workspace folder **`CoachBrain`** is the same repo as [github.com/PedroSousa008/coachbuilder](https://github.com/PedroSousa008/coachbuilder) — Next.js lives at the **repo root** (`package.json`, `src/`), not in a nested `coachbuilder/` subfolder.
