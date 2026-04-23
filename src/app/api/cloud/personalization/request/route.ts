@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { isCloudSyncEnabledServer } from "@/lib/cloud-config";
 import { readSessionFromCookies } from "@/lib/cloud-session";
 import type { FullPersonalizationRequestPublic } from "@/types/personalization";
-import { computeSubscriptionAccess } from "@/lib/subscription-access";
+import { resolveSubscriptionAccessForCloudUser } from "@/lib/president-trainer-seat-subscription";
 
 export const dynamic = "force-dynamic";
 
@@ -82,7 +82,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Sem sessão." }, { status: 401 });
     }
 
-    const access = computeSubscriptionAccess(user);
+    const access = await resolveSubscriptionAccessForCloudUser(prisma, user);
     if (!access.hasProAccess) {
       return NextResponse.json({ ok: false, error: "Apenas contas Coach Pro podem pedir personalização." }, { status: 403 });
     }
