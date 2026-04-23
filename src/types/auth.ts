@@ -1,6 +1,7 @@
 import type { SubscriptionAccessPayload } from "@/types/subscription";
 
 export const COACHING_ROLES = [
+  { id: "club-president", label: "Presidente" },
   { id: "head-coach", label: "Treinador principal" },
   { id: "assistant-coach", label: "Treinador adjunto" },
   { id: "goalkeeper-coach", label: "Treinador de guarda-redes" },
@@ -18,6 +19,7 @@ export function isCoachingRoleId(r: string): r is CoachingRoleId {
 /** Label shown in profile / tactics (English, matches legacy `CoachProfileState`). */
 export function coachingRoleProfileLabel(id: CoachingRoleId): string {
   const map: Record<CoachingRoleId, string> = {
+    "club-president": "Club President",
     "head-coach": "Head Coach",
     "assistant-coach": "Assistant Coach",
     "goalkeeper-coach": "Goalkeeper Coach",

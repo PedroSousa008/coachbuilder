@@ -16,7 +16,7 @@ function SignupForm() {
   const next = nextRaw.startsWith("/") ? nextRaw : "/app";
 
   const [name, setName] = useState("");
-  const [coachingRole, setCoachingRole] = useState<CoachingRoleId>("head-coach");
+  const [coachingRole, setCoachingRole] = useState<CoachingRoleId>("club-president");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -86,7 +86,7 @@ function SignupForm() {
         </div>
         <div>
           <label htmlFor="signup-role" className="text-xs font-medium text-zinc-500">
-            Função (equipa técnica)
+            Função no clube
           </label>
           <select
             id="signup-role"
