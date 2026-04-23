@@ -317,12 +317,17 @@ function drawStrokes(ctx: CanvasRenderingContext2D, strokes: SketchStroke[]) {
 
     if (s.tool === "cone") {
       const [x, y] = pts[pts.length - 1]!;
+      // Flat marker cone with top hole.
+      ctx.fillStyle = "#f4f4f5";
+      ctx.strokeStyle = "#111827";
+      ctx.lineWidth = 1.5;
       ctx.beginPath();
-      ctx.moveTo(x, y - 10);
-      ctx.lineTo(x - 8, y + 8);
-      ctx.lineTo(x + 8, y + 8);
-      ctx.closePath();
-      ctx.fillStyle = s.color;
+      ctx.ellipse(x, y + 3, 16, 10, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = "#0f172a";
+      ctx.beginPath();
+      ctx.ellipse(x, y - 2, 4.8, 2.8, 0, 0, Math.PI * 2);
       ctx.fill();
       continue;
     }
@@ -425,31 +430,116 @@ function drawStrokes(ctx: CanvasRenderingContext2D, strokes: SketchStroke[]) {
     } else if (s.tool === "goal" && pts.length >= 2) {
       const [x1, y1] = pts[0]!;
       const [x2, y2] = pts[pts.length - 1]!;
-      const x = Math.min(x1, x2);
-      const y = Math.min(y1, y2);
-      const w = Math.max(16, Math.abs(x2 - x1));
-      const h = Math.max(8, Math.abs(y2 - y1));
-      ctx.strokeRect(x, y, w, h);
+      const x = Math.min(x1, x2) + 2;
+      const y = Math.min(y1, y2) + 2;
+      const w = Math.max(28, Math.abs(x2 - x1));
+      const h = Math.max(14, Math.abs(y2 - y1));
+      const depth = Math.max(8, Math.min(16, w * 0.18));
+      const topLift = Math.max(5, h * 0.28);
+      ctx.strokeStyle = "#f4f4f5";
+      ctx.fillStyle = "rgba(244,244,245,0.28)";
+      ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.moveTo(x + w * 0.2, y);
-      ctx.lineTo(x + w * 0.2, y + h);
-      ctx.moveTo(x + w * 0.8, y);
-      ctx.lineTo(x + w * 0.8, y + h);
+      ctx.moveTo(x, y + h);
+      ctx.lineTo(x + w, y + h);
+      ctx.lineTo(x + w + depth, y + h - topLift);
+      ctx.lineTo(x + depth, y + h - topLift);
+      ctx.closePath();
+      ctx.fill();
       ctx.stroke();
-    } else if (s.tool === "leader" && pts.length >= 2) {
+      ctx.beginPath();
+      ctx.moveTo(x, y + h);
+      ctx.lineTo(x + depth, y + h - topLift);
+      ctx.moveTo(x + w, y + h);
+      ctx.lineTo(x + w + depth, y + h - topLift);
+      ctx.moveTo(x + w, y + h);
+      ctx.lineTo(x + w + depth, y + h + topLift * 0.7);
+      ctx.lineTo(x + depth, y + h + topLift * 0.7);
+      ctx.lineTo(x, y + h);
+      ctx.moveTo(x + depth + w * 0.25, y + h - topLift);
+      ctx.lineTo(x + depth + w * 0.25, y + h + topLift * 0.7);
+      ctx.moveTo(x + depth + w * 0.6, y + h - topLift);
+      ctx.lineTo(x + depth + w * 0.6, y + h + topLift * 0.7);
+      ctx.stroke();
+    } else if (s.tool === "mannequin" && pts.length >= 2) {
       const [x1, y1] = pts[0]!;
       const [x2, y2] = pts[pts.length - 1]!;
+      const x = Math.min(x1, x2);
+      const y = Math.min(y1, y2);
+      const w = Math.max(18, Math.abs(x2 - x1));
+      const h = Math.max(40, Math.abs(y2 - y1));
+      const cx = x + w / 2;
+      ctx.strokeStyle = "#f4f4f5";
+      ctx.fillStyle = "rgba(244,244,245,0.35)";
+      ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.moveTo(x1, y1);
-      ctx.lineTo(x2, y2);
+      ctx.ellipse(cx, y + h * 0.12, w * 0.18, h * 0.08, 0, 0, Math.PI * 2);
       ctx.stroke();
-      const ang = Math.atan2(y2 - y1, x2 - x1);
-      const L = 10;
       ctx.beginPath();
-      ctx.moveTo(x2, y2);
-      ctx.lineTo(x2 - L * Math.cos(ang - 0.45), y2 - L * Math.sin(ang - 0.45));
-      ctx.moveTo(x2, y2);
-      ctx.lineTo(x2 - L * Math.cos(ang + 0.45), y2 - L * Math.sin(ang + 0.45));
+      ctx.moveTo(cx - w * 0.38, y + h * 0.25);
+      ctx.lineTo(cx + w * 0.38, y + h * 0.25);
+      ctx.lineTo(cx + w * 0.32, y + h * 0.64);
+      ctx.lineTo(cx + w * 0.2, y + h * 0.95);
+      ctx.lineTo(cx - w * 0.2, y + h * 0.95);
+      ctx.lineTo(cx - w * 0.32, y + h * 0.64);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(cx, y + h * 0.25);
+      ctx.lineTo(cx, y + h * 0.95);
+      ctx.moveTo(cx - w * 0.2, y + h * 0.45);
+      ctx.lineTo(cx + w * 0.2, y + h * 0.45);
+      ctx.stroke();
+    } else if (s.tool === "poleBase" && pts.length >= 2) {
+      const [x1, y1] = pts[0]!;
+      const [x2, y2] = pts[pts.length - 1]!;
+      const x = (x1 + x2) / 2;
+      const yTop = Math.min(y1, y2);
+      const yBottom = Math.max(y1, y2);
+      const h = Math.max(28, yBottom - yTop);
+      ctx.strokeStyle = "#f4f4f5";
+      ctx.fillStyle = "rgba(244,244,245,0.9)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(x, yTop);
+      ctx.lineTo(x, yTop + h * 0.78);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(x, yTop + h * 0.78);
+      ctx.lineTo(x - 8, yTop + h);
+      ctx.lineTo(x + 8, yTop + h);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    } else if ((s.tool === "ladder" || s.tool === "leader") && pts.length >= 2) {
+      const [x1, y1] = pts[0]!;
+      const [x2, y2] = pts[pts.length - 1]!;
+      const ang = Math.atan2(y2 - y1, x2 - x1);
+      const len = Math.max(24, Math.hypot(x2 - x1, y2 - y1));
+      const nx = -Math.sin(ang);
+      const ny = Math.cos(ang);
+      const half = 9;
+      const startX = x1;
+      const startY = y1;
+      const endX = startX + Math.cos(ang) * len;
+      const endY = startY + Math.sin(ang) * len;
+      ctx.strokeStyle = "#f4f4f5";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(startX + nx * half, startY + ny * half);
+      ctx.lineTo(endX + nx * half, endY + ny * half);
+      ctx.moveTo(startX - nx * half, startY - ny * half);
+      ctx.lineTo(endX - nx * half, endY - ny * half);
+      const rungGap = 18;
+      const rungs = Math.max(2, Math.floor(len / rungGap));
+      for (let i = 1; i < rungs; i++) {
+        const t = i / rungs;
+        const rx = startX + (endX - startX) * t;
+        const ry = startY + (endY - startY) * t;
+        ctx.moveTo(rx + nx * half, ry + ny * half);
+        ctx.lineTo(rx - nx * half, ry - ny * half);
+      }
       ctx.stroke();
     }
   }

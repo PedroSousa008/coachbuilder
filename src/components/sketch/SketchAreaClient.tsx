@@ -76,9 +76,11 @@ const FORMS_TOOLS: { id: SketchStrokeTool; label: string }[] = [
   { id: "square", label: "Square" },
   { id: "triangle", label: "Triangle" },
   { id: "cone", label: "Cone" },
+  { id: "mannequin", label: "Mannequin" },
+  { id: "poleBase", label: "Pole Base" },
+  { id: "ladder", label: "Ladder" },
   { id: "arrow", label: "Arrow" },
   { id: "goal", label: "Goal" },
-  { id: "leader", label: "Leader" },
 ];
 
 function sketchUid(prefix: string) {
