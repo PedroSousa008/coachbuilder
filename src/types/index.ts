@@ -770,7 +770,8 @@ export type SketchStrokeTool =
   | "leader"
   | "ladder"
   | "mannequin"
-  | "poleBase";
+  | "poleBase"
+  | "ball";
 
 export interface SketchStroke {
   tool: SketchStrokeTool;

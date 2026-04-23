@@ -320,14 +320,14 @@ function drawStrokes(ctx: CanvasRenderingContext2D, strokes: SketchStroke[]) {
       // Flat marker cone with top hole.
       ctx.fillStyle = "#f4f4f5";
       ctx.strokeStyle = "#111827";
-      ctx.lineWidth = 1.5;
+      ctx.lineWidth = 1.2;
       ctx.beginPath();
-      ctx.ellipse(x, y + 3, 16, 10, 0, 0, Math.PI * 2);
+      ctx.ellipse(x, y + 2, 8.5, 5.5, 0, 0, Math.PI * 2);
       ctx.fill();
       ctx.stroke();
       ctx.fillStyle = "#0f172a";
       ctx.beginPath();
-      ctx.ellipse(x, y - 2, 4.8, 2.8, 0, 0, Math.PI * 2);
+      ctx.ellipse(x, y - 0.5, 2.6, 1.6, 0, 0, Math.PI * 2);
       ctx.fill();
       continue;
     }
@@ -370,6 +370,165 @@ function drawStrokes(ctx: CanvasRenderingContext2D, strokes: SketchStroke[]) {
     if (s.tool === "numbered" && s.label != null) {
       const [x, y] = pts[pts.length - 1]!;
       drawNumberedDisk(ctx, x, y, s.color, s.label);
+      continue;
+    }
+    if (s.tool === "ball") {
+      const [x, y] = pts[pts.length - 1]!;
+      const r = 9;
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fillStyle = "#f8fafc";
+      ctx.fill();
+      ctx.strokeStyle = "#111827";
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      // Simple football patches
+      ctx.fillStyle = "#111827";
+      ctx.beginPath();
+      ctx.arc(x, y, 2.2, 0, Math.PI * 2);
+      ctx.fill();
+      for (let i = 0; i < 5; i++) {
+        const a = (Math.PI * 2 * i) / 5 - Math.PI / 2;
+        const px = x + Math.cos(a) * 4.5;
+        const py = y + Math.sin(a) * 4.5;
+        ctx.beginPath();
+        ctx.arc(px, py, 1.3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      continue;
+    }
+    if (s.tool === "circle") {
+      const [x, y] = pts[pts.length - 1]!;
+      ctx.beginPath();
+      ctx.arc(x, y, 10, 0, Math.PI * 2);
+      ctx.stroke();
+      continue;
+    }
+    if (s.tool === "square") {
+      const [x, y] = pts[pts.length - 1]!;
+      const size = 18;
+      ctx.strokeRect(x - size / 2, y - size / 2, size, size);
+      continue;
+    }
+    if (s.tool === "triangle") {
+      const [x, y] = pts[pts.length - 1]!;
+      ctx.beginPath();
+      ctx.moveTo(x, y - 11);
+      ctx.lineTo(x - 10, y + 8);
+      ctx.lineTo(x + 10, y + 8);
+      ctx.closePath();
+      ctx.stroke();
+      continue;
+    }
+    if (s.tool === "arrow") {
+      const [x, y] = pts[pts.length - 1]!;
+      const x2 = x + 22;
+      const y2 = y;
+      ctx.beginPath();
+      ctx.moveTo(x - 12, y);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(x2, y2);
+      ctx.lineTo(x2 - 8, y2 - 4);
+      ctx.moveTo(x2, y2);
+      ctx.lineTo(x2 - 8, y2 + 4);
+      ctx.stroke();
+      continue;
+    }
+    if (s.tool === "goal") {
+      const [x, y] = pts[pts.length - 1]!;
+      const w = 30;
+      const h = 14;
+      const depth = 8;
+      const topLift = 4;
+      const x0 = x - w / 2;
+      const y0 = y - h / 2;
+      ctx.strokeStyle = "#f4f4f5";
+      ctx.fillStyle = "rgba(244,244,245,0.28)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(x0, y0 + h);
+      ctx.lineTo(x0 + w, y0 + h);
+      ctx.lineTo(x0 + w + depth, y0 + h - topLift);
+      ctx.lineTo(x0 + depth, y0 + h - topLift);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      continue;
+    }
+    if (s.tool === "mannequin") {
+      const [x, y] = pts[pts.length - 1]!;
+      const w = 16;
+      const h = 34;
+      const x0 = x - w / 2;
+      const y0 = y - h / 2;
+      const cx = x;
+      ctx.strokeStyle = "#f4f4f5";
+      ctx.fillStyle = "rgba(244,244,245,0.35)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.ellipse(cx, y0 + h * 0.12, w * 0.18, h * 0.08, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(cx - w * 0.38, y0 + h * 0.25);
+      ctx.lineTo(cx + w * 0.38, y0 + h * 0.25);
+      ctx.lineTo(cx + w * 0.32, y0 + h * 0.64);
+      ctx.lineTo(cx + w * 0.2, y0 + h * 0.95);
+      ctx.lineTo(cx - w * 0.2, y0 + h * 0.95);
+      ctx.lineTo(cx - w * 0.32, y0 + h * 0.64);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      continue;
+    }
+    if (s.tool === "poleBase") {
+      const [x, y] = pts[pts.length - 1]!;
+      const h = 26;
+      const yTop = y - h / 2;
+      ctx.strokeStyle = "#f4f4f5";
+      ctx.fillStyle = "rgba(244,244,245,0.9)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(x, yTop);
+      ctx.lineTo(x, yTop + h * 0.78);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(x, yTop + h * 0.78);
+      ctx.lineTo(x - 7, yTop + h);
+      ctx.lineTo(x + 7, yTop + h);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      continue;
+    }
+    if (s.tool === "ladder" || s.tool === "leader") {
+      const [x, y] = pts[pts.length - 1]!;
+      const ang = -Math.PI / 4;
+      const len = 36;
+      const nx = -Math.sin(ang);
+      const ny = Math.cos(ang);
+      const half = 8;
+      const startX = x - (Math.cos(ang) * len) / 2;
+      const startY = y - (Math.sin(ang) * len) / 2;
+      const endX = x + (Math.cos(ang) * len) / 2;
+      const endY = y + (Math.sin(ang) * len) / 2;
+      ctx.strokeStyle = "#f4f4f5";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(startX + nx * half, startY + ny * half);
+      ctx.lineTo(endX + nx * half, endY + ny * half);
+      ctx.moveTo(startX - nx * half, startY - ny * half);
+      ctx.lineTo(endX - nx * half, endY - ny * half);
+      const rungs = 4;
+      for (let i = 1; i < rungs; i++) {
+        const t = i / rungs;
+        const rx = startX + (endX - startX) * t;
+        const ry = startY + (endY - startY) * t;
+        ctx.moveTo(rx + nx * half, ry + ny * half);
+        ctx.lineTo(rx - nx * half, ry - ny * half);
+      }
+      ctx.stroke();
       continue;
     }
 
@@ -556,6 +715,7 @@ export function SketchBoardCanvas({
   nextNumberLabel,
   canPlaceNumbered = true,
   playerTokenDraft,
+  dragMode = false,
 }: {
   pitchTemplate: SketchPitchTemplate;
   strokes: SketchStroke[];
@@ -571,12 +731,15 @@ export function SketchBoardCanvas({
   canPlaceNumbered?: boolean;
   /** Novo token de jogador a colocar (click-to-place). */
   playerTokenDraft?: { playerId: string; number: number; name: string } | null;
+  /** Move objects around instead of placing/drawing. */
+  dragMode?: boolean;
 }) {
   const ref = useRef<HTMLCanvasElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const currentStroke = useRef<SketchStroke | null>(null);
   const activePointerId = useRef<number | null>(null);
   const draggingTokenStrokeId = useRef<number | null>(null);
+  const draggingOffset = useRef<{ dx: number; dy: number }>({ dx: 0, dy: 0 });
   const strokesRef = useRef(strokes);
   strokesRef.current = strokes;
 
@@ -640,6 +803,41 @@ export function SketchBoardCanvas({
     redraw();
   };
 
+  const draggableTools = new Set<SketchStrokeTool>([
+    "playerToken",
+    "ball",
+    "circle",
+    "square",
+    "triangle",
+    "cone",
+    "mannequin",
+    "poleBase",
+    "ladder",
+    "goal",
+    "arrow",
+  ]);
+
+  const clickPlaceTools = new Set<SketchStrokeTool>([
+    "ball",
+    "circle",
+    "square",
+    "triangle",
+    "cone",
+    "mannequin",
+    "poleBase",
+    "ladder",
+    "goal",
+    "arrow",
+  ]);
+
+  const estimateHitRadius = (toolId: SketchStrokeTool) => {
+    if (toolId === "goal") return 24;
+    if (toolId === "ladder") return 24;
+    if (toolId === "mannequin") return 20;
+    if (toolId === "playerToken" || toolId === "cone" || toolId === "ball") return 14;
+    return 12;
+  };
+
   const onPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (e.button !== 0 && e.pointerType === "mouse") return;
     if (tool === "numbered" && (!canPlaceNumbered || nextNumberLabel == null)) return;
@@ -648,6 +846,21 @@ export function SketchBoardCanvas({
     canvas.setPointerCapture(e.pointerId);
     activePointerId.current = e.pointerId;
     const { x, y } = pos(e);
+    if (dragMode) {
+      const hit = [...strokesRef.current]
+        .map((s, i) => ({ s, i }))
+        .reverse()
+        .find(({ s }) => {
+          if (!draggableTools.has(s.tool) || s.points.length < 1) return false;
+          const [px, py] = s.points[s.points.length - 1]!;
+          return Math.hypot(px - x, py - y) <= estimateHitRadius(s.tool);
+        });
+      if (!hit) return;
+      draggingTokenStrokeId.current = hit.i;
+      const [px, py] = hit.s.points[hit.s.points.length - 1]!;
+      draggingOffset.current = { dx: x - px, dy: y - py };
+      return;
+    }
     if (tool === "playerToken") {
       const hitIndex = [...strokesRef.current]
         .map((s, i) => ({ s, i }))
@@ -672,6 +885,18 @@ export function SketchBoardCanvas({
         playerName: playerTokenDraft.name,
       };
       onStrokesChange([...strokesRef.current, token]);
+      return;
+    }
+    if (clickPlaceTools.has(tool)) {
+      onStrokesChange([
+        ...strokesRef.current,
+        {
+          tool,
+          color,
+          lineWidth,
+          points: [[x, y]],
+        },
+      ]);
       return;
     }
     currentStroke.current = {
@@ -706,8 +931,8 @@ export function SketchBoardCanvas({
     const idx = draggingTokenStrokeId.current;
     const next = [...strokesRef.current];
     const s = next[idx];
-    if (!s || s.tool !== "playerToken") return;
-    next[idx] = { ...s, points: [[x, y]] };
+    if (!s || !draggableTools.has(s.tool)) return;
+    next[idx] = { ...s, points: [[x - draggingOffset.current.dx, y - draggingOffset.current.dy]] };
     onStrokesChange(next);
   };
 
@@ -742,7 +967,7 @@ export function SketchBoardCanvas({
         ref={ref}
         className={cn(
           "touch-none rounded-xl border border-surface-border bg-[#0a0f0c]",
-          tool === "numbered" && !canPlaceNumbered ? "cursor-not-allowed" : "cursor-crosshair"
+          dragMode ? "cursor-grab" : tool === "numbered" && !canPlaceNumbered ? "cursor-not-allowed" : "cursor-crosshair"
         )}
         style={{ touchAction: "none" }}
         onPointerDown={onPointerDown}

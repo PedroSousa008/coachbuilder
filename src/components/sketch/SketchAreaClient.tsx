@@ -72,6 +72,7 @@ const TABS: { id: TabId; label: string; icon: typeof Calendar }[] = [
 ];
 
 const FORMS_TOOLS: { id: SketchStrokeTool; label: string }[] = [
+  { id: "ball", label: "Ball" },
   { id: "circle", label: "Circle" },
   { id: "square", label: "Square" },
   { id: "triangle", label: "Triangle" },
@@ -169,7 +170,7 @@ export function SketchAreaClient() {
 
   const [boardDraftId, setBoardDraftId] = useState<string | null>(null);
   const [boardTool, setBoardTool] = useState<SketchStrokeTool>("draw");
-  const [boardPanel, setBoardPanel] = useState<"player" | "draw" | "forms">("draw");
+  const [boardPanel, setBoardPanel] = useState<"player" | "draw" | "forms" | "drag">("draw");
   const [boardColor, setBoardColor] = useState(BOARD_COLORS[0]!);
   const [boardLine, setBoardLine] = useState(3);
   const [boardPitch] = useState<SketchPitchTemplate>("full");
@@ -1177,6 +1178,7 @@ export function SketchAreaClient() {
                     { id: "player", label: "Player" },
                     { id: "draw", label: "Draw" },
                     { id: "forms", label: "Forms/Tools" },
+                    { id: "drag", label: "Drag" },
                   ] as const).map(({ id, label }) => (
                     <Button
                       key={id}
@@ -1187,7 +1189,7 @@ export function SketchAreaClient() {
                         setBoardPanel(id);
                         if (id === "draw") setBoardTool("draw");
                         if (id === "player") setBoardTool("playerToken");
-                        if (id === "forms") setBoardTool("circle");
+                        if (id === "forms") setBoardTool("ball");
                       }}
                     >
                       {label}
@@ -1287,6 +1289,7 @@ export function SketchAreaClient() {
                     color={boardColor}
                     lineWidth={boardLine}
                     expanded={boardExpanded}
+                    dragMode={boardPanel === "drag"}
                     playerTokenDraft={
                       boardTool === "playerToken" && selectedBoardPlayer
                         ? {
