@@ -143,14 +143,16 @@ export function TeamCallupPanel() {
               <span className="text-xs text-zinc-400">Maps</span>
               <Input value={f.maps} onChange={(e) => setForm({ maps: e.target.value })} placeholder="https://…" />
             </label>
-            <label className="block space-y-1">
-              <span className="text-xs text-zinc-400">Hora de Encontro</span>
-              <Input value={f.horaEncontro} onChange={(e) => setForm({ horaEncontro: e.target.value })} />
-            </label>
-            <label className="block space-y-1">
-              <span className="text-xs text-zinc-400">Chegada ao Jogo</span>
-              <Input value={f.chegadaJogo} onChange={(e) => setForm({ chegadaJogo: e.target.value })} />
-            </label>
+            <div className="space-y-4 sm:col-span-2">
+              <label className="block space-y-1">
+                <span className="text-xs text-zinc-400">Hora de Encontro</span>
+                <Input value={f.horaEncontro} onChange={(e) => setForm({ horaEncontro: e.target.value })} />
+              </label>
+              <label className="block space-y-1">
+                <span className="text-xs text-zinc-400">Chegada ao Jogo</span>
+                <Input value={f.chegadaJogo} onChange={(e) => setForm({ chegadaJogo: e.target.value })} />
+              </label>
+            </div>
           </div>
         </div>
 
@@ -226,27 +228,35 @@ export function TeamCallupPanel() {
         </div>
       </div>
 
-      {/* Impressão: A4-friendly, texto preto */}
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `@media print {
+  @page { size: A4 portrait; margin: 5mm; }
+}`,
+        }}
+      />
+
+      {/* Impressão: uma página A4, texto preto */}
       <div className="hidden print:block print:bg-white print:text-black print:[color-scheme:light]">
-        <div className="mx-auto max-w-[210mm] print:px-6 print:py-8">
-          <header className="mb-6 flex flex-wrap items-start justify-between gap-4 border-b border-black pb-4">
-            <div className="flex min-w-0 items-start gap-4">
-              <div className="flex h-24 w-24 shrink-0 items-center justify-center border border-black bg-white">
+        <div className="mx-auto max-w-[200mm] print:px-0 print:py-0">
+          <header className="mb-3 flex flex-wrap items-start justify-between gap-2 border-b border-black pb-2 print:mb-2 print:pb-2">
+            <div className="flex min-w-0 items-start gap-3 print:gap-2">
+              <div className="flex h-20 w-20 shrink-0 items-center justify-center border border-black bg-white print:h-14 print:w-14">
                 {teamCallup.clubLogoDataUrl ? (
-                  <img src={teamCallup.clubLogoDataUrl} alt="" className="max-h-[90px] max-w-[90px] object-contain" />
+                  <img src={teamCallup.clubLogoDataUrl} alt="" className="max-h-[72px] max-w-[72px] object-contain print:max-h-[48px] print:max-w-[48px]" />
                 ) : (
-                  <span className="px-2 text-center text-[10px] text-neutral-500">{isPt ? "Logótipo" : "Logo"}</span>
+                  <span className="px-1 text-center text-[9px] text-neutral-500 print:text-[7px]">{isPt ? "Logótipo" : "Logo"}</span>
                 )}
               </div>
               <div>
-                <h1 className="text-xl font-bold uppercase tracking-wide">{teamDisplayName}</h1>
-                <p className="mt-1 text-sm font-semibold">{isPt ? "Convocatória" : "Match call-up"}</p>
+                <h1 className="text-lg font-bold uppercase tracking-wide print:text-base print:leading-tight">{teamDisplayName}</h1>
+                <p className="mt-0.5 text-xs font-semibold print:text-[10px]">{isPt ? "Convocatória" : "Match call-up"}</p>
               </div>
             </div>
           </header>
 
-          <section className="mb-6 grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
-            <div>
+          <section className="mb-3 grid grid-cols-2 gap-x-4 gap-y-1 text-xs print:mb-2 print:gap-x-3 print:gap-y-0.5 print:text-[10px] print:leading-snug">
+            <div className="min-w-0">
               <span className="font-semibold">Jogo:</span> <span className="whitespace-pre-wrap">{f.jogo || "—"}</span>
             </div>
             <div>
@@ -255,8 +265,13 @@ export function TeamCallupPanel() {
             <div>
               <span className="font-semibold">Data:</span> {f.data || "—"}
             </div>
-            <div>
-              <span className="font-semibold">Hora de Encontro:</span> {f.horaEncontro || "—"}
+            <div className="flex min-w-0 flex-col gap-y-0.5 print:gap-y-0">
+              <div>
+                <span className="font-semibold">Hora de Encontro:</span> {f.horaEncontro || "—"}
+              </div>
+              <div>
+                <span className="font-semibold">Chegada ao Jogo:</span> {f.chegadaJogo || "—"}
+              </div>
             </div>
             <div className="col-span-2">
               <span className="font-semibold">Ponto de Encontro:</span>{" "}
@@ -265,27 +280,34 @@ export function TeamCallupPanel() {
             <div className="col-span-2">
               <span className="font-semibold">Maps:</span> <span className="break-all">{f.maps || "—"}</span>
             </div>
-            <div className="col-span-2">
-              <span className="font-semibold">Chegada ao Jogo:</span> {f.chegadaJogo || "—"}
-            </div>
           </section>
 
-          <table className="w-full border-collapse border border-black text-sm">
+          <table className="w-full table-fixed border-collapse border border-black text-[11px] print:text-[9px] print:leading-tight">
+            <colgroup>
+              <col className="w-[7%]" />
+              <col className="w-[28%]" />
+              <col className="w-[32%]" />
+              <col className="w-[33%]" />
+            </colgroup>
             <thead>
               <tr className="bg-neutral-100">
-                <th className="border border-black px-2 py-2 text-left font-semibold">#</th>
-                <th className="border border-black px-2 py-2 text-left font-semibold">{isPt ? "Nome" : "Name"}</th>
-                <th className="border border-black px-2 py-2 text-left font-semibold">{isPt ? "Assinatura" : "Signature"}</th>
-                <th className="border border-black px-2 py-2 text-left font-semibold">{isPt ? "Observações" : "Notes"}</th>
+                <th className="border border-black px-1 py-1 text-left font-semibold print:px-1 print:py-0.5">#</th>
+                <th className="border border-black px-1 py-1 text-left font-semibold print:px-1 print:py-0.5">{isPt ? "Nome" : "Name"}</th>
+                <th className="border border-black px-1 py-1 text-left font-semibold print:px-1 print:py-0.5">{isPt ? "Assinatura" : "Signature"}</th>
+                <th className="border border-black px-1 py-1 text-left font-semibold print:px-1 print:py-0.5">{isPt ? "Observações" : "Notes"}</th>
               </tr>
             </thead>
             <tbody>
               {printRows.map((row, i) => (
                 <tr key={i}>
-                  <td className="border border-black px-2 py-3 font-mono">{row.number}</td>
-                  <td className="border border-black px-2 py-3">{row.name}</td>
-                  <td className="border border-black px-2 py-8" />
-                  <td className="border border-black px-2 py-3 text-xs whitespace-pre-wrap">{row.obs}</td>
+                  <td className="h-[7mm] border border-black px-1 py-0 align-top font-mono print:h-[6.5mm] print:px-1 print:py-0">
+                    {row.number}
+                  </td>
+                  <td className="h-[7mm] border border-black px-1 py-0 align-top print:h-[6.5mm] print:px-1 print:py-0">{row.name}</td>
+                  <td className="h-[7mm] border border-black px-1 py-0 align-top print:h-[6.5mm] print:px-1 print:py-0" />
+                  <td className="h-[7mm] border border-black px-1 py-0 align-top text-[10px] whitespace-pre-wrap print:h-[6.5mm] print:px-1 print:py-0 print:text-[8px]">
+                    {row.obs}
+                  </td>
                 </tr>
               ))}
             </tbody>
