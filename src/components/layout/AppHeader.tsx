@@ -86,6 +86,31 @@ export function AppHeader({ title }: { title: string }) {
     return Math.max(0, diffDays);
   }, [nextMatchNotification, nowMs]);
 
+  const nextMatchDaysDisplay = useMemo(() => {
+    if (!nextMatchNotification || nextMatchDaysLeft == null) return null;
+    // Safety net: some calendar imports can land on next season year while keeping same month/day.
+    // If that happens and the same month/day in the current year is near-future, prefer that distance.
+    if (nextMatchNotification.source === "calendar" && nextMatchDaysLeft > 300) {
+      const kickoff = new Date(nextMatchNotification.kickoff);
+      const now = new Date(nowMs);
+      const sameYearKickoff = new Date(
+        now.getFullYear(),
+        kickoff.getMonth(),
+        kickoff.getDate(),
+        kickoff.getHours(),
+        kickoff.getMinutes(),
+        kickoff.getSeconds()
+      );
+      const sameYearDiff = Math.round(
+        (new Date(sameYearKickoff.getFullYear(), sameYearKickoff.getMonth(), sameYearKickoff.getDate()).getTime() -
+          new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()) /
+          (24 * 60 * 60 * 1000)
+      );
+      if (sameYearDiff >= 0 && sameYearDiff <= 30) return sameYearDiff;
+    }
+    return nextMatchDaysLeft;
+  }, [nextMatchNotification, nextMatchDaysLeft, nowMs]);
+
   const sketchTimeReminders = useMemo(() => {
     const reminders: { id: string; title: string; whenLabel: string; startsAt: string }[] = [];
     for (const ev of sketchArea.calendarEvents) {
@@ -202,11 +227,7 @@ export function AppHeader({ title }: { title: string }) {
                   <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
                     <p className="text-xs text-zinc-500">Próximo jogo</p>
                     <p className="text-sm font-medium text-zinc-200">
-                      {nextMatchNotification.title} · faltam {nextMatchDaysLeft ?? 0} dia(s)
-                    </p>
-                    <p className="mt-0.5 text-xs text-zinc-500">
-                      {new Date(nextMatchNotification.kickoff).toLocaleString("pt-PT")} ·{" "}
-                      {nextMatchNotification.source === "sketch" ? "Sketch" : "Calendário"}
+                      {nextMatchNotification.title} · faltam {nextMatchDaysDisplay ?? 0} dias
                     </p>
                   </div>
                 ) : null}
