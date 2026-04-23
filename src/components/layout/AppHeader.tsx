@@ -10,13 +10,76 @@ import { cn } from "@/lib/utils";
 import { clientEmailShowsAdminNav } from "@/lib/bootstrap-admin-client";
 import { hasFullWorkspaceAccess } from "@/lib/subscription-client";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useScheduleNow } from "@/hooks/useScheduleNow";
+import { resolveNextMatchForCoach } from "@/lib/next-match";
+import { collectUniqueTeamNames, pickBestTeamMatch } from "@/lib/team-match";
 
 export function AppHeader({ title }: { title: string }) {
   const [open, setOpen] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
   const pathname = usePathname();
   const { user } = useAuth();
-  const { unreadMessagesCount } = useAppData();
+  const { unreadMessagesCount, conversations, fixtures, leagueMatches, leagueCompetitionName, coachProfile, leagueTableRows, sketchArea } =
+    useAppData();
   const { t } = useLanguage();
+  const nowMs = useScheduleNow();
+
+  const teamCandidateNames = useMemo(
+    () => collectUniqueTeamNames({ tableRows: leagueTableRows, matches: leagueMatches }),
+    [leagueTableRows, leagueMatches]
+  );
+  const canonicalClub = useMemo(() => {
+    const c = coachProfile.club.trim();
+    if (!c || teamCandidateNames.length === 0) return null;
+    return pickBestTeamMatch(c, teamCandidateNames);
+  }, [coachProfile.club, teamCandidateNames]);
+  const nextMatch = useMemo(
+    () =>
+      resolveNextMatchForCoach({
+        coachClub: coachProfile.club,
+        coachClubCanonical: canonicalClub?.name ?? null,
+        leagueCompetitionName,
+        leagueMatches,
+        manualFixtures: fixtures,
+        teamCandidateNames,
+        nowMs,
+      }),
+    [coachProfile.club, canonicalClub?.name, leagueCompetitionName, leagueMatches, fixtures, teamCandidateNames, nowMs]
+  );
+
+  const nextMatchDaysLeft = useMemo(() => {
+    if (!nextMatch) return null;
+    const diff = new Date(nextMatch.kickoff).getTime() - nowMs;
+    if (diff <= 0) return 0;
+    return Math.ceil(diff / (24 * 60 * 60 * 1000));
+  }, [nextMatch, nowMs]);
+
+  const sketchTimeReminders = useMemo(() => {
+    const reminders: { id: string; title: string; whenLabel: string; startsAt: string }[] = [];
+    for (const ev of sketchArea.calendarEvents) {
+      const startIso = ev.timeStart ? `${ev.date}T${ev.timeStart}:00` : `${ev.date}T12:00:00`;
+      const startMs = new Date(startIso).getTime();
+      if (Number.isNaN(startMs) || startMs <= nowMs) continue;
+      const diff = startMs - nowMs;
+      const whenLabel =
+        diff <= 30 * 60 * 1000 ? "em 30 min" : diff <= 2 * 60 * 60 * 1000 ? "em 2 horas" : diff <= 24 * 60 * 60 * 1000 ? "em 1 dia" : null;
+      if (!whenLabel) continue;
+      reminders.push({
+        id: `${ev.id}:${whenLabel}`,
+        title: ev.title,
+        whenLabel,
+        startsAt: startIso,
+      });
+    }
+    reminders.sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime());
+    return reminders;
+  }, [sketchArea.calendarEvents, nowMs]);
+
+  const unreadConversations = useMemo(
+    () => conversations.filter((c) => (c.unread ?? 0) > 0),
+    [conversations]
+  );
+  const notificationBadgeCount = (nextMatch ? 1 : 0) + sketchTimeReminders.length + unreadConversations.length;
 
   const mobileLinks = useMemo(() => {
     const mobileLinksBase = [
@@ -64,13 +127,60 @@ export function AppHeader({ title }: { title: string }) {
         </div>
       </div>
       <div className="flex items-center gap-2">
-        <button
-          type="button"
-          className="hidden h-10 w-10 items-center justify-center rounded-xl border border-surface-border text-zinc-400 transition-colors hover:text-white sm:flex"
-          aria-label={t("header.notifications")}
-        >
-          <Bell className="h-[18px] w-[18px]" strokeWidth={1.75} />
-        </button>
+        <div className="relative hidden sm:block">
+          <button
+            type="button"
+            className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-surface-border text-zinc-400 transition-colors hover:text-white"
+            aria-label={t("header.notifications")}
+            onClick={() => setNotifOpen((v) => !v)}
+          >
+            <Bell className="h-[18px] w-[18px]" strokeWidth={1.75} />
+            {notificationBadgeCount > 0 ? (
+              <span className="absolute -right-0.5 -top-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-accent px-1 text-[10px] font-bold leading-none text-zinc-950">
+                {notificationBadgeCount > 9 ? "+9" : notificationBadgeCount}
+              </span>
+            ) : null}
+          </button>
+          {notifOpen ? (
+            <div className="absolute right-0 top-12 z-50 w-[360px] rounded-2xl border border-surface-border bg-[#0c1014] p-3 shadow-2xl">
+              <p className="px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">Notificações</p>
+              <div className="max-h-[60vh] space-y-2 overflow-auto pr-1">
+                {nextMatch ? (
+                  <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
+                    <p className="text-xs text-zinc-500">Próximo jogo</p>
+                    <p className="text-sm font-medium text-zinc-200">
+                      vs {nextMatch.opponent} · faltam {nextMatchDaysLeft ?? 0} dia(s)
+                    </p>
+                  </div>
+                ) : null}
+
+                {sketchTimeReminders.map((r) => (
+                  <div key={r.id} className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
+                    <p className="text-xs text-zinc-500">Sketch com data</p>
+                    <p className="text-sm font-medium text-zinc-200">
+                      {r.title} · lembrete {r.whenLabel}
+                    </p>
+                  </div>
+                ))}
+
+                {unreadConversations.map((c) => (
+                  <div key={c.id} className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
+                    <p className="text-xs text-zinc-500">
+                      {c.type === "group" ? `Novas mensagens no grupo: ${c.title}` : "Nova mensagem direta"}
+                    </p>
+                    <p className="text-sm font-medium text-zinc-200">{c.lastMessagePreview}</p>
+                  </div>
+                ))}
+
+                {notificationBadgeCount === 0 ? (
+                  <p className="rounded-xl border border-dashed border-white/10 px-3 py-4 text-center text-sm text-zinc-500">
+                    Sem notificações no momento.
+                  </p>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
+        </div>
         <Link
           href="/app/messages"
           className={cn(
