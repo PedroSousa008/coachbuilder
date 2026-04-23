@@ -29,7 +29,9 @@ export async function recordUserLogin(userId: string, email: string): Promise<vo
   ]);
 }
 
-export async function recordAccountCreated(userId: string, email: string, kind: "signup" | "cloud_migrate"): Promise<void> {
+export type AccountCreatedKind = "signup" | "cloud_migrate" | "president_trainer_seat";
+
+export async function recordAccountCreated(userId: string, email: string, kind: AccountCreatedKind): Promise<void> {
   await prisma.$transaction([
     prisma.user.update({
       where: { id: userId },
@@ -67,11 +69,7 @@ export async function recordUserLoginSafe(userId: string, email: string): Promis
   }
 }
 
-export async function recordAccountCreatedSafe(
-  userId: string,
-  email: string,
-  kind: "signup" | "cloud_migrate"
-): Promise<void> {
+export async function recordAccountCreatedSafe(userId: string, email: string, kind: AccountCreatedKind): Promise<void> {
   try {
     await recordAccountCreated(userId, email, kind);
   } catch (e) {
