@@ -47,12 +47,36 @@ export function AppHeader({ title }: { title: string }) {
     [coachProfile.club, canonicalClub?.name, leagueCompetitionName, leagueMatches, fixtures, teamCandidateNames, nowMs]
   );
 
+  const nextMatchFromSketch = useMemo(() => {
+    const rows = sketchArea.calendarEvents
+      .filter((e) => e.category === "match")
+      .map((e) => {
+        const iso = e.timeStart ? `${e.date}T${e.timeStart}:00` : `${e.date}T12:00:00`;
+        return { title: e.title, kickoff: iso, t: new Date(iso).getTime(), source: "sketch" as const };
+      })
+      .filter((r) => Number.isFinite(r.t) && r.t > nowMs)
+      .sort((a, b) => a.t - b.t);
+    return rows[0] ?? null;
+  }, [sketchArea.calendarEvents, nowMs]);
+
+  const nextMatchNotification = useMemo(() => {
+    const fromFixtures = nextMatch
+      ? { title: `vs ${nextMatch.opponent}`, kickoff: nextMatch.kickoff, t: new Date(nextMatch.kickoff).getTime(), source: "fixtures" as const }
+      : null;
+    if (!fromFixtures) return nextMatchFromSketch;
+    if (!nextMatchFromSketch) return fromFixtures;
+    return nextMatchFromSketch.t < fromFixtures.t ? nextMatchFromSketch : fromFixtures;
+  }, [nextMatch, nextMatchFromSketch]);
+
   const nextMatchDaysLeft = useMemo(() => {
-    if (!nextMatch) return null;
-    const diff = new Date(nextMatch.kickoff).getTime() - nowMs;
-    if (diff <= 0) return 0;
-    return Math.ceil(diff / (24 * 60 * 60 * 1000));
-  }, [nextMatch, nowMs]);
+    if (!nextMatchNotification) return null;
+    const kickoff = new Date(nextMatchNotification.kickoff);
+    const now = new Date(nowMs);
+    const startKickoffDay = new Date(kickoff.getFullYear(), kickoff.getMonth(), kickoff.getDate()).getTime();
+    const startNowDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const diffDays = Math.round((startKickoffDay - startNowDay) / (24 * 60 * 60 * 1000));
+    return Math.max(0, diffDays);
+  }, [nextMatchNotification, nowMs]);
 
   const sketchTimeReminders = useMemo(() => {
     const reminders: { id: string; title: string; whenLabel: string; startsAt: string }[] = [];
@@ -79,7 +103,7 @@ export function AppHeader({ title }: { title: string }) {
     () => conversations.filter((c) => (c.unread ?? 0) > 0),
     [conversations]
   );
-  const notificationBadgeCount = (nextMatch ? 1 : 0) + sketchTimeReminders.length + unreadConversations.length;
+  const notificationBadgeCount = (nextMatchNotification ? 1 : 0) + sketchTimeReminders.length + unreadConversations.length;
 
   const mobileLinks = useMemo(() => {
     const mobileLinksBase = [
@@ -145,11 +169,14 @@ export function AppHeader({ title }: { title: string }) {
             <div className="absolute right-0 top-12 z-50 w-[360px] rounded-2xl border border-surface-border bg-[#0c1014] p-3 shadow-2xl">
               <p className="px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">Notificações</p>
               <div className="max-h-[60vh] space-y-2 overflow-auto pr-1">
-                {nextMatch ? (
+                {nextMatchNotification ? (
                   <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
                     <p className="text-xs text-zinc-500">Próximo jogo</p>
                     <p className="text-sm font-medium text-zinc-200">
-                      vs {nextMatch.opponent} · faltam {nextMatchDaysLeft ?? 0} dia(s)
+                      {nextMatchNotification.title} · faltam {nextMatchDaysLeft ?? 0} dia(s)
+                    </p>
+                    <p className="mt-0.5 text-xs text-zinc-500">
+                      {new Date(nextMatchNotification.kickoff).toLocaleString("pt-PT")} · {nextMatchNotification.source === "sketch" ? "Sketch" : "Calendário"}
                     </p>
                   </div>
                 ) : null}
