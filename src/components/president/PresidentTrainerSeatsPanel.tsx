@@ -116,7 +116,7 @@ export function PresidentTrainerSeatsPanel({ onActiveSeatCount, onRosterChanged 
       }
       setRowPassword((prev) => ({ ...prev, [seatIndex]: "" }));
       setBusy(seatIndex, "Palavra-passe actualizada.");
-      setTimeout(() => setBusy((prev) => ({ ...prev, [seatIndex]: null })), 2500);
+      setTimeout(() => setBusy(seatIndex, null), 2500);
     } catch {
       setBusy(seatIndex, "Falha de rede.");
     }
