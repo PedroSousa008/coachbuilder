@@ -756,7 +756,18 @@ export interface SketchFileEntry {
 
 export type SketchPitchTemplate = "blank" | "half" | "full";
 
-export type SketchStrokeTool = "draw" | "arrow" | "circle" | "cone" | "player" | "numbered";
+export type SketchStrokeTool =
+  | "draw"
+  | "arrow"
+  | "circle"
+  | "cone"
+  | "player"
+  | "numbered"
+  | "playerToken"
+  | "square"
+  | "triangle"
+  | "goal"
+  | "leader";
 
 export interface SketchStroke {
   tool: SketchStrokeTool;
@@ -765,6 +776,10 @@ export interface SketchStroke {
   points: [number, number][];
   /** Só para `numbered`: número dentro do círculo (1–24). */
   label?: number;
+  /** Só para `playerToken`: número + nome do jogador. */
+  playerId?: string;
+  playerNumber?: number;
+  playerName?: string;
 }
 
 export interface SketchBoardDraft {

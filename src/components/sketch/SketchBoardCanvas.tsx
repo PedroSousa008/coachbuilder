@@ -336,6 +336,32 @@ function drawStrokes(ctx: CanvasRenderingContext2D, strokes: SketchStroke[]) {
       ctx.stroke();
       continue;
     }
+    if (s.tool === "playerToken") {
+      const [x, y] = pts[pts.length - 1]!;
+      const r = 14;
+      const num = s.playerNumber ?? 0;
+      const name = s.playerName ?? "Player";
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fillStyle = "#f8fafc";
+      ctx.fill();
+      ctx.strokeStyle = "#111827";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.fillStyle = "#111827";
+      ctx.font = `700 ${num > 9 ? 11 : 12}px system-ui, -apple-system, sans-serif`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(String(num), x, y);
+      ctx.font = "600 11px system-ui, -apple-system, sans-serif";
+      ctx.fillStyle = "#f8fafc";
+      ctx.strokeStyle = "rgba(0,0,0,0.65)";
+      ctx.lineWidth = 3;
+      ctx.textBaseline = "top";
+      ctx.strokeText(name, x, y + r + 4);
+      ctx.fillText(name, x, y + r + 4);
+      continue;
+    }
     if (s.tool === "numbered" && s.label != null) {
       const [x, y] = pts[pts.length - 1]!;
       drawNumberedDisk(ctx, x, y, s.color, s.label);
@@ -375,6 +401,56 @@ function drawStrokes(ctx: CanvasRenderingContext2D, strokes: SketchStroke[]) {
       ctx.beginPath();
       ctx.ellipse(cx, cy, Math.max(rx, 4), Math.max(ry, 4), 0, 0, Math.PI * 2);
       ctx.stroke();
+    } else if (s.tool === "square" && pts.length >= 2) {
+      const [x1, y1] = pts[0]!;
+      const [x2, y2] = pts[pts.length - 1]!;
+      const x = Math.min(x1, x2);
+      const y = Math.min(y1, y2);
+      const w = Math.max(6, Math.abs(x2 - x1));
+      const h = Math.max(6, Math.abs(y2 - y1));
+      ctx.strokeRect(x, y, w, h);
+    } else if (s.tool === "triangle" && pts.length >= 2) {
+      const [x1, y1] = pts[0]!;
+      const [x2, y2] = pts[pts.length - 1]!;
+      const x = Math.min(x1, x2);
+      const y = Math.min(y1, y2);
+      const w = Math.max(8, Math.abs(x2 - x1));
+      const h = Math.max(8, Math.abs(y2 - y1));
+      ctx.beginPath();
+      ctx.moveTo(x + w / 2, y);
+      ctx.lineTo(x, y + h);
+      ctx.lineTo(x + w, y + h);
+      ctx.closePath();
+      ctx.stroke();
+    } else if (s.tool === "goal" && pts.length >= 2) {
+      const [x1, y1] = pts[0]!;
+      const [x2, y2] = pts[pts.length - 1]!;
+      const x = Math.min(x1, x2);
+      const y = Math.min(y1, y2);
+      const w = Math.max(16, Math.abs(x2 - x1));
+      const h = Math.max(8, Math.abs(y2 - y1));
+      ctx.strokeRect(x, y, w, h);
+      ctx.beginPath();
+      ctx.moveTo(x + w * 0.2, y);
+      ctx.lineTo(x + w * 0.2, y + h);
+      ctx.moveTo(x + w * 0.8, y);
+      ctx.lineTo(x + w * 0.8, y + h);
+      ctx.stroke();
+    } else if (s.tool === "leader" && pts.length >= 2) {
+      const [x1, y1] = pts[0]!;
+      const [x2, y2] = pts[pts.length - 1]!;
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+      const ang = Math.atan2(y2 - y1, x2 - x1);
+      const L = 10;
+      ctx.beginPath();
+      ctx.moveTo(x2, y2);
+      ctx.lineTo(x2 - L * Math.cos(ang - 0.45), y2 - L * Math.sin(ang - 0.45));
+      ctx.moveTo(x2, y2);
+      ctx.lineTo(x2 - L * Math.cos(ang + 0.45), y2 - L * Math.sin(ang + 0.45));
+      ctx.stroke();
     }
   }
 }
@@ -389,6 +465,7 @@ export function SketchBoardCanvas({
   expanded = false,
   nextNumberLabel,
   canPlaceNumbered = true,
+  playerTokenDraft,
 }: {
   pitchTemplate: SketchPitchTemplate;
   strokes: SketchStroke[];
@@ -402,11 +479,14 @@ export function SketchBoardCanvas({
   nextNumberLabel?: number;
   /** Se false, não aceita novos discos numerados (já atingiu 24 nesta cor). */
   canPlaceNumbered?: boolean;
+  /** Novo token de jogador a colocar (click-to-place). */
+  playerTokenDraft?: { playerId: string; number: number; name: string } | null;
 }) {
   const ref = useRef<HTMLCanvasElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const currentStroke = useRef<SketchStroke | null>(null);
   const activePointerId = useRef<number | null>(null);
+  const draggingTokenStrokeId = useRef<number | null>(null);
   const strokesRef = useRef(strokes);
   strokesRef.current = strokes;
 
@@ -478,6 +558,32 @@ export function SketchBoardCanvas({
     canvas.setPointerCapture(e.pointerId);
     activePointerId.current = e.pointerId;
     const { x, y } = pos(e);
+    if (tool === "playerToken") {
+      const hitIndex = [...strokesRef.current]
+        .map((s, i) => ({ s, i }))
+        .reverse()
+        .find(({ s }) => {
+          if (s.tool !== "playerToken" || s.points.length < 1) return false;
+          const [px, py] = s.points[s.points.length - 1]!;
+          return Math.hypot(px - x, py - y) <= 18;
+        })?.i;
+      if (hitIndex != null) {
+        draggingTokenStrokeId.current = hitIndex;
+        return;
+      }
+      if (!playerTokenDraft) return;
+      const token: SketchStroke = {
+        tool: "playerToken",
+        color: color,
+        lineWidth,
+        points: [[x, y]],
+        playerId: playerTokenDraft.playerId,
+        playerNumber: playerTokenDraft.number,
+        playerName: playerTokenDraft.name,
+      };
+      onStrokesChange([...strokesRef.current, token]);
+      return;
+    }
     currentStroke.current = {
       tool,
       color,
@@ -500,6 +606,19 @@ export function SketchBoardCanvas({
       s.points = [s.points[0]!, [x, y]];
     }
     redraw();
+    return;
+  };
+
+  const onDragToken = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (activePointerId.current !== null && e.pointerId !== activePointerId.current) return;
+    if (draggingTokenStrokeId.current == null) return;
+    const { x, y } = pos(e);
+    const idx = draggingTokenStrokeId.current;
+    const next = [...strokesRef.current];
+    const s = next[idx];
+    if (!s || s.tool !== "playerToken") return;
+    next[idx] = { ...s, points: [[x, y]] };
+    onStrokesChange(next);
   };
 
   const onPointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -509,6 +628,7 @@ export function SketchBoardCanvas({
     } catch {
       /* already released */
     }
+    draggingTokenStrokeId.current = null;
     finishStroke();
   };
 
@@ -519,6 +639,7 @@ export function SketchBoardCanvas({
     } catch {
       /* ignore */
     }
+    draggingTokenStrokeId.current = null;
     finishStroke();
   };
 
@@ -535,7 +656,10 @@ export function SketchBoardCanvas({
         )}
         style={{ touchAction: "none" }}
         onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
+        onPointerMove={(e) => {
+          onDragToken(e);
+          onPointerMove(e);
+        }}
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerCancel}
         onPointerLeave={(e) => {

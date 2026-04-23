@@ -55,8 +55,6 @@ import {
 import { cn } from "@/lib/utils";
 import {
   BOARD_COLORS,
-  NUMBERED_DISK_COLORS,
-  numberedDiskLabelTextColor,
   SketchBoardCanvas,
 } from "./SketchBoardCanvas";
 import { SketchOpponentAnalysisPanel } from "./SketchOpponentAnalysisPanel";
@@ -73,13 +71,14 @@ const TABS: { id: TabId; label: string; icon: typeof Calendar }[] = [
   { id: "opponentAi", label: "Análise Adversário AI", icon: Sparkles },
 ];
 
-const SKETCH_BOARD_TOOLS: { id: SketchStrokeTool; label: string }[] = [
-  { id: "draw", label: "Draw" },
-  { id: "arrow", label: "Arrow" },
+const FORMS_TOOLS: { id: SketchStrokeTool; label: string }[] = [
   { id: "circle", label: "Circle" },
+  { id: "square", label: "Square" },
+  { id: "triangle", label: "Triangle" },
   { id: "cone", label: "Cone" },
-  { id: "player", label: "Player" },
-  { id: "numbered", label: "Nº" },
+  { id: "arrow", label: "Arrow" },
+  { id: "goal", label: "Goal" },
+  { id: "leader", label: "Leader" },
 ];
 
 function sketchUid(prefix: string) {
@@ -168,10 +167,12 @@ export function SketchAreaClient() {
 
   const [boardDraftId, setBoardDraftId] = useState<string | null>(null);
   const [boardTool, setBoardTool] = useState<SketchStrokeTool>("draw");
+  const [boardPanel, setBoardPanel] = useState<"player" | "draw" | "forms">("draw");
   const [boardColor, setBoardColor] = useState(BOARD_COLORS[0]!);
   const [boardLine, setBoardLine] = useState(3);
-  const [boardPitch, setBoardPitch] = useState<SketchPitchTemplate>("full");
+  const [boardPitch] = useState<SketchPitchTemplate>("full");
   const [boardNote, setBoardNote] = useState("");
+  const [selectedBoardPlayerId, setSelectedBoardPlayerId] = useState<string>("");
   const [externalWatchForm, setExternalWatchForm] = useState({
     name: "",
     club: "",
@@ -185,34 +186,14 @@ export function SketchAreaClient() {
     return sketchArea.boardDrafts.find((d) => d.id === id) ?? sketchArea.boardDrafts[0]!;
   }, [sketchArea.boardDrafts, boardDraftId]);
 
-  const numberedNextByColor = useMemo(() => {
-    if (!activeDraft) return new Map<string, number | null>();
-    const m = new Map<string, number | null>();
-    for (const c of NUMBERED_DISK_COLORS) {
-      const labels = activeDraft.strokes
-        .filter((s) => s.tool === "numbered" && s.color === c && s.label != null)
-        .map((s) => s.label!);
-      const max = labels.length ? Math.max(...labels) : 0;
-      m.set(c, max >= 24 ? null : max + 1);
-    }
-    return m;
-  }, [activeDraft]);
-
-  const nextNumberedLabel = useMemo(() => {
-    if (!activeDraft || boardTool !== "numbered") return undefined;
-    const n = numberedNextByColor.get(boardColor);
-    return n ?? undefined;
-  }, [activeDraft, boardTool, boardColor, numberedNextByColor]);
-
-  const canPlaceNumberedDisk = boardTool !== "numbered" || nextNumberedLabel != null;
-
   useEffect(() => {
-    if (boardTool === "numbered") {
-      setBoardColor((c) => (NUMBERED_DISK_COLORS.includes(c) ? c : NUMBERED_DISK_COLORS[0]!));
-    } else {
-      setBoardColor((c) => (BOARD_COLORS.includes(c) ? c : BOARD_COLORS[0]!));
-    }
+    setBoardColor((c) => (BOARD_COLORS.includes(c) ? c : BOARD_COLORS[0]!));
   }, [boardTool]);
+
+  const selectedBoardPlayer = useMemo(
+    () => players.find((p) => p.id === selectedBoardPlayerId) ?? null,
+    [players, selectedBoardPlayerId]
+  );
 
   const eventsForDay = useMemo(
     () =>
@@ -525,9 +506,14 @@ export function SketchAreaClient() {
 
   useEffect(() => {
     if (!activeDraft) return;
-    setBoardPitch(activeDraft.pitchTemplate);
+    if (activeDraft.pitchTemplate !== "full") {
+      setSketchArea((s) => ({
+        ...s,
+        boardDrafts: s.boardDrafts.map((d) => (d.id === activeDraft.id ? { ...d, pitchTemplate: "full" } : d)),
+      }));
+    }
     setBoardNote(activeDraft.noteAttached ?? "");
-  }, [activeDraft?.id]);
+  }, [activeDraft?.id, setSketchArea]);
 
   useEffect(() => {
     if (tab !== "board") setBoardExpanded(false);
@@ -1185,91 +1171,92 @@ export function SketchAreaClient() {
                       </option>
                     ))}
                   </select>
-                  <select
-                    className="h-9 rounded-lg border border-surface-border bg-surface-raised px-2 text-sm"
-                    value={boardPitch}
-                    onChange={(e) => {
-                      const v = e.target.value as SketchPitchTemplate;
-                      setBoardPitch(v);
-                      setSketchArea((s) => ({
-                        ...s,
-                        boardDrafts: s.boardDrafts.map((d) => (d.id === activeDraft.id ? { ...d, pitchTemplate: v } : d)),
-                      }));
-                    }}
-                  >
-                    <option value="blank">Blank</option>
-                    <option value="half">Half pitch</option>
-                    <option value="full">Full pitch</option>
-                  </select>
-                  {SKETCH_BOARD_TOOLS.map(({ id: t, label }) => (
+                  {([
+                    { id: "player", label: "Player" },
+                    { id: "draw", label: "Draw" },
+                    { id: "forms", label: "Forms/Tools" },
+                  ] as const).map(({ id, label }) => (
                     <Button
-                      key={t}
+                      key={id}
                       type="button"
-                      variant={boardTool === t ? "primary" : "secondary"}
-                      className={cn("text-xs", t !== "numbered" && "capitalize")}
-                      onClick={() => setBoardTool(t)}
+                      variant={boardPanel === id ? "primary" : "secondary"}
+                      className="text-xs"
+                      onClick={() => {
+                        setBoardPanel(id);
+                        if (id === "draw") setBoardTool("draw");
+                        if (id === "player") setBoardTool("playerToken");
+                        if (id === "forms") setBoardTool("circle");
+                      }}
                     >
                       {label}
                     </Button>
                   ))}
                 </div>
-                {boardTool === "numbered" ? (
-                  <div className="no-print space-y-2">
+                {boardPanel === "player" ? (
+                  <div className="no-print space-y-2 rounded-xl border border-surface-border bg-surface-raised/20 p-3">
                     <p className="text-xs text-zinc-500">
-                      Cada cor tem números 1–24; ao colocar um disco, o próximo valor para essa cor aparece na fila.
+                      Escolhe um jogador e clica no campo para o colocar. Em modo Player também podes arrastar os jogadores já colocados.
                     </p>
-                    <div className="flex flex-wrap gap-2">
-                      {NUMBERED_DISK_COLORS.map((c) => {
-                        const next = numberedNextByColor.get(c);
-                        const sel = boardColor === c;
-                        return (
-                          <button
-                            key={c}
-                            type="button"
-                            className={cn(
-                              "relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 text-xs font-bold tabular-nums shadow-sm transition",
-                              sel ? "border-white ring-2 ring-white/40" : "border-zinc-600"
-                            )}
-                            style={{
-                              backgroundColor: c,
-                              color: next == null ? "rgba(161,161,170,0.95)" : numberedDiskLabelTextColor(c),
-                              textShadow: "0 1px 2px rgba(0,0,0,0.45)",
-                            }}
-                            onClick={() => setBoardColor(c)}
-                            aria-label={
-                              next == null
-                                ? `Cor numerada: já usou os 24 números nesta cor`
-                                : `Cor numerada, próximo número ${next}`
-                            }
-                          >
-                            {next == null ? "—" : next}
-                          </button>
-                        );
-                      })}
+                    <div className="max-h-36 space-y-1 overflow-auto pr-1">
+                      {players.map((p) => (
+                        <button
+                          key={p.id}
+                          type="button"
+                          className={cn(
+                            "flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-left text-sm",
+                            selectedBoardPlayerId === p.id ? "bg-accent/15 text-accent" : "text-zinc-300 hover:bg-white/5"
+                          )}
+                          onClick={() => {
+                            setSelectedBoardPlayerId(p.id);
+                            setBoardTool("playerToken");
+                          }}
+                        >
+                          <span>{p.name}</span>
+                          <Badge variant="muted">#{p.number}</Badge>
+                        </button>
+                      ))}
+                      {players.length === 0 ? <p className="text-xs text-zinc-500">Sem jogadores na equipa.</p> : null}
                     </div>
                   </div>
-                ) : (
-                  <div className="no-print flex flex-wrap items-center gap-1">
-                    {BOARD_COLORS.map((c) => (
-                      <button
-                        key={c}
-                        type="button"
-                        className="h-7 w-7 rounded-full border border-zinc-600"
-                        style={{ backgroundColor: c, boxShadow: boardColor === c ? "0 0 0 2px white" : undefined }}
-                        onClick={() => setBoardColor(c)}
-                        aria-label={`colour ${c}`}
-                      />
-                    ))}
-                    <Input
-                      type="range"
-                      min={1}
-                      max={8}
-                      value={boardLine}
-                      onChange={(e) => setBoardLine(Number(e.target.value))}
-                      className="w-28"
-                    />
+                ) : null}
+                {boardPanel === "forms" ? (
+                  <div className="no-print space-y-2 rounded-xl border border-surface-border bg-surface-raised/20 p-3">
+                    <p className="text-xs text-zinc-500">Seleciona uma forma ou material para desenhar no board.</p>
+                    <div className="flex flex-wrap gap-2">
+                      {FORMS_TOOLS.map(({ id, label }) => (
+                        <Button
+                          key={id}
+                          type="button"
+                          variant={boardTool === id ? "primary" : "secondary"}
+                          className="text-xs"
+                          onClick={() => setBoardTool(id)}
+                        >
+                          {label}
+                        </Button>
+                      ))}
+                    </div>
                   </div>
-                )}
+                ) : null}
+                <div className="no-print flex flex-wrap items-center gap-1">
+                  {BOARD_COLORS.map((c) => (
+                    <button
+                      key={c}
+                      type="button"
+                      className="h-7 w-7 rounded-full border border-zinc-600"
+                      style={{ backgroundColor: c, boxShadow: boardColor === c ? "0 0 0 2px white" : undefined }}
+                      onClick={() => setBoardColor(c)}
+                      aria-label={`colour ${c}`}
+                    />
+                  ))}
+                  <Input
+                    type="range"
+                    min={1}
+                    max={8}
+                    value={boardLine}
+                    onChange={(e) => setBoardLine(Number(e.target.value))}
+                    className="w-28"
+                  />
+                </div>
                 <textarea
                   className="no-print min-h-[64px] w-full rounded-xl border border-surface-border bg-surface-raised/50 px-3 py-2 text-sm"
                   placeholder="Note beside sketch (saved with this board)"
@@ -1298,8 +1285,15 @@ export function SketchAreaClient() {
                     color={boardColor}
                     lineWidth={boardLine}
                     expanded={boardExpanded}
-                    nextNumberLabel={nextNumberedLabel}
-                    canPlaceNumbered={canPlaceNumberedDisk}
+                    playerTokenDraft={
+                      boardTool === "playerToken" && selectedBoardPlayer
+                        ? {
+                            playerId: selectedBoardPlayer.id,
+                            number: selectedBoardPlayer.number,
+                            name: selectedBoardPlayer.name,
+                          }
+                        : null
+                    }
                   />
                 </div>
                 <Button
