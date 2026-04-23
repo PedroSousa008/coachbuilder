@@ -45,26 +45,46 @@ export function mergePresidentClubState(raw: unknown, fallback: PresidentClubSta
   const bool = (v: unknown, d: boolean) => (typeof v === "boolean" ? v : d);
   const settings = o.settings && typeof o.settings === "object" ? (o.settings as Record<string, unknown>) : {};
 
+  function paymentStatus(v: unknown): PresidentPayment["status"] {
+    if (v === "pago") return "pago";
+    if (v === "pendente") return "pendente";
+    if (v === "atrasado") return "atrasado";
+    return "pendente";
+  }
+
+  function sponsorPipeline(v: unknown): PresidentSponsor["pipelineStage"] {
+    if (v === "potencial") return "potencial";
+    if (v === "negociação") return "negociação";
+    return "ativo";
+  }
+
   return {
-    coaches: arr<PresidentCoach>(o.coaches).map((c) => ({
-      id: str(c.id, ""),
-      name: str(c.name, ""),
-      birthDate: str(c.birthDate, ""),
-      role: str(c.role, ""),
-      team: str(c.team, ""),
-      winPct: num(c.winPct, 0),
-      sessionsCreated: num(c.sessionsCreated, 0),
-      activityLevel: c.activityLevel === "Alta" || c.activityLevel === "Média" || c.activityLevel === "Baixa" ? c.activityLevel : "Média",
-      parentRating: num(c.parentRating, 0),
-      internalRank: num(c.internalRank, 0),
-      contractStatus: str(c.contractStatus, ""),
-      statsHistory: str(c.statsHistory, ""),
-      careerPath: str(c.careerPath, ""),
-      trophies: str(c.trophies, ""),
-      methodology: str(c.methodology, ""),
-      strengths: str(c.strengths, ""),
-      notes: str(c.notes, ""),
-    })).filter((c) => c.id),
+    coaches: arr<PresidentCoach>(o.coaches)
+      .map(
+        (c): PresidentCoach => ({
+          id: str(c.id, ""),
+          name: str(c.name, ""),
+          birthDate: str(c.birthDate, ""),
+          role: str(c.role, ""),
+          team: str(c.team, ""),
+          winPct: num(c.winPct, 0),
+          sessionsCreated: num(c.sessionsCreated, 0),
+          activityLevel:
+            c.activityLevel === "Alta" || c.activityLevel === "Média" || c.activityLevel === "Baixa"
+              ? c.activityLevel
+              : "Média",
+          parentRating: num(c.parentRating, 0),
+          internalRank: num(c.internalRank, 0),
+          contractStatus: str(c.contractStatus, ""),
+          statsHistory: str(c.statsHistory, ""),
+          careerPath: str(c.careerPath, ""),
+          trophies: str(c.trophies, ""),
+          methodology: str(c.methodology, ""),
+          strengths: str(c.strengths, ""),
+          notes: str(c.notes, ""),
+        })
+      )
+      .filter((c) => c.id),
     players: arr<PresidentPlayer>(o.players).map((p) => ({
       id: str(p.id, ""),
       name: str(p.name, ""),
@@ -105,28 +125,35 @@ export function mergePresidentClubState(raw: unknown, fallback: PresidentClubSta
         })
       )
       .filter((f) => f.id),
-    payments: arr<PresidentPayment>(o.payments).map((p) => ({
-      id: str(p.id, ""),
-      playerName: str(p.playerName, ""),
-      familyContact: str(p.familyContact, ""),
-      status: p.status === "pago" || p.status === "pendente" || p.status === "atrasado" ? p.status : "pendente",
-      amountEUR: num(p.amountEUR, 0),
-      dueDate: str(p.dueDate, ""),
-      note: str(p.note, ""),
-    })).filter((p) => p.id),
-    sponsors: arr<PresidentSponsor>(o.sponsors).map((s) => ({
-      id: str(s.id, ""),
-      company: str(s.company, ""),
-      contactPerson: str(s.contactPerson, ""),
-      contractValueEUR: num(s.contractValueEUR, 0),
-      startDate: str(s.startDate, ""),
-      renewalDate: str(s.renewalDate, ""),
-      paymentStatus: str(s.paymentStatus, ""),
-      benefits: str(s.benefits, ""),
-      notes: str(s.notes, ""),
-      pipelineStage:
-        s.pipelineStage === "potencial" || s.pipelineStage === "negociação" ? s.pipelineStage : "ativo",
-    })).filter((s) => s.id),
+    payments: arr<PresidentPayment>(o.payments)
+      .map(
+        (p): PresidentPayment => ({
+          id: str(p.id, ""),
+          playerName: str(p.playerName, ""),
+          familyContact: str(p.familyContact, ""),
+          status: paymentStatus(p.status),
+          amountEUR: num(p.amountEUR, 0),
+          dueDate: str(p.dueDate, ""),
+          note: str(p.note, ""),
+        })
+      )
+      .filter((p) => p.id),
+    sponsors: arr<PresidentSponsor>(o.sponsors)
+      .map(
+        (s): PresidentSponsor => ({
+          id: str(s.id, ""),
+          company: str(s.company, ""),
+          contactPerson: str(s.contactPerson, ""),
+          contractValueEUR: num(s.contractValueEUR, 0),
+          startDate: str(s.startDate, ""),
+          renewalDate: str(s.renewalDate, ""),
+          paymentStatus: str(s.paymentStatus, ""),
+          benefits: str(s.benefits, ""),
+          notes: str(s.notes, ""),
+          pipelineStage: sponsorPipeline(s.pipelineStage),
+        })
+      )
+      .filter((s) => s.id),
     injuries: arr<PresidentInjury>(o.injuries).map((i) => ({
       id: str(i.id, ""),
       playerName: str(i.playerName, ""),
@@ -136,15 +163,19 @@ export function mergePresidentClubState(raw: unknown, fallback: PresidentClubSta
       medicalNotes: str(i.medicalNotes, ""),
       availabilityPct: num(i.availabilityPct, 0),
     })).filter((i) => i.id),
-    disciplineIncidents: arr<PresidentDisciplineIncident>(o.disciplineIncidents).map((d) => ({
-      id: str(d.id, ""),
-      subjectType: d.subjectType === "treinador" ? "treinador" : "jogador",
-      subjectName: str(d.subjectName, ""),
-      category: str(d.category, ""),
-      date: str(d.date, ""),
-      details: str(d.details, ""),
-      fineEUR: num(d.fineEUR, 0),
-    })).filter((d) => d.id),
+    disciplineIncidents: arr<PresidentDisciplineIncident>(o.disciplineIncidents)
+      .map(
+        (d): PresidentDisciplineIncident => ({
+          id: str(d.id, ""),
+          subjectType: d.subjectType === "treinador" ? "treinador" : "jogador",
+          subjectName: str(d.subjectName, ""),
+          category: str(d.category, ""),
+          date: str(d.date, ""),
+          details: str(d.details, ""),
+          fineEUR: num(d.fineEUR, 0),
+        })
+      )
+      .filter((d) => d.id),
     operationsEvents: arr<PresidentOperationEvent>(o.operationsEvents).map((e) => ({
       id: str(e.id, ""),
       title: str(e.title, ""),
