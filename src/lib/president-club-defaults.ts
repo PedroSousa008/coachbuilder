@@ -63,6 +63,8 @@ export function mergePresidentClubState(raw: unknown, fallback: PresidentClubSta
       .map(
         (c): PresidentCoach => ({
           id: str(c.id, ""),
+          coachUserId: typeof (c as { coachUserId?: unknown }).coachUserId === "string" ? (c as { coachUserId: string }).coachUserId : undefined,
+          coachEmail: typeof (c as { coachEmail?: unknown }).coachEmail === "string" ? (c as { coachEmail: string }).coachEmail : undefined,
           name: str(c.name, ""),
           birthDate: str(c.birthDate, ""),
           role: str(c.role, ""),
@@ -87,6 +89,8 @@ export function mergePresidentClubState(raw: unknown, fallback: PresidentClubSta
       .filter((c) => c.id),
     players: arr<PresidentPlayer>(o.players).map((p) => ({
       id: str(p.id, ""),
+      coachUserId: typeof (p as { coachUserId?: unknown }).coachUserId === "string" ? (p as { coachUserId: string }).coachUserId : undefined,
+      coachEmail: typeof (p as { coachEmail?: unknown }).coachEmail === "string" ? (p as { coachEmail: string }).coachEmail : undefined,
       name: str(p.name, ""),
       age: str(p.age, ""),
       team: str(p.team, ""),

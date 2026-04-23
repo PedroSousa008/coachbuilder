@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { TeamAccentSettings } from "@/components/settings/TeamAccentSettings";
 import { DataPersistenceNotice } from "@/components/settings/DataPersistenceNotice";
 import { CloudAccountSettings } from "@/components/settings/CloudAccountSettings";
+import { ClubPresidentLinkSettings } from "@/components/settings/ClubPresidentLinkSettings";
 import { SubscriptionSettings } from "@/components/settings/SubscriptionSettings";
 import { LanguageSettings } from "@/components/settings/LanguageSettings";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
@@ -40,6 +41,8 @@ export default function SettingsPage() {
       <TeamAccentSettings />
 
       <DataPersistenceNotice />
+
+      <ClubPresidentLinkSettings />
 
       <Card>
         <CardHeader>

@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import {
   Users,
   UsersRound,
@@ -15,6 +16,7 @@ import { StatCard } from "@/components/dashboard/StatCard";
 import { PresidentBarChart } from "@/components/president/PresidentBarChart";
 import { useAppData } from "@/contexts/AppDataContext";
 import { usePresidentClub } from "@/contexts/PresidentClubContext";
+import { usePresidentLinkedRoster } from "@/hooks/usePresidentLinkedRoster";
 
 const eur = (n: number) =>
   new Intl.NumberFormat("pt-PT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(n);
@@ -22,27 +24,30 @@ const eur = (n: number) =>
 export default function PresidentExecutiveDashboardPage() {
   const { coachProfile } = useAppData();
   const { state, kpis, financeChart } = usePresidentClub();
+  const roster = usePresidentLinkedRoster();
+  const allCoaches = useMemo(() => [...roster.coaches, ...state.coaches], [roster.coaches, state.coaches]);
+  const allPlayers = useMemo(() => [...roster.players, ...state.players], [roster.players, state.players]);
   const club =
     state.settings.clubDisplayName.trim() || coachProfile.club.trim() || "O teu clube";
 
   const avgWin =
-    state.coaches.length > 0
+    allCoaches.length > 0
       ? Math.round(
-          state.coaches.reduce((s, c) => s + (Number.isFinite(c.winPct) ? c.winPct : 0), 0) / state.coaches.length
+          allCoaches.reduce((s, c) => s + (Number.isFinite(c.winPct) ? c.winPct : 0), 0) / allCoaches.length
         )
       : null;
 
-  const teams = new Set(state.players.map((p) => p.team.trim()).filter(Boolean));
-  const teamCount = teams.size || (state.players.length ? 1 : 0);
+  const teams = new Set(allPlayers.map((p) => p.team.trim()).filter(Boolean));
+  const teamCount = teams.size || (allPlayers.length ? 1 : 0);
 
-  const playerByTeam = state.players.reduce<Record<string, number>>((acc, p) => {
+  const playerByTeam = allPlayers.reduce<Record<string, number>>((acc, p) => {
     const t = p.team.trim() || "Sem equipa";
     acc[t] = (acc[t] ?? 0) + 1;
     return acc;
   }, {});
   const playerTeamChart = Object.entries(playerByTeam).map(([label, value]) => ({ label, value }));
 
-  const coachWinChart = state.coaches.slice(0, 8).map((c) => ({
+  const coachWinChart = allCoaches.slice(0, 8).map((c) => ({
     label: c.name.slice(0, 12) + (c.name.length > 12 ? "…" : ""),
     value: Math.round(Math.min(100, Math.max(0, c.winPct))),
   }));
@@ -58,13 +63,15 @@ export default function PresidentExecutiveDashboardPage() {
     value: d.value - financeChart.expense[i].value,
   }));
 
+  const topTalentsMerged = allPlayers.filter((p) => p.isTopTalent).length;
+
   const insights: string[] = [];
-  if (state.coaches.length > 0) {
-    const top = [...state.coaches].sort((a, b) => b.internalRank - a.internalRank)[0];
+  if (allCoaches.length > 0) {
+    const top = [...allCoaches].sort((a, b) => b.internalRank - a.internalRank)[0];
     if (top) insights.push(`Treinador em destaque (ranking interno): ${top.name} (${top.team || "—"}).`);
   }
-  if (kpis.topTalents > 0) {
-    insights.push(`${kpis.topTalents} jogador(es) marcados como talento de topo — vale a pena rever evolução e contratos.`);
+  if (topTalentsMerged > 0) {
+    insights.push(`${topTalentsMerged} jogador(es) marcados como talento de topo — vale a pena rever evolução e contratos.`);
   }
   if (kpis.netEUR > 0 && state.financeMovements.length > 0) {
     insights.push(`Saldo mensal estimado positivo (${eur(kpis.netEUR)}), com base nos movimentos do mês corrente.`);
@@ -90,19 +97,19 @@ export default function PresidentExecutiveDashboardPage() {
       <div>
         <h2 className="font-display text-2xl font-semibold text-white">Painel executivo</h2>
         <p className="mt-1 text-sm text-zinc-500">
-          {club} · visão consolidada alimentada pelos dados que registas nas áreas do modo clube (guardados neste
-          navegador por conta).
+          {club} · visão consolidada: plantel e treinadores sincronizados das contas ligadas (cloud) + dados locais do
+          modo clube.
         </p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <StatCard
           label="Total de treinadores"
-          value={kpis.activeCoaches}
-          hint="Registados em Treinadores"
+          value={allCoaches.length}
+          hint="Contas ligadas + registos manuais"
           icon={Users}
         />
-        <StatCard label="Total de jogadores" value={kpis.totalPlayers} hint="Registados em Jogadores" icon={UsersRound} />
+        <StatCard label="Total de jogadores" value={allPlayers.length} hint="Plantéis sincronizados + locais" icon={UsersRound} />
         <StatCard
           label="Receita mensal (movimentos)"
           value={eur(kpis.monthlyIncomeEUR)}
@@ -118,13 +125,13 @@ export default function PresidentExecutiveDashboardPage() {
         <StatCard
           label="Taxa de vitória global (média treinadores)"
           value={avgWin != null ? `${avgWin}%` : "—"}
-          hint={state.coaches.length ? "Média do campo «Vitórias %»" : "Adiciona treinadores com %"}
+          hint={allCoaches.length ? "Média do campo «Vitórias %»" : "Liga treinadores ou adiciona %"}
           icon={Percent}
         />
         <StatCard
           label="Escalões com plantel"
           value={teamCount}
-          hint="Equipas distintas nos jogadores"
+          hint="Equipas distintas nos jogadores (incl. sincronizado)"
           icon={Layers}
         />
       </div>

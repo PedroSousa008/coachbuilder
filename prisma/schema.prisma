@@ -30,10 +30,16 @@ model User {
   stripeCustomerId        String?   @unique
   stripeSubscriptionId    String?   @unique
   nametag                 String?   @unique
+  /** Conta de treinador ligada a um presidente (modo clube); o presidente lê o workspace destes utilizadores. */
+  clubPresidentUserId     String?
+  clubPresident           User?     @relation("ClubPresidentCoaches", fields: [clubPresidentUserId], references: [id], onDelete: SetNull)
+  coachesLinkedToClub     User[]    @relation("ClubPresidentCoaches")
 
   workspace                     Workspace?
   appEvents                     AppEvent[]
   fullPersonalizationRequests   FullPersonalizationRequest[]
+
+  @@index([clubPresidentUserId])
 }
 
 model Workspace {

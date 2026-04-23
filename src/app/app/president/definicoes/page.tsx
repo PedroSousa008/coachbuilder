@@ -8,10 +8,12 @@ import { Button } from "@/components/ui/Button";
 import { PRESIDENT_EXTRA_SEAT_PRICE_EUR, PRESIDENT_INCLUDED_COACH_SEATS } from "@/lib/president-constants";
 import { useAppData } from "@/contexts/AppDataContext";
 import { usePresidentClub } from "@/contexts/PresidentClubContext";
+import { usePresidentLinkedRoster } from "@/hooks/usePresidentLinkedRoster";
 
 export default function PresidentDefinicoesPage() {
   const { coachProfile, setCoachProfile } = useAppData();
   const { state, patchSettings, setLogoDataUrl } = usePresidentClub();
+  const roster = usePresidentLinkedRoster();
   const [clubName, setClubName] = useState("");
   const [clubNotes, setClubNotes] = useState("");
 
@@ -20,7 +22,7 @@ export default function PresidentDefinicoesPage() {
     setClubNotes(state.settings.clubNotes || "");
   }, [state.settings.clubDisplayName, state.settings.clubNotes, coachProfile.club]);
 
-  const seatsUsed = state.coaches.length;
+  const seatsUsed = roster.coaches.length + state.coaches.length;
 
   const saveIdentity = () => {
     const name = clubName.trim();
@@ -59,7 +61,7 @@ export default function PresidentDefinicoesPage() {
           <CardContent className="space-y-4 text-sm text-zinc-300">
             <p>
               O teu plano inclui <strong className="text-white">{PRESIDENT_INCLUDED_COACH_SEATS} lugares</strong> de
-              treinador principal. Lugares em uso na tua lista do modo clube:{" "}
+              treinador principal. Lugares em uso (contas ligadas na cloud + registos manuais na lista):{" "}
               <strong className="text-white">
                 {seatsUsed}/{PRESIDENT_INCLUDED_COACH_SEATS}
               </strong>

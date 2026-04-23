@@ -2,6 +2,9 @@
 
 export type PresidentCoach = {
   id: string;
+  /** Conta de treinador quando a linha vem da cloud (ligação ao presidente). */
+  coachUserId?: string;
+  coachEmail?: string;
   name: string;
   birthDate: string;
   role: string;
@@ -22,6 +25,9 @@ export type PresidentCoach = {
 
 export type PresidentPlayer = {
   id: string;
+  /** Preenchido quando a linha vem de um treinador com conta ligada (cloud). */
+  coachUserId?: string;
+  coachEmail?: string;
   name: string;
   age: string;
   team: string;

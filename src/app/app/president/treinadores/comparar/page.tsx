@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { usePresidentClub } from "@/contexts/PresidentClubContext";
 import type { PresidentCoach } from "@/types/president-club";
+import { usePresidentLinkedRoster } from "@/hooks/usePresidentLinkedRoster";
 
 const rows: { key: keyof PresidentCoach; label: string }[] = [
   { key: "birthDate", label: "Data de nascimento" },
@@ -25,11 +26,13 @@ function fmt(v: string | number | undefined) {
 
 export default function PresidentTreinadoresCompararPage() {
   const { state } = usePresidentClub();
+  const roster = usePresidentLinkedRoster();
+  const coaches = useMemo(() => [...roster.coaches, ...state.coaches], [roster.coaches, state.coaches]);
   const [idA, setIdA] = useState("");
   const [idB, setIdB] = useState("");
 
-  const coachA = state.coaches.find((c) => c.id === idA);
-  const coachB = state.coaches.find((c) => c.id === idB);
+  const coachA = coaches.find((c) => c.id === idA);
+  const coachB = coaches.find((c) => c.id === idB);
   const canCompare = coachA && coachB && coachA.id !== coachB.id;
 
   return (
@@ -47,7 +50,7 @@ export default function PresidentTreinadoresCompararPage() {
         </Link>
       </div>
 
-      {state.coaches.length < 2 ? (
+      {coaches.length < 2 ? (
         <Card className="border-surface-border bg-surface-raised/30">
           <CardContent className="py-10 text-center text-sm text-zinc-500">
             Precisas de pelo menos dois treinadores na lista.{" "}
@@ -71,7 +74,7 @@ export default function PresidentTreinadoresCompararPage() {
                   onChange={(e) => setIdA(e.target.value)}
                 >
                   <option value="">—</option>
-                  {state.coaches.map((c) => (
+                  {coaches.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name}
                     </option>
@@ -86,7 +89,7 @@ export default function PresidentTreinadoresCompararPage() {
                   onChange={(e) => setIdB(e.target.value)}
                 >
                   <option value="">—</option>
-                  {state.coaches.map((c) => (
+                  {coaches.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name}
                     </option>
