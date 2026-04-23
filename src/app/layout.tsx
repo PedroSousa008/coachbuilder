@@ -23,7 +23,7 @@ export const metadata: Metadata = {
   title: "CoachBuilder — The operating system for football coaches",
   description:
     "Plan smarter. Train better. Communicate faster. Tactics, training, team chat, and Sketch Area in one premium workspace.",
-  icons: { icon: "/icon.svg" },
+  icons: { icon: "/icon.png" },
 };
 
 export default function RootLayout({

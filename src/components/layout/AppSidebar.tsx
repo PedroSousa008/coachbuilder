@@ -60,7 +60,7 @@ export function AppSidebar() {
     <aside className="fixed left-0 top-0 z-40 hidden h-screen w-64 flex-col border-r border-surface-border bg-[#0c1014]/95 backdrop-blur-xl lg:flex">
       <div className="flex h-16 items-center gap-2 border-b border-surface-border px-5">
         <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-xl border border-surface-border/70 bg-white">
-          <img src="/icon.svg" alt="CoachBuilder logo" className="h-full w-full object-contain" />
+          <img src="/icon.png" alt="CoachBuilder logo" className="h-full w-full object-contain" />
         </div>
         <div>
           <p className="font-display text-sm font-semibold text-white">CoachBuilder</p>

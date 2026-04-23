@@ -8,7 +8,7 @@ export function LandingFooter() {
           <div>
             <div className="flex items-center gap-2">
               <span className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-xl border border-surface-border/70 bg-white">
-                <img src="/icon.svg" alt="CoachBuilder logo" className="h-full w-full object-contain" />
+                <img src="/icon.png" alt="CoachBuilder logo" className="h-full w-full object-contain" />
               </span>
               <span className="font-display font-semibold text-white">CoachBuilder</span>
             </div>

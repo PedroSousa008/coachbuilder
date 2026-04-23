@@ -6,7 +6,7 @@ export function LandingNav() {
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
         <Link href="/" className="flex items-center gap-2">
           <span className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-xl border border-surface-border/70 bg-white">
-            <img src="/icon.svg" alt="CoachBuilder logo" className="h-full w-full object-contain" />
+            <img src="/icon.png" alt="CoachBuilder logo" className="h-full w-full object-contain" />
           </span>
           <span className="font-display text-sm font-semibold text-white">CoachBuilder</span>
         </Link>
