@@ -16,6 +16,8 @@ export default function PresidentDefinicoesPage() {
   const { state, patchSettings, setLogoDataUrl } = usePresidentClub();
   const roster = usePresidentLinkedRoster();
   const [activeSeatCount, setActiveSeatCount] = useState(0);
+  const [maxSeats, setMaxSeats] = useState(PRESIDENT_INCLUDED_COACH_SEATS);
+  const [buyingSeat, setBuyingSeat] = useState(false);
   const [clubName, setClubName] = useState("");
   const [clubNotes, setClubNotes] = useState("");
 
@@ -25,6 +27,24 @@ export default function PresidentDefinicoesPage() {
   }, [state.settings.clubDisplayName, state.settings.clubNotes, coachProfile.club]);
 
   const seatsUsed = activeSeatCount + state.coaches.length;
+
+  const startExtraSeatCheckout = async () => {
+    setBuyingSeat(true);
+    try {
+      const res = await fetch("/api/stripe/president-extra-seat/checkout", {
+        method: "POST",
+        credentials: "include",
+      });
+      const data = (await res.json()) as { ok?: boolean; url?: string; error?: string };
+      if (res.ok && data.ok && data.url) {
+        window.location.href = data.url;
+        return;
+      }
+      window.alert(data.error || "Não foi possível iniciar a compra do lugar extra.");
+    } finally {
+      setBuyingSeat(false);
+    }
+  };
 
   const saveIdentity = () => {
     const name = clubName.trim();
@@ -65,16 +85,16 @@ export default function PresidentDefinicoesPage() {
               O teu plano inclui <strong className="text-white">{PRESIDENT_INCLUDED_COACH_SEATS} lugares</strong> de
               treinador na cloud. Lugares em uso (lugares cloud ocupados + registos manuais na lista local):{" "}
               <strong className="text-white">
-                {seatsUsed}/{PRESIDENT_INCLUDED_COACH_SEATS}
+                {seatsUsed}/{maxSeats}
               </strong>
               .
             </p>
             <p className="text-zinc-500">
               Cada lugar adicional: <strong className="text-zinc-200">{PRESIDENT_EXTRA_SEAT_PRICE_EUR}€</strong>{" "}
-              pagamento único (integração de pagamento em breve).
+              pagamento único (fica no clube para sempre, sem mensalidade adicional por esse lugar).
             </p>
-            <Button type="button" variant="secondary" size="sm" disabled>
-              Adquirir lugares extra (em breve)
+            <Button type="button" variant="secondary" size="sm" onClick={() => void startExtraSeatCheckout()} disabled={buyingSeat}>
+              {buyingSeat ? "A abrir checkout..." : "Adquirir 1 lugar extra"}
             </Button>
           </CardContent>
         </Card>
@@ -120,7 +140,11 @@ export default function PresidentDefinicoesPage() {
           </CardContent>
         </Card>
 
-        <PresidentTrainerSeatsPanel onActiveSeatCount={setActiveSeatCount} onRosterChanged={() => void roster.refresh()} />
+        <PresidentTrainerSeatsPanel
+          onActiveSeatCount={setActiveSeatCount}
+          onMaxSeats={setMaxSeats}
+          onRosterChanged={() => void roster.refresh()}
+        />
 
         <Card className="border-surface-border bg-surface-raised/30 lg:col-span-2">
           <CardHeader>

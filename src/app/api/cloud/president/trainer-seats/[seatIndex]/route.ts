@@ -28,8 +28,17 @@ async function requirePresident() {
 
 function parseSeat(raw: string): number | null {
   const n = Number.parseInt(raw, 10);
-  if (!Number.isInteger(n) || n < 0 || n >= PRESIDENT_INCLUDED_COACH_SEATS) return null;
+  if (!Number.isInteger(n) || n < 0) return null;
   return n;
+}
+
+async function maxSeatsForPresident(presidentId: string): Promise<number> {
+  const p = await prisma.user.findUnique({
+    where: { id: presidentId },
+    select: { trainerExtraSeatsPurchased: true },
+  });
+  const extra = Math.max(0, p?.trainerExtraSeatsPurchased ?? 0);
+  return PRESIDENT_INCLUDED_COACH_SEATS + extra;
 }
 
 /**
@@ -46,6 +55,10 @@ export async function PATCH(req: Request, ctx: RouteCtx) {
   const seatIndex = parseSeat((await ctx.params).seatIndex ?? "");
   if (seatIndex == null) {
     return NextResponse.json({ ok: false, error: "Índice de lugar inválido." }, { status: 400 });
+  }
+  const maxSeats = await maxSeatsForPresident(gate.president.id);
+  if (seatIndex >= maxSeats) {
+    return NextResponse.json({ ok: false, error: `Índice inválido. Máximo atual: ${maxSeats - 1}.` }, { status: 400 });
   }
 
   try {
@@ -124,6 +137,10 @@ export async function DELETE(_req: Request, ctx: RouteCtx) {
   const seatIndex = parseSeat((await ctx.params).seatIndex ?? "");
   if (seatIndex == null) {
     return NextResponse.json({ ok: false, error: "Índice de lugar inválido." }, { status: 400 });
+  }
+  const maxSeats = await maxSeatsForPresident(gate.president.id);
+  if (seatIndex >= maxSeats) {
+    return NextResponse.json({ ok: false, error: `Índice inválido. Máximo atual: ${maxSeats - 1}.` }, { status: 400 });
   }
 
   try {

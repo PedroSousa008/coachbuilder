@@ -13,3 +13,10 @@ export function coachProStripePriceId(): string | null {
   const b = process.env.STRIPE_COACH_PRO_PRICE_ID?.trim();
   return a || b || null;
 }
+
+/** Price ID de compra única de 1 lugar extra de treinador (`price_...`). */
+export function presidentExtraSeatStripePriceId(): string | null {
+  const a = process.env.STRIPE_PRICE_ID_PRESIDENT_EXTRA_SEAT?.trim();
+  const b = process.env.STRIPE_PRESIDENT_EXTRA_SEAT_PRICE_ID?.trim();
+  return a || b || null;
+}

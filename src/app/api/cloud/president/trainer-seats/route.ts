@@ -27,6 +27,15 @@ async function requirePresident() {
   return { president: session.user };
 }
 
+async function maxSeatsForPresident(presidentId: string): Promise<number> {
+  const p = await prisma.user.findUnique({
+    where: { id: presidentId },
+    select: { trainerExtraSeatsPurchased: true },
+  });
+  const extra = Math.max(0, p?.trainerExtraSeatsPurchased ?? 0);
+  return PRESIDENT_INCLUDED_COACH_SEATS + extra;
+}
+
 export async function GET() {
   if (!isCloudSyncEnabledServer()) {
     return NextResponse.json({ ok: false, error: "Cloud inativo." }, { status: 503 });
@@ -35,13 +44,14 @@ export async function GET() {
   if ("response" in gate) return gate.response;
 
   try {
+    const maxSeats = await maxSeatsForPresident(gate.president.id);
     const users = await prisma.user.findMany({
       where: { clubPresidentUserId: gate.president.id, trainerSeatIndex: { not: null } },
       select: { id: true, email: true, name: true, trainerSeatIndex: true, trainerSeatActive: true },
     });
     const byIndex = new Map(users.map((u) => [u.trainerSeatIndex as number, u]));
     const slots = [];
-    for (let i = 0; i < PRESIDENT_INCLUDED_COACH_SEATS; i += 1) {
+    for (let i = 0; i < maxSeats; i += 1) {
       const u = byIndex.get(i);
       if (!u) {
         slots.push({ index: i, status: "empty" as const });
@@ -55,7 +65,7 @@ export async function GET() {
         });
       }
     }
-    return NextResponse.json({ ok: true, slots, maxSeats: PRESIDENT_INCLUDED_COACH_SEATS });
+    return NextResponse.json({ ok: true, slots, maxSeats });
   } catch (e) {
     console.error("[president/trainer-seats GET]", e);
     return NextResponse.json({ ok: false, error: "Erro ao listar lugares." }, { status: 500 });
@@ -76,8 +86,9 @@ export async function POST(req: Request) {
     const email = typeof body.email === "string" ? body.email.trim() : "";
     const password = typeof body.password === "string" ? body.password : "";
 
-    if (!Number.isInteger(seatIndex) || seatIndex < 0 || seatIndex >= PRESIDENT_INCLUDED_COACH_SEATS) {
-      return NextResponse.json({ ok: false, error: `Indica o lugar (0 a ${PRESIDENT_INCLUDED_COACH_SEATS - 1}).` }, { status: 400 });
+    const maxSeats = await maxSeatsForPresident(gate.president.id);
+    if (!Number.isInteger(seatIndex) || seatIndex < 0 || seatIndex >= maxSeats) {
+      return NextResponse.json({ ok: false, error: `Indica o lugar (0 a ${maxSeats - 1}).` }, { status: 400 });
     }
     if (!isValidEmail(email)) {
       return NextResponse.json({ ok: false, error: "Email inválido." }, { status: 400 });

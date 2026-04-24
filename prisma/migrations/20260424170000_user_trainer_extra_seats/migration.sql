@@ -1,0 +1,2 @@
+ALTER TABLE "User"
+ADD COLUMN "trainerExtraSeatsPurchased" INTEGER NOT NULL DEFAULT 0;

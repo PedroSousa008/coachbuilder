@@ -38,6 +38,8 @@ model User {
   trainerSeatIndex        Int?
   /** Se false, o treinador não entra nem recebe Pro via presidente (revogado). */
   trainerSeatActive       Boolean   @default(true)
+  /** Lugares extra comprados pelo presidente (cada um adiciona +1 ao limite base). */
+  trainerExtraSeatsPurchased Int    @default(0)
   /** Quando o presidente (ou o próprio) invalida credenciais; JWT emitido antes desta data deixa de ser aceite. */
   sessionInvalidatedAt    DateTime?
 

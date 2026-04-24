@@ -4,7 +4,6 @@ import { useCallback, useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
-import { PRESIDENT_INCLUDED_COACH_SEATS } from "@/lib/president-constants";
 import { shouldUseCloudClientApis } from "@/lib/cloud-config";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -15,13 +14,15 @@ type Slot = SlotEmpty | SlotActive | SlotRevoked;
 
 type Props = {
   onActiveSeatCount?: (count: number) => void;
+  onMaxSeats?: (count: number) => void;
   onRosterChanged?: () => void;
 };
 
-export function PresidentTrainerSeatsPanel({ onActiveSeatCount, onRosterChanged }: Props) {
+export function PresidentTrainerSeatsPanel({ onActiveSeatCount, onMaxSeats, onRosterChanged }: Props) {
   const { user } = useAuth();
   const cloud = shouldUseCloudClientApis(user);
   const [slots, setSlots] = useState<Slot[]>([]);
+  const [maxSeats, setMaxSeats] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [rowEmail, setRowEmail] = useState<Record<number, string>>({});
@@ -38,7 +39,7 @@ export function PresidentTrainerSeatsPanel({ onActiveSeatCount, onRosterChanged 
     setError(null);
     try {
       const res = await fetch("/api/cloud/president/trainer-seats", { credentials: "include" });
-      const data = (await res.json()) as { ok?: boolean; slots?: Slot[]; error?: string };
+      const data = (await res.json()) as { ok?: boolean; slots?: Slot[]; maxSeats?: number; error?: string };
       if (!res.ok || !data.ok || !Array.isArray(data.slots)) {
         setError(typeof data.error === "string" ? data.error : "Não foi possível carregar os lugares.");
         setSlots([]);
@@ -46,6 +47,9 @@ export function PresidentTrainerSeatsPanel({ onActiveSeatCount, onRosterChanged 
         return;
       }
       setSlots(data.slots as Slot[]);
+      const m = typeof data.maxSeats === "number" ? data.maxSeats : (data.slots as Slot[]).length;
+      setMaxSeats(m);
+      onMaxSeats?.(m);
       const active = (data.slots as Slot[]).filter((s) => s.status === "active").length;
       onActiveSeatCount?.(active);
     } catch {
@@ -176,7 +180,7 @@ export function PresidentTrainerSeatsPanel({ onActiveSeatCount, onRosterChanged 
         <div>
           <CardTitle className="text-base text-white">Lugares de treinador</CardTitle>
           <p className="mt-1 text-sm text-zinc-500">
-            Cria até {PRESIDENT_INCLUDED_COACH_SEATS} contas com email e palavra-passe. Cada treinador entra como CoachPro
+            Cria até {maxSeats || slots.length || 0} contas com email e palavra-passe. Cada treinador entra como CoachPro
             enquanto a tua subscrição de presidente estiver activa e o lugar não for revogado. Se mudares o email ou a
             palavra-passe de um lugar, a sessão desse treinador deixa de ser válida até voltar a entrar com as credenciais
             correctas.

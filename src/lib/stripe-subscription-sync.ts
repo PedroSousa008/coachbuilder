@@ -16,6 +16,18 @@ async function userByStripeSubscription(sub: Stripe.Subscription) {
 }
 
 export async function activateFromCheckoutSession(session: Stripe.Checkout.Session, stripe: Stripe) {
+  if (session.mode === "payment" && session.metadata?.purchaseType === "president_extra_seat") {
+    const userId = typeof session.metadata?.userId === "string" ? session.metadata.userId : null;
+    if (!userId) return;
+    const seatsRaw = session.metadata?.seats;
+    const seats = Number.parseInt(typeof seatsRaw === "string" ? seatsRaw : "1", 10);
+    const qty = Number.isFinite(seats) && seats > 0 ? seats : 1;
+    await prisma.user.update({
+      where: { id: userId },
+      data: { trainerExtraSeatsPurchased: { increment: qty } },
+    });
+    return;
+  }
   if (session.mode !== "subscription") return;
   const userId = typeof session.metadata?.userId === "string" ? session.metadata.userId : null;
   if (!userId) return;
