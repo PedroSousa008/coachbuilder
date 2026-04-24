@@ -25,6 +25,15 @@ export default function PresidentExecutiveDashboardPage() {
   const { coachProfile } = useAppData();
   const { state, kpis, financeChart } = usePresidentClub();
   const roster = usePresidentLinkedRoster();
+  const syncLabel = useMemo(() => {
+    if (!roster.lastSyncedAt) return null;
+    return new Date(roster.lastSyncedAt).toLocaleString("pt-PT", {
+      day: "2-digit",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  }, [roster.lastSyncedAt]);
   const allCoaches = useMemo(() => [...roster.coaches, ...state.coaches], [roster.coaches, state.coaches]);
   const allPlayers = useMemo(() => [...roster.players, ...state.players], [roster.players, state.players]);
   const club =
@@ -97,9 +106,20 @@ export default function PresidentExecutiveDashboardPage() {
       <div>
         <h2 className="font-display text-2xl font-semibold text-white">Painel executivo</h2>
         <p className="mt-1 text-sm text-zinc-500">
-          {club} · visão consolidada: plantel e treinadores sincronizados das contas ligadas (cloud) + dados locais do
-          modo clube.
+          {club} · visão consolidada: treinadores e jogadores das contas ligadas sincronizam automaticamente com a cloud
+          (cada ~45&nbsp;s, ao voltar a este separador e ao focar a janela). Finanças, quotas e restantes dados do modo
+          clube reflectem-se logo que os edits no dispositivo.
         </p>
+        {syncLabel ? (
+          <p className="mt-2 text-xs text-zinc-600">
+            Última actualização do plantel agregado: <span className="tabular-nums text-zinc-500">{syncLabel}</span>
+            {roster.loading ? <span className="ml-2 text-amber-400/90">· A actualizar…</span> : null}
+          </p>
+        ) : roster.loading ? (
+          <p className="mt-2 text-xs text-zinc-600">A carregar plantel agregado…</p>
+        ) : roster.error ? (
+          <p className="mt-2 text-xs text-red-400/90">{roster.error}</p>
+        ) : null}
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
