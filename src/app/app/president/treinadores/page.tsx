@@ -121,6 +121,112 @@ export default function PresidentTreinadoresPage() {
       </Card>
 
       <Card className="border-surface-border bg-surface-raised/30">
+        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
+          <CardTitle className="text-base text-white">Plantel técnico</CardTitle>
+          {roster.source === "cloud" ? (
+            <Badge variant="muted">Cloud · {roster.linkedCoachAccounts} conta(s) ligada(s)</Badge>
+          ) : roster.source === "self" ? (
+            <Badge variant="muted">Desta sessão / conta</Badge>
+          ) : null}
+        </CardHeader>
+        <CardContent className="overflow-x-auto p-0 sm:p-6">
+          <table className="w-full min-w-[980px] text-left text-sm">
+            <thead className="border-b border-surface-border bg-surface-raised/50 text-xs uppercase tracking-wide text-zinc-500">
+              <tr>
+                <th className="px-4 py-3 font-medium">Origem</th>
+                <th className="px-4 py-3 font-medium">Email</th>
+                <th className="px-4 py-3 font-medium">Nome</th>
+                <th className="px-4 py-3 font-medium">Nasc.</th>
+                <th className="px-4 py-3 font-medium">Função</th>
+                <th className="px-4 py-3 font-medium">Equipa</th>
+                <th className="px-4 py-3 font-medium">Vitórias %</th>
+                <th className="px-4 py-3 font-medium">Sessões</th>
+                <th className="px-4 py-3 font-medium">Atividade</th>
+                <th className="px-4 py-3 font-medium">Pais</th>
+                <th className="px-4 py-3 font-medium">Rank</th>
+                <th className="px-4 py-3 font-medium">Contrato</th>
+                <th className="px-4 py-3 font-medium w-28">Acções</th>
+              </tr>
+            </thead>
+            <tbody>
+              {mergedCoaches.length === 0 ? (
+                <tr>
+                  <td colSpan={13} className="px-4 py-16 text-center text-sm text-zinc-500">
+                    Sem treinadores. Liga contas em Definições (treinadores) ou adiciona um registo manual abaixo.
+                  </td>
+                </tr>
+              ) : (
+                mergedCoaches.map((c) => {
+                  const linked = isLinkedCoachRow(c);
+                  return (
+                    <tr key={c.id} className="border-b border-surface-border/60 hover:bg-white/[0.02]">
+                      <td className="px-4 py-3">
+                        {linked ? (
+                          <Badge variant="muted" className="whitespace-nowrap">
+                            Conta treinador
+                          </Badge>
+                        ) : (
+                          <Badge variant="default" className="bg-zinc-800/80 text-zinc-400">
+                            Manual
+                          </Badge>
+                        )}
+                      </td>
+                      <td className="max-w-[160px] truncate px-4 py-3 text-xs text-zinc-500" title={c.coachEmail ?? ""}>
+                        {linked ? c.coachEmail ?? "—" : "—"}
+                      </td>
+                      <td className="px-4 py-3 font-medium text-zinc-200">{c.name}</td>
+                      <td className="px-4 py-3 text-zinc-400">{c.birthDate || "—"}</td>
+                      <td className="px-4 py-3 text-zinc-400">{c.role || "—"}</td>
+                      <td className="px-4 py-3 text-zinc-400">{c.team || "—"}</td>
+                      <td className="px-4 py-3 tabular-nums text-zinc-400">{c.winPct}%</td>
+                      <td className="px-4 py-3 tabular-nums text-zinc-400">{c.sessionsCreated}</td>
+                      <td className="px-4 py-3 text-zinc-400">{c.activityLevel}</td>
+                      <td className="px-4 py-3 tabular-nums text-zinc-400">{c.parentRating}</td>
+                      <td className="px-4 py-3 tabular-nums text-zinc-400">{c.internalRank}</td>
+                      <td className="max-w-[140px] truncate px-4 py-3 text-zinc-500" title={c.contractStatus}>
+                        {c.contractStatus || "—"}
+                      </td>
+                      <td className="px-4 py-3">
+                        {linked ? (
+                          <span className="text-xs text-zinc-600">—</span>
+                        ) : (
+                          <div className="flex gap-1">
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 px-2"
+                              onClick={() => startEdit(c)}
+                              aria-label="Editar"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 px-2 text-red-400 hover:text-red-300"
+                              onClick={() => {
+                                removeCoach(c.id);
+                                if (editingId === c.id) resetForm();
+                              }}
+                              aria-label="Remover"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </CardContent>
+      </Card>
+
+      <Card className="border-surface-border bg-surface-raised/30">
         <CardHeader>
           <CardTitle className="text-base text-white">
             {editingId ? "Editar registo manual" : "Registo manual (opcional)"}
@@ -267,112 +373,6 @@ export default function PresidentTreinadoresPage() {
               ) : null}
             </div>
           </form>
-        </CardContent>
-      </Card>
-
-      <Card className="border-surface-border bg-surface-raised/30">
-        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
-          <CardTitle className="text-base text-white">Plantel técnico</CardTitle>
-          {roster.source === "cloud" ? (
-            <Badge variant="muted">Cloud · {roster.linkedCoachAccounts} conta(s) ligada(s)</Badge>
-          ) : roster.source === "self" ? (
-            <Badge variant="muted">Desta sessão / conta</Badge>
-          ) : null}
-        </CardHeader>
-        <CardContent className="overflow-x-auto p-0 sm:p-6">
-          <table className="w-full min-w-[980px] text-left text-sm">
-            <thead className="border-b border-surface-border bg-surface-raised/50 text-xs uppercase tracking-wide text-zinc-500">
-              <tr>
-                <th className="px-4 py-3 font-medium">Origem</th>
-                <th className="px-4 py-3 font-medium">Email</th>
-                <th className="px-4 py-3 font-medium">Nome</th>
-                <th className="px-4 py-3 font-medium">Nasc.</th>
-                <th className="px-4 py-3 font-medium">Função</th>
-                <th className="px-4 py-3 font-medium">Equipa</th>
-                <th className="px-4 py-3 font-medium">Vitórias %</th>
-                <th className="px-4 py-3 font-medium">Sessões</th>
-                <th className="px-4 py-3 font-medium">Atividade</th>
-                <th className="px-4 py-3 font-medium">Pais</th>
-                <th className="px-4 py-3 font-medium">Rank</th>
-                <th className="px-4 py-3 font-medium">Contrato</th>
-                <th className="px-4 py-3 font-medium w-28">Acções</th>
-              </tr>
-            </thead>
-            <tbody>
-              {mergedCoaches.length === 0 ? (
-                <tr>
-                  <td colSpan={13} className="px-4 py-16 text-center text-sm text-zinc-500">
-                    Sem treinadores. Liga contas em Definições (treinadores) ou adiciona um registo manual acima.
-                  </td>
-                </tr>
-              ) : (
-                mergedCoaches.map((c) => {
-                  const linked = isLinkedCoachRow(c);
-                  return (
-                    <tr key={c.id} className="border-b border-surface-border/60 hover:bg-white/[0.02]">
-                      <td className="px-4 py-3">
-                        {linked ? (
-                          <Badge variant="muted" className="whitespace-nowrap">
-                            Conta treinador
-                          </Badge>
-                        ) : (
-                          <Badge variant="default" className="bg-zinc-800/80 text-zinc-400">
-                            Manual
-                          </Badge>
-                        )}
-                      </td>
-                      <td className="max-w-[160px] truncate px-4 py-3 text-xs text-zinc-500" title={c.coachEmail ?? ""}>
-                        {linked ? c.coachEmail ?? "—" : "—"}
-                      </td>
-                      <td className="px-4 py-3 font-medium text-zinc-200">{c.name}</td>
-                      <td className="px-4 py-3 text-zinc-400">{c.birthDate || "—"}</td>
-                      <td className="px-4 py-3 text-zinc-400">{c.role || "—"}</td>
-                      <td className="px-4 py-3 text-zinc-400">{c.team || "—"}</td>
-                      <td className="px-4 py-3 tabular-nums text-zinc-400">{c.winPct}%</td>
-                      <td className="px-4 py-3 tabular-nums text-zinc-400">{c.sessionsCreated}</td>
-                      <td className="px-4 py-3 text-zinc-400">{c.activityLevel}</td>
-                      <td className="px-4 py-3 tabular-nums text-zinc-400">{c.parentRating}</td>
-                      <td className="px-4 py-3 tabular-nums text-zinc-400">{c.internalRank}</td>
-                      <td className="max-w-[140px] truncate px-4 py-3 text-zinc-500" title={c.contractStatus}>
-                        {c.contractStatus || "—"}
-                      </td>
-                      <td className="px-4 py-3">
-                        {linked ? (
-                          <span className="text-xs text-zinc-600">—</span>
-                        ) : (
-                          <div className="flex gap-1">
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="ghost"
-                              className="h-8 px-2"
-                              onClick={() => startEdit(c)}
-                              aria-label="Editar"
-                            >
-                              <Pencil className="h-3.5 w-3.5" />
-                            </Button>
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="ghost"
-                              className="h-8 px-2 text-red-400 hover:text-red-300"
-                              onClick={() => {
-                                removeCoach(c.id);
-                                if (editingId === c.id) resetForm();
-                              }}
-                              aria-label="Remover"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
-                          </div>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
         </CardContent>
       </Card>
     </div>

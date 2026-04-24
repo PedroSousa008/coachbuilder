@@ -97,9 +97,101 @@ export default function PresidentJogadoresPage() {
       </Card>
 
       <Card className="border-surface-border bg-surface-raised/30">
+        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
+          <CardTitle className="text-base text-white">Plantel de jogadores ({mergedPlayers.length})</CardTitle>
+          {roster.source === "cloud" ? (
+            <Badge variant="muted">Cloud · contas ligadas</Badge>
+          ) : roster.source === "self" ? (
+            <Badge variant="muted">Desta sessão</Badge>
+          ) : null}
+        </CardHeader>
+        <CardContent className="overflow-x-auto p-0 sm:p-6">
+          <table className="w-full min-w-[800px] text-left text-sm">
+            <thead className="border-b border-surface-border bg-surface-raised/50 text-xs uppercase text-zinc-500">
+              <tr>
+                <th className="px-4 py-3 font-medium">Origem</th>
+                <th className="px-4 py-3 font-medium">Conta</th>
+                <th className="px-4 py-3 font-medium">Nome</th>
+                <th className="px-4 py-3 font-medium">Idade</th>
+                <th className="px-4 py-3 font-medium">Equipa</th>
+                <th className="px-4 py-3 font-medium">Pos.</th>
+                <th className="px-4 py-3 font-medium">Presenças</th>
+                <th className="px-4 py-3 font-medium">Topo</th>
+                <th className="px-4 py-3 font-medium">Lesão</th>
+                <th className="px-4 py-3 font-medium w-24">Acções</th>
+              </tr>
+            </thead>
+            <tbody>
+              {mergedPlayers.length === 0 ? (
+                <tr>
+                  <td colSpan={10} className="px-4 py-14 text-center text-zinc-500">
+                    Sem jogadores sincronizados. Liga contas de treinadores ou adiciona registos manuais abaixo.
+                  </td>
+                </tr>
+              ) : (
+                mergedPlayers.map((p) => {
+                  const linked = isLinkedPlayerRow(p.id);
+                  return (
+                    <tr key={p.id} className="border-b border-surface-border/60">
+                      <td className="px-4 py-3">
+                        {linked ? (
+                          <Badge variant="muted" className="whitespace-nowrap">
+                            Treinador
+                          </Badge>
+                        ) : (
+                          <Badge variant="default" className="bg-zinc-800/80 text-zinc-400">
+                            Local
+                          </Badge>
+                        )}
+                      </td>
+                      <td className="max-w-[140px] truncate px-4 py-3 text-xs text-zinc-500" title={p.coachEmail ?? ""}>
+                        {linked ? p.coachEmail ?? "—" : "—"}
+                      </td>
+                      <td className="px-4 py-3 font-medium text-zinc-200">{p.name}</td>
+                      <td className="px-4 py-3 text-zinc-400">{p.age || "—"}</td>
+                      <td className="px-4 py-3 text-zinc-400">{p.team || "—"}</td>
+                      <td className="px-4 py-3 text-zinc-400">{p.position || "—"}</td>
+                      <td className="px-4 py-3 text-zinc-400">{p.attendance || "—"}</td>
+                      <td className="px-4 py-3 text-zinc-400">{p.isTopTalent ? "Sim" : "—"}</td>
+                      <td className="max-w-[120px] truncate px-4 py-3 text-zinc-500" title={p.injuryStatus}>
+                        {p.injuryStatus || "—"}
+                      </td>
+                      <td className="px-4 py-3">
+                        {linked ? (
+                          <span className="text-xs text-zinc-600">—</span>
+                        ) : (
+                          <div className="flex gap-1">
+                            <Button type="button" size="sm" variant="ghost" className="h-8 px-2" onClick={() => startEdit(p)}>
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 px-2 text-red-400"
+                              onClick={() => {
+                                removePlayer(p.id);
+                                if (editingId === p.id) reset();
+                              }}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </CardContent>
+      </Card>
+
+      <Card className="border-surface-border bg-surface-raised/30">
         <CardHeader>
           <CardTitle className="text-base text-white">
-            {editingId ? "Editar registo local" : "Registo local adicional (opcional)"}
+            {editingId ? "Editar registo manual" : "Registo manual (opcional)"}
           </CardTitle>
           <p className="text-xs text-zinc-500">Anotações internas ou jogadores fora do CoachBuilder.</p>
         </CardHeader>
@@ -188,7 +280,7 @@ export default function PresidentJogadoresPage() {
               <textarea className={ta} value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} />
             </label>
             <div className="flex flex-wrap gap-2 sm:col-span-3">
-              <Button type="submit">{editingId ? "Guardar" : "Adicionar registo local"}</Button>
+              <Button type="submit">{editingId ? "Guardar" : "Adicionar registo manual"}</Button>
               {editingId ? (
                 <Button type="button" variant="ghost" onClick={reset}>
                   Cancelar
@@ -196,98 +288,6 @@ export default function PresidentJogadoresPage() {
               ) : null}
             </div>
           </form>
-        </CardContent>
-      </Card>
-
-      <Card className="border-surface-border bg-surface-raised/30">
-        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
-          <CardTitle className="text-base text-white">Plantel ({mergedPlayers.length})</CardTitle>
-          {roster.source === "cloud" ? (
-            <Badge variant="muted">Cloud · contas ligadas</Badge>
-          ) : roster.source === "self" ? (
-            <Badge variant="muted">Desta sessão</Badge>
-          ) : null}
-        </CardHeader>
-        <CardContent className="overflow-x-auto p-0 sm:p-6">
-          <table className="w-full min-w-[800px] text-left text-sm">
-            <thead className="border-b border-surface-border bg-surface-raised/50 text-xs uppercase text-zinc-500">
-              <tr>
-                <th className="px-4 py-3 font-medium">Origem</th>
-                <th className="px-4 py-3 font-medium">Conta</th>
-                <th className="px-4 py-3 font-medium">Nome</th>
-                <th className="px-4 py-3 font-medium">Idade</th>
-                <th className="px-4 py-3 font-medium">Equipa</th>
-                <th className="px-4 py-3 font-medium">Pos.</th>
-                <th className="px-4 py-3 font-medium">Presenças</th>
-                <th className="px-4 py-3 font-medium">Topo</th>
-                <th className="px-4 py-3 font-medium">Lesão</th>
-                <th className="px-4 py-3 font-medium w-24">Acções</th>
-              </tr>
-            </thead>
-            <tbody>
-              {mergedPlayers.length === 0 ? (
-                <tr>
-                  <td colSpan={10} className="px-4 py-14 text-center text-zinc-500">
-                    Sem jogadores sincronizados. Liga contas de treinadores ou adiciona registos locais acima.
-                  </td>
-                </tr>
-              ) : (
-                mergedPlayers.map((p) => {
-                  const linked = isLinkedPlayerRow(p.id);
-                  return (
-                    <tr key={p.id} className="border-b border-surface-border/60">
-                      <td className="px-4 py-3">
-                        {linked ? (
-                          <Badge variant="muted" className="whitespace-nowrap">
-                            Treinador
-                          </Badge>
-                        ) : (
-                          <Badge variant="default" className="bg-zinc-800/80 text-zinc-400">
-                            Local
-                          </Badge>
-                        )}
-                      </td>
-                      <td className="max-w-[140px] truncate px-4 py-3 text-xs text-zinc-500" title={p.coachEmail ?? ""}>
-                        {linked ? p.coachEmail ?? "—" : "—"}
-                      </td>
-                      <td className="px-4 py-3 font-medium text-zinc-200">{p.name}</td>
-                      <td className="px-4 py-3 text-zinc-400">{p.age || "—"}</td>
-                      <td className="px-4 py-3 text-zinc-400">{p.team || "—"}</td>
-                      <td className="px-4 py-3 text-zinc-400">{p.position || "—"}</td>
-                      <td className="px-4 py-3 text-zinc-400">{p.attendance || "—"}</td>
-                      <td className="px-4 py-3 text-zinc-400">{p.isTopTalent ? "Sim" : "—"}</td>
-                      <td className="max-w-[120px] truncate px-4 py-3 text-zinc-500" title={p.injuryStatus}>
-                        {p.injuryStatus || "—"}
-                      </td>
-                      <td className="px-4 py-3">
-                        {linked ? (
-                          <span className="text-xs text-zinc-600">—</span>
-                        ) : (
-                          <div className="flex gap-1">
-                            <Button type="button" size="sm" variant="ghost" className="h-8 px-2" onClick={() => startEdit(p)}>
-                              <Pencil className="h-3.5 w-3.5" />
-                            </Button>
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="ghost"
-                              className="h-8 px-2 text-red-400"
-                              onClick={() => {
-                                removePlayer(p.id);
-                                if (editingId === p.id) reset();
-                              }}
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
-                          </div>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
         </CardContent>
       </Card>
     </div>
