@@ -141,9 +141,13 @@ export function SubscriptionSettings() {
                 ? "Pro — trial"
                 : mode === "grace"
                   ? "Pro — pagamento em falta (período de graça)"
-                  : mode === "pro_monthly"
-                    ? "Coach Pro"
-                    : "Free"}
+                  : access?.hasProAccess
+                    ? access.isComped && user?.subscriptionPlan === "free"
+                      ? "Coach Pro (via conta do clube)"
+                      : "Coach Pro"
+                    : mode === "pro_monthly"
+                      ? "Coach Pro"
+                      : "Free"}
           </span>
         </p>
         {access?.trialEndsAt && mode === "pro_trial" ? (

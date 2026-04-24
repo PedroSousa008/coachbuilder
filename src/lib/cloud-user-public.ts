@@ -1,12 +1,21 @@
 import type { AuthUser } from "@/types/auth";
 import { isCoachingRoleId } from "@/types/auth";
-import type { SubscriptionAccessPayload } from "@/types/subscription";
+import type { SubscriptionAccessPayload, SubscriptionEffectiveMode } from "@/types/subscription";
 
 export type CloudUserPublic = AuthUser & {
   role: "user" | "admin";
   subscriptionPlan: string;
   subscriptionAccess?: SubscriptionAccessPayload;
 };
+
+function coercePrice(n: unknown): number | undefined {
+  if (typeof n === "number" && Number.isFinite(n)) return n;
+  if (typeof n === "string") {
+    const v = parseFloat(n);
+    return Number.isFinite(v) ? v : undefined;
+  }
+  return undefined;
+}
 
 export function toCloudUserPublic(u: {
   id: string;
@@ -17,6 +26,8 @@ export function toCloudUserPublic(u: {
   role?: string | null;
   subscriptionPlan?: string | null;
   createdAt?: Date | null;
+  clubPresidentUserId?: string | null;
+  trainerSeatIndex?: number | null;
 }): CloudUserPublic {
   const cr = typeof u.coachingRole === "string" ? u.coachingRole : "head-coach";
   const r = typeof u.role === "string" ? u.role.trim().toLowerCase() : "user";
@@ -32,24 +43,51 @@ export function toCloudUserPublic(u: {
     role: r === "admin" ? "admin" : "user",
     subscriptionPlan: (typeof u.subscriptionPlan === "string" && u.subscriptionPlan) || "free",
     ...(createdAt ? { createdAt } : {}),
+    ...("clubPresidentUserId" in u ? { clubPresidentUserId: u.clubPresidentUserId ?? null } : {}),
+    ...("trainerSeatIndex" in u ? { trainerSeatIndex: u.trainerSeatIndex ?? null } : {}),
   };
 }
+
+const EFFECTIVE_MODES = new Set(["admin", "pro_trial", "pro_monthly", "grace", "free"]);
 
 function parseSubscriptionAccessPayload(raw: unknown): SubscriptionAccessPayload | undefined {
   if (!raw || typeof raw !== "object") return undefined;
   const o = raw as Record<string, unknown>;
   if (typeof o.hasProAccess !== "boolean") return undefined;
-  if (typeof o.effectiveMode !== "string") return undefined;
-  if (typeof o.displayPriceEur !== "number" || typeof o.defaultPriceEur !== "number") return undefined;
-  if (typeof o.isComped !== "boolean") return undefined;
+  const displayPriceEur = coercePrice(o.displayPriceEur);
+  const defaultPriceEur = coercePrice(o.defaultPriceEur);
+  if (displayPriceEur === undefined || defaultPriceEur === undefined) return undefined;
+  const rawMode = typeof o.effectiveMode === "string" ? o.effectiveMode.trim() : "";
+  const effectiveMode: SubscriptionEffectiveMode = EFFECTIVE_MODES.has(rawMode)
+    ? (rawMode as SubscriptionEffectiveMode)
+    : o.hasProAccess === true
+      ? "pro_monthly"
+      : "free";
+  const isComped = typeof o.isComped === "boolean" ? o.isComped : false;
   let adminMonthlyPriceEur: number | null = null;
   if ("adminMonthlyPriceEur" in o) {
     const v = o.adminMonthlyPriceEur;
     if (v === null) adminMonthlyPriceEur = null;
-    else if (typeof v === "number" && Number.isFinite(v)) adminMonthlyPriceEur = v;
-    else return undefined;
+    else {
+      const n = coercePrice(v);
+      if (n === undefined) return undefined;
+      adminMonthlyPriceEur = n;
+    }
   }
-  return { ...o, adminMonthlyPriceEur } as SubscriptionAccessPayload;
+  const trialEndsAt = typeof o.trialEndsAt === "string" || o.trialEndsAt === null ? (o.trialEndsAt as string | null) : null;
+  const graceEndsAt = typeof o.graceEndsAt === "string" || o.graceEndsAt === null ? (o.graceEndsAt as string | null) : null;
+  const renewsAt = typeof o.renewsAt === "string" || o.renewsAt === null ? (o.renewsAt as string | null) : null;
+  return {
+    hasProAccess: o.hasProAccess === true,
+    effectiveMode,
+    trialEndsAt,
+    graceEndsAt,
+    renewsAt,
+    displayPriceEur,
+    defaultPriceEur,
+    adminMonthlyPriceEur,
+    isComped,
+  };
 }
 
 /** Respostas antigas sem `subscriptionAccess`: inferir só a partir do plano. */
@@ -100,6 +138,12 @@ export function parseCloudUserFromApi(raw: unknown): CloudUserPublic | null {
     role: roleLower,
     subscriptionPlan,
     ...(createdAtIso ? { createdAt: new Date(createdAtIso) } : {}),
+    ...(typeof o.clubPresidentUserId === "string" || o.clubPresidentUserId === null
+      ? { clubPresidentUserId: o.clubPresidentUserId as string | null }
+      : {}),
+    ...(typeof o.trainerSeatIndex === "number" || o.trainerSeatIndex === null
+      ? { trainerSeatIndex: o.trainerSeatIndex as number | null }
+      : {}),
   });
   const subscriptionAccess =
     parseSubscriptionAccessPayload(o.subscriptionAccess) ?? legacySubscriptionAccess(base.subscriptionPlan, base.role);

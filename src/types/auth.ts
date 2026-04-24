@@ -54,6 +54,10 @@ export type AuthUser = {
   subscriptionPlan?: string;
   /** Calculado no servidor (GET /me, login, registo). */
   subscriptionAccess?: SubscriptionAccessPayload;
+  /** Cloud: conta ligada a um presidente (lugares ou ligação manual). */
+  clubPresidentUserId?: string | null;
+  /** Cloud: lugar numerado criado pelo presidente (`null` = só ligação manual). */
+  trainerSeatIndex?: number | null;
   /** ISO 8601 — data de criação da conta (calendário Coaching by Professionals, etc.). */
   createdAt?: string;
 };

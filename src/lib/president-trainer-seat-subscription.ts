@@ -4,10 +4,9 @@ import type { SubscriptionAccessPayload } from "@/types/subscription";
 import { transitionExpiredSubscriptionState } from "@/lib/subscription-transition";
 
 /**
- * Treinadores ligados ao clube (`clubPresidentUserId`) herdam o mesmo pacote CoachPro que o
- * presidente enquanto `trainerSeatActive` e a subscrição do presidente o permitirem — em
- * `/auth/login`, `/auth/me` e APIs que usem esta função, o efeito é o mesmo que um subscritor
- * Pro individual (`hasProAccess`, `effectiveMode`, datas de renovação, etc.).
+ * Treinadores com `clubPresidentUserId` herdam o mesmo pacote CoachPro que essa conta enquanto
+ * `trainerSeatActive` e a subscrição dela o permitirem (não exigimos `coachingRole === "club-president"`
+ * na BD — o email da conta que paga o Pro pode estar com outro papel registado).
  */
 export async function resolveSubscriptionAccessForCloudUser(
   prisma: PrismaClient,
@@ -19,7 +18,7 @@ export async function resolveSubscriptionAccessForCloudUser(
   if (user.trainerSeatActive === false) return base;
 
   const president = await transitionExpiredSubscriptionState(user.clubPresidentUserId);
-  if (!president || president.coachingRole !== "club-president") return base;
+  if (!president) return base;
 
   const presAccess = computeSubscriptionAccess(president);
   if (!presAccess.hasProAccess) return base;
