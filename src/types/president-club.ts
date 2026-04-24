@@ -83,6 +83,58 @@ export type PresidentFinanceMovement = {
   note: string;
 };
 
+export type PresidentExpenseStatus = "pago" | "pendente" | "atrasado";
+export type PresidentExpensePaymentMethod =
+  | "numerario"
+  | "transferencia_bancaria"
+  | "mbway"
+  | "cartao"
+  | "debito_direto"
+  | "outro";
+
+export type PresidentExpenseCategory =
+  | "treinadores_staff"
+  | "arbitragem_taxas_jogo"
+  | "campo_instalacoes"
+  | "equipamento"
+  | "transporte"
+  | "seguros_licencas"
+  | "administracao"
+  | "saude"
+  | "dividas_antigas"
+  | "outras_despesas";
+
+export type PresidentExpense = {
+  id: string;
+  name: string;
+  category: PresidentExpenseCategory;
+  description: string;
+  teamOrDepartment: string;
+  dueDate: string;
+  valueEUR: number;
+  status: PresidentExpenseStatus;
+  paymentMethod: PresidentExpensePaymentMethod;
+  paymentInfo: string;
+  note: string;
+  lastPaidAt: string;
+  recurringMonthly: boolean;
+  role: string;
+  supplier: string;
+  sourceStaffKey?: string;
+  coachUserId?: string;
+};
+
+/** Linha de staff sincronizada do workspace dos treinadores. */
+export type PresidentLinkedStaff = {
+  id: string;
+  sourceStaffKey: string;
+  coachUserId: string;
+  coachEmail: string;
+  name: string;
+  role: string;
+  team: string;
+};
+
 export type PresidentPaymentMethod = "numerario" | "transferencia" | "mbway" | "cartao" | "outro";
 
 export type PresidentPaymentHistoryEntry = {
@@ -202,6 +254,7 @@ export type PresidentClubState = {
   marketContacts: PresidentMarketContact[];
   recruitmentShortlist: PresidentRecruitmentShortlistEntry[];
   financeMovements: PresidentFinanceMovement[];
+  expenses: PresidentExpense[];
   payments: PresidentPayment[];
   sponsors: PresidentSponsor[];
   injuries: PresidentInjury[];

@@ -32,6 +32,8 @@ import type {
   PresidentCommunication,
   PresidentDisciplineIncident,
   PresidentDocument,
+  PresidentExpense,
+  PresidentLinkedStaff,
   PresidentFinanceMovement,
   PresidentPaymentHistoryEntry,
   PresidentInjury,
@@ -67,6 +69,11 @@ type PresidentClubContextValue = {
   touchRecruitmentShortlistCoach: (coachUserId: string) => void;
   addFinanceMovement: (row: Omit<PresidentFinanceMovement, "id">) => string;
   removeFinanceMovement: (id: string) => void;
+  addExpense: (row: Omit<PresidentExpense, "id">) => string;
+  updateExpense: (id: string, patch: Partial<PresidentExpense>) => void;
+  removeExpense: (id: string) => void;
+  markExpensePaid: (id: string) => void;
+  syncExpensesWithLinkedStaff: (staffRows: PresidentLinkedStaff[]) => void;
   addPayment: (row: Omit<PresidentPayment, "id">) => string;
   updatePayment: (id: string, patch: Partial<PresidentPayment>) => void;
   removePayment: (id: string) => void;
@@ -234,6 +241,87 @@ export function PresidentClubProvider({ children }: { children: ReactNode }) {
 
   const removeFinanceMovement = useCallback((id: string) => {
     setState((prev) => ({ ...prev, financeMovements: prev.financeMovements.filter((f) => f.id !== id) }));
+  }, []);
+
+  const addExpense = useCallback((row: Omit<PresidentExpense, "id">) => {
+    const id = presidentUid();
+    setState((prev) => ({ ...prev, expenses: [{ ...row, id }, ...prev.expenses] }));
+    return id;
+  }, []);
+
+  const updateExpense = useCallback((id: string, patch: Partial<PresidentExpense>) => {
+    setState((prev) => ({
+      ...prev,
+      expenses: prev.expenses.map((x) => (x.id === id ? { ...x, ...patch, id } : x)),
+    }));
+  }, []);
+
+  const removeExpense = useCallback((id: string) => {
+    setState((prev) => ({ ...prev, expenses: prev.expenses.filter((x) => x.id !== id) }));
+  }, []);
+
+  const markExpensePaid = useCallback((id: string) => {
+    setState((prev) => {
+      const exp = prev.expenses.find((x) => x.id === id);
+      if (!exp) return prev;
+      const today = new Date().toISOString().slice(0, 10);
+      const nextDue = addCalendarMonths(exp.dueDate || today, 1);
+      const current = prev.expenses.map((x) =>
+        x.id === id ? { ...x, status: "pago" as const, lastPaidAt: today } : x
+      );
+      if (!exp.recurringMonthly) return { ...prev, expenses: current };
+      const next: PresidentExpense = {
+        ...exp,
+        id: presidentUid(),
+        dueDate: nextDue,
+        status: "pendente",
+        lastPaidAt: "",
+      };
+      return { ...prev, expenses: [next, ...current] };
+    });
+  }, []);
+
+  const syncExpensesWithLinkedStaff = useCallback((staffRows: PresidentLinkedStaff[]) => {
+    setState((prev) => {
+      if (!staffRows.length) return prev;
+      const byKey = new Map(staffRows.map((s) => [s.sourceStaffKey, s]));
+      const updated = prev.expenses.map((e) => {
+        if (!e.sourceStaffKey) return e;
+        const hit = byKey.get(e.sourceStaffKey);
+        if (!hit) return e;
+        const nextName = hit.name.trim() || e.name;
+        const nextRole = hit.role.trim() || e.role;
+        const nextTeam = hit.team.trim() || e.teamOrDepartment;
+        if (e.name === nextName && e.role === nextRole && e.teamOrDepartment === nextTeam) return e;
+        return { ...e, name: nextName, role: nextRole, teamOrDepartment: nextTeam };
+      });
+      const additions: PresidentExpense[] = [];
+      for (const s of staffRows) {
+        const exists = updated.some((e) => e.sourceStaffKey === s.sourceStaffKey);
+        if (exists) continue;
+        additions.push({
+          id: presidentUid(),
+          name: s.name,
+          category: "treinadores_staff",
+          description: s.role || "Staff técnico",
+          teamOrDepartment: s.team || "",
+          dueDate: "",
+          valueEUR: 0,
+          status: "pendente",
+          paymentMethod: "transferencia_bancaria",
+          paymentInfo: "",
+          note: "Sincronizado automaticamente a partir do staff das equipas dos treinadores.",
+          lastPaidAt: "",
+          recurringMonthly: true,
+          role: s.role || "",
+          supplier: "",
+          sourceStaffKey: s.sourceStaffKey,
+          coachUserId: s.coachUserId,
+        });
+      }
+      if (!additions.length && updated.every((e, i) => e === prev.expenses[i])) return prev;
+      return { ...prev, expenses: [...additions, ...updated] };
+    });
   }, []);
 
   const addPayment = useCallback((row: Omit<PresidentPayment, "id">) => {
@@ -499,6 +587,11 @@ export function PresidentClubProvider({ children }: { children: ReactNode }) {
       touchRecruitmentShortlistCoach,
       addFinanceMovement,
       removeFinanceMovement,
+      addExpense,
+      updateExpense,
+      removeExpense,
+      markExpensePaid,
+      syncExpensesWithLinkedStaff,
       addPayment,
       updatePayment,
       removePayment,
@@ -547,6 +640,11 @@ export function PresidentClubProvider({ children }: { children: ReactNode }) {
       touchRecruitmentShortlistCoach,
       addFinanceMovement,
       removeFinanceMovement,
+      addExpense,
+      updateExpense,
+      removeExpense,
+      markExpensePaid,
+      syncExpensesWithLinkedStaff,
       addPayment,
       updatePayment,
       removePayment,

@@ -1,5 +1,5 @@
 import type { CoachHonorEntry, CoachProfileState, Player, TacticMatch, TrainingSession } from "@/types";
-import type { PresidentCoach, PresidentPlayer } from "@/types/president-club";
+import type { PresidentCoach, PresidentLinkedStaff, PresidentPlayer } from "@/types/president-club";
 import type { WorkspaceSnapshotV1 } from "@/lib/workspace-snapshot";
 import { formatPlayerPositions } from "@/lib/player-positions";
 
@@ -97,4 +97,34 @@ export function mapWorkspaceToPresidentPlayers(
     injuriesNote: "",
     familyContacts: "",
   }));
+}
+
+/** Constrói linhas de staff para sincronização em despesas (pagamentos a sair). */
+export function mapWorkspaceToPresidentLinkedStaff(
+  coachUserId: string,
+  coachEmail: string,
+  snapshot: WorkspaceSnapshotV1
+): PresidentLinkedStaff[] {
+  const team = (snapshot.coachProfile.club ?? "").trim();
+  const headName = (snapshot.coachProfile.name ?? "").trim() || coachEmail;
+  const headRole = (snapshot.coachProfile.role ?? "").trim() || "Treinador principal";
+  const head: PresidentLinkedStaff = {
+    id: `linkedstaff:${coachUserId}:head`,
+    sourceStaffKey: `linkedstaff:${coachUserId}:head`,
+    coachUserId,
+    coachEmail,
+    name: headName,
+    role: headRole,
+    team,
+  };
+  const rest: PresidentLinkedStaff[] = (snapshot.staff ?? []).map((s) => ({
+    id: `linkedstaff:${coachUserId}:${s.id}`,
+    sourceStaffKey: `linkedstaff:${coachUserId}:${s.id}`,
+    coachUserId,
+    coachEmail,
+    name: s.name.trim(),
+    role: (s.role ?? "").trim(),
+    team,
+  }));
+  return [head, ...rest].filter((x) => x.name);
 }

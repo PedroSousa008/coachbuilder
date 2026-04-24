@@ -5,6 +5,7 @@ import type {
   PresidentDisciplineIncident,
   PresidentDocument,
   PresidentEquipasSlot,
+  PresidentExpense,
   PresidentFinanceMovement,
   PresidentInjury,
   PresidentMarketContact,
@@ -34,6 +35,7 @@ export function emptyPresidentClubState(): PresidentClubState {
     marketContacts: [],
     recruitmentShortlist: [],
     financeMovements: [],
+    expenses: [],
     payments: [],
     sponsors: [],
     injuries: [],
@@ -196,6 +198,61 @@ export function mergePresidentClubState(raw: unknown, fallback: PresidentClubSta
         })
       )
       .filter((f) => f.id),
+    expenses: arr<Record<string, unknown>>(o.expenses)
+      .map((e): PresidentExpense => ({
+        id: str(e.id, ""),
+        name: str(e.name, ""),
+        category: (() => {
+          const v = str(e.category, "");
+          if (
+            v === "treinadores_staff" ||
+            v === "arbitragem_taxas_jogo" ||
+            v === "campo_instalacoes" ||
+            v === "equipamento" ||
+            v === "transporte" ||
+            v === "seguros_licencas" ||
+            v === "administracao" ||
+            v === "saude" ||
+            v === "dividas_antigas" ||
+            v === "outras_despesas"
+          ) {
+            return v;
+          }
+          return "outras_despesas";
+        })(),
+        description: str(e.description, ""),
+        teamOrDepartment: str(e.teamOrDepartment, ""),
+        dueDate: str(e.dueDate, ""),
+        valueEUR: num(e.valueEUR, 0),
+        status: (() => {
+          const v = str(e.status, "");
+          if (v === "pago" || v === "atrasado") return v;
+          return "pendente";
+        })(),
+        paymentMethod: (() => {
+          const v = str(e.paymentMethod, "");
+          if (
+            v === "numerario" ||
+            v === "transferencia_bancaria" ||
+            v === "mbway" ||
+            v === "cartao" ||
+            v === "debito_direto" ||
+            v === "outro"
+          ) {
+            return v;
+          }
+          return "transferencia_bancaria";
+        })(),
+        paymentInfo: str(e.paymentInfo, ""),
+        note: str(e.note, ""),
+        lastPaidAt: str(e.lastPaidAt, ""),
+        recurringMonthly: bool(e.recurringMonthly, false),
+        role: str(e.role, ""),
+        supplier: str(e.supplier, ""),
+        sourceStaffKey: typeof e.sourceStaffKey === "string" ? e.sourceStaffKey : undefined,
+        coachUserId: typeof e.coachUserId === "string" ? e.coachUserId : undefined,
+      }))
+      .filter((e) => e.id),
     payments: arr<Record<string, unknown>>(o.payments)
       .map((raw) => {
         const id = str(raw.id, "");

@@ -7,9 +7,13 @@ import { usePresidentClub } from "@/contexts/PresidentClubContext";
 import { buildWorkspaceSnapshotV1 } from "@/lib/build-workspace-snapshot";
 import { isClubPresident } from "@/lib/president-mode";
 import { shouldUseCloudClientApis } from "@/lib/cloud-config";
-import { mapWorkspaceToPresidentCoach, mapWorkspaceToPresidentPlayers } from "@/lib/president-linked-roster";
+import {
+  mapWorkspaceToPresidentCoach,
+  mapWorkspaceToPresidentLinkedStaff,
+  mapWorkspaceToPresidentPlayers,
+} from "@/lib/president-linked-roster";
 import { withPresidentSlotTeamOverlay } from "@/lib/president-slot-team";
-import type { PresidentCoach, PresidentPlayer } from "@/types/president-club";
+import type { PresidentCoach, PresidentLinkedStaff, PresidentPlayer } from "@/types/president-club";
 
 /** Intervalo entre sincronizações silenciosas com a cloud (plantel agregado). */
 const PRESIDENT_LINKED_ROSTER_POLL_MS = 45_000;
@@ -17,6 +21,7 @@ const PRESIDENT_LINKED_ROSTER_POLL_MS = 45_000;
 type RemotePayload = {
   coaches: PresidentCoach[];
   players: PresidentPlayer[];
+  staffRows: PresidentLinkedStaff[];
   linkedCoachAccounts: number;
 };
 
@@ -110,6 +115,7 @@ export function usePresidentLinkedRoster() {
             setRemote({
               coaches: (data.coaches as PresidentCoach[]) ?? [],
               players: (data.players as PresidentPlayer[]) ?? [],
+              staffRows: (data.staffRows as PresidentLinkedStaff[]) ?? [],
               linkedCoachAccounts: typeof data.linkedCoachAccounts === "number" ? data.linkedCoachAccounts : 0,
             });
             setLastSyncedAt(new Date().toISOString());
@@ -171,6 +177,7 @@ export function usePresidentLinkedRoster() {
       return {
         coaches: [] as PresidentCoach[],
         players: [] as PresidentPlayer[],
+        staffRows: [] as PresidentLinkedStaff[],
         source: "none" as PresidentLinkedRosterSource,
         linkedCoachAccounts: 0,
       };
@@ -183,6 +190,7 @@ export function usePresidentLinkedRoster() {
       return {
         coaches,
         players,
+        staffRows: remote.staffRows,
         source: "cloud" as const,
         linkedCoachAccounts: remote.linkedCoachAccounts,
       };
@@ -190,6 +198,7 @@ export function usePresidentLinkedRoster() {
 
     const coach = mapWorkspaceToPresidentCoach(user.id, user.email ?? "", selfSnapshot);
     const pl = mapWorkspaceToPresidentPlayers(user.id, user.email ?? "", selfSnapshot);
+    const staffRows = mapWorkspaceToPresidentLinkedStaff(user.id, user.email ?? "", selfSnapshot);
     const hasSelf =
       pl.length > 0 || (selfSnapshot.coachProfile.name ?? "").trim().length > 0 || (selfSnapshot.coachProfile.club ?? "").trim().length > 0;
     if (hasSelf) {
@@ -197,6 +206,7 @@ export function usePresidentLinkedRoster() {
       return {
         coaches,
         players,
+        staffRows,
         source: "self" as const,
         linkedCoachAccounts: remote?.linkedCoachAccounts ?? 0,
       };
@@ -205,6 +215,7 @@ export function usePresidentLinkedRoster() {
     return {
       coaches: [] as PresidentCoach[],
       players: [] as PresidentPlayer[],
+      staffRows: [] as PresidentLinkedStaff[],
       source: "none" as const,
       linkedCoachAccounts: remote?.linkedCoachAccounts ?? 0,
     };
@@ -217,6 +228,7 @@ export function usePresidentLinkedRoster() {
     lastSyncedAt,
     coaches: merged.coaches,
     players: merged.players,
+    staffRows: merged.staffRows,
     source: merged.source,
     linkedCoachAccounts: merged.linkedCoachAccounts,
   };
