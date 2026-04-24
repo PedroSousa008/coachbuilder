@@ -1,5 +1,5 @@
 import type { PresidentClubState } from "@/types/president-club";
-import { paymentEffectiveEUR } from "@/lib/president-finance";
+import { paymentEffectiveEUR, QUOTA_INCOME_FINANCE_CATEGORY } from "@/lib/president-finance";
 
 export type PresidentDashboardKpis = {
   activeCoaches: number;
@@ -19,6 +19,33 @@ export type PresidentDashboardKpis = {
 
 export type PresidentChartPoint = { label: string; value: number };
 
+/** Receita de quotas cobradas num mês (YYYY-MM), alinhada com o módulo Finanças. */
+export function monthlyCollectedQuotasEUR(state: PresidentClubState, ymPrefix: string): number {
+  return state.payments
+    .filter((p) => !p.archived && p.status === "pago" && p.lastPaidAt && p.lastPaidAt.startsWith(ymPrefix))
+    .reduce((s, p) => s + paymentEffectiveEUR(p), 0);
+}
+
+/**
+ * Receitas «outras» (movimentos manuais / não-quota) no mês.
+ * Movimentos com categoria de quotas são ignorados aqui porque o total de quotas
+ * vem sempre de `monthlyCollectedQuotasEUR` (fonte única com o painel de quotas).
+ */
+export function monthlyNonQuotaIncomeEUR(state: PresidentClubState, ymPrefix: string): number {
+  return state.financeMovements
+    .filter(
+      (m) =>
+        m.kind === "income" &&
+        m.date.startsWith(ymPrefix) &&
+        m.category.trim() !== QUOTA_INCOME_FINANCE_CATEGORY
+    )
+    .reduce((s, m) => s + m.amountEUR, 0);
+}
+
+export function monthlyConsolidatedIncomeEUR(state: PresidentClubState, ymPrefix: string): number {
+  return monthlyNonQuotaIncomeEUR(state, ymPrefix) + monthlyCollectedQuotasEUR(state, ymPrefix);
+}
+
 /** Últimos 6 meses (YYYY-MM) com totais de receita/despesa agregados por mês. */
 export function buildFinanceChart(state: PresidentClubState): { income: PresidentChartPoint[]; expense: PresidentChartPoint[] } {
   const now = new Date();
@@ -28,9 +55,7 @@ export function buildFinanceChart(state: PresidentClubState): { income: Presiden
     labels.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
   }
   const income = labels.map((ym) => {
-    const v = state.financeMovements
-      .filter((m) => m.kind === "income" && m.date.startsWith(ym))
-      .reduce((s, m) => s + m.amountEUR, 0);
+    const v = monthlyConsolidatedIncomeEUR(state, ym);
     return { label: ym, value: v };
   });
   const expense = labels.map((ym) => {
@@ -46,9 +71,7 @@ export function computePresidentDashboardKpis(state: PresidentClubState): Presid
   const now = new Date();
   const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   const activePay = state.payments.filter((p) => !p.archived);
-  const monthlyIncomeEUR = state.financeMovements
-    .filter((m) => m.kind === "income" && m.date.startsWith(ym))
-    .reduce((s, m) => s + m.amountEUR, 0);
+  const monthlyIncomeEUR = monthlyConsolidatedIncomeEUR(state, ym);
   const monthlyExpenseEUR = state.financeMovements
     .filter((m) => m.kind === "expense" && m.date.startsWith(ym))
     .reduce((s, m) => s + m.amountEUR, 0);

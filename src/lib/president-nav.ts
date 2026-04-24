@@ -28,7 +28,7 @@ export const PRESIDENT_NAV: PresidentNavItem[] = [
   { href: "/app/president", label: "Painel executivo", icon: LayoutDashboard },
   { href: "/app/president/equipas", label: "Equipas", icon: Shirt },
   { href: "/app/president/treinadores", label: "Treinadores", icon: Users },
-  { href: "/app/president/mercado-treinadores", label: "Mercado de treinadores", icon: UserSearch },
+  { href: "/app/president/mercado-treinadores", label: "Mercado de Transferências", icon: UserSearch },
   { href: "/app/president/jogadores", label: "Jogadores", icon: UsersRound },
   { href: "/app/president/financas", label: "Finanças", icon: Wallet },
   { href: "/app/president/pagamentos", label: "Pagamentos", icon: CreditCard },

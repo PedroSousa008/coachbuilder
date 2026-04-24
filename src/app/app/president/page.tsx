@@ -131,9 +131,9 @@ export default function PresidentExecutiveDashboardPage() {
         />
         <StatCard label="Total de jogadores" value={allPlayers.length} hint="Plantéis sincronizados + locais" icon={UsersRound} />
         <StatCard
-          label="Receita mensal (movimentos)"
+          label="Receita mensal (consolidada)"
           value={eur(kpis.monthlyIncomeEUR)}
-          hint="Receitas com data no mês corrente"
+          hint="Quotas cobradas no mês + outras receitas (Finanças / movimentos)"
           icon={Wallet}
         />
         <StatCard
@@ -159,7 +159,7 @@ export default function PresidentExecutiveDashboardPage() {
       <div className="grid gap-6 lg:grid-cols-2">
         <PresidentBarChart
           title="Receita e despesa (6 meses)"
-          subtitle="A partir dos movimentos em Finanças (por mês YYYY-MM)."
+          subtitle="Quotas cobradas por mês + outras receitas (alinhado com Finanças)."
           data={state.financeMovements.length > 0 ? netSeries : []}
           emptyMessage="Sem movimentos financeiros ainda. Adiciona receitas e despesas com data."
         />

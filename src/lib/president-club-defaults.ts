@@ -11,6 +11,7 @@ import type {
   PresidentOperationEvent,
   PresidentPayment,
   PresidentPlayer,
+  PresidentRecruitmentShortlistEntry,
   PresidentReport,
   PresidentSponsor,
 } from "@/types/president-club";
@@ -31,6 +32,7 @@ export function emptyPresidentClubState(): PresidentClubState {
     players: [],
     equipasSlots: DEFAULT_PRESIDENT_EQUIPAS_SLOTS.map((s) => ({ ...s })),
     marketContacts: [],
+    recruitmentShortlist: [],
     financeMovements: [],
     payments: [],
     sponsors: [],
@@ -138,6 +140,50 @@ export function mergePresidentClubState(raw: unknown, fallback: PresidentClubSta
       availability: str(m.availability, ""),
       savedAt: str(m.savedAt, ""),
     })).filter((m) => m.id),
+    recruitmentShortlist: (() => {
+      if (!Object.prototype.hasOwnProperty.call(o, "recruitmentShortlist")) {
+        return fallback.recruitmentShortlist;
+      }
+      const raw = arr<Record<string, unknown>>(o.recruitmentShortlist);
+      if (raw.length === 0) return [];
+      const contactOk = (v: unknown): PresidentRecruitmentShortlistEntry["contactStatus"] => {
+        const s = typeof v === "string" ? v : "";
+        if (s === "contactado" || s === "em_conversa" || s === "recusado" || s === "fechado") return s;
+        return "sem_contacto";
+      };
+      const priorityOk = (v: unknown): PresidentRecruitmentShortlistEntry["priority"] => {
+        const s = typeof v === "string" ? v : "";
+        if (s === "alta" || s === "baixa") return s;
+        return "media";
+      };
+      const mapped = raw
+        .map((row): PresidentRecruitmentShortlistEntry | null => {
+          const id = str(row.id, "");
+          const coachUserId = str(row.coachUserId, "");
+          if (!id || !coachUserId) return null;
+          const rating = num(row.internalRating, 0);
+          const ids = arr<unknown>(row.compareWithCoachIds)
+            .map((x) => (typeof x === "string" ? x : ""))
+            .filter(Boolean);
+          return {
+            id,
+            coachUserId,
+            coachEmail: str(row.coachEmail, ""),
+            coachName: str(row.coachName, ""),
+            priority: priorityOk(row.priority),
+            roleNeed: str(row.roleNeed, ""),
+            contactStatus: contactOk(row.contactStatus),
+            notes: str(row.notes, ""),
+            lastViewedAt: str(row.lastViewedAt, ""),
+            internalRating: Math.min(10, Math.max(0, rating)),
+            compareWithCoachIds: ids,
+            isPriorityTarget: bool(row.isPriorityTarget, false),
+            savedAt: str(row.savedAt, new Date().toISOString()),
+          };
+        })
+        .filter((x): x is PresidentRecruitmentShortlistEntry => x !== null);
+      return mapped.length > 0 ? mapped : fallback.recruitmentShortlist;
+    })(),
     financeMovements: arr<PresidentFinanceMovement>(o.financeMovements)
       .map(
         (f): PresidentFinanceMovement => ({

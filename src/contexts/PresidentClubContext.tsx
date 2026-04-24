@@ -19,7 +19,12 @@ import {
   presidentUid,
   type PresidentDashboardKpis,
 } from "@/lib/president-club-dashboard";
-import { addCalendarMonths, paymentEffectiveEUR, paymentFromPlayer } from "@/lib/president-finance";
+import {
+  addCalendarMonths,
+  paymentEffectiveEUR,
+  paymentFromPlayer,
+  QUOTA_INCOME_FINANCE_CATEGORY,
+} from "@/lib/president-finance";
 import type {
   PresidentClubSettings,
   PresidentClubState,
@@ -34,6 +39,7 @@ import type {
   PresidentOperationEvent,
   PresidentPayment,
   PresidentPlayer,
+  PresidentRecruitmentShortlistEntry,
   PresidentReport,
   PresidentSponsor,
 } from "@/types/president-club";
@@ -53,6 +59,12 @@ type PresidentClubContextValue = {
   removePlayer: (id: string) => void;
   addMarketContact: (row: Omit<PresidentMarketContact, "id" | "savedAt">) => string;
   removeMarketContact: (id: string) => void;
+  addRecruitmentShortlistEntry: (
+    row: Omit<PresidentRecruitmentShortlistEntry, "id" | "savedAt">
+  ) => string;
+  updateRecruitmentShortlistEntry: (id: string, patch: Partial<PresidentRecruitmentShortlistEntry>) => void;
+  removeRecruitmentShortlistEntry: (id: string) => void;
+  touchRecruitmentShortlistCoach: (coachUserId: string) => void;
   addFinanceMovement: (row: Omit<PresidentFinanceMovement, "id">) => string;
   removeFinanceMovement: (id: string) => void;
   addPayment: (row: Omit<PresidentPayment, "id">) => string;
@@ -166,6 +178,54 @@ export function PresidentClubProvider({ children }: { children: ReactNode }) {
     setState((prev) => ({ ...prev, marketContacts: prev.marketContacts.filter((m) => m.id !== id) }));
   }, []);
 
+  const addRecruitmentShortlistEntry = useCallback((row: Omit<PresidentRecruitmentShortlistEntry, "id" | "savedAt">): string => {
+    const newId = presidentUid();
+    const savedAt = new Date().toISOString();
+    let returnedId = newId;
+    setState((prev) => {
+      const exists = prev.recruitmentShortlist.find((s) => s.coachUserId === row.coachUserId);
+      if (exists) {
+        returnedId = exists.id;
+        return {
+          ...prev,
+          recruitmentShortlist: prev.recruitmentShortlist.map((s) =>
+            s.coachUserId === row.coachUserId ? { ...s, ...row, id: s.id, savedAt: s.savedAt } : s
+          ),
+        };
+      }
+      returnedId = newId;
+      return {
+        ...prev,
+        recruitmentShortlist: [{ ...row, id: newId, savedAt }, ...prev.recruitmentShortlist],
+      };
+    });
+    return returnedId;
+  }, []);
+
+  const updateRecruitmentShortlistEntry = useCallback((id: string, patch: Partial<PresidentRecruitmentShortlistEntry>) => {
+    setState((prev) => ({
+      ...prev,
+      recruitmentShortlist: prev.recruitmentShortlist.map((s) => (s.id === id ? { ...s, ...patch, id } : s)),
+    }));
+  }, []);
+
+  const removeRecruitmentShortlistEntry = useCallback((id: string) => {
+    setState((prev) => ({
+      ...prev,
+      recruitmentShortlist: prev.recruitmentShortlist.filter((s) => s.id !== id),
+    }));
+  }, []);
+
+  const touchRecruitmentShortlistCoach = useCallback((coachUserId: string) => {
+    const t = new Date().toISOString();
+    setState((prev) => ({
+      ...prev,
+      recruitmentShortlist: prev.recruitmentShortlist.map((s) =>
+        s.coachUserId === coachUserId ? { ...s, lastViewedAt: t } : s
+      ),
+    }));
+  }, []);
+
   const addFinanceMovement = useCallback((row: Omit<PresidentFinanceMovement, "id">) => {
     const id = presidentUid();
     setState((prev) => ({ ...prev, financeMovements: [{ ...row, id }, ...prev.financeMovements] }));
@@ -213,7 +273,7 @@ export function PresidentClubProvider({ children }: { children: ReactNode }) {
               {
                 id: presidentUid(),
                 kind: "income" as const,
-                category: "Quotas / jogadores",
+                category: QUOTA_INCOME_FINANCE_CATEGORY,
                 amountEUR: eff,
                 date: today,
                 note: `Quota: ${p.playerName}`,
@@ -433,6 +493,10 @@ export function PresidentClubProvider({ children }: { children: ReactNode }) {
       removePlayer,
       addMarketContact,
       removeMarketContact,
+      addRecruitmentShortlistEntry,
+      updateRecruitmentShortlistEntry,
+      removeRecruitmentShortlistEntry,
+      touchRecruitmentShortlistCoach,
       addFinanceMovement,
       removeFinanceMovement,
       addPayment,
@@ -477,6 +541,10 @@ export function PresidentClubProvider({ children }: { children: ReactNode }) {
       removePlayer,
       addMarketContact,
       removeMarketContact,
+      addRecruitmentShortlistEntry,
+      updateRecruitmentShortlistEntry,
+      removeRecruitmentShortlistEntry,
+      touchRecruitmentShortlistCoach,
       addFinanceMovement,
       removeFinanceMovement,
       addPayment,

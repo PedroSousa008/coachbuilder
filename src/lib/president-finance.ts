@@ -1,5 +1,8 @@
 import type { PresidentPayment, PresidentPaymentHistoryEntry, PresidentPlayer } from "@/types/president-club";
 
+/** Movimentos automáticos ao marcar quota como paga (evita duplicar na receita consolidada). */
+export const QUOTA_INCOME_FINANCE_CATEGORY = "Quotas / jogadores";
+
 export const PAYMENT_METHOD_LABELS: Record<PresidentPayment["paymentMethod"], string> = {
   numerario: "Numerário",
   transferencia: "Transferência",

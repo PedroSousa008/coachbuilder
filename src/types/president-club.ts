@@ -56,6 +56,24 @@ export type PresidentMarketContact = {
   savedAt: string;
 };
 
+/** Alvo guardado no Mercado de Transferências (recrutamento interno do clube). */
+export type PresidentRecruitmentShortlistEntry = {
+  id: string;
+  coachUserId: string;
+  coachEmail: string;
+  coachName: string;
+  priority: "baixa" | "media" | "alta";
+  roleNeed: string;
+  contactStatus: "sem_contacto" | "contactado" | "em_conversa" | "recusado" | "fechado";
+  notes: string;
+  lastViewedAt: string;
+  /** 0 = não atribuída; 1–10 avaliação interna */
+  internalRating: number;
+  compareWithCoachIds: string[];
+  isPriorityTarget: boolean;
+  savedAt: string;
+};
+
 export type PresidentFinanceMovement = {
   id: string;
   kind: "income" | "expense";
@@ -182,6 +200,7 @@ export type PresidentClubState = {
   players: PresidentPlayer[];
   equipasSlots: PresidentEquipasSlot[];
   marketContacts: PresidentMarketContact[];
+  recruitmentShortlist: PresidentRecruitmentShortlistEntry[];
   financeMovements: PresidentFinanceMovement[];
   payments: PresidentPayment[];
   sponsors: PresidentSponsor[];
