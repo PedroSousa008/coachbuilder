@@ -12,6 +12,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import { clientEmailShowsAdminNav } from "@/lib/bootstrap-admin-client";
+import { COACHING_ROLES } from "@/types/auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { clsx } from "clsx";
@@ -49,6 +50,8 @@ type ListedUser = {
   name: string;
   nametag: string | null;
   coachingRole: string;
+  clubPresidentUserId?: string | null;
+  trainerSeatActive?: boolean;
   role: string;
   subscriptionPlan: string;
   subscriptionRenewsAt: string | null;
@@ -163,6 +166,17 @@ function planLabel(plan: string): string {
   if (plan === "grace") return "Pagamento em falta";
   if (plan === "free") return "Grátis";
   return plan;
+}
+
+function coachingRoleLabelPt(coachingRole: string): string {
+  const hit = COACHING_ROLES.find((r) => r.id === coachingRole);
+  return hit?.label ?? coachingRole;
+}
+
+function userFunctionLabel(u: ListedUser): string {
+  if (u.role === "admin") return "Admin";
+  if (u.clubPresidentUserId && u.trainerSeatActive !== false) return "Treinador (Presidente)";
+  return coachingRoleLabelPt(u.coachingRole);
 }
 
 /** Rótulo legível para a zona da app (path reportado pelo heartbeat). */
@@ -744,7 +758,7 @@ function OverviewTabContent({
                   <td className="px-4 py-3 font-mono text-xs text-emerald-200/90">
                     {u.nametag ?? "—"}
                   </td>
-                  <td className="px-4 py-3">{u.role === "admin" ? "Admin" : "Utilizador"}</td>
+                  <td className="px-4 py-3">{userFunctionLabel(u)}</td>
                   <td className="px-4 py-3">
                     {u.role === "admin" ? (
                       <span className="text-zinc-500">—</span>

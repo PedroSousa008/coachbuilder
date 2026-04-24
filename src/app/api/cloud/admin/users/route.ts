@@ -21,6 +21,8 @@ export async function GET() {
         name: true,
         nametag: true,
         coachingRole: true,
+        clubPresidentUserId: true,
+        trainerSeatActive: true,
         role: true,
         subscriptionPlan: true,
         subscriptionRenewsAt: true,
