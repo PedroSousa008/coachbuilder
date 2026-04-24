@@ -3,10 +3,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAppData } from "@/contexts/AppDataContext";
+import { usePresidentClub } from "@/contexts/PresidentClubContext";
 import { buildWorkspaceSnapshotV1 } from "@/lib/build-workspace-snapshot";
 import { isClubPresident } from "@/lib/president-mode";
 import { shouldUseCloudClientApis } from "@/lib/cloud-config";
 import { mapWorkspaceToPresidentCoach, mapWorkspaceToPresidentPlayers } from "@/lib/president-linked-roster";
+import { withPresidentSlotTeamOverlay } from "@/lib/president-slot-team";
 import type { PresidentCoach, PresidentPlayer } from "@/types/president-club";
 
 /** Intervalo entre sincronizações silenciosas com a cloud (plantel agregado). */
@@ -28,6 +30,7 @@ export type PresidentLinkedRosterRefreshOptions = {
 export function usePresidentLinkedRoster() {
   const { user, authReady } = useAuth();
   const app = useAppData();
+  const { state: presidentClubState } = usePresidentClub();
   const [remote, setRemote] = useState<RemotePayload | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -173,10 +176,13 @@ export function usePresidentLinkedRoster() {
       };
     }
 
+    const slots = presidentClubState.equipasSlots;
+
     if (remote && (remote.coaches.length > 0 || remote.players.length > 0)) {
+      const { coaches, players } = withPresidentSlotTeamOverlay(slots, remote.coaches, remote.players);
       return {
-        coaches: remote.coaches,
-        players: remote.players,
+        coaches,
+        players,
         source: "cloud" as const,
         linkedCoachAccounts: remote.linkedCoachAccounts,
       };
@@ -187,9 +193,10 @@ export function usePresidentLinkedRoster() {
     const hasSelf =
       pl.length > 0 || (selfSnapshot.coachProfile.name ?? "").trim().length > 0 || (selfSnapshot.coachProfile.club ?? "").trim().length > 0;
     if (hasSelf) {
+      const { coaches, players } = withPresidentSlotTeamOverlay(slots, [coach], pl);
       return {
-        coaches: [coach],
-        players: pl,
+        coaches,
+        players,
         source: "self" as const,
         linkedCoachAccounts: remote?.linkedCoachAccounts ?? 0,
       };
@@ -201,7 +208,7 @@ export function usePresidentLinkedRoster() {
       source: "none" as const,
       linkedCoachAccounts: remote?.linkedCoachAccounts ?? 0,
     };
-  }, [user, remote, selfSnapshot]);
+  }, [user, remote, selfSnapshot, presidentClubState.equipasSlots]);
 
   return {
     loading,

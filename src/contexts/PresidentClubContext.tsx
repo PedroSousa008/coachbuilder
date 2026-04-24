@@ -241,14 +241,27 @@ export function PresidentClubProvider({ children }: { children: ReactNode }) {
 
   const syncFinancePaymentsWithRoster = useCallback((players: PresidentPlayer[]) => {
     setState((prev) => {
+      const byId = new Map(players.map((p) => [p.id, p]));
+      const paymentsSynced = prev.payments.map((pay) => {
+        if (!pay.playerSourceId || pay.archived) return pay;
+        const pl = byId.get(pay.playerSourceId);
+        if (!pl) return pay;
+        const nextTeam = (pl.team ?? "").trim() || pay.team;
+        const nextCoachLabel = (pl.team ?? "").trim() || (pay.coachTeamLabel ?? "");
+        if (pay.team === nextTeam && (pay.coachTeamLabel ?? "") === nextCoachLabel) return pay;
+        return { ...pay, team: nextTeam, coachTeamLabel: nextCoachLabel };
+      });
       const additions: PresidentPayment[] = [];
       for (const pl of players) {
-        const exists = prev.payments.some((pay) => pay.playerSourceId === pl.id && !pay.archived);
+        const exists = paymentsSynced.some((x) => x.playerSourceId === pl.id && !x.archived);
         if (exists) continue;
         additions.push({ id: presidentUid(), ...paymentFromPlayer(pl) });
       }
-      if (!additions.length) return prev;
-      return { ...prev, payments: [...additions, ...prev.payments] };
+      const teamChanged =
+        paymentsSynced.length === prev.payments.length &&
+        paymentsSynced.some((p, i) => p !== prev.payments[i]);
+      if (!additions.length && !teamChanged) return prev;
+      return { ...prev, payments: [...additions, ...paymentsSynced] };
     });
   }, []);
 

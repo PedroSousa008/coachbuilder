@@ -134,13 +134,14 @@ export function PresidentEquipaDetailView({
                 <thead className="border-b border-surface-border bg-surface-raised/50 text-xs uppercase text-zinc-500">
                   <tr>
                     <th className="px-3 py-2 font-medium">Nome</th>
+                    <th className="px-3 py-2 font-medium">Equipa</th>
                     <th className="px-3 py-2 font-medium">Função</th>
                   </tr>
                 </thead>
                 <tbody>
                   {!brief || brief.staffRows.length === 0 ? (
                     <tr>
-                      <td colSpan={2} className="px-3 py-8 text-center text-zinc-500">
+                      <td colSpan={3} className="px-3 py-8 text-center text-zinc-500">
                         Associa um treinador para listar o staff sincronizado.
                       </td>
                     </tr>
@@ -148,6 +149,7 @@ export function PresidentEquipaDetailView({
                     brief.staffRows.map((r) => (
                       <tr key={r.id} className="border-b border-surface-border/50">
                         <td className="px-3 py-2 font-medium text-zinc-200">{r.name}</td>
+                        <td className="px-3 py-2 text-zinc-300">{title.trim() || "—"}</td>
                         <td className="px-3 py-2 text-zinc-400">{r.role}</td>
                       </tr>
                     ))
@@ -164,6 +166,7 @@ export function PresidentEquipaDetailView({
                 <thead className="border-b border-surface-border bg-surface-raised/50 text-xs uppercase text-zinc-500">
                   <tr>
                     <th className="px-3 py-2 font-medium">Nome</th>
+                    <th className="px-3 py-2 font-medium">Equipa</th>
                     <th className="px-3 py-2 font-medium">Pos.</th>
                     <th className="px-3 py-2 font-medium">Jogos</th>
                     <th className="px-3 py-2 font-medium">Golos</th>
@@ -175,7 +178,7 @@ export function PresidentEquipaDetailView({
                 <tbody>
                   {!brief || brief.playerRows.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="px-3 py-8 text-center text-zinc-500">
+                      <td colSpan={8} className="px-3 py-8 text-center text-zinc-500">
                         Sem plantel ou sem jogos registados nas táticas.
                       </td>
                     </tr>
@@ -183,6 +186,7 @@ export function PresidentEquipaDetailView({
                     brief.playerRows.map((r) => (
                       <tr key={r.id} className="border-b border-surface-border/50">
                         <td className="px-3 py-2 font-medium text-zinc-200">{r.name}</td>
+                        <td className="px-3 py-2 text-zinc-300">{title.trim() || "—"}</td>
                         <td className="px-3 py-2 text-zinc-400">{r.position}</td>
                         <td className="px-3 py-2 tabular-nums text-zinc-400">{r.games}</td>
                         <td className="px-3 py-2 tabular-nums text-zinc-400">{r.goals}</td>
