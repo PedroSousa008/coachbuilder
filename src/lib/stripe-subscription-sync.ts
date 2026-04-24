@@ -1,6 +1,28 @@
 import Stripe from "stripe";
 import { prisma } from "@/lib/prisma";
+import { coachProStripePriceId, presidentProStripePriceId } from "@/lib/stripe-env";
 import { graceEndsAtFromNow } from "@/lib/subscription-access";
+
+/** Plano mensal pago: Stripe (price ID) > metadata explícita > função na conta. */
+function resolvePaidMonthlyPlanFromStripe(
+  sub: Stripe.Subscription,
+  coachingRole: string | null | undefined
+): "pro_monthly" | "president_pro_monthly" {
+  const item = sub.items?.data?.[0];
+  const rawPrice = item?.price;
+  const linePriceId = typeof rawPrice === "string" ? rawPrice : rawPrice?.id ?? null;
+  const coachId = coachProStripePriceId();
+  const presidentId = presidentProStripePriceId();
+  if (linePriceId && presidentId && linePriceId === presidentId) return "president_pro_monthly";
+  if (linePriceId && coachId && linePriceId === coachId) return "pro_monthly";
+
+  const kind = typeof sub.metadata?.planKind === "string" ? sub.metadata.planKind.trim() : "";
+  const isPresident = coachingRole === "club-president";
+  const byRole = isPresident ? "president_pro_monthly" : "pro_monthly";
+  if (kind === "president_pro_monthly") return "president_pro_monthly";
+  if (kind === "pro_monthly") return "pro_monthly";
+  return byRole;
+}
 
 function customerId(c: Stripe.Subscription["customer"]): string | null {
   return typeof c === "string" ? c : c?.id ?? null;
@@ -44,10 +66,8 @@ export async function activateFromCheckoutSession(session: Stripe.Checkout.Sessi
 
 async function applyActiveSubscription(userId: string, customerId: string, sub: Stripe.Subscription) {
   const renewsAt = new Date(sub.current_period_end * 1000);
-  const kind = typeof sub.metadata?.planKind === "string" ? sub.metadata.planKind : null;
   const me = await prisma.user.findUnique({ where: { id: userId }, select: { coachingRole: true } });
-  const byRole = me?.coachingRole === "club-president" ? "president_pro_monthly" : "pro_monthly";
-  const plan = kind === "president_pro_monthly" ? "president_pro_monthly" : byRole;
+  const plan = resolvePaidMonthlyPlanFromStripe(sub, me?.coachingRole);
   await prisma.user.update({
     where: { id: userId },
     data: {
@@ -70,9 +90,7 @@ export async function syncFromStripeSubscription(sub: Stripe.Subscription) {
   const cust = customerId(sub.customer);
 
   if (sub.status === "active" || sub.status === "trialing") {
-    const kind = typeof sub.metadata?.planKind === "string" ? sub.metadata.planKind : null;
-    const byRole = user.coachingRole === "club-president" ? "president_pro_monthly" : "pro_monthly";
-    const plan = kind === "president_pro_monthly" ? "president_pro_monthly" : byRole;
+    const plan = resolvePaidMonthlyPlanFromStripe(sub, user.coachingRole);
     await prisma.user.update({
       where: { id: user.id },
       data: {
@@ -148,9 +166,7 @@ export async function applyInvoicePaid(invoice: Stripe.Invoice, stripe: Stripe) 
 
   const sub = await stripe.subscriptions.retrieve(subId);
   if (sub.status !== "active" && sub.status !== "trialing") return;
-  const kind = typeof sub.metadata?.planKind === "string" ? sub.metadata.planKind : null;
-  const byRole = user.coachingRole === "club-president" ? "president_pro_monthly" : "pro_monthly";
-  const plan = kind === "president_pro_monthly" ? "president_pro_monthly" : byRole;
+  const plan = resolvePaidMonthlyPlanFromStripe(sub, user.coachingRole);
 
   await prisma.user.update({
     where: { id: user.id },

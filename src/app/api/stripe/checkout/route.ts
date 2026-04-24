@@ -37,7 +37,7 @@ export async function POST() {
 
   if (u.customMonthlyPriceEur != null && new Prisma.Decimal(u.customMonthlyPriceEur).equals(0)) {
     return NextResponse.json(
-      { ok: false, error: "A tua conta já tem Coach Pro sem custo mensal." },
+      { ok: false, error: "A tua conta já tem Pro sem custo mensal." },
       { status: 400 }
     );
   }
@@ -46,7 +46,7 @@ export async function POST() {
     const existing = await stripe.subscriptions.retrieve(u.stripeSubscriptionId).catch(() => null);
     if (existing && (existing.status === "active" || existing.status === "trialing")) {
       return NextResponse.json(
-        { ok: false, error: "Já tens uma subscrição Coach Pro activa." },
+        { ok: false, error: "Já tens uma subscrição Pro activa (renovação em curso)." },
         { status: 400 }
       );
     }

@@ -144,8 +144,8 @@ export function SubscriptionSettings() {
                 : mode === "grace"
                   ? "Pro — pagamento em falta (período de graça)"
                   : access?.hasProAccess
-                    ? access.isComped && user?.subscriptionPlan === "free"
-                      ? `${productName} (via conta do clube)`
+                    ? access.isComped && user?.clubPresidentUserId
+                      ? "Coach Pro (via conta do clube)"
                       : productName
                     : mode === "pro_monthly" || mode === "president_pro_monthly"
                       ? productName

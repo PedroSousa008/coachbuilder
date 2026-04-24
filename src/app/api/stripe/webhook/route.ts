@@ -13,7 +13,7 @@ export const runtime = "nodejs";
 
 /**
  * Webhook Stripe — requer STRIPE_WEBHOOK_SECRET e corpo RAW (não uses JSON.parse antes da verificação).
- * Eventos: checkout.session.completed, customer.subscription.*, invoice.paid, invoice.payment_failed
+ * Eventos: checkout.session.completed, customer.subscription.created|updated|deleted, invoice.paid, invoice.payment_failed
  */
 export async function POST(request: Request) {
   const stripe = getStripe();
@@ -43,6 +43,7 @@ export async function POST(request: Request) {
         await activateFromCheckoutSession(session, stripe);
         break;
       }
+      case "customer.subscription.created":
       case "customer.subscription.updated": {
         const sub = event.data.object as Stripe.Subscription;
         await syncFromStripeSubscription(sub);

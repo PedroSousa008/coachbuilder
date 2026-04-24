@@ -106,14 +106,15 @@ function legacySubscriptionAccess(plan: string, role: string): SubscriptionAcces
     };
   }
   const hasProAccess = plan === "pro_monthly" || plan === "president_pro_monthly";
+  const legacyDefault = plan === "president_pro_monthly" ? 59.99 : 6.99;
   return {
     hasProAccess,
     effectiveMode: plan === "president_pro_monthly" ? "president_pro_monthly" : hasProAccess ? "pro_monthly" : "free",
     trialEndsAt: null,
     graceEndsAt: null,
     renewsAt: null,
-    displayPriceEur: 6.99,
-    defaultPriceEur: 6.99,
+    displayPriceEur: legacyDefault,
+    defaultPriceEur: legacyDefault,
     adminMonthlyPriceEur: null,
     isComped: false,
   };
