@@ -1,6 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import {
   LayoutDashboard,
+  Shirt,
   Users,
   UserSearch,
   UsersRound,
@@ -25,6 +26,7 @@ export type PresidentNavItem = {
 /** Navegação principal — textos em português (modo Presidente). */
 export const PRESIDENT_NAV: PresidentNavItem[] = [
   { href: "/app/president", label: "Painel executivo", icon: LayoutDashboard },
+  { href: "/app/president/equipas", label: "Equipas", icon: Shirt },
   { href: "/app/president/treinadores", label: "Treinadores", icon: Users },
   { href: "/app/president/mercado-treinadores", label: "Mercado de treinadores", icon: UserSearch },
   { href: "/app/president/jogadores", label: "Jogadores", icon: UsersRound },

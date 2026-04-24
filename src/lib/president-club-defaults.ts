@@ -4,6 +4,7 @@ import type {
   PresidentCommunication,
   PresidentDisciplineIncident,
   PresidentDocument,
+  PresidentEquipasSlot,
   PresidentFinanceMovement,
   PresidentInjury,
   PresidentMarketContact,
@@ -14,10 +15,20 @@ import type {
   PresidentSponsor,
 } from "@/types/president-club";
 
+export const DEFAULT_PRESIDENT_EQUIPAS_SLOTS: PresidentEquipasSlot[] = [
+  { id: "eq-benjamins", title: "Benjamins", linkedCoachUserId: null },
+  { id: "eq-infantis", title: "Infantis", linkedCoachUserId: null },
+  { id: "eq-iniciados", title: "Iniciados", linkedCoachUserId: null },
+  { id: "eq-juvenis", title: "Juvenis", linkedCoachUserId: null },
+  { id: "eq-juniores", title: "Júniores", linkedCoachUserId: null },
+  { id: "eq-seniores", title: "Séniores", linkedCoachUserId: null },
+];
+
 export function emptyPresidentClubState(): PresidentClubState {
   return {
     coaches: [],
     players: [],
+    equipasSlots: DEFAULT_PRESIDENT_EQUIPAS_SLOTS.map((s) => ({ ...s })),
     marketContacts: [],
     financeMovements: [],
     payments: [],
@@ -44,6 +55,22 @@ export function mergePresidentClubState(raw: unknown, fallback: PresidentClubSta
   const num = (v: unknown, d: number) => (typeof v === "number" && Number.isFinite(v) ? v : d);
   const bool = (v: unknown, d: boolean) => (typeof v === "boolean" ? v : d);
   const settings = o.settings && typeof o.settings === "object" ? (o.settings as Record<string, unknown>) : {};
+
+  const equipasRaw = arr<Record<string, unknown>>(o.equipasSlots);
+  const equipasSlots: PresidentEquipasSlot[] = (() => {
+    if (equipasRaw.length === 0) return fallback.equipasSlots;
+    const mapped = equipasRaw
+      .map((row): PresidentEquipasSlot | null => {
+        const id = str(row.id, "");
+        const title = str(row.title, "");
+        const link = row.linkedCoachUserId;
+        const linkedCoachUserId = typeof link === "string" && link.trim() ? link.trim() : null;
+        if (!id || !title) return null;
+        return { id, title, linkedCoachUserId };
+      })
+      .filter((x): x is PresidentEquipasSlot => x !== null);
+    return mapped.length > 0 ? mapped : fallback.equipasSlots;
+  })();
 
   function paymentStatus(v: unknown): PresidentPayment["status"] {
     if (v === "pago") return "pago";
@@ -215,5 +242,6 @@ export function mergePresidentClubState(raw: unknown, fallback: PresidentClubSta
       clubNotes: str(settings.clubNotes, fallback.settings.clubNotes),
       logoDataUrl: typeof settings.logoDataUrl === "string" ? settings.logoDataUrl : undefined,
     },
+    equipasSlots,
   };
 }

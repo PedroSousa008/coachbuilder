@@ -11,6 +11,10 @@ import { usePresidentClub } from "@/contexts/PresidentClubContext";
 import type { PresidentCoach } from "@/types/president-club";
 import { cn } from "@/lib/utils";
 import { usePresidentLinkedRoster } from "@/hooks/usePresidentLinkedRoster";
+import { useAuth } from "@/contexts/AuthContext";
+import { shouldUseCloudClientApis } from "@/lib/cloud-config";
+import { patchLinkedCoachWorkspace } from "@/lib/president-linked-workspace-client";
+import { parseLinkedCoachRowId } from "@/lib/president-linked-ids";
 
 const textareaClass = cn(
   "min-h-[72px] w-full rounded-xl border border-surface-border bg-surface-raised/90 px-4 py-3 text-sm text-zinc-100",
@@ -37,14 +41,39 @@ const emptyCoachForm: Omit<PresidentCoach, "id"> = {
 };
 
 function isLinkedCoachRow(c: PresidentCoach): boolean {
-  return c.id.startsWith("linked:");
+  return Boolean(parseLinkedCoachRowId(c.id));
 }
 
+type LinkedCloudCoachForm = {
+  name: string;
+  birthDate: string;
+  role: string;
+  team: string;
+  methodology: string;
+  strengths: string;
+};
+
+const emptyLinkedCloudForm: LinkedCloudCoachForm = {
+  name: "",
+  birthDate: "",
+  role: "",
+  team: "",
+  methodology: "",
+  strengths: "",
+};
+
 export default function PresidentTreinadoresPage() {
+  const { user } = useAuth();
   const { state, addCoach, updateCoach, removeCoach } = usePresidentClub();
   const roster = usePresidentLinkedRoster();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<Omit<PresidentCoach, "id">>(emptyCoachForm);
+  const [linkedCloudEdit, setLinkedCloudEdit] = useState<PresidentCoach | null>(null);
+  const [linkedCloudForm, setLinkedCloudForm] = useState<LinkedCloudCoachForm>(emptyLinkedCloudForm);
+  const [linkedSaving, setLinkedSaving] = useState(false);
+  const [linkedError, setLinkedError] = useState<string | null>(null);
+
+  const cloudApis = shouldUseCloudClientApis(user);
 
   const mergedCoaches = useMemo(() => [...roster.coaches, ...state.coaches], [roster.coaches, state.coaches]);
 
@@ -70,14 +99,64 @@ export default function PresidentTreinadoresPage() {
 
   const compareDisabled = mergedCoaches.length < 2;
 
+  const startLinkedCloudEdit = (c: PresidentCoach) => {
+    const cid = parseLinkedCoachRowId(c.id) ?? c.coachUserId;
+    if (!cid || !cloudApis) return;
+    setLinkedError(null);
+    setLinkedCloudEdit(c);
+    setLinkedCloudForm({
+      name: c.name,
+      birthDate: c.birthDate,
+      role: c.role,
+      team: c.team,
+      methodology: c.methodology,
+      strengths: c.strengths,
+    });
+  };
+
+  const closeLinkedCloudEdit = () => {
+    if (linkedSaving) return;
+    setLinkedCloudEdit(null);
+    setLinkedCloudForm(emptyLinkedCloudForm);
+    setLinkedError(null);
+  };
+
+  const saveLinkedCloudEdit = async () => {
+    const c = linkedCloudEdit;
+    const coachUserId = c ? parseLinkedCoachRowId(c.id) ?? c.coachUserId : null;
+    if (!c || !coachUserId || !linkedCloudForm.name.trim()) return;
+    setLinkedSaving(true);
+    setLinkedError(null);
+    const res = await patchLinkedCoachWorkspace({
+      coachUserId,
+      coachProfilePatch: {
+        name: linkedCloudForm.name.trim(),
+        birthDate: linkedCloudForm.birthDate,
+        role: linkedCloudForm.role,
+        team: linkedCloudForm.team,
+        methodology: linkedCloudForm.methodology,
+        strengths: linkedCloudForm.strengths,
+      },
+    });
+    setLinkedSaving(false);
+    if (!res.ok) {
+      setLinkedError(res.error ?? "Erro ao guardar.");
+      return;
+    }
+    await roster.refresh();
+    closeLinkedCloudEdit();
+  };
+
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h2 className="font-display text-2xl font-semibold text-white">Treinadores</h2>
           <p className="mt-1 text-sm text-zinc-500">
-            Nome, data de nascimento, função, vitórias % e sessões vêm automaticamente do perfil e workspace de cada
-            treinador com conta ligada à tua (cloud). Podes acrescentar registos manuais para staff sem login.
+            Nome, data de nascimento, função, clube e texto de perfil vêm do workspace de cada treinador com conta
+            ligada. Podes editá-los aqui: as alterações guardam-se na conta do treinador e aparecem logo no login dele.
+            Vitórias % e sessões continuam a ser calculadas automaticamente. Registos manuais são só no modo
+            presidente.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -188,7 +267,20 @@ export default function PresidentTreinadoresPage() {
                       </td>
                       <td className="px-4 py-3">
                         {linked ? (
-                          <span className="text-xs text-zinc-600">—</span>
+                          cloudApis && (parseLinkedCoachRowId(c.id) ?? c.coachUserId) ? (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 px-2"
+                              onClick={() => startLinkedCloudEdit(c)}
+                              aria-label="Editar na conta do treinador"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                          ) : (
+                            <span className="text-xs text-zinc-500">Cloud</span>
+                          )
                         ) : (
                           <div className="flex gap-1">
                             <Button
@@ -375,6 +467,86 @@ export default function PresidentTreinadoresPage() {
           </form>
         </CardContent>
       </Card>
+
+      {linkedCloudEdit ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4"
+          role="presentation"
+          onClick={() => closeLinkedCloudEdit()}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="linked-coach-edit-title"
+            className="max-h-[min(90dvh,900px)] w-full max-w-2xl overflow-y-auto rounded-2xl border border-surface-border bg-[#0c1014] p-6 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 id="linked-coach-edit-title" className="font-display text-lg font-semibold text-white">
+              Editar treinador (conta ligada)
+            </h3>
+            <p className="mt-1 text-xs text-zinc-500">
+              {linkedCloudEdit.coachEmail ?? "Conta treinador"} — os campos abaixo sincronizam com o perfil do
+              treinador na app.
+            </p>
+            {linkedError ? <p className="mt-3 text-sm text-red-400/90">{linkedError}</p> : null}
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <label className="space-y-1 sm:col-span-2">
+                <span className="text-xs text-zinc-500">Nome *</span>
+                <Input
+                  value={linkedCloudForm.name}
+                  onChange={(e) => setLinkedCloudForm((f) => ({ ...f, name: e.target.value }))}
+                />
+              </label>
+              <label className="space-y-1">
+                <span className="text-xs text-zinc-500">Data de nascimento</span>
+                <Input
+                  type="date"
+                  value={linkedCloudForm.birthDate}
+                  onChange={(e) => setLinkedCloudForm((f) => ({ ...f, birthDate: e.target.value }))}
+                />
+              </label>
+              <label className="space-y-1">
+                <span className="text-xs text-zinc-500">Função</span>
+                <Input
+                  value={linkedCloudForm.role}
+                  onChange={(e) => setLinkedCloudForm((f) => ({ ...f, role: e.target.value }))}
+                />
+              </label>
+              <label className="space-y-1 sm:col-span-2">
+                <span className="text-xs text-zinc-500">Clube / equipa</span>
+                <Input
+                  value={linkedCloudForm.team}
+                  onChange={(e) => setLinkedCloudForm((f) => ({ ...f, team: e.target.value }))}
+                />
+              </label>
+              <label className="space-y-1 sm:col-span-2">
+                <span className="text-xs text-zinc-500">Bio / metodologia (perfil treinador)</span>
+                <textarea
+                  className={textareaClass}
+                  value={linkedCloudForm.methodology}
+                  onChange={(e) => setLinkedCloudForm((f) => ({ ...f, methodology: e.target.value }))}
+                />
+              </label>
+              <label className="space-y-1 sm:col-span-2">
+                <span className="text-xs text-zinc-500">Pontos fortes (profissão / destaque)</span>
+                <textarea
+                  className={textareaClass}
+                  value={linkedCloudForm.strengths}
+                  onChange={(e) => setLinkedCloudForm((f) => ({ ...f, strengths: e.target.value }))}
+                />
+              </label>
+            </div>
+            <div className="mt-6 flex flex-wrap gap-2">
+              <Button type="button" onClick={() => void saveLinkedCloudEdit()} disabled={linkedSaving}>
+                {linkedSaving ? "A guardar…" : "Guardar na conta do treinador"}
+              </Button>
+              <Button type="button" variant="ghost" onClick={() => closeLinkedCloudEdit()} disabled={linkedSaving}>
+                Cancelar
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

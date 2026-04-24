@@ -148,9 +148,18 @@ export type PresidentClubSettings = {
   logoDataUrl?: string;
 };
 
+/** Secção Equipas — cada cartão (escalão) pode ligar a um treinador para métricas agregadas. */
+export type PresidentEquipasSlot = {
+  id: string;
+  title: string;
+  /** Conta de treinador (`userId`) cujo workspace alimenta tabela / forma / staff / jogadores. */
+  linkedCoachUserId: string | null;
+};
+
 export type PresidentClubState = {
   coaches: PresidentCoach[];
   players: PresidentPlayer[];
+  equipasSlots: PresidentEquipasSlot[];
   marketContacts: PresidentMarketContact[];
   financeMovements: PresidentFinanceMovement[];
   payments: PresidentPayment[];

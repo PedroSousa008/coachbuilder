@@ -72,6 +72,10 @@ type PresidentClubContextValue = {
   removeDocument: (id: string) => void;
   addCommunicationDraft: (row: Omit<PresidentCommunication, "id" | "createdAt">) => string;
   removeCommunicationDraft: (id: string) => void;
+  renameEquipasSlot: (id: string, title: string) => void;
+  setEquipasSlotCoach: (id: string, linkedCoachUserId: string | null) => void;
+  addEquipasSlot: () => string;
+  reorderEquipasSlots: (fromIndex: number, toIndex: number) => void;
 };
 
 const PresidentClubContext = createContext<PresidentClubContextValue | null>(null);
@@ -283,6 +287,49 @@ export function PresidentClubProvider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
+  const renameEquipasSlot = useCallback((id: string, title: string) => {
+    const t = title.trim();
+    if (!t) return;
+    setState((prev) => ({
+      ...prev,
+      equipasSlots: prev.equipasSlots.map((s) => (s.id === id ? { ...s, title: t } : s)),
+    }));
+  }, []);
+
+  const setEquipasSlotCoach = useCallback((id: string, linkedCoachUserId: string | null) => {
+    setState((prev) => ({
+      ...prev,
+      equipasSlots: prev.equipasSlots.map((s) => (s.id === id ? { ...s, linkedCoachUserId } : s)),
+    }));
+  }, []);
+
+  const addEquipasSlot = useCallback(() => {
+    const id = presidentUid();
+    setState((prev) => ({
+      ...prev,
+      equipasSlots: [...prev.equipasSlots, { id, title: "Nova equipa", linkedCoachUserId: null }],
+    }));
+    return id;
+  }, []);
+
+  const reorderEquipasSlots = useCallback((fromIndex: number, toIndex: number) => {
+    setState((prev) => {
+      const list = [...prev.equipasSlots];
+      if (
+        fromIndex < 0 ||
+        toIndex < 0 ||
+        fromIndex >= list.length ||
+        toIndex >= list.length ||
+        fromIndex === toIndex
+      ) {
+        return prev;
+      }
+      const [moved] = list.splice(fromIndex, 1);
+      list.splice(toIndex, 0, moved!);
+      return { ...prev, equipasSlots: list };
+    });
+  }, []);
+
   const kpis = useMemo(() => computePresidentDashboardKpis(state), [state]);
   const financeChart = useMemo(() => buildFinanceChart(state), [state]);
 
@@ -323,6 +370,10 @@ export function PresidentClubProvider({ children }: { children: ReactNode }) {
       removeDocument,
       addCommunicationDraft,
       removeCommunicationDraft,
+      renameEquipasSlot,
+      setEquipasSlotCoach,
+      addEquipasSlot,
+      reorderEquipasSlots,
     }),
     [
       hydrated,
@@ -360,6 +411,10 @@ export function PresidentClubProvider({ children }: { children: ReactNode }) {
       removeDocument,
       addCommunicationDraft,
       removeCommunicationDraft,
+      renameEquipasSlot,
+      setEquipasSlotCoach,
+      addEquipasSlot,
+      reorderEquipasSlots,
     ]
   );
 

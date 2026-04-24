@@ -11,6 +11,10 @@ import { usePresidentClub } from "@/contexts/PresidentClubContext";
 import type { PresidentPlayer } from "@/types/president-club";
 import { cn } from "@/lib/utils";
 import { usePresidentLinkedRoster } from "@/hooks/usePresidentLinkedRoster";
+import { useAuth } from "@/contexts/AuthContext";
+import { shouldUseCloudClientApis } from "@/lib/cloud-config";
+import { patchLinkedCoachWorkspace } from "@/lib/president-linked-workspace-client";
+import { parseLinkedPlayerRowId } from "@/lib/president-linked-ids";
 
 const ta = cn(
   "min-h-[64px] w-full rounded-xl border border-surface-border bg-surface-raised/90 px-4 py-3 text-sm text-zinc-100",
@@ -36,14 +40,39 @@ const empty: Omit<PresidentPlayer, "id"> = {
 };
 
 function isLinkedPlayerRow(id: string): boolean {
-  return id.startsWith("linked:") && id.split(":").length >= 3;
+  return parseLinkedPlayerRowId(id) != null;
 }
 
+type LinkedCloudPlayerForm = {
+  name: string;
+  age: string;
+  team: string;
+  position: string;
+  injuryKey: "" | "doubt" | "out";
+  isTopTalent: boolean;
+};
+
+const emptyLinkedPlayerForm: LinkedCloudPlayerForm = {
+  name: "",
+  age: "",
+  team: "",
+  position: "",
+  injuryKey: "",
+  isTopTalent: false,
+};
+
 export default function PresidentJogadoresPage() {
+  const { user } = useAuth();
   const { state, addPlayer, updatePlayer, removePlayer } = usePresidentClub();
   const roster = usePresidentLinkedRoster();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(empty);
+  const [linkedPlayerEdit, setLinkedPlayerEdit] = useState<PresidentPlayer | null>(null);
+  const [linkedPlayerForm, setLinkedPlayerForm] = useState<LinkedCloudPlayerForm>(emptyLinkedPlayerForm);
+  const [linkedSaving, setLinkedSaving] = useState(false);
+  const [linkedError, setLinkedError] = useState<string | null>(null);
+
+  const cloudApis = shouldUseCloudClientApis(user);
 
   const mergedPlayers = useMemo(() => [...roster.players, ...state.players], [roster.players, state.players]);
 
@@ -67,14 +96,76 @@ export default function PresidentJogadoresPage() {
     reset();
   };
 
+  const injuryKeyFromLabel = (label: string): LinkedCloudPlayerForm["injuryKey"] => {
+    if (label === "Dúvida") return "doubt";
+    if (label === "Indisponível") return "out";
+    return "";
+  };
+
+  const injuryLabelFromKey = (k: LinkedCloudPlayerForm["injuryKey"]): string => {
+    if (k === "doubt") return "Dúvida";
+    if (k === "out") return "Indisponível";
+    return "";
+  };
+
+  const startLinkedPlayerEdit = (p: PresidentPlayer) => {
+    const ids = parseLinkedPlayerRowId(p.id);
+    if (!ids || !cloudApis) return;
+    setLinkedError(null);
+    setLinkedPlayerEdit(p);
+    setLinkedPlayerForm({
+      name: p.name,
+      age: p.age,
+      team: p.team,
+      position: p.position,
+      injuryKey: injuryKeyFromLabel(p.injuryStatus),
+      isTopTalent: p.isTopTalent,
+    });
+  };
+
+  const closeLinkedPlayerEdit = () => {
+    if (linkedSaving) return;
+    setLinkedPlayerEdit(null);
+    setLinkedPlayerForm(emptyLinkedPlayerForm);
+    setLinkedError(null);
+  };
+
+  const saveLinkedPlayerEdit = async () => {
+    const p = linkedPlayerEdit;
+    const ids = p ? parseLinkedPlayerRowId(p.id) : null;
+    if (!p || !ids || !linkedPlayerForm.name.trim()) return;
+    setLinkedSaving(true);
+    setLinkedError(null);
+    const res = await patchLinkedCoachWorkspace({
+      coachUserId: ids.coachUserId,
+      playerId: ids.playerId,
+      playerPatch: {
+        name: linkedPlayerForm.name.trim(),
+        age: linkedPlayerForm.age,
+        team: linkedPlayerForm.team,
+        position: linkedPlayerForm.position,
+        injuryStatus: injuryLabelFromKey(linkedPlayerForm.injuryKey),
+        isTopTalent: linkedPlayerForm.isTopTalent,
+      },
+    });
+    setLinkedSaving(false);
+    if (!res.ok) {
+      setLinkedError(res.error ?? "Erro ao guardar.");
+      return;
+    }
+    await roster.refresh();
+    closeLinkedPlayerEdit();
+  };
+
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h2 className="font-display text-2xl font-semibold text-white">Jogadores</h2>
           <p className="mt-1 text-sm text-zinc-500">
-            Nome, idade, equipa (clube) e posição vêm do plantel que cada treinador gere no login normal, quando a conta
-            está ligada ao presidente (cloud). Campos extra do presidente ficam nos registos manuais.
+            Nome, idade, clube, posição e disponibilidade vêm do plantel de cada treinador com conta ligada. Podes
+            editá-los aqui: os dados guardam-se no workspace do treinador e reflectem-se no login dele. Campos extra
+            só do clube continuam nos registos manuais.
           </p>
         </div>
         <Button type="button" variant="ghost" size="sm" className="shrink-0 self-start" onClick={() => void roster.refresh()} disabled={roster.loading}>
@@ -158,7 +249,20 @@ export default function PresidentJogadoresPage() {
                       </td>
                       <td className="px-4 py-3">
                         {linked ? (
-                          <span className="text-xs text-zinc-600">—</span>
+                          cloudApis ? (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 px-2"
+                              onClick={() => startLinkedPlayerEdit(p)}
+                              aria-label="Editar no plantel do treinador"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                          ) : (
+                            <span className="text-xs text-zinc-500">Cloud</span>
+                          )
                         ) : (
                           <div className="flex gap-1">
                             <Button type="button" size="sm" variant="ghost" className="h-8 px-2" onClick={() => startEdit(p)}>
@@ -290,6 +394,95 @@ export default function PresidentJogadoresPage() {
           </form>
         </CardContent>
       </Card>
+
+      {linkedPlayerEdit ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4"
+          role="presentation"
+          onClick={() => closeLinkedPlayerEdit()}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="linked-player-edit-title"
+            className="max-h-[min(90dvh,880px)] w-full max-w-xl overflow-y-auto rounded-2xl border border-surface-border bg-[#0c1014] p-6 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 id="linked-player-edit-title" className="font-display text-lg font-semibold text-white">
+              Editar jogador (plantel do treinador)
+            </h3>
+            <p className="mt-1 text-xs text-zinc-500">
+              {linkedPlayerEdit.coachEmail ?? "Treinador"} — estes campos sincronizam com o plantel na conta do
+              treinador.
+            </p>
+            {linkedError ? <p className="mt-3 text-sm text-red-400/90">{linkedError}</p> : null}
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <label className="space-y-1 sm:col-span-2">
+                <span className="text-xs text-zinc-500">Nome *</span>
+                <Input
+                  value={linkedPlayerForm.name}
+                  onChange={(e) => setLinkedPlayerForm((f) => ({ ...f, name: e.target.value }))}
+                />
+              </label>
+              <label className="space-y-1">
+                <span className="text-xs text-zinc-500">Idade</span>
+                <Input
+                  value={linkedPlayerForm.age}
+                  onChange={(e) => setLinkedPlayerForm((f) => ({ ...f, age: e.target.value }))}
+                />
+              </label>
+              <label className="space-y-1">
+                <span className="text-xs text-zinc-500">Disponibilidade</span>
+                <select
+                  className="h-11 w-full rounded-xl border border-surface-border bg-surface-raised/90 px-3 text-sm text-zinc-100"
+                  value={linkedPlayerForm.injuryKey}
+                  onChange={(e) =>
+                    setLinkedPlayerForm((f) => ({
+                      ...f,
+                      injuryKey: e.target.value as LinkedCloudPlayerForm["injuryKey"],
+                    }))
+                  }
+                >
+                  <option value="">Disponível</option>
+                  <option value="doubt">Dúvida</option>
+                  <option value="out">Indisponível</option>
+                </select>
+              </label>
+              <label className="space-y-1 sm:col-span-2">
+                <span className="text-xs text-zinc-500">Clube (campo do treinador)</span>
+                <Input
+                  value={linkedPlayerForm.team}
+                  onChange={(e) => setLinkedPlayerForm((f) => ({ ...f, team: e.target.value }))}
+                />
+              </label>
+              <label className="space-y-1 sm:col-span-2">
+                <span className="text-xs text-zinc-500">Posições (ex. CB, ST)</span>
+                <Input
+                  value={linkedPlayerForm.position}
+                  onChange={(e) => setLinkedPlayerForm((f) => ({ ...f, position: e.target.value }))}
+                />
+              </label>
+              <label className="flex items-center gap-2 sm:col-span-2">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 rounded border-surface-border"
+                  checked={linkedPlayerForm.isTopTalent}
+                  onChange={(e) => setLinkedPlayerForm((f) => ({ ...f, isTopTalent: e.target.checked }))}
+                />
+                <span className="text-sm text-zinc-300">Talento de topo (marca desempenho em alta no plantel)</span>
+              </label>
+            </div>
+            <div className="mt-6 flex flex-wrap gap-2">
+              <Button type="button" onClick={() => void saveLinkedPlayerEdit()} disabled={linkedSaving}>
+                {linkedSaving ? "A guardar…" : "Guardar no plantel do treinador"}
+              </Button>
+              <Button type="button" variant="ghost" onClick={() => closeLinkedPlayerEdit()} disabled={linkedSaving}>
+                Cancelar
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
