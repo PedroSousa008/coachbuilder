@@ -220,15 +220,16 @@ export function PresidentMercadoTransferencias() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button type="button" variant="ghost" size="sm" asChild>
-            <Link
-              href="/app/president/mercado-treinadores/shortlist"
-              className="inline-flex items-center gap-2 border border-surface-border bg-surface-raised/40"
-            >
-              <Target className="h-4 w-4" />
-              Shortlist ({state.recruitmentShortlist.length})
-            </Link>
-          </Button>
+          <Link
+            href="/app/president/mercado-treinadores/shortlist"
+            className={cn(
+              "inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-surface-border bg-surface-raised/40 px-3.5 text-sm font-medium text-zinc-300 transition-all hover:bg-white/5 hover:text-white",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0d10]"
+            )}
+          >
+            <Target className="h-4 w-4" />
+            Shortlist ({state.recruitmentShortlist.length})
+          </Link>
           <Button type="button" size="sm" onClick={() => void load()} disabled={loading || !canCloud}>
             <RefreshCw className={cn("mr-2 h-4 w-4", loading && "animate-spin")} />
             Actualizar
@@ -556,12 +557,16 @@ export function PresidentMercadoTransferencias() {
               </div>
             </dl>
             <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-              <Button type="button" variant="secondary" asChild>
-                <a href={`mailto:${selected.email}`} className="inline-flex items-center gap-2">
-                  <Mail className="h-4 w-4" />
-                  Email de login
-                </a>
-              </Button>
+              <a
+                href={`mailto:${selected.email}`}
+                className={cn(
+                  "inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-surface-border bg-surface-raised px-3.5 text-sm font-medium text-zinc-100 transition-all hover:border-zinc-600 hover:bg-zinc-800/50",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0d10]"
+                )}
+              >
+                <Mail className="h-4 w-4" />
+                Email de login
+              </a>
               <Button
                 type="button"
                 onClick={() => {
@@ -576,11 +581,15 @@ export function PresidentMercadoTransferencias() {
               <Button type="button" variant="ghost" onClick={() => setSelected(null)}>
                 Fechar
               </Button>
-              <Button type="button" variant="ghost" asChild>
-                <Link href="/app/president/mercado-treinadores/shortlist" className="inline-flex items-center gap-1">
-                  Shortlist <ArrowUpRight className="h-3 w-3" />
-                </Link>
-              </Button>
+              <Link
+                href="/app/president/mercado-treinadores/shortlist"
+                className={cn(
+                  "inline-flex h-9 items-center justify-center gap-1 rounded-xl px-3.5 text-sm font-medium text-zinc-300 transition-all hover:bg-white/5 hover:text-white",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0d10]"
+                )}
+              >
+                Shortlist <ArrowUpRight className="h-3 w-3" />
+              </Link>
             </div>
           </div>
         </div>
