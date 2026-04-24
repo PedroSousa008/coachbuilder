@@ -1,4 +1,5 @@
 import type { PresidentClubState } from "@/types/president-club";
+import { paymentEffectiveEUR } from "@/lib/president-finance";
 
 export type PresidentDashboardKpis = {
   activeCoaches: number;
@@ -44,6 +45,7 @@ export function buildFinanceChart(state: PresidentClubState): { income: Presiden
 export function computePresidentDashboardKpis(state: PresidentClubState): PresidentDashboardKpis {
   const now = new Date();
   const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const activePay = state.payments.filter((p) => !p.archived);
   const monthlyIncomeEUR = state.financeMovements
     .filter((m) => m.kind === "income" && m.date.startsWith(ym))
     .reduce((s, m) => s + m.amountEUR, 0);
@@ -51,12 +53,12 @@ export function computePresidentDashboardKpis(state: PresidentClubState): Presid
     .filter((m) => m.kind === "expense" && m.date.startsWith(ym))
     .reduce((s, m) => s + m.amountEUR, 0);
 
-  const pendingPaymentsEUR = state.payments
+  const pendingPaymentsEUR = activePay
     .filter((p) => p.status === "pendente")
-    .reduce((s, p) => s + p.amountEUR, 0);
-  const overduePaymentsEUR = state.payments
+    .reduce((s, p) => s + paymentEffectiveEUR(p), 0);
+  const overduePaymentsEUR = activePay
     .filter((p) => p.status === "atrasado")
-    .reduce((s, p) => s + p.amountEUR, 0);
+    .reduce((s, p) => s + paymentEffectiveEUR(p), 0);
 
   const activeSponsorsEUR = state.sponsors
     .filter((s) => s.pipelineStage === "ativo")

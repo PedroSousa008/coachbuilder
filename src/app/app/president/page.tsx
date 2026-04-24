@@ -62,9 +62,9 @@ export default function PresidentExecutiveDashboardPage() {
   }));
 
   const paymentStatusChart = [
-    { label: "Pago", value: state.payments.filter((p) => p.status === "pago").length },
-    { label: "Pendente", value: state.payments.filter((p) => p.status === "pendente").length },
-    { label: "Atrasado", value: state.payments.filter((p) => p.status === "atrasado").length },
+    { label: "Pago", value: state.payments.filter((p) => !p.archived && p.status === "pago").length },
+    { label: "Pendente", value: state.payments.filter((p) => !p.archived && p.status === "pendente").length },
+    { label: "Atrasado", value: state.payments.filter((p) => !p.archived && p.status === "atrasado").length },
   ];
 
   const netSeries = financeChart.income.map((d, i) => ({

@@ -65,14 +65,35 @@ export type PresidentFinanceMovement = {
   note: string;
 };
 
+export type PresidentPaymentMethod = "numerario" | "transferencia" | "mbway" | "cartao" | "outro";
+
+export type PresidentPaymentHistoryEntry = {
+  id: string;
+  paidAt: string;
+  amountEUR: number;
+  note?: string;
+};
+
+/** Quota / mensalidade por jogador (modo clube). */
 export type PresidentPayment = {
   id: string;
+  /** Id do jogador no plantel agregado (`linked:…` ou manual). */
+  playerSourceId?: string;
   playerName: string;
+  team: string;
   familyContact: string;
+  personalContact: string;
   status: "pago" | "pendente" | "atrasado";
   amountEUR: number;
+  discountEUR: number;
   dueDate: string;
   note: string;
+  lastPaidAt: string;
+  paymentMethod: PresidentPaymentMethod;
+  archived: boolean;
+  coachEmail?: string;
+  coachTeamLabel?: string;
+  history: PresidentPaymentHistoryEntry[];
 };
 
 export type PresidentSponsor = {

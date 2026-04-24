@@ -14,6 +14,7 @@ import type {
   PresidentReport,
   PresidentSponsor,
 } from "@/types/president-club";
+import { normalizePaymentRow } from "@/lib/president-finance";
 
 export const DEFAULT_PRESIDENT_EQUIPAS_SLOTS: PresidentEquipasSlot[] = [
   { id: "eq-benjamins", title: "Benjamins", linkedCoachUserId: null },
@@ -71,13 +72,6 @@ export function mergePresidentClubState(raw: unknown, fallback: PresidentClubSta
       .filter((x): x is PresidentEquipasSlot => x !== null);
     return mapped.length > 0 ? mapped : fallback.equipasSlots;
   })();
-
-  function paymentStatus(v: unknown): PresidentPayment["status"] {
-    if (v === "pago") return "pago";
-    if (v === "pendente") return "pendente";
-    if (v === "atrasado") return "atrasado";
-    return "pendente";
-  }
 
   function sponsorPipeline(v: unknown): PresidentSponsor["pipelineStage"] {
     if (v === "potencial") return "potencial";
@@ -156,19 +150,13 @@ export function mergePresidentClubState(raw: unknown, fallback: PresidentClubSta
         })
       )
       .filter((f) => f.id),
-    payments: arr<PresidentPayment>(o.payments)
-      .map(
-        (p): PresidentPayment => ({
-          id: str(p.id, ""),
-          playerName: str(p.playerName, ""),
-          familyContact: str(p.familyContact, ""),
-          status: paymentStatus(p.status),
-          amountEUR: num(p.amountEUR, 0),
-          dueDate: str(p.dueDate, ""),
-          note: str(p.note, ""),
-        })
-      )
-      .filter((p) => p.id),
+    payments: arr<Record<string, unknown>>(o.payments)
+      .map((raw) => {
+        const id = str(raw.id, "");
+        if (!id) return null;
+        return normalizePaymentRow({ ...(raw as object), id } as Partial<PresidentPayment> & { id: string });
+      })
+      .filter((p): p is PresidentPayment => p !== null),
     sponsors: arr<PresidentSponsor>(o.sponsors)
       .map(
         (s): PresidentSponsor => ({

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { usePresidentClub } from "@/contexts/PresidentClubContext";
 import type { PresidentPayment } from "@/types/president-club";
+import { defaultQuotaDueDate, emptyPaymentRow, paymentEffectiveEUR } from "@/lib/president-finance";
 
 export default function PresidentPagamentosPage() {
   const { state, addPayment, updatePayment, removePayment } = usePresidentClub();
@@ -22,11 +23,10 @@ export default function PresidentPagamentosPage() {
     const n = Number(amountEUR.replace(",", "."));
     if (!playerName.trim() || !Number.isFinite(n) || n < 0) return;
     addPayment({
-      playerName: playerName.trim(),
-      familyContact: familyContact.trim(),
+      ...emptyPaymentRow({ playerName: playerName.trim(), familyContact: familyContact.trim() }),
       status,
       amountEUR: n,
-      dueDate: dueDate.trim(),
+      dueDate: dueDate.trim() || defaultQuotaDueDate(),
       note: note.trim(),
     });
     setPlayerName("");
@@ -113,7 +113,7 @@ export default function PresidentPagamentosPage() {
                 state.payments.map((p) => (
                   <tr key={p.id} className="border-b border-surface-border/50">
                     <td className="px-4 py-2 font-medium text-zinc-200">{p.playerName}</td>
-                    <td className="px-4 py-2 tabular-nums text-zinc-400">{p.amountEUR.toFixed(2)} €</td>
+                    <td className="px-4 py-2 tabular-nums text-zinc-400">{paymentEffectiveEUR(p).toFixed(2)} €</td>
                     <td className="px-4 py-2 text-zinc-500">{p.dueDate || "—"}</td>
                     <td className="px-4 py-2">
                       <select

@@ -19,6 +19,7 @@ import {
   presidentUid,
   type PresidentDashboardKpis,
 } from "@/lib/president-club-dashboard";
+import { addCalendarMonths, paymentEffectiveEUR, paymentFromPlayer } from "@/lib/president-finance";
 import type {
   PresidentClubSettings,
   PresidentClubState,
@@ -27,6 +28,7 @@ import type {
   PresidentDisciplineIncident,
   PresidentDocument,
   PresidentFinanceMovement,
+  PresidentPaymentHistoryEntry,
   PresidentInjury,
   PresidentMarketContact,
   PresidentOperationEvent,
@@ -56,6 +58,9 @@ type PresidentClubContextValue = {
   addPayment: (row: Omit<PresidentPayment, "id">) => string;
   updatePayment: (id: string, patch: Partial<PresidentPayment>) => void;
   removePayment: (id: string) => void;
+  markPaymentPaid: (id: string) => void;
+  syncFinancePaymentsWithRoster: (players: PresidentPlayer[]) => void;
+  archiveFinancePayment: (id: string) => void;
   addSponsor: (row: Omit<PresidentSponsor, "id">) => string;
   updateSponsor: (id: string, patch: Partial<PresidentSponsor>) => void;
   removeSponsor: (id: string) => void;
@@ -186,6 +191,72 @@ export function PresidentClubProvider({ children }: { children: ReactNode }) {
 
   const removePayment = useCallback((id: string) => {
     setState((prev) => ({ ...prev, payments: prev.payments.filter((p) => p.id !== id) }));
+  }, []);
+
+  const markPaymentPaid = useCallback((id: string) => {
+    setState((prev) => {
+      const p = prev.payments.find((x) => x.id === id);
+      if (!p || p.archived) return prev;
+      const today = new Date().toISOString().slice(0, 10);
+      const eff = paymentEffectiveEUR(p);
+      const hist: PresidentPaymentHistoryEntry = {
+        id: presidentUid(),
+        paidAt: today,
+        amountEUR: eff,
+        note: "Pago",
+      };
+      const baseDue = p.dueDate && p.dueDate.length >= 10 ? p.dueDate : today;
+      const nextDue = addCalendarMonths(baseDue, 1);
+      const newMovs =
+        eff > 0
+          ? [
+              {
+                id: presidentUid(),
+                kind: "income" as const,
+                category: "Quotas / jogadores",
+                amountEUR: eff,
+                date: today,
+                note: `Quota: ${p.playerName}`,
+              },
+              ...prev.financeMovements,
+            ]
+          : prev.financeMovements;
+      return {
+        ...prev,
+        financeMovements: newMovs,
+        payments: prev.payments.map((x) =>
+          x.id === id
+            ? {
+                ...x,
+                status: "pago" as const,
+                lastPaidAt: today,
+                dueDate: nextDue,
+                history: [hist, ...(x.history ?? [])],
+              }
+            : x
+        ),
+      };
+    });
+  }, []);
+
+  const syncFinancePaymentsWithRoster = useCallback((players: PresidentPlayer[]) => {
+    setState((prev) => {
+      const additions: PresidentPayment[] = [];
+      for (const pl of players) {
+        const exists = prev.payments.some((pay) => pay.playerSourceId === pl.id && !pay.archived);
+        if (exists) continue;
+        additions.push({ id: presidentUid(), ...paymentFromPlayer(pl) });
+      }
+      if (!additions.length) return prev;
+      return { ...prev, payments: [...additions, ...prev.payments] };
+    });
+  }, []);
+
+  const archiveFinancePayment = useCallback((id: string) => {
+    setState((prev) => ({
+      ...prev,
+      payments: prev.payments.map((p) => (p.id === id ? { ...p, archived: true } : p)),
+    }));
   }, []);
 
   const addSponsor = useCallback((row: Omit<PresidentSponsor, "id">) => {
@@ -354,6 +425,9 @@ export function PresidentClubProvider({ children }: { children: ReactNode }) {
       addPayment,
       updatePayment,
       removePayment,
+      markPaymentPaid,
+      syncFinancePaymentsWithRoster,
+      archiveFinancePayment,
       addSponsor,
       updateSponsor,
       removeSponsor,
@@ -395,6 +469,9 @@ export function PresidentClubProvider({ children }: { children: ReactNode }) {
       addPayment,
       updatePayment,
       removePayment,
+      markPaymentPaid,
+      syncFinancePaymentsWithRoster,
+      archiveFinancePayment,
       addSponsor,
       updateSponsor,
       removeSponsor,
