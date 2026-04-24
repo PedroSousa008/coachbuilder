@@ -41,7 +41,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div
       className={cn(
-        "min-h-screen bg-[#0a0d10] print:bg-white",
+        "min-h-screen bg-[var(--background)] print:bg-white",
         presidentMode ? "lg:pl-[280px] print:pl-0" : "lg:pl-64 print:pl-0"
       )}
     >

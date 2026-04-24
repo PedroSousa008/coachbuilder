@@ -34,7 +34,7 @@ export function SubscriptionGate({ children }: { children: React.ReactNode }) {
   if (pathAllowedInFreeMode(pathname)) return <>{children}</>;
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#0a0d10]">
+    <div className="flex min-h-screen items-center justify-center bg-[var(--background)]">
       <p className="text-sm text-zinc-500">A redirecionar…</p>
     </div>
   );

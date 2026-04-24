@@ -21,7 +21,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
 
   if (!authReady) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#0a0d10]">
+      <div className="flex min-h-screen items-center justify-center bg-[var(--background)]">
         <div className="text-center">
           <div className="mx-auto h-10 w-10 animate-pulse rounded-xl bg-accent/20" />
           <p className="mt-4 text-sm text-zinc-500">A carregar…</p>
@@ -32,7 +32,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
 
   if (!user) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#0a0d10]">
+      <div className="flex min-h-screen items-center justify-center bg-[var(--background)]">
         <p className="text-sm text-zinc-500">A redirecionar…</p>
       </div>
     );

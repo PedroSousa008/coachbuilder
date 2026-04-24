@@ -1,0 +1,180 @@
+/**
+ * Tema "fundo branco": activado com `data-app-shell="light"` no `<html>`.
+ * Sobrepõe utilitários Tailwind mais usados (text-zinc-*, fundos #0a…, surface).
+ */
+html[data-app-shell="light"] {
+  color-scheme: light;
+  --background: #ffffff;
+  --foreground: #0c1a2e;
+  --muted: #475569;
+}
+
+html[data-app-shell="light"] body {
+  background-color: var(--background) !important;
+  color: var(--foreground);
+}
+
+html[data-app-shell="light"] .bg-grid {
+  background-image: linear-gradient(rgba(15, 23, 42, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(15, 23, 42, 0.06) 1px, transparent 1px);
+}
+
+html[data-app-shell="light"] .pitch-texture {
+  background-color: #eef2f6;
+  background-image: radial-gradient(
+      ellipse 120% 80% at 50% 100%,
+      rgb(var(--accent-rgb) / 0.1),
+      transparent 55%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(15, 23, 42, 0.05) 0%,
+      transparent 40%,
+      transparent 65%,
+      rgba(15, 23, 42, 0.06) 100%
+    );
+}
+
+/* ——— Texto que era claro sobre fundo escuro ——— */
+html[data-app-shell="light"] .text-white,
+html[data-app-shell="light"] .text-zinc-50,
+html[data-app-shell="light"] .text-zinc-100,
+html[data-app-shell="light"] .text-zinc-200 {
+  color: #0c1a2e !important;
+}
+
+html[data-app-shell="light"] .text-zinc-300 {
+  color: #152a45 !important;
+}
+
+html[data-app-shell="light"] .text-zinc-400 {
+  color: #334155 !important;
+}
+
+html[data-app-shell="light"] .text-zinc-500 {
+  color: #475569 !important;
+}
+
+html[data-app-shell="light"] .text-zinc-600 {
+  color: #64748b !important;
+}
+
+/* Texto já escuro: manter legível em cartões claros */
+html[data-app-shell="light"] .text-zinc-700,
+html[data-app-shell="light"] .text-zinc-800,
+html[data-app-shell="light"] .text-zinc-900,
+html[data-app-shell="light"] .text-zinc-950 {
+  color: #0f172a !important;
+}
+
+/* ——— Tokens surface / border ——— */
+html[data-app-shell="light"] .bg-surface {
+  background-color: #f1f5f9 !important;
+}
+
+html[data-app-shell="light"] .bg-surface\/80,
+html[data-app-shell="light"] .bg-surface\/30 {
+  background-color: rgb(241 245 249 / 0.92) !important;
+}
+
+html[data-app-shell="light"] .bg-surface-raised,
+html[data-app-shell="light"] .bg-surface-raised\/80,
+html[data-app-shell="light"] .bg-surface-raised\/40,
+html[data-app-shell="light"] .bg-surface-raised\/30 {
+  background-color: rgb(255 255 255 / 0.95) !important;
+}
+
+html[data-app-shell="light"] .border-surface-border,
+html[data-app-shell="light"] .border-surface-border\/80 {
+  border-color: #cbd5e1 !important;
+}
+
+html[data-app-shell="light"] .divide-surface-border > :not([hidden]) ~ :not([hidden]) {
+  border-color: #cbd5e1 !important;
+}
+
+html[data-app-shell="light"] .shadow-card {
+  box-shadow: 0 1px 0 rgba(15, 23, 42, 0.06), 0 8px 32px rgba(15, 23, 42, 0.08) !important;
+}
+
+/* ——— Fundos hex arbitrários (CoachBuilder) ——— */
+html[data-app-shell="light"] .bg-\[\#0a0d10\],
+html[data-app-shell="light"] .bg-\[\#06080c\] {
+  background-color: #ffffff !important;
+}
+
+html[data-app-shell="light"] .bg-\[\#0a0d10\]\/85,
+html[data-app-shell="light"] .bg-\[\#0a0d10\]\/80 {
+  background-color: rgb(255 255 255 / 0.92) !important;
+}
+
+html[data-app-shell="light"] .bg-\[\#0c1014\],
+html[data-app-shell="light"] .bg-\[\#0f1419\],
+html[data-app-shell="light"] .bg-\[\#12171c\],
+html[data-app-shell="light"] .bg-\[\#0c1116\] {
+  background-color: #f8fafc !important;
+}
+
+html[data-app-shell="light"] .bg-\[\#0c1014\]\/95 {
+  background-color: rgb(248 250 252 / 0.96) !important;
+}
+
+html[data-app-shell="light"] .bg-\[\#0d1116\]\/95,
+html[data-app-shell="light"] .bg-\[\#0d1116\] {
+  background-color: rgb(241 245 249 / 0.95) !important;
+}
+
+html[data-app-shell="light"] .bg-\[\#080a0c\] {
+  background-color: #f1f5f9 !important;
+}
+
+html[data-app-shell="light"] .bg-\[\#0a0f0c\] {
+  background-color: #f0fdf4 !important;
+}
+
+html[data-app-shell="light"] .bg-black,
+html[data-app-shell="light"] .bg-black\/60,
+html[data-app-shell="light"] .bg-black\/50 {
+  background-color: rgb(15 23 42 / 0.45) !important;
+}
+
+html[data-app-shell="light"] .bg-zinc-950,
+html[data-app-shell="light"] .bg-zinc-900,
+html[data-app-shell="light"] .bg-zinc-900\/50,
+html[data-app-shell="light"] .bg-zinc-800\/50,
+html[data-app-shell="light"] .bg-zinc-800 {
+  background-color: #f1f5f9 !important;
+}
+
+html[data-app-shell="light"] .hover\:bg-zinc-800\/50:hover,
+html[data-app-shell="light"] .hover\:bg-white\/5:hover {
+  background-color: #e2e8f0 !important;
+}
+
+html[data-app-shell="light"] .border-zinc-600,
+html[data-app-shell="light"] .border-zinc-700,
+html[data-app-shell="light"] .border-zinc-600\/80,
+html[data-app-shell="light"] .border-zinc-700\/50 {
+  border-color: #94a3b8 !important;
+}
+
+html[data-app-shell="light"] .border-white\/5 {
+  border-color: rgb(15 23 42 / 0.08) !important;
+}
+
+html[data-app-shell="light"] .placeholder\:text-zinc-600::placeholder,
+html[data-app-shell="light"] .placeholder\:text-zinc-500::placeholder {
+  color: #64748b !important;
+}
+
+html[data-app-shell="light"] .ring-offset-\[\#0a0d10\] {
+  --tw-ring-offset-color: #ffffff !important;
+}
+
+html[data-app-shell="light"] .hover\:text-white:hover {
+  color: #0c1a2e !important;
+}
+
+html[data-app-shell="light"] .hover\:text-zinc-200:hover {
+  color: #152a45 !important;
+}

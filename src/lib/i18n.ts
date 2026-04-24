@@ -42,6 +42,12 @@ export type TranslationKey =
   | "settings.language.description"
   | "settings.language.current"
   | "settings.language.note"
+  | "settings.appearance.title"
+  | "settings.appearance.description"
+  | "settings.appearance.modeLabel"
+  | "settings.appearance.modeHint"
+  | "settings.appearance.dark"
+  | "settings.appearance.light"
   | "settings.account"
   | "settings.accountHelp"
   | "settings.editProfile"
@@ -177,6 +183,55 @@ const dict: Dict = {
     fr: "Le portugais est toujours le portugais du Portugal (pt-PT).",
     it: "Il portoghese è sempre portoghese del Portogallo (pt-PT).",
     de: "Portugiesisch ist immer Portugiesisch aus Portugal (pt-PT).",
+  },
+  "settings.appearance.title": {
+    "pt-PT": "Aspecto da app",
+    en: "App appearance",
+    es: "Aspecto de la app",
+    fr: "Apparence de l’app",
+    it: "Aspetto dell’app",
+    de: "Erscheinungsbild",
+  },
+  "settings.appearance.description": {
+    "pt-PT":
+      "Modo claro: fundo branco e textos em azul escuro para melhor contraste. O modo escuro é o padrão original.",
+    en: "Light mode: white background and dark blue text for stronger contrast. Dark mode is the original default.",
+    es: "Modo claro: fondo blanco y texto azul oscuro. El modo oscuro es el predeterminado.",
+    fr: "Mode clair : fond blanc et texte bleu foncé. Le mode sombre reste le défaut d’origine.",
+    it: "Modalità chiara: sfondo bianco e testo blu scuro. La modalità scura è quella originale.",
+    de: "Hellmodus: weißer Hintergrund und dunkelblauer Text. Dunkel ist der ursprüngliche Standard.",
+  },
+  "settings.appearance.modeLabel": {
+    "pt-PT": "Tema do ecrã",
+    en: "Screen theme",
+    es: "Tema de pantalla",
+    fr: "Thème d’affichage",
+    it: "Tema schermo",
+    de: "Darstellungsthema",
+  },
+  "settings.appearance.modeHint": {
+    "pt-PT": "Aplica-se a toda a app neste browser. Fica guardado por conta.",
+    en: "Applies across the app in this browser. Saved per account.",
+    es: "Se aplica en todo el navegador. Guardado por cuenta.",
+    fr: "S’applique à toute l’app dans ce navigateur, enregistré par compte.",
+    it: "Si applica a tutta l’app nel browser, salvato per account.",
+    de: "Gilt in diesem Browser für die ganze App, pro Konto gespeichert.",
+  },
+  "settings.appearance.dark": {
+    "pt-PT": "Escuro",
+    en: "Dark",
+    es: "Oscuro",
+    fr: "Sombre",
+    it: "Scuro",
+    de: "Dunkel",
+  },
+  "settings.appearance.light": {
+    "pt-PT": "Claro (fundo branco)",
+    en: "Light (white)",
+    es: "Claro (blanco)",
+    fr: "Clair (blanc)",
+    it: "Chiaro (bianco)",
+    de: "Hell (weiß)",
   },
   "settings.account": { "pt-PT": "Conta", en: "Account", es: "Cuenta", fr: "Compte", it: "Account", de: "Konto" },
   "settings.accountHelp": {

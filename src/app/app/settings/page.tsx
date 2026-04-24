@@ -7,6 +7,7 @@ import { CloudAccountSettings } from "@/components/settings/CloudAccountSettings
 import { ClubPresidentLinkSettings } from "@/components/settings/ClubPresidentLinkSettings";
 import { SubscriptionSettings } from "@/components/settings/SubscriptionSettings";
 import { LanguageSettings } from "@/components/settings/LanguageSettings";
+import { AppearanceShellSettings } from "@/components/settings/AppearanceShellSettings";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { useLanguage } from "@/contexts/LanguageContext";
 
@@ -37,6 +38,8 @@ export default function SettingsPage() {
       </Suspense>
 
       <LanguageSettings />
+
+      <AppearanceShellSettings />
 
       <TeamAccentSettings />
 

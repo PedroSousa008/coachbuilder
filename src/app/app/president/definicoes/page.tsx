@@ -10,6 +10,7 @@ import { useAppData } from "@/contexts/AppDataContext";
 import { usePresidentClub } from "@/contexts/PresidentClubContext";
 import { usePresidentLinkedRoster } from "@/hooks/usePresidentLinkedRoster";
 import { PresidentTrainerSeatsPanel } from "@/components/president/PresidentTrainerSeatsPanel";
+import { AppearanceShellSettings } from "@/components/settings/AppearanceShellSettings";
 
 export default function PresidentDefinicoesPage() {
   const { coachProfile, setCoachProfile } = useAppData();
@@ -73,6 +74,8 @@ export default function PresidentDefinicoesPage() {
           clube no perfil do treinador quando guardas.
         </p>
       </div>
+
+      <AppearanceShellSettings />
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card className="border-surface-border bg-surface-raised/30">
