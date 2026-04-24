@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { isCloudSyncEnabledServer } from "@/lib/cloud-config";
-import { readSessionFromCookies } from "@/lib/cloud-session";
+import { getCloudUserFromSessionCookies } from "@/lib/cloud-session-user";
 import { hashPasswordNode } from "@/lib/password-node";
 import { recordAccountCreatedSafe } from "@/lib/server-analytics";
 import { PRESIDENT_INCLUDED_COACH_SEATS } from "@/lib/president-constants";
@@ -19,16 +19,12 @@ function isValidEmail(email: string): boolean {
 }
 
 async function requirePresident() {
-  const claims = await readSessionFromCookies();
-  if (!claims) return { response: NextResponse.json({ ok: false, error: "Não autorizado." }, { status: 401 }) };
-  const user = await prisma.user.findUnique({ where: { id: claims.sub } });
-  if (!user || user.email !== claims.email) {
-    return { response: NextResponse.json({ ok: false, error: "Sessão inválida." }, { status: 401 }) };
-  }
-  if (user.coachingRole !== "club-president") {
+  const session = await getCloudUserFromSessionCookies();
+  if (!session) return { response: NextResponse.json({ ok: false, error: "Não autorizado." }, { status: 401 }) };
+  if (session.user.coachingRole !== "club-president") {
     return { response: NextResponse.json({ ok: false, error: "Apenas contas Presidente." }, { status: 403 }) };
   }
-  return { president: user };
+  return { president: session.user };
 }
 
 export async function GET() {

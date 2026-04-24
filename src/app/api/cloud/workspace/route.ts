@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 import { prisma } from "@/lib/prisma";
 import { isCloudSyncEnabledServer } from "@/lib/cloud-config";
-import { readSessionFromCookies } from "@/lib/cloud-session";
+import { getCloudUserFromSessionCookies } from "@/lib/cloud-session-user";
 import { emptyWorkspaceSnapshot, parseWorkspacePayload, type WorkspaceSnapshotV1 } from "@/lib/workspace-snapshot";
 import type { Conversation, Message } from "@/types";
 
@@ -108,11 +108,8 @@ function mergeWorkspacePayload(
 }
 
 async function requireUserId(): Promise<string | null> {
-  const claims = await readSessionFromCookies();
-  if (!claims) return null;
-  const user = await prisma.user.findUnique({ where: { id: claims.sub } });
-  if (!user || user.email !== claims.email) return null;
-  return user.id;
+  const session = await getCloudUserFromSessionCookies();
+  return session?.user.id ?? null;
 }
 
 export async function GET() {

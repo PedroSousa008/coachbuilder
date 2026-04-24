@@ -7,6 +7,8 @@ const MAX_AGE_SEC = 60 * 60 * 24 * 45; // 45 dias
 export type SessionClaims = {
   sub: string;
   email: string;
+  /** `iat` do JWT em milissegundos; compara-se com `User.sessionInvalidatedAt`. */
+  issuedAtMs: number;
 };
 
 function getSecret(): Uint8Array {
@@ -32,7 +34,9 @@ export async function verifySessionToken(token: string): Promise<SessionClaims |
     const sub = typeof payload.sub === "string" ? payload.sub : "";
     const email = typeof payload.email === "string" ? payload.email : "";
     if (!sub || !email) return null;
-    return { sub, email };
+    const iat = payload.iat;
+    const issuedAtMs = typeof iat === "number" && Number.isFinite(iat) ? iat * 1000 : 0;
+    return { sub, email, issuedAtMs };
   } catch {
     return null;
   }

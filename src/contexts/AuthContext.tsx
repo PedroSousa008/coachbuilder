@@ -136,6 +136,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setAuthReady(true);
           return;
         }
+        if (!cancelled && res.status === 401) {
+          void fetch("/api/cloud/auth/logout", { method: "POST", credentials: "include" });
+          saveSession(null);
+        }
       } catch {
         /* continuar para sessão local */
       }
@@ -330,6 +334,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const data = (await res.json()) as { ok?: boolean; error?: string; user?: unknown };
       if (res.status === 503) {
         return { ok: false, error: "Servidor sem base de dados cloud configurada." };
+      }
+      if (res.status === 401) {
+        void fetch("/api/cloud/auth/logout", { method: "POST", credentials: "include" });
+        saveSession(null);
+        setUser(null);
+        return { ok: false, error: data.error || "Sessão expirada. Inicia sessão de novo." };
       }
       const cloudUser = parseCloudUserFromApi(data.user);
       if (res.ok && data.ok && cloudUser) {

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { CLOUD_SERVER_UNAVAILABLE_MESSAGE, isCloudSyncEnabledServer } from "@/lib/cloud-config";
-import { readSessionFromCookies } from "@/lib/cloud-session";
+import { getCloudUserFromSessionCookies } from "@/lib/cloud-session-user";
 import { dmThreadKey } from "@/lib/dm-conversation-id";
 import { parseChatAttachmentsFromApi, validateAttachmentPayload } from "@/lib/chat-attachments";
 
@@ -11,10 +11,11 @@ export async function GET(req: Request) {
   if (!isCloudSyncEnabledServer()) {
     return NextResponse.json({ ok: false, error: CLOUD_SERVER_UNAVAILABLE_MESSAGE }, { status: 503 });
   }
-  const claims = await readSessionFromCookies();
-  if (!claims) {
+  const cloudAuth = await getCloudUserFromSessionCookies();
+  if (!cloudAuth) {
     return NextResponse.json({ ok: false, error: "Sem sessão." }, { status: 401 });
   }
+  const { claims } = cloudAuth;
 
   const { searchParams } = new URL(req.url);
   const peerUserId = searchParams.get("peerUserId")?.trim() ?? "";
@@ -67,10 +68,11 @@ export async function POST(req: Request) {
   if (!isCloudSyncEnabledServer()) {
     return NextResponse.json({ ok: false, error: CLOUD_SERVER_UNAVAILABLE_MESSAGE }, { status: 503 });
   }
-  const claims = await readSessionFromCookies();
-  if (!claims) {
+  const cloudAuth = await getCloudUserFromSessionCookies();
+  if (!cloudAuth) {
     return NextResponse.json({ ok: false, error: "Sem sessão." }, { status: 401 });
   }
+  const { claims, user: sessionUser } = cloudAuth;
 
   try {
     const body = (await req.json()) as {
@@ -99,11 +101,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Utilizador não encontrado." }, { status: 404 });
     }
 
-    const me = await prisma.user.findUnique({
-      where: { id: claims.sub },
-      select: { name: true, email: true },
-    });
-    const authorName = me?.name?.trim() || me?.email || "User";
+    const authorName = sessionUser.name?.trim() || sessionUser.email || "User";
 
     const threadKey = dmThreadKey(claims.sub, peerUserId);
     const id = crypto.randomUUID();

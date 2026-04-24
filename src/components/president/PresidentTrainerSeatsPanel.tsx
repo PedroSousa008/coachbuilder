@@ -94,11 +94,18 @@ export function PresidentTrainerSeatsPanel({ onActiveSeatCount, onRosterChanged 
     }
   };
 
-  const changePassword = async (seatIndex: number) => {
+  const saveSeatCredentialChanges = async (seatIndex: number, currentEmail: string) => {
+    const raw = (rowEmail[seatIndex] ?? "").trim().toLowerCase();
     const password = rowPassword[seatIndex] ?? "";
     setBusy(seatIndex, null);
-    if (password.length < 8) {
-      setBusy(seatIndex, "Nova palavra-passe: mínimo 8 caracteres.");
+    const body: Record<string, string> = {};
+    if (raw && raw !== currentEmail.trim().toLowerCase()) body.email = raw;
+    if (password.length >= 8) body.password = password;
+    if (Object.keys(body).length === 0) {
+      setBusy(
+        seatIndex,
+        "Indica um novo email (diferente do actual) ou uma nova palavra-passe (mín. 8 caracteres)."
+      );
       return;
     }
     setBusy(seatIndex, "A actualizar…");
@@ -107,16 +114,19 @@ export function PresidentTrainerSeatsPanel({ onActiveSeatCount, onRosterChanged 
         method: "PATCH",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password }),
+        body: JSON.stringify(body),
       });
       const data = (await res.json()) as { ok?: boolean; error?: string };
       if (!res.ok || !data.ok) {
         setBusy(seatIndex, typeof data.error === "string" ? data.error : "Erro.");
         return;
       }
+      setRowEmail((prev) => ({ ...prev, [seatIndex]: "" }));
       setRowPassword((prev) => ({ ...prev, [seatIndex]: "" }));
-      setBusy(seatIndex, "Palavra-passe actualizada.");
-      setTimeout(() => setBusy(seatIndex, null), 2500);
+      setBusy(seatIndex, "Credenciais actualizadas. O treinador tem de voltar a iniciar sessão.");
+      setTimeout(() => setBusy(seatIndex, null), 3200);
+      await load();
+      onRosterChanged?.();
     } catch {
       setBusy(seatIndex, "Falha de rede.");
     }
@@ -167,7 +177,9 @@ export function PresidentTrainerSeatsPanel({ onActiveSeatCount, onRosterChanged 
           <CardTitle className="text-base text-white">Lugares de treinador</CardTitle>
           <p className="mt-1 text-sm text-zinc-500">
             Cria até {PRESIDENT_INCLUDED_COACH_SEATS} contas com email e palavra-passe. Cada treinador entra como CoachPro
-            enquanto a tua subscrição de presidente estiver activa e o lugar não for revogado.
+            enquanto a tua subscrição de presidente estiver activa e o lugar não for revogado. Se mudares o email ou a
+            palavra-passe de um lugar, a sessão desse treinador deixa de ser válida até voltar a entrar com as credenciais
+            correctas.
           </p>
         </div>
         <Button type="button" variant="secondary" size="sm" onClick={() => void load()} disabled={loading}>
@@ -212,6 +224,15 @@ export function PresidentTrainerSeatsPanel({ onActiveSeatCount, onRosterChanged 
                           onChange={(e) => setRowEmail((p) => ({ ...p, [idx]: e.target.value }))}
                           className="min-w-[180px]"
                         />
+                      ) : isActive ? (
+                        <Input
+                          type="email"
+                          autoComplete="off"
+                          placeholder={`Novo email (actual: ${(slot as SlotActive).email})`}
+                          value={rowEmail[idx] ?? ""}
+                          onChange={(e) => setRowEmail((p) => ({ ...p, [idx]: e.target.value }))}
+                          className="min-w-[180px]"
+                        />
                       ) : (
                         <span className="text-zinc-500">—</span>
                       )}
@@ -220,7 +241,7 @@ export function PresidentTrainerSeatsPanel({ onActiveSeatCount, onRosterChanged 
                       <Input
                         type="password"
                         autoComplete="new-password"
-                        placeholder={isEmpty ? "mín. 8 caracteres" : "nova palavra-passe"}
+                        placeholder={isEmpty ? "mín. 8 caracteres" : "nova palavra-passe (opcional)"}
                         value={rowPassword[idx] ?? ""}
                         onChange={(e) => setRowPassword((p) => ({ ...p, [idx]: e.target.value }))}
                         className="min-w-[140px]"
@@ -234,8 +255,14 @@ export function PresidentTrainerSeatsPanel({ onActiveSeatCount, onRosterChanged 
                           </Button>
                         ) : isActive ? (
                           <>
-                            <Button type="button" size="sm" variant="secondary" onClick={() => void changePassword(idx)} disabled={!!busy}>
-                              Nova palavra-passe
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="secondary"
+                              onClick={() => void saveSeatCredentialChanges(idx, (slot as SlotActive).email)}
+                              disabled={!!busy}
+                            >
+                              Guardar alterações
                             </Button>
                             <Button type="button" size="sm" variant="ghost" onClick={() => void revokeSeat(idx, "revoke-active")} disabled={!!busy}>
                               Revogar lugar

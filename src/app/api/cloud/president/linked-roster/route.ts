@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { isCloudSyncEnabledServer } from "@/lib/cloud-config";
-import { readSessionFromCookies } from "@/lib/cloud-session";
+import { getCloudUserFromSessionCookies } from "@/lib/cloud-session-user";
 import { emptyWorkspaceSnapshot, parseWorkspacePayload } from "@/lib/workspace-snapshot";
 import { mapWorkspaceToPresidentCoach, mapWorkspaceToPresidentPlayers } from "@/lib/president-linked-roster";
 import type { PresidentCoach, PresidentPlayer } from "@/types/president-club";
@@ -9,12 +9,9 @@ import type { PresidentCoach, PresidentPlayer } from "@/types/president-club";
 export const dynamic = "force-dynamic";
 
 async function requirePresidentUserId(): Promise<string | null> {
-  const claims = await readSessionFromCookies();
-  if (!claims) return null;
-  const user = await prisma.user.findUnique({ where: { id: claims.sub } });
-  if (!user || user.email !== claims.email) return null;
-  if (user.coachingRole !== "club-president") return null;
-  return user.id;
+  const session = await getCloudUserFromSessionCookies();
+  if (!session || session.user.coachingRole !== "club-president") return null;
+  return session.user.id;
 }
 
 export async function GET() {

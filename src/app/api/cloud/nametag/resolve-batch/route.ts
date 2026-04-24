@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { CLOUD_SERVER_UNAVAILABLE_MESSAGE, isCloudSyncEnabledServer } from "@/lib/cloud-config";
-import { readSessionFromCookies } from "@/lib/cloud-session";
+import { getCloudUserFromSessionCookies } from "@/lib/cloud-session-user";
 import { normalizeNametagInput } from "@/lib/user-nametag";
 
 export const dynamic = "force-dynamic";
@@ -16,8 +16,8 @@ export async function POST(req: Request) {
   if (!isCloudSyncEnabledServer()) {
     return NextResponse.json({ ok: false, error: CLOUD_SERVER_UNAVAILABLE_MESSAGE }, { status: 503 });
   }
-  const claims = await readSessionFromCookies();
-  if (!claims) {
+  const cloudAuth = await getCloudUserFromSessionCookies();
+  if (!cloudAuth) {
     return NextResponse.json({ ok: false, error: "Sessão necessária." }, { status: 401 });
   }
 

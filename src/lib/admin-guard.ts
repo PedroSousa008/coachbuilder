@@ -1,19 +1,16 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { readSessionFromCookies } from "@/lib/cloud-session";
+import { getCloudUserFromSessionCookies } from "@/lib/cloud-session-user";
 import { isOwnerAdminEmail } from "@/lib/admin-owner";
 
 export async function requireAdminSession(): Promise<
   { ok: true; userId: string } | { ok: false; response: NextResponse }
 > {
-  const claims = await readSessionFromCookies();
-  if (!claims) {
+  const session = await getCloudUserFromSessionCookies();
+  if (!session) {
     return { ok: false, response: NextResponse.json({ ok: false, error: "Não autorizado." }, { status: 401 }) };
   }
-  let user = await prisma.user.findUnique({ where: { id: claims.sub } });
-  if (!user || user.email !== claims.email) {
-    return { ok: false, response: NextResponse.json({ ok: false, error: "Não autorizado." }, { status: 401 }) };
-  }
+  let user = session.user;
   if (isOwnerAdminEmail(user.email) && user.role?.trim().toLowerCase() !== "admin") {
     user = await prisma.user.update({
       where: { id: user.id },

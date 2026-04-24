@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { isCloudSyncEnabledServer } from "@/lib/cloud-config";
-import { readSessionFromCookies } from "@/lib/cloud-session";
+import { getCloudUserFromSessionCookies } from "@/lib/cloud-session-user";
 import { hashPasswordNode } from "@/lib/password-node";
 import { PRESIDENT_INCLUDED_COACH_SEATS } from "@/lib/president-constants";
 
@@ -9,17 +9,21 @@ export const dynamic = "force-dynamic";
 
 type RouteCtx = { params: Promise<{ seatIndex: string }> };
 
+function normalizeEmail(email: string): string {
+  return email.trim().toLowerCase();
+}
+
+function isValidEmail(email: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizeEmail(email));
+}
+
 async function requirePresident() {
-  const claims = await readSessionFromCookies();
-  if (!claims) return { response: NextResponse.json({ ok: false, error: "Não autorizado." }, { status: 401 }) };
-  const user = await prisma.user.findUnique({ where: { id: claims.sub } });
-  if (!user || user.email !== claims.email) {
-    return { response: NextResponse.json({ ok: false, error: "Sessão inválida." }, { status: 401 }) };
-  }
-  if (user.coachingRole !== "club-president") {
+  const session = await getCloudUserFromSessionCookies();
+  if (!session) return { response: NextResponse.json({ ok: false, error: "Não autorizado." }, { status: 401 }) };
+  if (session.user.coachingRole !== "club-president") {
     return { response: NextResponse.json({ ok: false, error: "Apenas contas Presidente." }, { status: 403 }) };
   }
-  return { president: user };
+  return { president: session.user };
 }
 
 function parseSeat(raw: string): number | null {
@@ -28,7 +32,10 @@ function parseSeat(raw: string): number | null {
   return n;
 }
 
-/** Presidente define nova palavra-passe do treinador deste lugar (o treinador deixa de entrar com a antiga). */
+/**
+ * Presidente altera email e/ou palavra-passe do treinador deste lugar.
+ * Qualquer alteração invalida sessões JWT antigas — o treinador tem de voltar a entrar com as credenciais correctas.
+ */
 export async function PATCH(req: Request, ctx: RouteCtx) {
   if (!isCloudSyncEnabledServer()) {
     return NextResponse.json({ ok: false, error: "Cloud inativo." }, { status: 503 });
@@ -43,10 +50,8 @@ export async function PATCH(req: Request, ctx: RouteCtx) {
 
   try {
     const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
+    const emailRaw = typeof body.email === "string" ? body.email.trim() : "";
     const password = typeof body.password === "string" ? body.password : "";
-    if (password.length < 8) {
-      return NextResponse.json({ ok: false, error: "A palavra-passe deve ter pelo menos 8 caracteres." }, { status: 400 });
-    }
 
     const slotUser = await prisma.user.findFirst({
       where: { clubPresidentUserId: gate.president.id, trainerSeatIndex: seatIndex },
@@ -55,10 +60,50 @@ export async function PATCH(req: Request, ctx: RouteCtx) {
       return NextResponse.json({ ok: false, error: "Este lugar está vazio." }, { status: 404 });
     }
 
-    const { salt, hash } = hashPasswordNode(password);
+    const normEmail = emailRaw ? normalizeEmail(emailRaw) : "";
+    const emailChangeRequested = normEmail.length > 0 && normEmail !== normalizeEmail(slotUser.email);
+    const passwordChangeRequested = password.length > 0;
+
+    if (!emailChangeRequested && !passwordChangeRequested) {
+      return NextResponse.json(
+        { ok: false, error: "Indica um novo email (diferente do actual) ou uma nova palavra-passe (mín. 8 caracteres)." },
+        { status: 400 }
+      );
+    }
+
+    if (emailChangeRequested) {
+      if (!isValidEmail(normEmail)) {
+        return NextResponse.json({ ok: false, error: "Email inválido." }, { status: 400 });
+      }
+      if (normEmail === normalizeEmail(gate.president.email)) {
+        return NextResponse.json({ ok: false, error: "Não podes usar o teu próprio email de presidente." }, { status: 400 });
+      }
+      const taken = await prisma.user.findUnique({ where: { email: normEmail } });
+      if (taken && taken.id !== slotUser.id) {
+        return NextResponse.json({ ok: false, error: "Já existe uma conta com este email." }, { status: 409 });
+      }
+    }
+
+    if (passwordChangeRequested && password.length < 8) {
+      return NextResponse.json({ ok: false, error: "A palavra-passe deve ter pelo menos 8 caracteres." }, { status: 400 });
+    }
+
+    const now = new Date();
+    const displayName =
+      emailChangeRequested && normEmail
+        ? normEmail.split("@")[0]?.slice(0, 120) || slotUser.name
+        : slotUser.name;
+
+    const pwd =
+      passwordChangeRequested && password.length >= 8 ? hashPasswordNode(password) : null;
+
     await prisma.user.update({
       where: { id: slotUser.id },
-      data: { passwordHash: hash, salt },
+      data: {
+        ...(emailChangeRequested && normEmail ? { email: normEmail, name: displayName } : {}),
+        ...(pwd ? { passwordHash: pwd.hash, salt: pwd.salt } : {}),
+        sessionInvalidatedAt: now,
+      },
     });
 
     return NextResponse.json({ ok: true });
@@ -89,12 +134,14 @@ export async function DELETE(_req: Request, ctx: RouteCtx) {
       return NextResponse.json({ ok: false, error: "Este lugar está vazio." }, { status: 404 });
     }
 
+    const now = new Date();
     await prisma.user.update({
       where: { id: slotUser.id },
       data: {
         clubPresidentUserId: null,
         trainerSeatIndex: null,
         trainerSeatActive: true,
+        sessionInvalidatedAt: now,
       },
     });
 

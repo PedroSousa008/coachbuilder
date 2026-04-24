@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { isCloudSyncEnabledServer } from "@/lib/cloud-config";
-import { readSessionFromCookies } from "@/lib/cloud-session";
+import { getCloudUserFromSessionCookies } from "@/lib/cloud-session-user";
 import { prisma } from "@/lib/prisma";
 import { coachProStripePriceId, getAppBaseUrl } from "@/lib/stripe-env";
 import { getStripe } from "@/lib/stripe-server";
@@ -12,8 +12,8 @@ export async function POST() {
   if (!isCloudSyncEnabledServer()) {
     return NextResponse.json({ ok: false, error: "Cloud não configurada." }, { status: 503 });
   }
-  const claims = await readSessionFromCookies();
-  if (!claims) {
+  const cloudAuth = await getCloudUserFromSessionCookies();
+  if (!cloudAuth) {
     return NextResponse.json({ ok: false, error: "Inicia sessão para subscrever." }, { status: 401 });
   }
 
@@ -30,10 +30,7 @@ export async function POST() {
     );
   }
 
-  const u = await prisma.user.findUnique({ where: { id: claims.sub } });
-  if (!u) {
-    return NextResponse.json({ ok: false, error: "Utilizador não encontrado." }, { status: 404 });
-  }
+  const u = cloudAuth.user;
 
   if (u.customMonthlyPriceEur != null && new Prisma.Decimal(u.customMonthlyPriceEur).equals(0)) {
     return NextResponse.json(

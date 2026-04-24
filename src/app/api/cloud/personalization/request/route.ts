@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { isCloudSyncEnabledServer } from "@/lib/cloud-config";
-import { readSessionFromCookies } from "@/lib/cloud-session";
+import { getCloudUserFromSessionCookies } from "@/lib/cloud-session-user";
 import type { FullPersonalizationRequestPublic } from "@/types/personalization";
 import { resolveSubscriptionAccessForCloudUser } from "@/lib/president-trainer-seat-subscription";
 
@@ -34,11 +34,8 @@ function toPublic(row: {
 }
 
 async function authenticatedUser() {
-  const claims = await readSessionFromCookies();
-  if (!claims) return null;
-  const user = await prisma.user.findUnique({ where: { id: claims.sub } });
-  if (!user || user.email !== claims.email) return null;
-  return user;
+  const session = await getCloudUserFromSessionCookies();
+  return session?.user ?? null;
 }
 
 export async function GET() {

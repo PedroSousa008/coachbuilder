@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { CLOUD_SERVER_UNAVAILABLE_MESSAGE, isCloudSyncEnabledServer } from "@/lib/cloud-config";
-import { readSessionFromCookies } from "@/lib/cloud-session";
+import { getCloudUserFromSessionCookies } from "@/lib/cloud-session-user";
 import { peerUserIdFromThreadKey } from "@/lib/dm-conversation-id";
 import { messagePreviewLine, parseChatAttachmentsFromApi } from "@/lib/chat-attachments";
 
@@ -11,10 +11,11 @@ export async function GET() {
   if (!isCloudSyncEnabledServer()) {
     return NextResponse.json({ ok: false, error: CLOUD_SERVER_UNAVAILABLE_MESSAGE }, { status: 503 });
   }
-  const claims = await readSessionFromCookies();
-  if (!claims) {
+  const cloudAuth = await getCloudUserFromSessionCookies();
+  if (!cloudAuth) {
     return NextResponse.json({ ok: false, error: "Sem sessão." }, { status: 401 });
   }
+  const { claims } = cloudAuth;
 
   try {
     const rows = await prisma.dmChatMessage.findMany({

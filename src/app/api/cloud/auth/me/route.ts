@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { isCloudSyncEnabledServer } from "@/lib/cloud-config";
-import { readSessionFromCookies } from "@/lib/cloud-session";
+import { getCloudUserFromSessionCookies } from "@/lib/cloud-session-user";
 import { isOwnerAdminEmail, parseAdminOwnerEmailsFromEnv } from "@/lib/admin-owner";
 import { toCloudUserPublic } from "@/lib/cloud-user-public";
 import { resolveSubscriptionAccessForCloudUser } from "@/lib/president-trainer-seat-subscription";
@@ -15,14 +15,11 @@ export async function GET() {
     return NextResponse.json({ ok: false, cloud: false }, { status: 503 });
   }
   try {
-    const claims = await readSessionFromCookies();
-    if (!claims) {
+    const session = await getCloudUserFromSessionCookies();
+    if (!session) {
       return NextResponse.json({ ok: false, error: "Sem sessão." }, { status: 401 });
     }
-    let user = await prisma.user.findUnique({ where: { id: claims.sub } });
-    if (!user || user.email !== claims.email) {
-      return NextResponse.json({ ok: false, error: "Sessão inválida." }, { status: 401 });
-    }
+    let user = session.user;
     const listed = isOwnerAdminEmail(user.email);
     const roleLower = user.role?.trim().toLowerCase() ?? "user";
     if (listed && roleLower !== "admin") {

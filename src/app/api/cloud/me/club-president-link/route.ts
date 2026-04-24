@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { isCloudSyncEnabledServer } from "@/lib/cloud-config";
-import { readSessionFromCookies } from "@/lib/cloud-session";
+import { getCloudUserFromSessionCookies } from "@/lib/cloud-session-user";
 
 export const dynamic = "force-dynamic";
 
@@ -10,11 +10,8 @@ function normalizeEmail(raw: unknown): string {
 }
 
 async function sessionUser() {
-  const claims = await readSessionFromCookies();
-  if (!claims) return null;
-  const user = await prisma.user.findUnique({ where: { id: claims.sub } });
-  if (!user || user.email !== claims.email) return null;
-  return user;
+  const s = await getCloudUserFromSessionCookies();
+  return s?.user ?? null;
 }
 
 /** Estado da ligação treinador → presidente (conta actual). */

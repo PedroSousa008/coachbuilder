@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { isCloudSyncEnabledServer } from "@/lib/cloud-config";
-import { readSessionFromCookies } from "@/lib/cloud-session";
+import { getCloudUserFromSessionCookies } from "@/lib/cloud-session-user";
 import { recordUserHeartbeatSafe } from "@/lib/server-analytics";
 
 export const dynamic = "force-dynamic";
@@ -22,14 +22,11 @@ export async function POST(req: Request) {
       pathname = undefined;
     }
 
-    const claims = await readSessionFromCookies();
-    if (!claims) {
+    const session = await getCloudUserFromSessionCookies();
+    if (!session) {
       return NextResponse.json({ ok: false, error: "Sem sessão." }, { status: 401 });
     }
-    const user = await prisma.user.findUnique({ where: { id: claims.sub } });
-    if (!user || user.email !== claims.email) {
-      return NextResponse.json({ ok: false, error: "Sessão inválida." }, { status: 401 });
-    }
+    const { user } = session;
     await recordUserHeartbeatSafe(user.id, typeof pathname === "string" ? pathname : undefined);
     return NextResponse.json({ ok: true });
   } catch (e) {
