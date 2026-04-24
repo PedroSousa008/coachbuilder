@@ -44,12 +44,16 @@ export async function activateFromCheckoutSession(session: Stripe.Checkout.Sessi
 
 async function applyActiveSubscription(userId: string, customerId: string, sub: Stripe.Subscription) {
   const renewsAt = new Date(sub.current_period_end * 1000);
+  const kind = typeof sub.metadata?.planKind === "string" ? sub.metadata.planKind : null;
+  const me = await prisma.user.findUnique({ where: { id: userId }, select: { coachingRole: true } });
+  const byRole = me?.coachingRole === "club-president" ? "president_pro_monthly" : "pro_monthly";
+  const plan = kind === "president_pro_monthly" ? "president_pro_monthly" : byRole;
   await prisma.user.update({
     where: { id: userId },
     data: {
       stripeCustomerId: customerId,
       stripeSubscriptionId: sub.id,
-      subscriptionPlan: "pro_monthly",
+      subscriptionPlan: plan,
       subscriptionRenewsAt: renewsAt,
       proTrialEndsAt: null,
       paymentGraceEndsAt: null,
@@ -66,12 +70,15 @@ export async function syncFromStripeSubscription(sub: Stripe.Subscription) {
   const cust = customerId(sub.customer);
 
   if (sub.status === "active" || sub.status === "trialing") {
+    const kind = typeof sub.metadata?.planKind === "string" ? sub.metadata.planKind : null;
+    const byRole = user.coachingRole === "club-president" ? "president_pro_monthly" : "pro_monthly";
+    const plan = kind === "president_pro_monthly" ? "president_pro_monthly" : byRole;
     await prisma.user.update({
       where: { id: user.id },
       data: {
         stripeCustomerId: cust ?? user.stripeCustomerId,
         stripeSubscriptionId: sub.id,
-        subscriptionPlan: "pro_monthly",
+        subscriptionPlan: plan,
         subscriptionRenewsAt: renewsAt,
         paymentGraceEndsAt: null,
         lastPaymentFailedAt: null,
@@ -141,6 +148,9 @@ export async function applyInvoicePaid(invoice: Stripe.Invoice, stripe: Stripe) 
 
   const sub = await stripe.subscriptions.retrieve(subId);
   if (sub.status !== "active" && sub.status !== "trialing") return;
+  const kind = typeof sub.metadata?.planKind === "string" ? sub.metadata.planKind : null;
+  const byRole = user.coachingRole === "club-president" ? "president_pro_monthly" : "pro_monthly";
+  const plan = kind === "president_pro_monthly" ? "president_pro_monthly" : byRole;
 
   await prisma.user.update({
     where: { id: user.id },
@@ -148,7 +158,7 @@ export async function applyInvoicePaid(invoice: Stripe.Invoice, stripe: Stripe) 
       stripeCustomerId:
         typeof sub.customer === "string" ? sub.customer : sub.customer.id,
       stripeSubscriptionId: sub.id,
-      subscriptionPlan: "pro_monthly",
+      subscriptionPlan: plan,
       subscriptionRenewsAt: new Date(sub.current_period_end * 1000),
       paymentGraceEndsAt: null,
       lastPaymentFailedAt: null,

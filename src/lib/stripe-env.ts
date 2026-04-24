@@ -14,6 +14,13 @@ export function coachProStripePriceId(): string | null {
   return a || b || null;
 }
 
+/** Price ID mensal PresidentPro (`price_...`). */
+export function presidentProStripePriceId(): string | null {
+  const a = process.env.STRIPE_PRICE_ID_PRESIDENT_PRO?.trim();
+  const b = process.env.STRIPE_PRESIDENT_PRO_PRICE_ID?.trim();
+  return a || b || null;
+}
+
 /** Price ID de compra única de 1 lugar extra de treinador (`price_...`). */
 export function presidentExtraSeatStripePriceId(): string | null {
   const a = process.env.STRIPE_PRICE_ID_PRESIDENT_EXTRA_SEAT?.trim();

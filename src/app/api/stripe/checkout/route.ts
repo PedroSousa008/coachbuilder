@@ -3,7 +3,7 @@ import { Prisma } from "@prisma/client";
 import { isCloudSyncEnabledServer } from "@/lib/cloud-config";
 import { getCloudUserFromSessionCookies } from "@/lib/cloud-session-user";
 import { prisma } from "@/lib/prisma";
-import { coachProStripePriceId, getAppBaseUrl } from "@/lib/stripe-env";
+import { coachProStripePriceId, getAppBaseUrl, presidentProStripePriceId } from "@/lib/stripe-env";
 import { getStripe } from "@/lib/stripe-server";
 
 export const runtime = "nodejs";
@@ -18,13 +18,16 @@ export async function POST() {
   }
 
   const stripe = getStripe();
-  const priceId = coachProStripePriceId();
+  const isPresident = cloudAuth.user.coachingRole === "club-president";
+  const priceId = isPresident ? presidentProStripePriceId() : coachProStripePriceId();
   if (!stripe || !priceId) {
     return NextResponse.json(
       {
         ok: false,
         error:
-          "Stripe não configurado no servidor. Define STRIPE_SECRET_KEY e STRIPE_PRICE_ID_COACH_PRO (o price_… do Stripe) na Vercel e faz redeploy.",
+          isPresident
+            ? "Stripe não configurado para PresidentPro. Define STRIPE_SECRET_KEY e STRIPE_PRICE_ID_PRESIDENT_PRO."
+            : "Stripe não configurado para CoachPro. Define STRIPE_SECRET_KEY e STRIPE_PRICE_ID_COACH_PRO.",
       },
       { status: 501 }
     );
@@ -71,7 +74,7 @@ export async function POST() {
     line_items: [{ price: priceId, quantity: 1 }],
     metadata: { userId: u.id },
     subscription_data: {
-      metadata: { userId: u.id },
+      metadata: { userId: u.id, planKind: isPresident ? "president_pro_monthly" : "pro_monthly" },
     },
     success_url: `${base}/app/settings?subscription=success`,
     cancel_url: `${base}/app/settings?subscription=cancelled`,

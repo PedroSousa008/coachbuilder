@@ -162,6 +162,7 @@ const REFRESH_PERSONALIZATION_MS = 45_000;
 
 function planLabel(plan: string): string {
   if (plan === "pro_monthly") return "Pro mensal";
+  if (plan === "president_pro_monthly") return "PresidentPro mensal";
   if (plan === "pro_trial") return "Pro trial";
   if (plan === "grace") return "Pagamento em falta";
   if (plan === "free") return "Grátis";
@@ -195,7 +196,8 @@ function parseMaybeNumber(v: unknown): number | null {
   return null;
 }
 
-function currentPriceInfo(u: ListedUser, proPriceEur: number): { amount: number; reason: string } {
+function currentPriceInfo(u: ListedUser, coachPriceEur: number): { amount: number; reason: string } {
+  const presidentPriceEur = 59.99;
   if (u.role === "admin") return { amount: 0, reason: "Conta Admin" };
   if (u.clubPresidentUserId && u.trainerSeatActive !== false) {
     return { amount: 0, reason: "Grátis por lugar associado a conta Presidente" };
@@ -204,8 +206,16 @@ function currentPriceInfo(u: ListedUser, proPriceEur: number): { amount: number;
   if (custom != null) return { amount: Math.max(0, custom), reason: "Preço personalizado (Admin)" };
   if (u.subscriptionPlan === "free") return { amount: 0, reason: "Plano grátis (Admin)" };
   if (u.subscriptionPlan === "pro_trial") return { amount: 0, reason: "Pro Trial ativo" };
-  if (u.subscriptionPlan === "grace") return { amount: proPriceEur, reason: "Em falta (período de graça)" };
-  if (u.subscriptionPlan === "pro_monthly") return { amount: proPriceEur, reason: "Preço normal da subscrição Pro" };
+  if (u.subscriptionPlan === "grace") {
+    return {
+      amount: u.coachingRole === "club-president" ? presidentPriceEur : coachPriceEur,
+      reason: "Em falta (período de graça)",
+    };
+  }
+  if (u.subscriptionPlan === "president_pro_monthly") {
+    return { amount: presidentPriceEur, reason: "Preço normal da subscrição PresidentPro" };
+  }
+  if (u.subscriptionPlan === "pro_monthly") return { amount: coachPriceEur, reason: "Preço normal da subscrição CoachPro" };
   return { amount: 0, reason: "Sem cobrança ativa" };
 }
 
@@ -800,7 +810,8 @@ function OverviewTabContent({
                       >
                         <option value="free">Grátis</option>
                         <option value="pro_trial">Pro trial</option>
-                        <option value="pro_monthly">Pro mensal</option>
+                        <option value="pro_monthly">CoachPro mensal</option>
+                        <option value="president_pro_monthly">PresidentPro mensal</option>
                         <option value="grace">Pagamento em falta</option>
                       </select>
                     )}
@@ -811,7 +822,12 @@ function OverviewTabContent({
                     ) : (
                       (() => {
                         const now = currentPriceInfo(u, stats.proPriceEur);
-                        const normalPrice = u.subscriptionPlan === "pro_monthly" || u.subscriptionPlan === "grace" ? stats.proPriceEur : 0;
+                        const normalPrice =
+                          u.subscriptionPlan === "president_pro_monthly"
+                            ? 59.99
+                            : u.subscriptionPlan === "pro_monthly" || u.subscriptionPlan === "grace"
+                              ? stats.proPriceEur
+                              : 0;
                         const draftValue = priceDraft[u.id] ?? "";
                         return (
                           <div className="space-y-1">
@@ -1060,7 +1076,8 @@ function RevenueTabContent({
                           className="max-w-[140px] rounded-lg border border-surface-border bg-[#0c1014] px-2 py-1 text-xs text-zinc-200"
                         >
                           <option value="free">Grátis</option>
-                          <option value="pro_monthly">Pro mensal</option>
+                          <option value="pro_monthly">CoachPro mensal</option>
+                          <option value="president_pro_monthly">PresidentPro mensal</option>
                         </select>
                       </td>
                       <td className="px-3 py-3 text-xs text-zinc-500">

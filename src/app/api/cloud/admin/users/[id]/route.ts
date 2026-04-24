@@ -6,7 +6,7 @@ import { requireAdminSession } from "@/lib/admin-guard";
 
 export const dynamic = "force-dynamic";
 
-const PLANS = new Set(["free", "pro_trial", "pro_monthly", "grace"]);
+const PLANS = new Set(["free", "pro_trial", "pro_monthly", "president_pro_monthly", "grace"]);
 
 function parseOptionalDate(v: unknown): Date | null | undefined {
   if (v === undefined) return undefined;
@@ -44,7 +44,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
       const plan = body.subscriptionPlan.trim();
       if (!PLANS.has(plan)) {
         return NextResponse.json(
-          { ok: false, error: "Plano inválido (free, pro_trial, pro_monthly, grace)." },
+          { ok: false, error: "Plano inválido (free, pro_trial, pro_monthly, president_pro_monthly, grace)." },
           { status: 400 }
         );
       }

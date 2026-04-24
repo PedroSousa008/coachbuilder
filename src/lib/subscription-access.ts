@@ -1,10 +1,11 @@
-import { coachProDefaultPriceEur } from "@/lib/subscription-env";
+import { coachProDefaultPriceEur, presidentProDefaultPriceEur } from "@/lib/subscription-env";
 import type { SubscriptionAccessPayload } from "@/types/subscription";
 
 export type { SubscriptionAccessPayload, SubscriptionEffectiveMode } from "@/types/subscription";
 
 export type UserSubscriptionFields = {
   role: string | null | undefined;
+  coachingRole?: string | null | undefined;
   subscriptionPlan: string;
   subscriptionRenewsAt: Date | null;
   proTrialEndsAt: Date | null;
@@ -27,7 +28,9 @@ function toNumberPrice(v: UserSubscriptionFields["customMonthlyPriceEur"]): numb
 }
 
 export function computeSubscriptionAccess(u: UserSubscriptionFields): SubscriptionAccessPayload {
-  const defaultPriceEur = coachProDefaultPriceEur();
+  const isPresidentRole = (u.coachingRole ?? "").trim().toLowerCase() === "club-president";
+  const isPresidentPlan = u.subscriptionPlan.trim() === "president_pro_monthly" || isPresidentRole;
+  const defaultPriceEur = isPresidentPlan ? presidentProDefaultPriceEur() : coachProDefaultPriceEur();
   const custom = toNumberPrice(u.customMonthlyPriceEur);
   const adminMonthlyPriceEur = custom;
   const displayPriceEur = custom != null ? custom : defaultPriceEur;
@@ -79,10 +82,10 @@ export function computeSubscriptionAccess(u: UserSubscriptionFields): Subscripti
     };
   }
 
-  if (plan === "pro_monthly") {
+  if (plan === "pro_monthly" || plan === "president_pro_monthly") {
     return {
       hasProAccess: true,
-      effectiveMode: "pro_monthly",
+      effectiveMode: plan === "president_pro_monthly" ? "president_pro_monthly" : "pro_monthly",
       trialEndsAt: u.proTrialEndsAt?.toISOString() ?? null,
       graceEndsAt: u.paymentGraceEndsAt?.toISOString() ?? null,
       renewsAt: u.subscriptionRenewsAt?.toISOString() ?? null,

@@ -48,7 +48,7 @@ export function toCloudUserPublic(u: {
   };
 }
 
-const EFFECTIVE_MODES = new Set(["admin", "pro_trial", "pro_monthly", "grace", "free"]);
+const EFFECTIVE_MODES = new Set(["admin", "pro_trial", "pro_monthly", "president_pro_monthly", "grace", "free"]);
 
 function parseSubscriptionAccessPayload(raw: unknown): SubscriptionAccessPayload | undefined {
   if (!raw || typeof raw !== "object") return undefined;
@@ -105,10 +105,10 @@ function legacySubscriptionAccess(plan: string, role: string): SubscriptionAcces
       isComped: false,
     };
   }
-  const hasProAccess = plan === "pro_monthly";
+  const hasProAccess = plan === "pro_monthly" || plan === "president_pro_monthly";
   return {
     hasProAccess,
-    effectiveMode: hasProAccess ? "pro_monthly" : "free",
+    effectiveMode: plan === "president_pro_monthly" ? "president_pro_monthly" : hasProAccess ? "pro_monthly" : "free",
     trialEndsAt: null,
     graceEndsAt: null,
     renewsAt: null,

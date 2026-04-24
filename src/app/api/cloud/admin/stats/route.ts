@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { CLOUD_SERVER_UNAVAILABLE_MESSAGE, isCloudSyncEnabledServer } from "@/lib/cloud-config";
 import { requireAdminSession } from "@/lib/admin-guard";
-import { coachProDefaultPriceEur } from "@/lib/subscription-env";
+import { coachProDefaultPriceEur, presidentProDefaultPriceEur } from "@/lib/subscription-env";
 
 export const dynamic = "force-dynamic";
 
@@ -60,6 +60,9 @@ export async function GET() {
     const proMonthlyUsersAll = await prisma.user.count({
       where: { subscriptionPlan: "pro_monthly", role: { not: "admin" } },
     });
+    const presidentProUsersAll = await prisma.user.count({
+      where: { subscriptionPlan: "president_pro_monthly", role: { not: "admin" } },
+    });
 
     const activeTrialsCount = await prisma.user.count({
       where: {
@@ -81,7 +84,7 @@ export async function GET() {
     const coachesWithActivePro = await prisma.user.count({
       where: {
         role: { not: "admin" },
-        subscriptionPlan: "pro_monthly",
+        subscriptionPlan: { in: ["pro_monthly", "president_pro_monthly"] },
         OR: [{ subscriptionRenewsAt: null }, { subscriptionRenewsAt: { gte: nowDate } }],
       },
     });
@@ -107,8 +110,23 @@ export async function GET() {
       where: { type: { in: ["signup", "cloud_migrate"] } },
     });
 
-    const proPriceEur = coachProDefaultPriceEur();
-    const estimatedMonthlyRevenueEur = Math.round(coachesWithActivePro * proPriceEur * 100) / 100;
+    const coachProPriceEur = coachProDefaultPriceEur();
+    const presidentProPriceEur = presidentProDefaultPriceEur();
+    const activeCoachPro = await prisma.user.count({
+      where: {
+        role: { not: "admin" },
+        subscriptionPlan: "pro_monthly",
+        OR: [{ subscriptionRenewsAt: null }, { subscriptionRenewsAt: { gte: nowDate } }],
+      },
+    });
+    const activePresidentPro = await prisma.user.count({
+      where: {
+        role: { not: "admin" },
+        subscriptionPlan: "president_pro_monthly",
+        OR: [{ subscriptionRenewsAt: null }, { subscriptionRenewsAt: { gte: nowDate } }],
+      },
+    });
+    const estimatedMonthlyRevenueEur = Math.round((activeCoachPro * coachProPriceEur + activePresidentPro * presidentProPriceEur) * 100) / 100;
 
     const generatedAt = nowDate.toISOString();
 
@@ -126,10 +144,10 @@ export async function GET() {
         totalCoachesRegistered: totalNonAdminUsers,
         adminUsers,
         coachesWithActivePro,
-        proMonthlyUsersAll,
+        proMonthlyUsersAll: proMonthlyUsersAll + presidentProUsersAll,
         freePlanUsers,
         estimatedMonthlyRevenueEur,
-        proPriceEur,
+        proPriceEur: coachProPriceEur,
         /** Sem modelo de cancelamento na BD até integrares billing. */
         cancellationsRecentCount: 0,
         cancellationsTracked: false,

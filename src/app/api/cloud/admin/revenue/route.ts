@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { CLOUD_SERVER_UNAVAILABLE_MESSAGE, isCloudSyncEnabledServer } from "@/lib/cloud-config";
 import { requireAdminSession } from "@/lib/admin-guard";
-import { coachProDefaultPriceEur } from "@/lib/subscription-env";
+import { coachProDefaultPriceEur, presidentProDefaultPriceEur } from "@/lib/subscription-env";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +17,7 @@ function subscriberStatus(
   if (plan === "free") return "gratuito";
   if (plan === "grace" && graceEnds && graceEnds > now) return "em_atraso";
   if (plan === "pro_trial") return "ativo";
-  if (plan !== "pro_monthly") return "gratuito";
+  if (plan !== "pro_monthly" && plan !== "president_pro_monthly") return "gratuito";
   if (!renews) return "ativo";
   return renews >= now ? "ativo" : "em_atraso";
 }
@@ -33,12 +33,27 @@ export async function GET() {
     const nowMs = Date.now();
     const nowDate = new Date(nowMs);
 
-    const proPriceEur = coachProDefaultPriceEur();
+    const coachPriceEur = coachProDefaultPriceEur();
+    const presidentPriceEur = presidentProDefaultPriceEur();
 
     const coachesWithActivePro = await prisma.user.count({
       where: {
         role: { not: "admin" },
+        subscriptionPlan: { in: ["pro_monthly", "president_pro_monthly"] },
+        OR: [{ subscriptionRenewsAt: null }, { subscriptionRenewsAt: { gte: nowDate } }],
+      },
+    });
+    const activeCoachPro = await prisma.user.count({
+      where: {
+        role: { not: "admin" },
         subscriptionPlan: "pro_monthly",
+        OR: [{ subscriptionRenewsAt: null }, { subscriptionRenewsAt: { gte: nowDate } }],
+      },
+    });
+    const activePresidentPro = await prisma.user.count({
+      where: {
+        role: { not: "admin" },
+        subscriptionPlan: "president_pro_monthly",
         OR: [{ subscriptionRenewsAt: null }, { subscriptionRenewsAt: { gte: nowDate } }],
       },
     });
@@ -47,7 +62,7 @@ export async function GET() {
       where: { subscriptionPlan: "free", role: { not: "admin" } },
     });
 
-    const mrrEur = Math.round(coachesWithActivePro * proPriceEur * 100) / 100;
+    const mrrEur = Math.round((activeCoachPro * coachPriceEur + activePresidentPro * presidentPriceEur) * 100) / 100;
 
     const conversionDenom = coachesWithActivePro + freePlanUsers;
     const freeToPaidConversionPct =
@@ -103,7 +118,7 @@ export async function GET() {
       paymentsIntegrated: false,
       overview: {
         mrrEur,
-        proPriceEur,
+        proPriceEur: coachPriceEur,
         revenueTodayEur: null as number | null,
         revenueWeekEur: null as number | null,
         revenueMonthEur: null as number | null,

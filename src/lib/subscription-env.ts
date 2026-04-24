@@ -7,3 +7,13 @@ export function coachProDefaultPriceEur(): number {
   const n = Number.parseFloat(raw);
   return Number.isFinite(n) && n >= 0 ? Math.round(n * 100) / 100 : 6.99;
 }
+
+/** Preço público PresidentPro (€/mês). */
+export function presidentProDefaultPriceEur(): number {
+  const raw =
+    (typeof process.env.PRESIDENT_PRO_MONTHLY_PRICE_EUR === "string" &&
+      process.env.PRESIDENT_PRO_MONTHLY_PRICE_EUR.trim()) ||
+    "59.99";
+  const n = Number.parseFloat(raw);
+  return Number.isFinite(n) && n >= 0 ? Math.round(n * 100) / 100 : 59.99;
+}

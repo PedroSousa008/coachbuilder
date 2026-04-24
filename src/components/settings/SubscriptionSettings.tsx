@@ -32,6 +32,8 @@ export function SubscriptionSettings() {
   const full = hasFullWorkspaceAccess(user, ownerListed);
   const access = user?.subscriptionAccess;
   const mode = access?.effectiveMode ?? "free";
+  const isPresident = user?.coachingRole === "club-president";
+  const productName = isPresident ? "PresidentPro" : "Coach Pro";
   const proActive = full && mode !== "free";
 
   useEffect(() => {
@@ -104,16 +106,16 @@ export function SubscriptionSettings() {
       {locked && !full ? (
         <div className="rounded-xl border border-amber-500/35 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
           O teu plano Free inclui apenas o chat de equipa e mensagens diretas. Os teus dados (táticas, treinos, etc.)
-          continuam guardados — subscreve o Coach Pro para voltares a aceder.
+          continuam guardados — subscreve o {productName} para voltares a aceder.
         </div>
       ) : null}
 
       <div>
         <h2 className="font-display text-lg font-semibold text-white">Subscrição</h2>
         <p className="text-sm text-zinc-500">
-          Novas contas têm <strong className="text-zinc-300">7 dias de Coach Pro grátis</strong>. O preço público de
-          referência do Coach Pro é{" "}
-          <strong className="text-zinc-300">{(access?.defaultPriceEur ?? 6.99).toFixed(2)} €/mês</strong>
+          Novas contas têm <strong className="text-zinc-300">7 dias de {productName} grátis</strong>. O preço público de
+          referência do {productName} é{" "}
+          <strong className="text-zinc-300">{(access?.defaultPriceEur ?? (isPresident ? 59.99 : 6.99)).toFixed(2)} €/mês</strong>
           {access?.adminMonthlyPriceEur != null ? (
             <>
               . <strong className="text-zinc-300">Para a tua conta</strong>, o valor definido é{" "}
@@ -122,7 +124,7 @@ export function SubscriptionSettings() {
           ) : (
             <>
               . Depois do trial,{" "}
-              <strong className="text-zinc-300">{(access?.defaultPriceEur ?? 6.99).toFixed(2)} €/mês</strong> com
+              <strong className="text-zinc-300">{(access?.defaultPriceEur ?? (isPresident ? 59.99 : 6.99)).toFixed(2)} €/mês</strong> com
               renovação automática (quando o Stripe estiver ligado).
             </>
           )}{" "}
@@ -143,10 +145,10 @@ export function SubscriptionSettings() {
                   ? "Pro — pagamento em falta (período de graça)"
                   : access?.hasProAccess
                     ? access.isComped && user?.subscriptionPlan === "free"
-                      ? "Coach Pro (via conta do clube)"
-                      : "Coach Pro"
-                    : mode === "pro_monthly"
-                      ? "Coach Pro"
+                      ? `${productName} (via conta do clube)`
+                      : productName
+                    : mode === "pro_monthly" || mode === "president_pro_monthly"
+                      ? productName
                       : "Free"}
           </span>
         </p>
@@ -161,7 +163,7 @@ export function SubscriptionSettings() {
           </p>
         ) : null}
         {access?.isComped && mode !== "free" ? (
-          <p className="mt-1 text-xs text-emerald-200/90">Coach Pro sem preço mensal para esta conta (0 €/mês).</p>
+          <p className="mt-1 text-xs text-emerald-200/90">{productName} sem preço mensal para esta conta (0 €/mês).</p>
         ) : null}
       </div>
 
@@ -186,7 +188,7 @@ export function SubscriptionSettings() {
         <Card className="border-accent/30 bg-accent/5">
           <CardHeader>
             <CardTitle className="flex flex-wrap items-center gap-2">
-              Coach Pro
+              {productName}
               <span className="rounded-md bg-accent px-2 py-0.5 text-xs font-semibold text-zinc-950">
                 {access?.displayPriceEur != null ? `${access.displayPriceEur.toFixed(2)} €/mês` : "6,99 €/mês"}
               </span>
@@ -209,11 +211,11 @@ export function SubscriptionSettings() {
               ))}
             </ul>
             {full && mode !== "free" ? (
-              <p className="text-xs text-zinc-500">Tens acesso Coach Pro activo.</p>
+              <p className="text-xs text-zinc-500">Tens acesso {productName} activo.</p>
             ) : (
               <div className="space-y-2">
                 <Button type="button" className="w-full" onClick={() => void startCheckout()}>
-                  Subscrever Coach Pro
+                  Subscrever {productName}
                 </Button>
                 <p className="text-[11px] text-zinc-600">
                   Ao subscrever, aceitas cobrança mensal recorrente no cartão (Stripe). Integração em curso no servidor.

@@ -1,4 +1,10 @@
-export type SubscriptionEffectiveMode = "admin" | "pro_trial" | "pro_monthly" | "grace" | "free";
+export type SubscriptionEffectiveMode =
+  | "admin"
+  | "pro_trial"
+  | "pro_monthly"
+  | "president_pro_monthly"
+  | "grace"
+  | "free";
 
 /** Estado de subscrição exposto pela API (`/me`, login, registo). */
 export type SubscriptionAccessPayload = {
