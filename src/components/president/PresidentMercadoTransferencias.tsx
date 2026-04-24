@@ -254,7 +254,11 @@ export function PresidentMercadoTransferencias() {
         <StatCard
           label="Perto da tua região"
           value={myRegionToken ? kpis.near : "—"}
-          hint={myRegionToken ? `Coincidência com «${coachProfile.location.trim().split(",")[0]}»` : "Define região no teu perfil"}
+          hint={
+            myRegionToken
+              ? `Coincidência com «${(coachProfile.location ?? "").trim().split(",")[0]?.trim() || "região"}»`
+              : "Define região no teu perfil"
+          }
           icon={MapPin}
         />
         <StatCard
