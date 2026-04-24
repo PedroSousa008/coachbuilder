@@ -48,12 +48,8 @@ function EquipaCard({
 }) {
   const formStr = brief?.formLast5?.length ? brief.formLast5.join(" · ") : "—";
   return (
-    <Card
-      className="border-surface-border bg-surface-raised/25"
-      data-slot-id={slotId}
-      onDragOver={dragProps.onDragOver}
-      onDrop={dragProps.onDrop}
-    >
+    <div data-slot-id={slotId} onDragOver={dragProps.onDragOver} onDrop={dragProps.onDrop}>
+      <Card className="border-surface-border bg-surface-raised/25">
       <CardHeader className="flex flex-row flex-wrap items-start gap-3 border-b border-surface-border/60 pb-4">
         <button
           type="button"
@@ -189,7 +185,8 @@ function EquipaCard({
           </div>
         </div>
       </CardContent>
-    </Card>
+      </Card>
+    </div>
   );
 }
 
