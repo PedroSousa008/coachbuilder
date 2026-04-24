@@ -179,6 +179,36 @@ function userFunctionLabel(u: ListedUser): string {
   return coachingRoleLabelPt(u.coachingRole);
 }
 
+function parseMaybeNumber(v: unknown): number | null {
+  if (typeof v === "number" && Number.isFinite(v)) return v;
+  if (typeof v === "string" && v.trim()) {
+    const n = Number.parseFloat(v.replace(",", "."));
+    if (Number.isFinite(n)) return n;
+  }
+  if (typeof v === "object" && v !== null && "toString" in v) {
+    const s = String(v);
+    if (s.trim()) {
+      const n = Number.parseFloat(s.replace(",", "."));
+      if (Number.isFinite(n)) return n;
+    }
+  }
+  return null;
+}
+
+function currentPriceInfo(u: ListedUser, proPriceEur: number): { amount: number; reason: string } {
+  if (u.role === "admin") return { amount: 0, reason: "Conta Admin" };
+  if (u.clubPresidentUserId && u.trainerSeatActive !== false) {
+    return { amount: 0, reason: "Grátis por lugar associado a conta Presidente" };
+  }
+  const custom = parseMaybeNumber(u.customMonthlyPriceEur);
+  if (custom != null) return { amount: Math.max(0, custom), reason: "Preço personalizado (Admin)" };
+  if (u.subscriptionPlan === "free") return { amount: 0, reason: "Plano grátis (Admin)" };
+  if (u.subscriptionPlan === "pro_trial") return { amount: 0, reason: "Pro Trial ativo" };
+  if (u.subscriptionPlan === "grace") return { amount: proPriceEur, reason: "Em falta (período de graça)" };
+  if (u.subscriptionPlan === "pro_monthly") return { amount: proPriceEur, reason: "Preço normal da subscrição Pro" };
+  return { amount: 0, reason: "Sem cobrança ativa" };
+}
+
 /** Rótulo legível para a zona da app (path reportado pelo heartbeat). */
 function labelForAppPath(path: string | null | undefined): string {
   if (!path?.trim()) return "— (abre a app para atualizar)";
@@ -779,19 +809,42 @@ function OverviewTabContent({
                     {u.role === "admin" ? (
                       <span className="text-zinc-500">—</span>
                     ) : (
-                      <div className="flex flex-wrap items-center gap-1">
-                        <input
-                          type="text"
-                          inputMode="decimal"
-                          placeholder="padrão"
-                          value={priceDraft[u.id] ?? ""}
-                          onChange={(e) => setPriceDraft((d) => ({ ...d, [u.id]: e.target.value }))}
-                          className="w-20 rounded border border-surface-border bg-[#0c1014] px-2 py-1 text-xs text-zinc-200"
-                        />
-                        <Button type="button" variant="secondary" className="text-[10px] px-2 py-1" onClick={() => void saveCustomPrice(u.id)}>
-                          Preço
-                        </Button>
-                      </div>
+                      (() => {
+                        const now = currentPriceInfo(u, stats.proPriceEur);
+                        const normalPrice = u.subscriptionPlan === "pro_monthly" || u.subscriptionPlan === "grace" ? stats.proPriceEur : 0;
+                        const draftValue = priceDraft[u.id] ?? "";
+                        return (
+                          <div className="space-y-1">
+                            <div className="flex flex-wrap items-center gap-1">
+                              <input
+                                type="text"
+                                inputMode="decimal"
+                                placeholder={normalPrice > 0 ? String(normalPrice.toFixed(2)) : "0.00"}
+                                value={draftValue}
+                                onChange={(e) => setPriceDraft((d) => ({ ...d, [u.id]: e.target.value }))}
+                                className="w-24 rounded border border-surface-border bg-[#0c1014] px-2 py-1 text-xs text-zinc-200"
+                              />
+                              <Button type="button" variant="secondary" className="text-[10px] px-2 py-1" onClick={() => void saveCustomPrice(u.id)}>
+                                Preço
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                className="text-[10px] px-2 py-1"
+                                onClick={() => {
+                                  setPriceDraft((d) => ({ ...d, [u.id]: "" }));
+                                  void saveCustomPrice(u.id);
+                                }}
+                              >
+                                Preço normal
+                              </Button>
+                            </div>
+                            <p className="text-[10px] text-zinc-500">
+                              Atual: <span className="text-zinc-300">{formatEurValue(now.amount)}</span> · {now.reason}
+                            </p>
+                          </div>
+                        );
+                      })()
                     )}
                   </td>
                   <td className="px-4 py-3">{u.loginCount}</td>
