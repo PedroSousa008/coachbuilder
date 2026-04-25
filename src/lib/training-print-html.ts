@@ -81,7 +81,6 @@ export function buildFullSessionDocumentHtml(params: {
   coachPrintName?: string;
 }): string {
   const { plan, durationMin, playerLines, generatedAt, assetBaseUrl, coachPrintName } = params;
-  const totalPages = plan.blocks.length * 2;
   const blocksHtml = plan.blocks
     .map((b, i) => {
       const phase =
@@ -89,8 +88,6 @@ export function buildFullSessionDocumentHtml(params: {
       const imageRelPath = trainingExercisePrintImageForTitle(b.title);
       const exerciseImageSrc =
         imageRelPath && assetBaseUrl ? `${assetBaseUrl}${imageRelPath}` : imageRelPath;
-      const frontPage = i * 2 + 1;
-      const backPage = i * 2 + 2;
       const playerCount = Math.max(playerLines.length, 1);
       const backMetrics = computeBackPageTableMetrics(playerCount);
       return `
@@ -117,7 +114,6 @@ export function buildFullSessionDocumentHtml(params: {
             ${b.groupSplit ? `<p><strong>Grupos / focos:</strong> ${esc(b.groupSplit)}</p>` : ""}
             ${b.diagramHint ? `<p class="diagram"><strong>Diagrama (sugestão):</strong> ${esc(b.diagramHint)}</p>` : ""}
           </main>
-          <footer class="page-footer">Página ${frontPage} / ${totalPages}</footer>
         </section>
         <section class="sheet back">
           <header class="page-header">
@@ -154,7 +150,6 @@ export function buildFullSessionDocumentHtml(params: {
               </table>
             </section>
           </main>
-          <footer class="page-footer">Página ${backPage} / ${totalPages}</footer>
         </section>`;
     })
     .join("");
@@ -172,7 +167,7 @@ export function buildFullSessionDocumentHtml(params: {
       width: 100%;
       height: 272mm;
       display: grid;
-      grid-template-rows: auto minmax(0, 1fr) 5.5mm;
+      grid-template-rows: auto minmax(0, 1fr);
       overflow: hidden;
       padding: 0;
       page-break-inside: avoid;
@@ -233,16 +228,6 @@ export function buildFullSessionDocumentHtml(params: {
     .grid-table.players th:nth-child(4) { width: 14%; text-align: center; }
     .back-layout .table-card:nth-child(2) { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
     .back-layout .table-card:nth-child(2) .grid-table { height: auto; }
-    .page-footer {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border-top: 1px solid #ddd;
-      text-align: center;
-      font-size: 8px;
-      color: #333;
-      background: #fff;
-    }
   </style>
 </head>
 <body>
@@ -273,7 +258,7 @@ export function buildSingleDrillDocumentHtml(params: {
     .sheet {
       height: 272mm;
       display: grid;
-      grid-template-rows: auto minmax(0, 1fr) 5.5mm;
+      grid-template-rows: auto minmax(0, 1fr);
       padding: 0;
       page-break-inside: avoid;
       break-inside: avoid;
@@ -325,16 +310,6 @@ export function buildSingleDrillDocumentHtml(params: {
     .grid-table.players th:nth-child(4) { width: 14%; text-align: center; }
     .back-layout .table-card:nth-child(2) { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
     .back-layout .table-card:nth-child(2) .grid-table { height: auto; }
-    .page-footer {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border-top: 1px solid #ddd;
-      text-align: center;
-      font-size: 8px;
-      color: #333;
-      background: #fff;
-    }
   </style>
 </head>
 <body>
@@ -361,7 +336,6 @@ export function buildSingleDrillDocumentHtml(params: {
       ${drill.variations ? `<p><strong>Variações:</strong> ${esc(drill.variations)}</p>` : ""}
       ${drill.diagramHint ? `<p><strong>Diagrama:</strong> ${esc(drill.diagramHint)}</p>` : ""}
     </main>
-    <footer class="page-footer">Página 1 / 2</footer>
   </section>
   <section class="sheet back">
     <header>
@@ -381,7 +355,6 @@ export function buildSingleDrillDocumentHtml(params: {
         </table>
       </section>
     </main>
-    <footer class="page-footer">Página 2 / 2</footer>
   </section>
 </body>
 </html>`;
