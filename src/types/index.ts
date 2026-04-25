@@ -318,7 +318,13 @@ export type SavedExerciseCategory =
   | "physical"
   | "mixed";
 
-export type TrainingAgeGroupId = "benjamin" | "infantil" | "iniciado" | "junior" | "juvenil";
+export type TrainingAgeGroupId =
+  | "benjamin"
+  | "infantil"
+  | "iniciado"
+  | "junior"
+  | "juvenil"
+  | "senior";
 
 /** Exercício guardado pelo treinador — notas privadas por conta (localStorage + workspace cloud). */
 export interface SavedTrainingExercise {
