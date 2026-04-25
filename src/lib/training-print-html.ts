@@ -23,6 +23,54 @@ function splitPlayerLine(raw: string): { number: string; name: string } {
   return { number: m[1] ?? "", name: (m[2] ?? "").trim() };
 }
 
+/**
+ * Alturas do verso (Notas + Jogadores) para caber sempre numa única página de impressão.
+ * Valores em mm são conservadores face a headers, @page 10mm e motores WebKit de impressão.
+ */
+function computeBackPageTableMetrics(playerCount: number): {
+  notesRowMm: number;
+  playerRowMm: number;
+  fontPx: number;
+} {
+  const n = Math.max(1, Math.floor(playerCount));
+  /** Área vertical aproximada disponível para o <main> do verso (mm). */
+  const usableMainMm = 240;
+  /** Header verso + footer + gap entre cartões + cartão jogadores (título, bordas, thead). */
+  const fixedChromeMm = 48 + 14;
+  let notesRowMm = n > 34 ? 3.4 : n > 26 ? 4.0 : n > 20 ? 4.8 : n > 14 ? 5.6 : 7.0;
+  const minNotesRowMm = 2.8;
+  const minPlayerRowMm = 1.55;
+
+  for (let iter = 0; iter < 14; iter++) {
+    const notesBlockMm = 7 + 3 * notesRowMm;
+    const theadMm = 5.5;
+    const borderSlackMm = n * 0.14;
+    const rowBudgetMm = usableMainMm - fixedChromeMm - notesBlockMm - theadMm - borderSlackMm;
+    const rawRowMm = rowBudgetMm / n;
+    if (rawRowMm >= minPlayerRowMm + 0.08) {
+      const playerRowMm = Math.min(5.6, Math.max(minPlayerRowMm, rawRowMm));
+      const fontPx = Math.min(8.5, Math.max(5.2, 4.2 + playerRowMm * 0.85));
+      return {
+        notesRowMm: Math.round(notesRowMm * 10) / 10,
+        playerRowMm: Math.round(playerRowMm * 100) / 100,
+        fontPx: Math.round(fontPx * 10) / 10,
+      };
+    }
+    notesRowMm = Math.max(minNotesRowMm, notesRowMm * 0.88);
+  }
+
+  const notesBlockMm = 7 + 3 * minNotesRowMm;
+  const theadMm = 5.5;
+  const borderSlackMm = n * 0.14;
+  const rowBudgetMm = usableMainMm - fixedChromeMm - notesBlockMm - theadMm - borderSlackMm;
+  const playerRowMm = Math.max(minPlayerRowMm, rowBudgetMm / n);
+  return {
+    notesRowMm: minNotesRowMm,
+    playerRowMm: Math.round(playerRowMm * 100) / 100,
+    fontPx: 5.2,
+  };
+}
+
 export function buildFullSessionDocumentHtml(params: {
   plan: AiFullTrainingSession;
   durationMin: number;
@@ -44,8 +92,7 @@ export function buildFullSessionDocumentHtml(params: {
       const frontPage = i * 2 + 1;
       const backPage = i * 2 + 2;
       const playerCount = Math.max(playerLines.length, 1);
-      const playerRowMm = playerCount >= 36 ? 2.3 : playerCount >= 30 ? 2.7 : playerCount >= 24 ? 3.2 : playerCount >= 18 ? 3.8 : 4.6;
-      const playerFontPx = playerCount >= 36 ? 6 : playerCount >= 30 ? 6.4 : playerCount >= 24 ? 6.9 : playerCount >= 18 ? 7.5 : 8;
+      const backMetrics = computeBackPageTableMetrics(playerCount);
       return `
       <article class="sheet-pair">
         <section class="sheet front">
@@ -81,7 +128,7 @@ export function buildFullSessionDocumentHtml(params: {
           <main class="page-body back-layout">
             <section class="table-card">
               <h2>Notas</h2>
-              <table class="grid-table notes">
+              <table class="grid-table notes" style="--notes-row-mm:${backMetrics.notesRowMm}mm;">
                 <tbody>
                   ${Array.from({ length: 3 }, () => `<tr><td>&nbsp;</td></tr>`).join("")}
                 </tbody>
@@ -89,7 +136,7 @@ export function buildFullSessionDocumentHtml(params: {
             </section>
             <section class="table-card">
               <h2>Jogadores</h2>
-              <table class="grid-table players" style="--player-row-mm:${playerRowMm}mm; --player-font-px:${playerFontPx}px;">
+              <table class="grid-table players" style="--player-row-mm:${backMetrics.playerRowMm}mm; --player-font-px:${backMetrics.fontPx}px;">
                 <thead>
                   <tr><th>#</th><th>Nome</th><th>Observações</th><th>Rating</th></tr>
                 </thead>
@@ -136,6 +183,8 @@ export function buildFullSessionDocumentHtml(params: {
       break-inside: avoid;
     }
     .sheet.front { page-break-after: always; break-after: page; }
+    .sheet.back { overflow: hidden; }
+    .sheet.back .page-body { overflow: hidden; }
     .page-header h1 { font-size: 18px; margin: 0 0 1.5mm; line-height: 1.08; }
     .meta { color: #444; font-size: 9px; margin: 0.5mm 0; }
     .page-body { flex: 1; min-height: 0; }
@@ -158,20 +207,34 @@ export function buildFullSessionDocumentHtml(params: {
     .grid-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
     .grid-table th, .grid-table td { border: 1px solid #d4d4d4; padding: 0.85mm 1mm; font-size: 8px; vertical-align: top; line-height: 1.15; }
     .grid-table th { background: #f5f5f5; text-align: left; font-weight: 600; }
-    .grid-table.notes td { height: 8.2mm; }
-    .grid-table.players td {
+    .grid-table.notes td { height: var(--notes-row-mm, 7mm); }
+    .grid-table.players {
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+    .grid-table.players thead th {
+      font-size: 7px;
+      padding: 0.4mm 0.55mm;
+      line-height: 1.05;
+      white-space: nowrap;
+    }
+    .grid-table.players tbody td {
       height: var(--player-row-mm, 4.6mm);
+      max-height: var(--player-row-mm, 4.6mm);
       font-size: var(--player-font-px, 8px);
       line-height: 1.05;
-      padding-top: 0.55mm;
-      padding-bottom: 0.55mm;
+      padding: 0.35mm 0.5mm;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      vertical-align: middle;
     }
     .grid-table.players th:nth-child(1) { width: 8%; }
     .grid-table.players th:nth-child(2) { width: 42%; }
     .grid-table.players th:nth-child(3) { width: 40%; }
     .grid-table.players th:nth-child(4) { width: 14%; text-align: center; }
     .back-layout .table-card:nth-child(2) { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
-    .back-layout .table-card:nth-child(2) .grid-table { height: 100%; }
+    .back-layout .table-card:nth-child(2) .grid-table { height: auto; }
     .page-footer { margin-top: auto; padding-top: 1mm; border-top: 1px solid #ddd; text-align: center; font-size: 8px; color: #333; }
   </style>
 </head>
@@ -190,6 +253,7 @@ export function buildSingleDrillDocumentHtml(params: {
   const { drill, generatedAt, assetBaseUrl, coachPrintName } = params;
   const imageRelPath = trainingExercisePrintImageForTitle(drill.title);
   const exerciseImageSrc = imageRelPath && assetBaseUrl ? `${assetBaseUrl}${imageRelPath}` : imageRelPath;
+  const drillBackMetrics = computeBackPageTableMetrics(14);
   return `<!DOCTYPE html>
 <html lang="pt">
 <head>
@@ -203,6 +267,8 @@ export function buildSingleDrillDocumentHtml(params: {
     .sheet-pair + .sheet-pair { page-break-before: always; break-before: page; }
     .sheet { height: 272mm; display: flex; flex-direction: column; page-break-inside: avoid; break-inside: avoid; }
     .sheet.front { page-break-after: always; break-after: page; }
+    .sheet.back { overflow: hidden; }
+    .sheet.back .page-body { overflow: hidden; }
     h1 { font-size: 18px; margin: 0 0 1.5mm; line-height: 1.08; }
     .meta { color: #555; font-size: 9px; margin: 0.5mm 0; }
     .page-body { flex: 1; min-height: 0; }
@@ -217,14 +283,34 @@ export function buildSingleDrillDocumentHtml(params: {
     .grid-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
     .grid-table th, .grid-table td { border: 1px solid #d4d4d4; padding: 0.85mm 1mm; font-size: 8px; vertical-align: top; line-height: 1.15; }
     .grid-table th { background: #f5f5f5; text-align: left; font-weight: 600; }
-    .grid-table.notes td { height: 8.2mm; }
-    .grid-table.players td { height: 4.8mm; }
+    .grid-table.notes td { height: var(--notes-row-mm, 7mm); }
+    .grid-table.players {
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+    .grid-table.players thead th {
+      font-size: 7px;
+      padding: 0.4mm 0.55mm;
+      line-height: 1.05;
+      white-space: nowrap;
+    }
+    .grid-table.players tbody td {
+      height: var(--player-row-mm, 4.6mm);
+      max-height: var(--player-row-mm, 4.6mm);
+      font-size: var(--player-font-px, 8px);
+      line-height: 1.05;
+      padding: 0.35mm 0.5mm;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      vertical-align: middle;
+    }
     .grid-table.players th:nth-child(1) { width: 8%; }
     .grid-table.players th:nth-child(2) { width: 42%; }
     .grid-table.players th:nth-child(3) { width: 40%; }
     .grid-table.players th:nth-child(4) { width: 14%; text-align: center; }
     .back-layout .table-card:nth-child(2) { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
-    .back-layout .table-card:nth-child(2) .grid-table { height: 100%; }
+    .back-layout .table-card:nth-child(2) .grid-table { height: auto; }
     .page-footer { margin-top: auto; padding-top: 1mm; border-top: 1px solid #ddd; text-align: center; font-size: 8px; color: #333; }
   </style>
 </head>
@@ -263,11 +349,11 @@ export function buildSingleDrillDocumentHtml(params: {
     <main class="page-body back-layout">
       <section class="table-card">
         <h2>Notas</h2>
-        <table class="grid-table notes"><tbody>${Array.from({ length: 3 }, () => `<tr><td>&nbsp;</td></tr>`).join("")}</tbody></table>
+        <table class="grid-table notes" style="--notes-row-mm:${drillBackMetrics.notesRowMm}mm;"><tbody>${Array.from({ length: 3 }, () => `<tr><td>&nbsp;</td></tr>`).join("")}</tbody></table>
       </section>
       <section class="table-card">
         <h2>Jogadores</h2>
-        <table class="grid-table players">
+        <table class="grid-table players" style="--player-row-mm:${drillBackMetrics.playerRowMm}mm; --player-font-px:${drillBackMetrics.fontPx}px;">
           <thead><tr><th>#</th><th>Nome</th><th>Observações</th><th>Rating</th></tr></thead>
           <tbody>${Array.from({ length: 14 }, (_, i) => `<tr><td>${i + 1}</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>`).join("")}</tbody>
         </table>
