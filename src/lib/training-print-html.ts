@@ -44,71 +44,73 @@ export function buildFullSessionDocumentHtml(params: {
       const frontPage = i * 2 + 1;
       const backPage = i * 2 + 2;
       const playerCount = Math.max(playerLines.length, 1);
-      const playersDensityClass =
-        playerCount >= 26 ? "players-rows-xxs" : playerCount >= 22 ? "players-rows-xs" : playerCount >= 18 ? "players-rows-sm" : "";
+      const playerRowMm = playerCount >= 36 ? 2.3 : playerCount >= 30 ? 2.7 : playerCount >= 24 ? 3.2 : playerCount >= 18 ? 3.8 : 4.6;
+      const playerFontPx = playerCount >= 36 ? 6 : playerCount >= 30 ? 6.4 : playerCount >= 24 ? 6.9 : playerCount >= 18 ? 7.5 : 8;
       return `
-      <section class="sheet front">
-        <header class="page-header">
-          <h1>${esc(b.title)}</h1>
-          <p class="meta">${esc(phase)} · ${b.durationMin} min · Sessão: ${durationMin} min</p>
-          <p class="meta">${esc(generatedAt)} · ${coachBuilderAttribution(coachPrintName)}</p>
-        </header>
-        <main class="page-body">
-          <p><strong>Explicação:</strong> ${esc(b.description)}</p>
-          ${
-            exerciseImageSrc
-              ? `<figure class="exercise-image-wrap">
-          <img class="exercise-image" src="${esc(exerciseImageSrc)}" alt="Imagem do exercício ${esc(
-                  b.title
-                )}" onerror="this.style.display='none';" />
-          <figcaption>Imagem do exercício</figcaption>
-        </figure>`
-              : `<div class="image-fallback">Sem imagem associada a este exercício.</div>`
-          }
-          <p><strong>Pontos de treino:</strong> ${esc(b.coachingPoints)}</p>
-          ${b.setup ? `<p><strong>Organização:</strong> ${esc(b.setup)}</p>` : ""}
-          ${b.groupSplit ? `<p><strong>Grupos / focos:</strong> ${esc(b.groupSplit)}</p>` : ""}
-          ${b.diagramHint ? `<p class="diagram"><strong>Diagrama (sugestão):</strong> ${esc(b.diagramHint)}</p>` : ""}
-        </main>
-        <footer class="page-footer">Página ${frontPage} / ${totalPages}</footer>
-      </section>
-      <section class="sheet back">
-        <header class="page-header">
-          <h1>${esc(b.title)} · Folha de trabalho</h1>
-          <p class="meta">Parte de trás — Notas e Jogadores</p>
-        </header>
-        <main class="page-body back-layout">
-          <section class="table-card">
-            <h2>Notas</h2>
-            <table class="grid-table notes">
-              <tbody>
-                ${Array.from({ length: 3 }, () => `<tr><td>&nbsp;</td></tr>`).join("")}
-              </tbody>
-            </table>
-          </section>
-          <section class="table-card">
-            <h2>Jogadores</h2>
-            <table class="grid-table players ${playersDensityClass}">
-              <thead>
-                <tr><th>#</th><th>Nome</th><th>Observações</th><th>Rating</th></tr>
-              </thead>
-              <tbody>
-                ${
-                  playerLines.length > 0
-                    ? playerLines
-                        .map((line) => {
-                          const parsed = splitPlayerLine(line);
-                          return `<tr><td>${esc(parsed.number)}</td><td>${esc(parsed.name)}</td><td>&nbsp;</td><td>&nbsp;</td></tr>`;
-                        })
-                        .join("")
-                    : `<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>`
-                }
-              </tbody>
-            </table>
-          </section>
-        </main>
-        <footer class="page-footer">Página ${backPage} / ${totalPages}</footer>
-      </section>`;
+      <article class="sheet-pair">
+        <section class="sheet front">
+          <header class="page-header">
+            <h1>${esc(b.title)}</h1>
+            <p class="meta">${esc(phase)} · ${b.durationMin} min · Sessão: ${durationMin} min</p>
+            <p class="meta">${esc(generatedAt)} · ${coachBuilderAttribution(coachPrintName)}</p>
+          </header>
+          <main class="page-body">
+            <p><strong>Explicação:</strong> ${esc(b.description)}</p>
+            ${
+              exerciseImageSrc
+                ? `<figure class="exercise-image-wrap">
+            <img class="exercise-image" src="${esc(exerciseImageSrc)}" alt="Imagem do exercício ${esc(
+                    b.title
+                  )}" onerror="this.style.display='none';" />
+            <figcaption>Imagem do exercício</figcaption>
+          </figure>`
+                : `<div class="image-fallback">Sem imagem associada a este exercício.</div>`
+            }
+            <p><strong>Pontos de treino:</strong> ${esc(b.coachingPoints)}</p>
+            ${b.setup ? `<p><strong>Organização:</strong> ${esc(b.setup)}</p>` : ""}
+            ${b.groupSplit ? `<p><strong>Grupos / focos:</strong> ${esc(b.groupSplit)}</p>` : ""}
+            ${b.diagramHint ? `<p class="diagram"><strong>Diagrama (sugestão):</strong> ${esc(b.diagramHint)}</p>` : ""}
+          </main>
+          <footer class="page-footer">Página ${frontPage} / ${totalPages}</footer>
+        </section>
+        <section class="sheet back">
+          <header class="page-header">
+            <h1>${esc(b.title)} · Folha de trabalho</h1>
+            <p class="meta">Parte de trás — Notas e Jogadores</p>
+          </header>
+          <main class="page-body back-layout">
+            <section class="table-card">
+              <h2>Notas</h2>
+              <table class="grid-table notes">
+                <tbody>
+                  ${Array.from({ length: 3 }, () => `<tr><td>&nbsp;</td></tr>`).join("")}
+                </tbody>
+              </table>
+            </section>
+            <section class="table-card">
+              <h2>Jogadores</h2>
+              <table class="grid-table players" style="--player-row-mm:${playerRowMm}mm; --player-font-px:${playerFontPx}px;">
+                <thead>
+                  <tr><th>#</th><th>Nome</th><th>Observações</th><th>Rating</th></tr>
+                </thead>
+                <tbody>
+                  ${
+                    playerLines.length > 0
+                      ? playerLines
+                          .map((line) => {
+                            const parsed = splitPlayerLine(line);
+                            return `<tr><td>${esc(parsed.number)}</td><td>${esc(parsed.name)}</td><td>&nbsp;</td><td>&nbsp;</td></tr>`;
+                          })
+                          .join("")
+                      : `<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>`
+                  }
+                </tbody>
+              </table>
+            </section>
+          </main>
+          <footer class="page-footer">Página ${backPage} / ${totalPages}</footer>
+        </section>
+      </article>`;
     })
     .join("");
 
@@ -121,9 +123,11 @@ export function buildFullSessionDocumentHtml(params: {
     @page { size: A4; margin: 10mm; }
     * { box-sizing: border-box; }
     body { font-family: system-ui, sans-serif; margin: 0; color: #111; line-height: 1.24; font-size: 11px; }
+    .sheet-pair { page-break-inside: avoid; break-inside: avoid; }
+    .sheet-pair + .sheet-pair { page-break-before: always; break-before: page; }
     .sheet {
       width: 100%;
-      height: 274mm;
+      height: 272mm;
       display: flex;
       flex-direction: column;
       overflow: hidden;
@@ -131,10 +135,7 @@ export function buildFullSessionDocumentHtml(params: {
       page-break-inside: avoid;
       break-inside: avoid;
     }
-    .sheet + .sheet {
-      page-break-before: always;
-      break-before: page;
-    }
+    .sheet.front { page-break-after: always; break-after: page; }
     .page-header h1 { font-size: 18px; margin: 0 0 1.5mm; line-height: 1.08; }
     .meta { color: #444; font-size: 9px; margin: 0.5mm 0; }
     .page-body { flex: 1; min-height: 0; }
@@ -157,11 +158,14 @@ export function buildFullSessionDocumentHtml(params: {
     .grid-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
     .grid-table th, .grid-table td { border: 1px solid #d4d4d4; padding: 0.85mm 1mm; font-size: 8px; vertical-align: top; line-height: 1.15; }
     .grid-table th { background: #f5f5f5; text-align: left; font-weight: 600; }
-    .grid-table.notes td { height: 11.5mm; }
-    .grid-table.players td { height: 4.8mm; }
-    .grid-table.players.players-rows-sm td { height: 4.2mm; font-size: 7.7px; }
-    .grid-table.players.players-rows-xs td { height: 3.8mm; font-size: 7.3px; }
-    .grid-table.players.players-rows-xxs td { height: 3.3mm; font-size: 6.9px; }
+    .grid-table.notes td { height: 8.2mm; }
+    .grid-table.players td {
+      height: var(--player-row-mm, 4.6mm);
+      font-size: var(--player-font-px, 8px);
+      line-height: 1.05;
+      padding-top: 0.55mm;
+      padding-bottom: 0.55mm;
+    }
     .grid-table.players th:nth-child(1) { width: 8%; }
     .grid-table.players th:nth-child(2) { width: 42%; }
     .grid-table.players th:nth-child(3) { width: 40%; }
@@ -195,8 +199,10 @@ export function buildSingleDrillDocumentHtml(params: {
     @page { size: A4; margin: 10mm; }
     * { box-sizing: border-box; }
     body { font-family: system-ui, sans-serif; margin: 0; color: #111; line-height: 1.24; font-size: 11px; }
-    .sheet { height: 274mm; display: flex; flex-direction: column; page-break-inside: avoid; break-inside: avoid; }
-    .sheet + .sheet { page-break-before: always; break-before: page; }
+    .sheet-pair { page-break-inside: avoid; break-inside: avoid; }
+    .sheet-pair + .sheet-pair { page-break-before: always; break-before: page; }
+    .sheet { height: 272mm; display: flex; flex-direction: column; page-break-inside: avoid; break-inside: avoid; }
+    .sheet.front { page-break-after: always; break-after: page; }
     h1 { font-size: 18px; margin: 0 0 1.5mm; line-height: 1.08; }
     .meta { color: #555; font-size: 9px; margin: 0.5mm 0; }
     .page-body { flex: 1; min-height: 0; }
@@ -211,7 +217,7 @@ export function buildSingleDrillDocumentHtml(params: {
     .grid-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
     .grid-table th, .grid-table td { border: 1px solid #d4d4d4; padding: 0.85mm 1mm; font-size: 8px; vertical-align: top; line-height: 1.15; }
     .grid-table th { background: #f5f5f5; text-align: left; font-weight: 600; }
-    .grid-table.notes td { height: 11.5mm; }
+    .grid-table.notes td { height: 8.2mm; }
     .grid-table.players td { height: 4.8mm; }
     .grid-table.players th:nth-child(1) { width: 8%; }
     .grid-table.players th:nth-child(2) { width: 42%; }
@@ -223,7 +229,8 @@ export function buildSingleDrillDocumentHtml(params: {
   </style>
 </head>
 <body>
-  <section class="sheet">
+  <article class="sheet-pair">
+  <section class="sheet front">
     <header>
       <h1>${esc(drill.title)}</h1>
       <p class="meta">${drill.durationMin} min · ${esc(generatedAt)} · ${coachBuilderAttribution(coachPrintName)}</p>
@@ -248,7 +255,7 @@ export function buildSingleDrillDocumentHtml(params: {
     </main>
     <footer class="page-footer">Página 1 / 2</footer>
   </section>
-  <section class="sheet">
+  <section class="sheet back">
     <header>
       <h1>${esc(drill.title)} · Folha de trabalho</h1>
       <p class="meta">Parte de trás — Notas e Jogadores</p>
@@ -268,6 +275,7 @@ export function buildSingleDrillDocumentHtml(params: {
     </main>
     <footer class="page-footer">Página 2 / 2</footer>
   </section>
+  </article>
 </body>
 </html>`;
 }
