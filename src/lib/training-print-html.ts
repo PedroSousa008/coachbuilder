@@ -26,7 +26,7 @@ export function buildFullSessionDocumentHtml(params: {
   coachPrintName?: string;
 }): string {
   const { plan, durationMin, playerLines, generatedAt, assetBaseUrl, coachPrintName } = params;
-  const totalPages = plan.blocks.length;
+  const totalPages = plan.blocks.length * 2;
   const blocksHtml = plan.blocks
     .map((b, i) => {
       const phase =
@@ -34,33 +34,80 @@ export function buildFullSessionDocumentHtml(params: {
       const imageRelPath = trainingExercisePrintImageForTitle(b.title);
       const exerciseImageSrc =
         imageRelPath && assetBaseUrl ? `${assetBaseUrl}${imageRelPath}` : imageRelPath;
+      const frontPage = i * 2 + 1;
+      const backPage = i * 2 + 2;
       return `
-      <section class="exercise-page">
+      <section class="sheet front">
         <header class="page-header">
           <h1>${esc(b.title)}</h1>
-          <p class="meta">${esc(phase)} · ${b.durationMin} min · Sessão: ${durationMin} min · ${esc(
-            generatedAt
-          )} · ${coachBuilderAttribution(coachPrintName)}</p>
-          <p class="meta">Exercício ${i + 1} de ${totalPages}</p>
+          <p class="meta">${esc(phase)} · ${b.durationMin} min · Sessão: ${durationMin} min</p>
+          <p class="meta">${esc(generatedAt)} · ${coachBuilderAttribution(coachPrintName)}</p>
         </header>
         <main class="page-body">
-          <p><strong>Como correr:</strong> ${esc(b.description)}</p>
+          <p><strong>Explicação:</strong> ${esc(b.description)}</p>
           ${
             exerciseImageSrc
               ? `<figure class="exercise-image-wrap">
           <img class="exercise-image" src="${esc(exerciseImageSrc)}" alt="Imagem do exercício ${esc(
                   b.title
                 )}" onerror="this.style.display='none';" />
-          <figcaption>Imagem do exercício (para impressão)</figcaption>
+          <figcaption>Imagem do exercício</figcaption>
         </figure>`
-              : ""
+              : `<div class="image-fallback">Sem imagem associada a este exercício.</div>`
           }
           <p><strong>Pontos de treino:</strong> ${esc(b.coachingPoints)}</p>
           ${b.setup ? `<p><strong>Organização:</strong> ${esc(b.setup)}</p>` : ""}
           ${b.groupSplit ? `<p><strong>Grupos / focos:</strong> ${esc(b.groupSplit)}</p>` : ""}
           ${b.diagramHint ? `<p class="diagram"><strong>Diagrama (sugestão):</strong> ${esc(b.diagramHint)}</p>` : ""}
         </main>
-        <footer class="page-footer">Página ${i + 1} / ${totalPages}</footer>
+        <footer class="page-footer">Página ${frontPage} / ${totalPages}</footer>
+      </section>
+      <section class="sheet back">
+        <header class="page-header">
+          <h1>${esc(b.title)} · Folha de trabalho</h1>
+          <p class="meta">Parte de trás — Notas, Jogadores, Feedback</p>
+        </header>
+        <main class="page-body back-grid">
+          <section class="table-card">
+            <h2>Notas</h2>
+            <table class="grid-table notes">
+              <tbody>
+                ${Array.from({ length: 10 }, () => `<tr><td>&nbsp;</td></tr>`).join("")}
+              </tbody>
+            </table>
+          </section>
+          <section class="table-card">
+            <h2>Jogadores</h2>
+            <table class="grid-table players">
+              <thead>
+                <tr><th>#</th><th>Nome</th><th>Min</th><th>Observações</th></tr>
+              </thead>
+              <tbody>
+                ${Array.from({ length: 10 }, (_, r) => {
+                  const line = playerLines[r] ?? "";
+                  return `<tr><td>${r + 1}</td><td>${esc(line)}</td><td>&nbsp;</td><td>&nbsp;</td></tr>`;
+                }).join("")}
+              </tbody>
+            </table>
+          </section>
+          <section class="table-card">
+            <h2>Feedback</h2>
+            <table class="grid-table feedback">
+              <thead>
+                <tr><th>Critério</th><th>1-5</th><th>Comentário</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>Intensidade</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+                <tr><td>Execução técnica</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+                <tr><td>Tomada de decisão</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+                <tr><td>Comunicação</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+                <tr><td>Concentração</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+                <tr><td>Objetivo cumprido</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+              </tbody>
+            </table>
+          </section>
+        </main>
+        <footer class="page-footer">Página ${backPage} / ${totalPages}</footer>
       </section>`;
     })
     .join("");
@@ -73,8 +120,8 @@ export function buildFullSessionDocumentHtml(params: {
   <style>
     @page { size: A4; margin: 10mm; }
     * { box-sizing: border-box; }
-    body { font-family: system-ui, sans-serif; margin: 0; color: #111; line-height: 1.28; font-size: 12px; }
-    .exercise-page {
+    body { font-family: system-ui, sans-serif; margin: 0; color: #111; line-height: 1.24; font-size: 11px; }
+    .sheet {
       width: 100%;
       min-height: calc(297mm - 20mm);
       display: flex;
@@ -82,25 +129,41 @@ export function buildFullSessionDocumentHtml(params: {
       page-break-after: always;
       break-after: page;
       overflow: hidden;
-      padding: 0.5mm 0;
+      padding: 0;
     }
-    .exercise-page:last-child { page-break-after: auto; break-after: auto; }
-    .page-header h1 { font-size: 20px; margin: 0 0 2mm; line-height: 1.1; }
-    .meta { color: #444; font-size: 10px; margin: 0.5mm 0; }
+    .sheet:last-child { page-break-after: auto; break-after: auto; }
+    .page-header h1 { font-size: 18px; margin: 0 0 1.5mm; line-height: 1.08; }
+    .meta { color: #444; font-size: 9px; margin: 0.5mm 0; }
     .page-body { flex: 1; min-height: 0; }
-    .page-body p { margin: 1.5mm 0; }
-    .diagram { background: #f6f6f6; padding: 6px 8px; border-radius: 6px; font-size: 11px; }
-    .exercise-image-wrap { margin: 2mm 0 2.5mm; }
+    .page-body p { margin: 1.1mm 0; }
+    .diagram { background: #f6f6f6; padding: 5px 7px; border-radius: 6px; font-size: 10px; }
+    .exercise-image-wrap { margin: 1.2mm 0 1.6mm; }
     .exercise-image {
       display: block;
       width: 100%;
-      max-height: 95mm;
+      max-height: 103mm;
       object-fit: contain;
       border-radius: 8px;
       border: 1px solid #ddd;
     }
-    .exercise-image-wrap figcaption { margin-top: 1mm; font-size: 9px; color: #555; }
-    .page-footer { margin-top: auto; padding-top: 2mm; border-top: 1px solid #ddd; text-align: center; font-size: 10px; color: #333; }
+    .image-fallback { border: 1px dashed #bbb; border-radius: 8px; padding: 10mm 4mm; text-align: center; color: #666; margin: 1.2mm 0 1.6mm; }
+    .exercise-image-wrap figcaption { margin-top: 0.8mm; font-size: 8px; color: #555; }
+    .back-grid { display: grid; grid-template-rows: 1.45fr 1fr 1fr; gap: 2mm; }
+    .table-card { border: 1px solid #d8d8d8; border-radius: 8px; padding: 1.5mm; }
+    .table-card h2 { margin: 0 0 1mm; font-size: 11px; }
+    .grid-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    .grid-table th, .grid-table td { border: 1px solid #d4d4d4; padding: 1.1mm 1.4mm; font-size: 9px; vertical-align: top; }
+    .grid-table th { background: #f5f5f5; text-align: left; font-weight: 600; }
+    .grid-table.notes td { height: 7.5mm; }
+    .grid-table.players td, .grid-table.feedback td { height: 6.3mm; }
+    .grid-table.players th:nth-child(1) { width: 8%; }
+    .grid-table.players th:nth-child(2) { width: 42%; }
+    .grid-table.players th:nth-child(3) { width: 12%; text-align: center; }
+    .grid-table.players th:nth-child(4) { width: 38%; }
+    .grid-table.feedback th:nth-child(1) { width: 35%; }
+    .grid-table.feedback th:nth-child(2) { width: 12%; text-align: center; }
+    .grid-table.feedback th:nth-child(3) { width: 53%; }
+    .page-footer { margin-top: auto; padding-top: 1.5mm; border-top: 1px solid #ddd; text-align: center; font-size: 9px; color: #333; }
   </style>
 </head>
 <body>
@@ -124,34 +187,97 @@ export function buildSingleDrillDocumentHtml(params: {
   <meta charset="utf-8"/>
   <title>${esc(drill.title)}</title>
   <style>
-    body { font-family: system-ui, sans-serif; max-width: 720px; margin: 24px auto; padding: 0 16px; color: #111; line-height: 1.45; }
-    h1 { font-size: 1.35rem; }
-    .meta { color: #555; font-size: 0.9rem; }
-    .exercise-image-wrap { margin: 10px 0 12px; }
-    .exercise-image { display: block; width: 100%; max-width: 560px; border-radius: 8px; border: 1px solid #ddd; }
-    .exercise-image-wrap figcaption { margin-top: 4px; font-size: 0.78rem; color: #555; }
+    @page { size: A4; margin: 10mm; }
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, sans-serif; margin: 0; color: #111; line-height: 1.24; font-size: 11px; }
+    .sheet { min-height: calc(297mm - 20mm); display: flex; flex-direction: column; page-break-after: always; break-after: page; }
+    .sheet:last-child { page-break-after: auto; break-after: auto; }
+    h1 { font-size: 18px; margin: 0 0 1.5mm; line-height: 1.08; }
+    .meta { color: #555; font-size: 9px; margin: 0.5mm 0; }
+    .page-body { flex: 1; min-height: 0; }
+    .page-body p { margin: 1.1mm 0; }
+    .exercise-image-wrap { margin: 1.2mm 0 1.6mm; }
+    .exercise-image { display: block; width: 100%; max-height: 103mm; object-fit: contain; border-radius: 8px; border: 1px solid #ddd; }
+    .exercise-image-wrap figcaption { margin-top: 0.8mm; font-size: 8px; color: #555; }
+    .image-fallback { border: 1px dashed #bbb; border-radius: 8px; padding: 10mm 4mm; text-align: center; color: #666; margin: 1.2mm 0 1.6mm; }
+    .back-grid { display: grid; grid-template-rows: 1.45fr 1fr 1fr; gap: 2mm; }
+    .table-card { border: 1px solid #d8d8d8; border-radius: 8px; padding: 1.5mm; }
+    .table-card h2 { margin: 0 0 1mm; font-size: 11px; }
+    .grid-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    .grid-table th, .grid-table td { border: 1px solid #d4d4d4; padding: 1.1mm 1.4mm; font-size: 9px; vertical-align: top; }
+    .grid-table th { background: #f5f5f5; text-align: left; font-weight: 600; }
+    .grid-table.notes td { height: 7.5mm; }
+    .grid-table.players td, .grid-table.feedback td { height: 6.3mm; }
+    .grid-table.players th:nth-child(1) { width: 8%; }
+    .grid-table.players th:nth-child(2) { width: 42%; }
+    .grid-table.players th:nth-child(3) { width: 12%; text-align: center; }
+    .grid-table.players th:nth-child(4) { width: 38%; }
+    .grid-table.feedback th:nth-child(1) { width: 35%; }
+    .grid-table.feedback th:nth-child(2) { width: 12%; text-align: center; }
+    .grid-table.feedback th:nth-child(3) { width: 53%; }
+    .page-footer { margin-top: auto; padding-top: 1.5mm; border-top: 1px solid #ddd; text-align: center; font-size: 9px; color: #333; }
   </style>
 </head>
 <body>
-  <h1>${esc(drill.title)}</h1>
-  <p class="meta">${drill.durationMin} min · ${esc(generatedAt)} · ${coachBuilderAttribution(coachPrintName)}</p>
-  <p><strong>Objetivo:</strong> ${esc(drill.objective)}</p>
-  <p><strong>Exercício:</strong> ${esc(drill.description)}</p>
-  ${exerciseImageSrc ? `<p><strong>Explicação:</strong></p>` : ""}
-  ${
-    exerciseImageSrc
-      ? `<figure class="exercise-image-wrap">
-  <img class="exercise-image" src="${esc(exerciseImageSrc)}" alt="Imagem do exercício ${esc(
-          drill.title
-        )}" onerror="this.style.display='none';" />
-  <figcaption>Imagem do exercício (para impressão)</figcaption>
-</figure>`
-      : ""
-  }
-  ${drill.progression ? `<p><strong>Progressão:</strong> ${esc(drill.progression)}</p>` : ""}
-  ${drill.coachingCues ? `<p><strong>Cues:</strong> ${esc(drill.coachingCues)}</p>` : ""}
-  ${drill.variations ? `<p><strong>Variações:</strong> ${esc(drill.variations)}</p>` : ""}
-  ${drill.diagramHint ? `<p><strong>Diagrama:</strong> ${esc(drill.diagramHint)}</p>` : ""}
+  <section class="sheet">
+    <header>
+      <h1>${esc(drill.title)}</h1>
+      <p class="meta">${drill.durationMin} min · ${esc(generatedAt)} · ${coachBuilderAttribution(coachPrintName)}</p>
+    </header>
+    <main class="page-body">
+      <p><strong>Objetivo:</strong> ${esc(drill.objective)}</p>
+      <p><strong>Explicação:</strong> ${esc(drill.description)}</p>
+      ${
+        exerciseImageSrc
+          ? `<figure class="exercise-image-wrap">
+      <img class="exercise-image" src="${esc(exerciseImageSrc)}" alt="Imagem do exercício ${esc(
+              drill.title
+            )}" onerror="this.style.display='none';" />
+      <figcaption>Imagem do exercício</figcaption>
+    </figure>`
+          : `<div class="image-fallback">Sem imagem associada a este exercício.</div>`
+      }
+      ${drill.progression ? `<p><strong>Progressão:</strong> ${esc(drill.progression)}</p>` : ""}
+      ${drill.coachingCues ? `<p><strong>Pontos de treino:</strong> ${esc(drill.coachingCues)}</p>` : ""}
+      ${drill.variations ? `<p><strong>Variações:</strong> ${esc(drill.variations)}</p>` : ""}
+      ${drill.diagramHint ? `<p><strong>Diagrama:</strong> ${esc(drill.diagramHint)}</p>` : ""}
+    </main>
+    <footer class="page-footer">Página 1 / 2</footer>
+  </section>
+  <section class="sheet">
+    <header>
+      <h1>${esc(drill.title)} · Folha de trabalho</h1>
+      <p class="meta">Parte de trás — Notas, Jogadores, Feedback</p>
+    </header>
+    <main class="page-body back-grid">
+      <section class="table-card">
+        <h2>Notas</h2>
+        <table class="grid-table notes"><tbody>${Array.from({ length: 10 }, () => `<tr><td>&nbsp;</td></tr>`).join("")}</tbody></table>
+      </section>
+      <section class="table-card">
+        <h2>Jogadores</h2>
+        <table class="grid-table players">
+          <thead><tr><th>#</th><th>Nome</th><th>Min</th><th>Observações</th></tr></thead>
+          <tbody>${Array.from({ length: 10 }, (_, i) => `<tr><td>${i + 1}</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>`).join("")}</tbody>
+        </table>
+      </section>
+      <section class="table-card">
+        <h2>Feedback</h2>
+        <table class="grid-table feedback">
+          <thead><tr><th>Critério</th><th>1-5</th><th>Comentário</th></tr></thead>
+          <tbody>
+            <tr><td>Intensidade</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+            <tr><td>Execução técnica</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+            <tr><td>Tomada de decisão</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+            <tr><td>Comunicação</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+            <tr><td>Concentração</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+            <tr><td>Objetivo cumprido</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+          </tbody>
+        </table>
+      </section>
+    </main>
+    <footer class="page-footer">Página 2 / 2</footer>
+  </section>
 </body>
 </html>`;
 }
