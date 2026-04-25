@@ -69,9 +69,22 @@ import { emptyTeamCallupState, mergeTeamCallup } from "@/lib/team-callup";
 import { useAuth } from "@/contexts/AuthContext";
 import { withNormalizedCareerSeasonsInProfile } from "@/lib/coach-career-season-normalize";
 import { withNormalizedHonorCategories } from "@/lib/coach-honor-migration";
+import {
+  isTrainingAgeGroupId,
+  normalizeTrainingExerciseAgeMap,
+} from "@/lib/training-age-groups";
 
 function normalizeCoachProfileState(profile: CoachProfileState): CoachProfileState {
-  return withNormalizedHonorCategories(withNormalizedCareerSeasonsInProfile(profile));
+  const normalized = withNormalizedHonorCategories(withNormalizedCareerSeasonsInProfile(profile));
+  const ageGroup = isTrainingAgeGroupId(normalized.trainingSquadAgeGroup)
+    ? normalized.trainingSquadAgeGroup
+    : "juvenil";
+  const exerciseAgeMap = normalizeTrainingExerciseAgeMap(normalized.trainingExerciseAgeMap);
+  return {
+    ...normalized,
+    trainingSquadAgeGroup: ageGroup,
+    ...(exerciseAgeMap ? { trainingExerciseAgeMap: exerciseAgeMap } : {}),
+  };
 }
 
 function tacticPlayerNoteKey(tacticId: string, playerId: string) {
@@ -83,6 +96,7 @@ const defaultCoachProfile = (): CoachProfileState => ({
   club: "",
   role: "Head Coach",
   email: "",
+  trainingSquadAgeGroup: "juvenil",
 });
 
 /** Stable id for the default squad group chat (localStorage + UI). */

@@ -31,11 +31,22 @@ import {
 } from "@/lib/training-session-local";
 import { Search } from "lucide-react";
 import {
+  TRAINING_AGE_GROUP_LABELS,
+  TRAINING_AGE_GROUPS,
+  resolveExerciseAgeGroupsForTitle,
+  type TrainingExerciseAgeMap,
+} from "@/lib/training-age-groups";
+import {
   SAVED_EXERCISE_CATEGORIES,
   SAVED_EXERCISE_CATEGORY_LABELS,
   suggestSavedExerciseCategory,
 } from "@/lib/saved-exercise-categories";
-import type { NewSavedTrainingExerciseInput, SavedExerciseCategory, TrainingSession } from "@/types";
+import type {
+  NewSavedTrainingExerciseInput,
+  SavedExerciseCategory,
+  TrainingAgeGroupId,
+  TrainingSession,
+} from "@/types";
 
 const DURATIONS = [30, 60, 90, 120] as const;
 
@@ -59,6 +70,7 @@ export function TrainingPlansClient() {
     updateSavedTrainingExercise,
     removeSavedTrainingExercise,
     coachProfile,
+    setCoachProfile,
   } = useAppData();
   const { user } = useAuth();
 
@@ -120,7 +132,34 @@ export function TrainingPlansClient() {
   const [catalogExpandedIds, setCatalogExpandedIds] = useState<Set<string>>(() => new Set());
   const [catalogFilterPick, setCatalogFilterPick] = useState<Set<SavedExerciseCategory>>(() => new Set());
 
+  const selectedAgeGroup: TrainingAgeGroupId = coachProfile.trainingSquadAgeGroup ?? "juvenil";
+  const exerciseAgeMap: TrainingExerciseAgeMap | undefined = coachProfile.trainingExerciseAgeMap;
+
   const trainingCatalog = useMemo(() => getTrainingCatalogItems(selectedPlayers), [selectedPlayers]);
+
+  const setSelectedAgeGroup = useCallback(
+    (ageGroup: TrainingAgeGroupId) => {
+      setCoachProfile({ trainingSquadAgeGroup: ageGroup });
+    },
+    [setCoachProfile]
+  );
+
+  const toggleExerciseAgeGroup = useCallback(
+    (title: string, ageGroup: TrainingAgeGroupId) => {
+      const current = resolveExerciseAgeGroupsForTitle(title, exerciseAgeMap);
+      const already = current.includes(ageGroup);
+      const next = already ? current.filter((x) => x !== ageGroup) : [...current, ageGroup];
+      const normalized = TRAINING_AGE_GROUPS.filter((id) => next.includes(id));
+      const nextMap: TrainingExerciseAgeMap = { ...(exerciseAgeMap ?? {}) };
+      if (normalized.length === 0 || normalized.length === TRAINING_AGE_GROUPS.length) {
+        delete nextMap[title];
+      } else {
+        nextMap[title] = normalized;
+      }
+      setCoachProfile({ trainingExerciseAgeMap: Object.keys(nextMap).length > 0 ? nextMap : undefined });
+    },
+    [exerciseAgeMap, setCoachProfile]
+  );
 
   const filteredTrainingCatalog = useMemo(() => {
     if (catalogFilterPick.size === 0) return trainingCatalog;
@@ -233,11 +272,24 @@ export function TrainingPlansClient() {
           durationMin,
           objective: objective.trim(),
           players: selectedPlayers,
+          ageGroup: selectedAgeGroup,
+          exerciseAgeMap,
         });
         setFullPlan(plan);
         setFullMeta({ durationMin, playerCount: selectedCount });
-      } catch {
-        setErr("Não foi possível gerar o plano.");
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : "";
+        if (
+          msg === "no_drills_for_age_group" ||
+          msg === "explicit_drills_not_in_age_group" ||
+          msg === "warmup_not_in_age_group"
+        ) {
+          setErr(
+            `Não há exercícios suficientes associados ao escalão ${TRAINING_AGE_GROUP_LABELS[selectedAgeGroup]}. Atualiza as associações na aba "Todos os exercícios".`
+          );
+        } else {
+          setErr("Não foi possível gerar o plano.");
+        }
       } finally {
         setFullLoading(false);
       }
@@ -250,10 +302,17 @@ export function TrainingPlansClient() {
     setDrillLoading(true);
     queueMicrotask(() => {
       try {
-        const drill = buildLocalSingleDrill(drillBrief.trim(), selectedPlayers);
+        const drill = buildLocalSingleDrill(drillBrief.trim(), selectedPlayers, selectedAgeGroup, exerciseAgeMap);
         setSingleDrill(drill);
-      } catch {
-        setErr("Não foi possível gerar o exercício.");
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : "";
+        if (msg === "no_drills_for_age_group") {
+          setErr(
+            `Não há exercícios associados ao escalão ${TRAINING_AGE_GROUP_LABELS[selectedAgeGroup]}. Atualiza as associações na aba "Todos os exercícios".`
+          );
+        } else {
+          setErr("Não foi possível gerar o exercício.");
+        }
       } finally {
         setDrillLoading(false);
       }
@@ -371,6 +430,30 @@ export function TrainingPlansClient() {
         </button>
       </header>
 
+      <Card className="border-indigo-500/25 bg-indigo-500/5">
+        <CardContent className="pt-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wide text-indigo-300/90">Escalão da equipa</p>
+              <p className="mt-1 text-sm text-zinc-500">
+                O gerador usa este escalão para só propor exercícios associados a essa idade.
+              </p>
+            </div>
+            <select
+              value={selectedAgeGroup}
+              onChange={(e) => setSelectedAgeGroup(e.target.value as TrainingAgeGroupId)}
+              className="rounded-xl border border-surface-border bg-[#0c1014] px-3 py-2 text-sm text-zinc-200"
+            >
+              {TRAINING_AGE_GROUPS.map((id) => (
+                <option key={id} value={id}>
+                  {TRAINING_AGE_GROUP_LABELS[id]}
+                </option>
+              ))}
+            </select>
+          </div>
+        </CardContent>
+      </Card>
+
       {pickerOpen ? (
         <Card className="border-sky-500/20">
           <CardHeader className="pb-2">
@@ -479,6 +562,10 @@ export function TrainingPlansClient() {
                 Filtra por uma ou mais categorias; sem nenhuma selecção vês a lista completa. A bola com a lupa mostra
                 a explicação; «Guardar exercício» envia para «Meus exercícios» com o mesmo detalhe que os outros.
               </p>
+              <p className="text-xs text-zinc-500">
+                Define aqui os escalões de cada exercício. O gerador só vai usar exercícios compatíveis com o escalão
+                escolhido acima.
+              </p>
             </CardHeader>
             <CardContent className="space-y-6">
               <div>
@@ -530,6 +617,27 @@ export function TrainingPlansClient() {
                           <Badge variant="muted" className="text-[10px]">
                             {phaseLabel(item.phase)} · {item.durationMin} min
                           </Badge>
+                        </div>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {TRAINING_AGE_GROUPS.map((ageId) => {
+                            const on = resolveExerciseAgeGroupsForTitle(item.title, exerciseAgeMap).includes(ageId);
+                            return (
+                              <button
+                                key={`${item.catalogId}-${ageId}`}
+                                type="button"
+                                onClick={() => toggleExerciseAgeGroup(item.title, ageId)}
+                                className={cn(
+                                  "rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors",
+                                  on
+                                    ? "bg-indigo-500/25 text-indigo-100"
+                                    : "bg-surface-raised text-zinc-400 hover:text-zinc-200"
+                                )}
+                                title={`Associar ${TRAINING_AGE_GROUP_LABELS[ageId]} ao exercício`}
+                              >
+                                {TRAINING_AGE_GROUP_LABELS[ageId]}
+                              </button>
+                            );
+                          })}
                         </div>
                         <div className="mt-2 flex flex-wrap gap-1">
                           {item.filterCategories.map((c) => (

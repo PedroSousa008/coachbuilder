@@ -318,6 +318,8 @@ export type SavedExerciseCategory =
   | "physical"
   | "mixed";
 
+export type TrainingAgeGroupId = "benjamin" | "infantil" | "iniciado" | "junior" | "juvenil";
+
 /** Exercício guardado pelo treinador — notas privadas por conta (localStorage + workspace cloud). */
 export interface SavedTrainingExercise {
   id: string;
@@ -677,6 +679,10 @@ export interface CoachProfileState {
   careerDocuments?: CoachCareerDocument[];
   honors?: CoachHonorEntry[];
   careerHonorSyncMode?: "auto" | "manual";
+  /** Escalão actual da equipa (impacta o gerador de treino). */
+  trainingSquadAgeGroup?: TrainingAgeGroupId;
+  /** Mapa: título do exercício -> escalões associados. */
+  trainingExerciseAgeMap?: Record<string, TrainingAgeGroupId[]>;
 }
 
 /** Sketch Area — staff workspace (calendar, notes, tasks, files, board, watchlist). */

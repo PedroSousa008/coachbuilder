@@ -3,7 +3,11 @@
  * Filosofia: igual ao Style of Play Helper (lógica local + dados do plantel).
  */
 
-import type { Player, SavedExerciseCategory } from "@/types";
+import type { Player, SavedExerciseCategory, TrainingAgeGroupId } from "@/types";
+import {
+  resolveExerciseAgeGroupsForTitle,
+  type TrainingExerciseAgeMap,
+} from "@/lib/training-age-groups";
 import type {
   AiFullTrainingSession,
   AiSingleDrill,
@@ -1511,16 +1515,29 @@ function scoreDrill(themes: TrainingThemeId[], def: MainDrillDef): number {
   return s;
 }
 
+function filterDrillsByAgeGroup(
+  drills: MainDrillDef[],
+  ageGroup: TrainingAgeGroupId | undefined,
+  exerciseAgeMap: TrainingExerciseAgeMap | undefined
+): MainDrillDef[] {
+  if (!ageGroup) return drills;
+  return drills.filter((d) => resolveExerciseAgeGroupsForTitle(d.title, exerciseAgeMap).includes(ageGroup));
+}
+
 function pickMainDrills(
   themes: TrainingThemeId[],
   count: number,
   seed: number,
   excludeTitles?: ReadonlySet<string>,
+  ageGroup?: TrainingAgeGroupId,
+  exerciseAgeMap?: TrainingExerciseAgeMap,
 ): MainDrillDef[] {
-  const pool =
+  const basePool =
     excludeTitles && excludeTitles.size > 0
       ? MAIN_DRILLS.filter((d) => !excludeTitles.has(d.title))
       : MAIN_DRILLS;
+  const pool = filterDrillsByAgeGroup(basePool, ageGroup, exerciseAgeMap);
+  if (pool.length === 0) return [];
   const scored = pool
     .map((d, i) => ({ d, s: scoreDrill(themes, d) + ((seed + i * 13) % 3) * 0.1 }))
     .sort((a, b) => b.s - a.s)
@@ -1584,10 +1601,20 @@ export function buildLocalFullTrainingSession(params: {
   durationMin: number;
   objective: string;
   players: Player[];
+  ageGroup?: TrainingAgeGroupId;
+  exerciseAgeMap?: TrainingExerciseAgeMap;
 }): AiFullTrainingSession {
-  const { durationMin, objective, players } = params;
+  const { durationMin, objective, players, ageGroup, exerciseAgeMap } = params;
   const themes = detectTrainingThemes(objective);
-  const explicitDefs = extractExplicitDrillDefsFromObjective(objective);
+  const explicitDefs = filterDrillsByAgeGroup(
+    extractExplicitDrillDefsFromObjective(objective),
+    ageGroup,
+    exerciseAgeMap
+  );
+
+  if (ageGroup && explicitDefs.length === 0 && extractExplicitDrillDefsFromObjective(objective).length > 0) {
+    throw new Error("explicit_drills_not_in_age_group");
+  }
 
   if (explicitDefs.length > 0) {
     const split = splitMinutes(Math.max(durationMin, explicitDefs.length), explicitDefs.length);
@@ -1623,7 +1650,27 @@ export function buildLocalFullTrainingSession(params: {
   let mainTotal = durationMin - warmD - coolD;
   if (mainTotal < 10) mainTotal = 10;
   const parts2 = splitMinutes(mainTotal, nMain);
-  const defs2 = pickMainDrills(themes, nMain, seed, new Set<string>(["Warm Up with Ball"]));
+  const allowedMain = filterDrillsByAgeGroup(
+    MAIN_DRILLS.filter((d) => d.title !== "Warm Up with Ball"),
+    ageGroup,
+    exerciseAgeMap
+  );
+  if (ageGroup && allowedMain.length === 0) {
+    throw new Error("no_drills_for_age_group");
+  }
+  const defs2 = pickMainDrills(
+    themes,
+    nMain,
+    seed,
+    new Set<string>(["Warm Up with Ball"]),
+    ageGroup,
+    exerciseAgeMap
+  );
+  const warmUpAllowed =
+    !ageGroup || resolveExerciseAgeGroupsForTitle("Warm Up with Ball", exerciseAgeMap).includes(ageGroup);
+  if (!warmUpAllowed) {
+    throw new Error("warmup_not_in_age_group");
+  }
 
   recalc.push({
     title: "Warm Up with Ball",
@@ -1941,10 +1988,16 @@ function singleDrillProgressionVariationsForTitle(title: string): {
   return { progression, variations };
 }
 
-export function buildLocalSingleDrill(brief: string, players: Player[]): AiSingleDrill {
+export function buildLocalSingleDrill(
+  brief: string,
+  players: Player[],
+  ageGroup?: TrainingAgeGroupId,
+  exerciseAgeMap?: TrainingExerciseAgeMap
+): AiSingleDrill {
   const themes = detectTrainingThemes(brief);
   const seed = hashSeed(brief, 0);
-  const defs = pickMainDrills(themes, 1, seed);
+  const defs = pickMainDrills(themes, 1, seed, undefined, ageGroup, exerciseAgeMap);
+  if (defs.length === 0) throw new Error("no_drills_for_age_group");
   const def = defs[0]!;
   const mins = singleDrillDurationForTitle(def.title, brief.length);
   const body = def.describe(players, mins);
