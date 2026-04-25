@@ -43,6 +43,9 @@ export function buildFullSessionDocumentHtml(params: {
         imageRelPath && assetBaseUrl ? `${assetBaseUrl}${imageRelPath}` : imageRelPath;
       const frontPage = i * 2 + 1;
       const backPage = i * 2 + 2;
+      const playerCount = Math.max(playerLines.length, 1);
+      const playersDensityClass =
+        playerCount >= 26 ? "players-rows-xxs" : playerCount >= 22 ? "players-rows-xs" : playerCount >= 18 ? "players-rows-sm" : "";
       return `
       <section class="sheet front">
         <header class="page-header">
@@ -85,7 +88,7 @@ export function buildFullSessionDocumentHtml(params: {
           </section>
           <section class="table-card">
             <h2>Jogadores</h2>
-            <table class="grid-table players">
+            <table class="grid-table players ${playersDensityClass}">
               <thead>
                 <tr><th>#</th><th>Nome</th><th>Observações</th><th>Rating</th></tr>
               </thead>
@@ -120,7 +123,7 @@ export function buildFullSessionDocumentHtml(params: {
     body { font-family: system-ui, sans-serif; margin: 0; color: #111; line-height: 1.24; font-size: 11px; }
     .sheet {
       width: 100%;
-      height: 276mm;
+      height: 274mm;
       display: flex;
       flex-direction: column;
       overflow: hidden;
@@ -148,21 +151,24 @@ export function buildFullSessionDocumentHtml(params: {
     }
     .image-fallback { border: 1px dashed #bbb; border-radius: 8px; padding: 10mm 4mm; text-align: center; color: #666; margin: 1.2mm 0 1.6mm; }
     .exercise-image-wrap figcaption { margin-top: 0.8mm; font-size: 8px; color: #555; }
-    .back-layout { display: flex; flex-direction: column; gap: 2mm; overflow: hidden; }
-    .table-card { border: 1px solid #d8d8d8; border-radius: 8px; padding: 1.5mm; }
-    .table-card h2 { margin: 0 0 1mm; font-size: 11px; }
+    .back-layout { display: flex; flex-direction: column; gap: 1.5mm; overflow: hidden; }
+    .table-card { border: 1px solid #d8d8d8; border-radius: 8px; padding: 1.2mm; page-break-inside: avoid; break-inside: avoid; }
+    .table-card h2 { margin: 0 0 0.8mm; font-size: 10px; }
     .grid-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-    .grid-table th, .grid-table td { border: 1px solid #d4d4d4; padding: 1.1mm 1.4mm; font-size: 9px; vertical-align: top; }
+    .grid-table th, .grid-table td { border: 1px solid #d4d4d4; padding: 0.85mm 1mm; font-size: 8px; vertical-align: top; line-height: 1.15; }
     .grid-table th { background: #f5f5f5; text-align: left; font-weight: 600; }
-    .grid-table.notes td { height: 16mm; }
-    .grid-table.players td { height: 6mm; }
+    .grid-table.notes td { height: 11.5mm; }
+    .grid-table.players td { height: 4.8mm; }
+    .grid-table.players.players-rows-sm td { height: 4.2mm; font-size: 7.7px; }
+    .grid-table.players.players-rows-xs td { height: 3.8mm; font-size: 7.3px; }
+    .grid-table.players.players-rows-xxs td { height: 3.3mm; font-size: 6.9px; }
     .grid-table.players th:nth-child(1) { width: 8%; }
     .grid-table.players th:nth-child(2) { width: 42%; }
     .grid-table.players th:nth-child(3) { width: 40%; }
     .grid-table.players th:nth-child(4) { width: 14%; text-align: center; }
-    .back-layout .table-card:nth-child(2) { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+    .back-layout .table-card:nth-child(2) { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
     .back-layout .table-card:nth-child(2) .grid-table { height: 100%; }
-    .page-footer { margin-top: auto; padding-top: 1.5mm; border-top: 1px solid #ddd; text-align: center; font-size: 9px; color: #333; }
+    .page-footer { margin-top: auto; padding-top: 1mm; border-top: 1px solid #ddd; text-align: center; font-size: 8px; color: #333; }
   </style>
 </head>
 <body>
@@ -189,7 +195,7 @@ export function buildSingleDrillDocumentHtml(params: {
     @page { size: A4; margin: 10mm; }
     * { box-sizing: border-box; }
     body { font-family: system-ui, sans-serif; margin: 0; color: #111; line-height: 1.24; font-size: 11px; }
-    .sheet { height: 276mm; display: flex; flex-direction: column; page-break-inside: avoid; break-inside: avoid; }
+    .sheet { height: 274mm; display: flex; flex-direction: column; page-break-inside: avoid; break-inside: avoid; }
     .sheet + .sheet { page-break-before: always; break-before: page; }
     h1 { font-size: 18px; margin: 0 0 1.5mm; line-height: 1.08; }
     .meta { color: #555; font-size: 9px; margin: 0.5mm 0; }
@@ -199,22 +205,21 @@ export function buildSingleDrillDocumentHtml(params: {
     .exercise-image { display: block; width: 100%; max-height: 103mm; object-fit: contain; border-radius: 8px; border: 1px solid #ddd; }
     .exercise-image-wrap figcaption { margin-top: 0.8mm; font-size: 8px; color: #555; }
     .image-fallback { border: 1px dashed #bbb; border-radius: 8px; padding: 10mm 4mm; text-align: center; color: #666; margin: 1.2mm 0 1.6mm; }
-    .back-grid { display: grid; grid-template-rows: 1.45fr 1fr 1fr; gap: 2mm; }
-    .table-card { border: 1px solid #d8d8d8; border-radius: 8px; padding: 1.5mm; }
-    .table-card h2 { margin: 0 0 1mm; font-size: 11px; }
+    .back-layout { display: flex; flex-direction: column; gap: 1.5mm; overflow: hidden; }
+    .table-card { border: 1px solid #d8d8d8; border-radius: 8px; padding: 1.2mm; page-break-inside: avoid; break-inside: avoid; }
+    .table-card h2 { margin: 0 0 0.8mm; font-size: 10px; }
     .grid-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-    .grid-table th, .grid-table td { border: 1px solid #d4d4d4; padding: 1.1mm 1.4mm; font-size: 9px; vertical-align: top; }
+    .grid-table th, .grid-table td { border: 1px solid #d4d4d4; padding: 0.85mm 1mm; font-size: 8px; vertical-align: top; line-height: 1.15; }
     .grid-table th { background: #f5f5f5; text-align: left; font-weight: 600; }
-    .grid-table.notes td { height: 7.5mm; }
-    .grid-table.players td, .grid-table.feedback td { height: 6.3mm; }
+    .grid-table.notes td { height: 11.5mm; }
+    .grid-table.players td { height: 4.8mm; }
     .grid-table.players th:nth-child(1) { width: 8%; }
     .grid-table.players th:nth-child(2) { width: 42%; }
     .grid-table.players th:nth-child(3) { width: 40%; }
     .grid-table.players th:nth-child(4) { width: 14%; text-align: center; }
-    .grid-table.feedback th:nth-child(1) { width: 35%; }
-    .grid-table.feedback th:nth-child(2) { width: 12%; text-align: center; }
-    .grid-table.feedback th:nth-child(3) { width: 53%; }
-    .page-footer { margin-top: auto; padding-top: 1.5mm; border-top: 1px solid #ddd; text-align: center; font-size: 9px; color: #333; }
+    .back-layout .table-card:nth-child(2) { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+    .back-layout .table-card:nth-child(2) .grid-table { height: 100%; }
+    .page-footer { margin-top: auto; padding-top: 1mm; border-top: 1px solid #ddd; text-align: center; font-size: 8px; color: #333; }
   </style>
 </head>
 <body>
