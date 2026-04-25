@@ -288,7 +288,7 @@ export function TrainingPlansClient() {
         setSingleDrill(drill);
       } catch (e) {
         const msg = e instanceof Error ? e.message : "";
-        if (msg === "no_drills_for_age_group") {
+        if (msg === "no_drills_for_age_group" || msg === "explicit_drills_not_in_age_group") {
           setErr(
             `Não há exercícios associados ao escalão ${TRAINING_AGE_GROUP_LABELS[selectedAgeGroup]}. Atualiza as associações na aba "Todos os exercícios".`
           );

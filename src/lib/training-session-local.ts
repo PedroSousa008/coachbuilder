@@ -2039,9 +2039,18 @@ export function buildLocalSingleDrill(
   ageGroup?: TrainingAgeGroupId,
   exerciseAgeMap?: TrainingExerciseAgeMap
 ): AiSingleDrill {
+  const explicit = extractExplicitDrillDefsFromObjective(brief);
+  const explicitAllowed = filterDrillsByAgeGroup(explicit, ageGroup, exerciseAgeMap);
+  if (explicit.length > 0 && explicitAllowed.length === 0) {
+    throw new Error("explicit_drills_not_in_age_group");
+  }
+
   const themes = detectTrainingThemes(brief);
   const seed = hashSeed(brief, 0);
-  const defs = pickMainDrills(themes, 1, seed, undefined, ageGroup, exerciseAgeMap);
+  const defs =
+    explicitAllowed.length > 0
+      ? [explicitAllowed[0]!]
+      : pickMainDrills(themes, 1, seed, undefined, ageGroup, exerciseAgeMap);
   if (defs.length === 0) throw new Error("no_drills_for_age_group");
   const def = defs[0]!;
   const mins = singleDrillDurationForTitle(def.title, brief.length);
