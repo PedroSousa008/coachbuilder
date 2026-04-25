@@ -171,10 +171,11 @@ export function buildFullSessionDocumentHtml(params: {
     .sheet {
       width: 100%;
       height: 272mm;
+      position: relative;
       display: flex;
       flex-direction: column;
       overflow: hidden;
-      padding: 0;
+      padding: 0 0 6mm;
       page-break-inside: avoid;
       break-inside: avoid;
       page-break-after: always;
@@ -233,7 +234,21 @@ export function buildFullSessionDocumentHtml(params: {
     .grid-table.players th:nth-child(4) { width: 14%; text-align: center; }
     .back-layout .table-card:nth-child(2) { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
     .back-layout .table-card:nth-child(2) .grid-table { height: auto; }
-    .page-footer { margin-top: auto; padding-top: 1mm; border-top: 1px solid #ddd; text-align: center; font-size: 8px; color: #333; }
+    .page-footer {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 5.5mm;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-top: 1px solid #ddd;
+      text-align: center;
+      font-size: 8px;
+      color: #333;
+      background: #fff;
+    }
   </style>
 </head>
 <body>
@@ -263,8 +278,10 @@ export function buildSingleDrillDocumentHtml(params: {
     body { font-family: system-ui, sans-serif; margin: 0; color: #111; line-height: 1.24; font-size: 11px; }
     .sheet {
       height: 272mm;
+      position: relative;
       display: flex;
       flex-direction: column;
+      padding: 0 0 6mm;
       page-break-inside: avoid;
       break-inside: avoid;
       page-break-after: always;
@@ -315,7 +332,21 @@ export function buildSingleDrillDocumentHtml(params: {
     .grid-table.players th:nth-child(4) { width: 14%; text-align: center; }
     .back-layout .table-card:nth-child(2) { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
     .back-layout .table-card:nth-child(2) .grid-table { height: auto; }
-    .page-footer { margin-top: auto; padding-top: 1mm; border-top: 1px solid #ddd; text-align: center; font-size: 8px; color: #333; }
+    .page-footer {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 5.5mm;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-top: 1px solid #ddd;
+      text-align: center;
+      font-size: 8px;
+      color: #333;
+      background: #fff;
+    }
   </style>
 </head>
 <body>
