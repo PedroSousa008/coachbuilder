@@ -26,6 +26,7 @@ export function buildFullSessionDocumentHtml(params: {
   coachPrintName?: string;
 }): string {
   const { plan, durationMin, playerLines, generatedAt, assetBaseUrl, coachPrintName } = params;
+  const totalPages = plan.blocks.length;
   const blocksHtml = plan.blocks
     .map((b, i) => {
       const phase =
@@ -34,31 +35,35 @@ export function buildFullSessionDocumentHtml(params: {
       const exerciseImageSrc =
         imageRelPath && assetBaseUrl ? `${assetBaseUrl}${imageRelPath}` : imageRelPath;
       return `
-      <section class="block">
-        <h2>${i + 1}. ${esc(b.title)} <span class="meta">(${esc(phase)} · ${b.durationMin} min)</span></h2>
-        <p><strong>Como correr:</strong> ${esc(b.description)}</p>
-        ${exerciseImageSrc ? `<p><strong>Explicação:</strong></p>` : ""}
-        ${
-          exerciseImageSrc
-            ? `<figure class="exercise-image-wrap">
-        <img class="exercise-image" src="${esc(exerciseImageSrc)}" alt="Imagem do exercício ${esc(
-                b.title
-              )}" onerror="this.style.display='none';" />
-        <figcaption>Imagem do exercício (para impressão)</figcaption>
-      </figure>`
-            : ""
-        }
-        <p><strong>Pontos de treino:</strong> ${esc(b.coachingPoints)}</p>
-        ${b.setup ? `<p><strong>Organização:</strong> ${esc(b.setup)}</p>` : ""}
-        ${b.groupSplit ? `<p><strong>Grupos / focos:</strong> ${esc(b.groupSplit)}</p>` : ""}
-        ${b.diagramHint ? `<p class="diagram"><strong>Diagrama (sugestão):</strong> ${esc(b.diagramHint)}</p>` : ""}
+      <section class="exercise-page">
+        <header class="page-header">
+          <h1>${esc(b.title)}</h1>
+          <p class="meta">${esc(phase)} · ${b.durationMin} min · Sessão: ${durationMin} min · ${esc(
+            generatedAt
+          )} · ${coachBuilderAttribution(coachPrintName)}</p>
+          <p class="meta">Exercício ${i + 1} de ${totalPages}</p>
+        </header>
+        <main class="page-body">
+          <p><strong>Como correr:</strong> ${esc(b.description)}</p>
+          ${
+            exerciseImageSrc
+              ? `<figure class="exercise-image-wrap">
+          <img class="exercise-image" src="${esc(exerciseImageSrc)}" alt="Imagem do exercício ${esc(
+                  b.title
+                )}" onerror="this.style.display='none';" />
+          <figcaption>Imagem do exercício (para impressão)</figcaption>
+        </figure>`
+              : ""
+          }
+          <p><strong>Pontos de treino:</strong> ${esc(b.coachingPoints)}</p>
+          ${b.setup ? `<p><strong>Organização:</strong> ${esc(b.setup)}</p>` : ""}
+          ${b.groupSplit ? `<p><strong>Grupos / focos:</strong> ${esc(b.groupSplit)}</p>` : ""}
+          ${b.diagramHint ? `<p class="diagram"><strong>Diagrama (sugestão):</strong> ${esc(b.diagramHint)}</p>` : ""}
+        </main>
+        <footer class="page-footer">Página ${i + 1} / ${totalPages}</footer>
       </section>`;
     })
     .join("");
-
-  const roster = playerLines.length
-    ? `<ul>${playerLines.map((l) => `<li>${esc(l)}</li>`).join("")}</ul>`
-    : "<p>—</p>";
 
   return `<!DOCTYPE html>
 <html lang="pt">
@@ -66,31 +71,40 @@ export function buildFullSessionDocumentHtml(params: {
   <meta charset="utf-8"/>
   <title>${esc(plan.sessionTitle)}</title>
   <style>
-    body { font-family: system-ui, sans-serif; max-width: 720px; margin: 24px auto; padding: 0 16px; color: #111; line-height: 1.45; }
-    h1 { font-size: 1.5rem; margin-bottom: 0.25rem; }
-    .sub { color: #444; font-size: 0.9rem; margin-bottom: 1.5rem; }
-    .block { page-break-inside: avoid; margin-bottom: 1.25rem; padding-bottom: 1rem; border-bottom: 1px solid #ddd; }
-    .block h2 { font-size: 1.1rem; margin: 0 0 0.5rem; }
-    .meta { font-weight: normal; color: #555; font-size: 0.85rem; }
-    .diagram { background: #f6f6f6; padding: 8px 12px; border-radius: 6px; }
-    .exercise-image-wrap { margin: 10px 0 12px; }
-    .exercise-image { display: block; width: 100%; max-width: 560px; border-radius: 8px; border: 1px solid #ddd; }
-    .exercise-image-wrap figcaption { margin-top: 4px; font-size: 0.78rem; color: #555; }
-    ul { margin: 0.25rem 0; padding-left: 1.25rem; }
-    @media print { body { margin: 12px; } .block { border-color: #ccc; } }
+    @page { size: A4; margin: 10mm; }
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, sans-serif; margin: 0; color: #111; line-height: 1.28; font-size: 12px; }
+    .exercise-page {
+      width: 100%;
+      min-height: calc(297mm - 20mm);
+      display: flex;
+      flex-direction: column;
+      page-break-after: always;
+      break-after: page;
+      overflow: hidden;
+      padding: 0.5mm 0;
+    }
+    .exercise-page:last-child { page-break-after: auto; break-after: auto; }
+    .page-header h1 { font-size: 20px; margin: 0 0 2mm; line-height: 1.1; }
+    .meta { color: #444; font-size: 10px; margin: 0.5mm 0; }
+    .page-body { flex: 1; min-height: 0; }
+    .page-body p { margin: 1.5mm 0; }
+    .diagram { background: #f6f6f6; padding: 6px 8px; border-radius: 6px; font-size: 11px; }
+    .exercise-image-wrap { margin: 2mm 0 2.5mm; }
+    .exercise-image {
+      display: block;
+      width: 100%;
+      max-height: 95mm;
+      object-fit: contain;
+      border-radius: 8px;
+      border: 1px solid #ddd;
+    }
+    .exercise-image-wrap figcaption { margin-top: 1mm; font-size: 9px; color: #555; }
+    .page-footer { margin-top: auto; padding-top: 2mm; border-top: 1px solid #ddd; text-align: center; font-size: 10px; color: #333; }
   </style>
 </head>
 <body>
-  <h1>${esc(plan.sessionTitle)}</h1>
-  <p class="sub">Duração total: ${durationMin} min · Gerado: ${esc(generatedAt)} · ${coachBuilderAttribution(coachPrintName)}</p>
-  <p>${esc(plan.summary)}</p>
-  <h3>Plantel considerado (${playerLines.length} jogadores)</h3>
-  ${roster}
   ${blocksHtml}
-  <section class="block" style="border:none">
-    <h2>Notas finais</h2>
-    <p>${esc(plan.closingNotes)}</p>
-  </section>
 </body>
 </html>`;
 }
