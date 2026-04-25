@@ -16,6 +16,13 @@ function coachBuilderAttribution(coachPrintName: string | undefined): string {
   return `CoachBuilder · ${esc(t)}`;
 }
 
+function splitPlayerLine(raw: string): { number: string; name: string } {
+  const s = raw.trim();
+  const m = /^#(\d+)\s+(.+?)(?:\s+—.*)?$/u.exec(s);
+  if (!m) return { number: "", name: s };
+  return { number: m[1] ?? "", name: (m[2] ?? "").trim() };
+}
+
 export function buildFullSessionDocumentHtml(params: {
   plan: AiFullTrainingSession;
   durationMin: number;
@@ -80,13 +87,19 @@ export function buildFullSessionDocumentHtml(params: {
             <h2>Jogadores</h2>
             <table class="grid-table players">
               <thead>
-                <tr><th>#</th><th>Nome</th><th>Min</th><th>Observações</th></tr>
+                <tr><th>#</th><th>Nome</th><th>Observações</th><th>Rating</th></tr>
               </thead>
               <tbody>
-                ${Array.from({ length: 10 }, (_, r) => {
-                  const line = playerLines[r] ?? "";
-                  return `<tr><td>${r + 1}</td><td>${esc(line)}</td><td>&nbsp;</td><td>&nbsp;</td></tr>`;
-                }).join("")}
+                ${
+                  playerLines.length > 0
+                    ? playerLines
+                        .map((line) => {
+                          const parsed = splitPlayerLine(line);
+                          return `<tr><td>${esc(parsed.number)}</td><td>${esc(parsed.name)}</td><td>&nbsp;</td><td>&nbsp;</td></tr>`;
+                        })
+                        .join("")
+                    : `<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>`
+                }
               </tbody>
             </table>
           </section>
@@ -158,8 +171,8 @@ export function buildFullSessionDocumentHtml(params: {
     .grid-table.players td, .grid-table.feedback td { height: 6.3mm; }
     .grid-table.players th:nth-child(1) { width: 8%; }
     .grid-table.players th:nth-child(2) { width: 42%; }
-    .grid-table.players th:nth-child(3) { width: 12%; text-align: center; }
-    .grid-table.players th:nth-child(4) { width: 38%; }
+    .grid-table.players th:nth-child(3) { width: 40%; }
+    .grid-table.players th:nth-child(4) { width: 14%; text-align: center; }
     .grid-table.feedback th:nth-child(1) { width: 35%; }
     .grid-table.feedback th:nth-child(2) { width: 12%; text-align: center; }
     .grid-table.feedback th:nth-child(3) { width: 53%; }
@@ -210,8 +223,8 @@ export function buildSingleDrillDocumentHtml(params: {
     .grid-table.players td, .grid-table.feedback td { height: 6.3mm; }
     .grid-table.players th:nth-child(1) { width: 8%; }
     .grid-table.players th:nth-child(2) { width: 42%; }
-    .grid-table.players th:nth-child(3) { width: 12%; text-align: center; }
-    .grid-table.players th:nth-child(4) { width: 38%; }
+    .grid-table.players th:nth-child(3) { width: 40%; }
+    .grid-table.players th:nth-child(4) { width: 14%; text-align: center; }
     .grid-table.feedback th:nth-child(1) { width: 35%; }
     .grid-table.feedback th:nth-child(2) { width: 12%; text-align: center; }
     .grid-table.feedback th:nth-child(3) { width: 53%; }
@@ -257,7 +270,7 @@ export function buildSingleDrillDocumentHtml(params: {
       <section class="table-card">
         <h2>Jogadores</h2>
         <table class="grid-table players">
-          <thead><tr><th>#</th><th>Nome</th><th>Min</th><th>Observações</th></tr></thead>
+          <thead><tr><th>#</th><th>Nome</th><th>Observações</th><th>Rating</th></tr></thead>
           <tbody>${Array.from({ length: 10 }, (_, i) => `<tr><td>${i + 1}</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>`).join("")}</tbody>
         </table>
       </section>
@@ -295,13 +308,40 @@ export function openPrintableHtml(html: string, existingWindow?: Window | null):
     w.document.write(html);
     w.document.close();
     w.focus();
-    setTimeout(() => {
+    const tryPrint = () => {
       try {
         w.print();
       } catch {
         /* ignorar — utilizador pode imprimir manualmente */
       }
-    }, 300);
+    };
+    const waitForImagesThenPrint = () => {
+      try {
+        const imgs = Array.from(w.document.images ?? []);
+        if (imgs.length === 0) {
+          setTimeout(tryPrint, 120);
+          return;
+        }
+        let pending = imgs.filter((img) => !img.complete).length;
+        if (pending === 0) {
+          setTimeout(tryPrint, 120);
+          return;
+        }
+        const done = () => {
+          pending -= 1;
+          if (pending <= 0) setTimeout(tryPrint, 120);
+        };
+        imgs.forEach((img) => {
+          if (img.complete) return;
+          img.addEventListener("load", done, { once: true });
+          img.addEventListener("error", done, { once: true });
+        });
+        setTimeout(tryPrint, 2200);
+      } catch {
+        setTimeout(tryPrint, 300);
+      }
+    };
+    setTimeout(waitForImagesThenPrint, 80);
   } catch {
     return false;
   }
