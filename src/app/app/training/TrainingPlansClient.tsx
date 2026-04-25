@@ -48,6 +48,20 @@ import type {
 } from "@/types";
 
 const DURATIONS = [30, 60, 90, 120] as const;
+const MANUAL_TOTAL_EXERCISE_OPTIONS = [4, 5, 6, 7, 8, 9, 10, 12] as const;
+const MANUAL_CATEGORY_ORDER: SavedExerciseCategory[] = [
+  "warmup",
+  "stretching",
+  "possession",
+  "goalKick",
+  "setPiece",
+  "pressing",
+  "finishing",
+  "defensive",
+  "transition",
+  "physical",
+  "mixed",
+];
 
 function phaseLabel(p: AiTrainingPhase): string {
   if (p === "warmup") return "Aquecimento";
@@ -78,7 +92,7 @@ export function TrainingPlansClient() {
     [coachProfile.name, user?.name]
   );
 
-  const [labTab, setLabTab] = useState<"full" | "drill" | "library" | "catalog">("full");
+  const [labTab, setLabTab] = useState<"full" | "manual" | "drill" | "library" | "catalog">("full");
   const [durationMin, setDurationMin] = useState<(typeof DURATIONS)[number]>(60);
   const [objective, setObjective] = useState("");
   const [drillBrief, setDrillBrief] = useState("");
@@ -130,6 +144,33 @@ export function TrainingPlansClient() {
   const [libraryFilter, setLibraryFilter] = useState<"all" | SavedExerciseCategory>("all");
   const [catalogExpandedIds, setCatalogExpandedIds] = useState<Set<string>>(() => new Set());
   const [catalogFilterPick, setCatalogFilterPick] = useState<Set<SavedExerciseCategory>>(() => new Set());
+  const [manualTotalExercises, setManualTotalExercises] = useState<number>(6);
+  const [manualCategoryTargets, setManualCategoryTargets] = useState<Record<SavedExerciseCategory, number>>({
+    warmup: 1,
+    stretching: 0,
+    possession: 2,
+    goalKick: 0,
+    setPiece: 0,
+    pressing: 0,
+    finishing: 1,
+    defensive: 0,
+    transition: 1,
+    physical: 0,
+    mixed: 1,
+  });
+  const [manualSelectedCatalogIds, setManualSelectedCatalogIds] = useState<Record<SavedExerciseCategory, string[]>>({
+    warmup: [],
+    stretching: [],
+    possession: [],
+    goalKick: [],
+    setPiece: [],
+    pressing: [],
+    finishing: [],
+    defensive: [],
+    transition: [],
+    physical: [],
+    mixed: [],
+  });
 
   const selectedAgeGroup: TrainingAgeGroupId = coachProfile.trainingSquadAgeGroup ?? "juvenil";
   const exerciseAgeMap: TrainingExerciseAgeMap | undefined = coachProfile.trainingExerciseAgeMap;
@@ -148,6 +189,60 @@ export function TrainingPlansClient() {
     return trainingCatalog.filter((item) => item.filterCategories.some((c) => catalogFilterPick.has(c)));
   }, [trainingCatalog, catalogFilterPick]);
 
+  const manualCatalogById = useMemo(
+    () => new Map(trainingCatalog.map((item) => [item.catalogId, item])),
+    [trainingCatalog]
+  );
+
+  const manualTargetTotal = useMemo(
+    () => MANUAL_CATEGORY_ORDER.reduce((sum, c) => sum + (manualCategoryTargets[c] ?? 0), 0),
+    [manualCategoryTargets]
+  );
+  const manualTargetMismatch = manualTargetTotal !== manualTotalExercises;
+
+  const manualSelectedCountByCategory = useMemo(() => {
+    const out = {} as Record<SavedExerciseCategory, number>;
+    for (const c of MANUAL_CATEGORY_ORDER) out[c] = manualSelectedCatalogIds[c]?.length ?? 0;
+    return out;
+  }, [manualSelectedCatalogIds]);
+
+  const manualPlanBlocks = useMemo(() => {
+    const blocks: AiTrainingBlock[] = [];
+    for (const c of MANUAL_CATEGORY_ORDER) {
+      const ids = manualSelectedCatalogIds[c] ?? [];
+      for (const id of ids) {
+        const item = manualCatalogById.get(id);
+        if (!item) continue;
+        blocks.push({
+          title: item.title,
+          durationMin: item.durationMin,
+          phase: item.phase,
+          description: item.description,
+          coachingPoints: item.coachingPoints,
+          setup: item.setup,
+          groupSplit: item.groupSplit,
+          diagramHint: item.diagramHint,
+          videoUrl: item.videoUrl,
+        });
+      }
+    }
+    return blocks;
+  }, [manualCatalogById, manualSelectedCatalogIds]);
+
+  const manualPlanDurationMin = useMemo(
+    () => manualPlanBlocks.reduce((sum, b) => sum + b.durationMin, 0),
+    [manualPlanBlocks]
+  );
+
+  const manualPlanReady = useMemo(() => {
+    if (manualTargetMismatch) return false;
+    for (const c of MANUAL_CATEGORY_ORDER) {
+      const want = manualCategoryTargets[c] ?? 0;
+      if (want > 0 && (manualSelectedCatalogIds[c]?.length ?? 0) !== want) return false;
+    }
+    return manualPlanBlocks.length === manualTotalExercises;
+  }, [manualCategoryTargets, manualPlanBlocks.length, manualSelectedCatalogIds, manualTargetMismatch, manualTotalExercises]);
+
   const toggleCatalogBrief = useCallback((catalogId: string) => {
     setCatalogExpandedIds((prev) => {
       const next = new Set(prev);
@@ -165,6 +260,31 @@ export function TrainingPlansClient() {
       return next;
     });
   }, []);
+
+  const setManualTargetForCategory = useCallback((category: SavedExerciseCategory, value: number) => {
+    const nextValue = Math.max(0, Math.min(12, Math.floor(value)));
+    setManualCategoryTargets((prev) => ({ ...prev, [category]: nextValue }));
+    setManualSelectedCatalogIds((prev) => {
+      const selected = prev[category] ?? [];
+      if (selected.length <= nextValue) return prev;
+      return { ...prev, [category]: selected.slice(0, nextValue) };
+    });
+  }, []);
+
+  const toggleManualCatalogItem = useCallback(
+    (category: SavedExerciseCategory, catalogId: string) => {
+      const limit = manualCategoryTargets[category] ?? 0;
+      setManualSelectedCatalogIds((prev) => {
+        const current = prev[category] ?? [];
+        if (current.includes(catalogId)) {
+          return { ...prev, [category]: current.filter((id) => id !== catalogId) };
+        }
+        if (limit <= 0 || current.length >= limit) return prev;
+        return { ...prev, [category]: [...current, catalogId] };
+      });
+    },
+    [manualCategoryTargets]
+  );
 
   const filteredSaved = useMemo(() => {
     const list = [...savedTrainingExercises].sort(
@@ -329,6 +449,35 @@ export function TrainingPlansClient() {
     openPrintableHtml(html);
   }, [singleDrill, coachPrintName]);
 
+  const printManualPlan = useCallback(() => {
+    if (!manualPlanReady) return;
+    const sortedForPrint = sortSquadRoster(selectedPlayers, "position");
+    const playerLines = sortedForPrint.map((p) => `#${p.number} ${p.name} — ${formatPlayerPositions(p)}`);
+    const assetBaseUrl = window.location.origin;
+    const plan: AiFullTrainingSession = {
+      sessionTitle: `Sessão manual · ${manualPlanDurationMin} min`,
+      summary: `Sessão construída manualmente por tópicos. Escalão selecionado: ${TRAINING_AGE_GROUP_LABELS[selectedAgeGroup]}.`,
+      blocks: manualPlanBlocks,
+      closingNotes: "Plano manual criado pelo treinador a partir do catálogo de exercícios.",
+    };
+    const html = buildFullSessionDocumentHtml({
+      plan,
+      durationMin: manualPlanDurationMin,
+      playerLines,
+      generatedAt: new Date().toLocaleString("pt-PT"),
+      assetBaseUrl,
+      coachPrintName,
+    });
+    openPrintableHtml(html);
+  }, [
+    coachPrintName,
+    manualPlanBlocks,
+    manualPlanDurationMin,
+    manualPlanReady,
+    selectedAgeGroup,
+    selectedPlayers,
+  ]);
+
   const saveFullAsSession = () => {
     if (!fullPlan || !fullMeta) return;
     const desc = [
@@ -345,6 +494,27 @@ export function TrainingPlansClient() {
       title: fullPlan.sessionTitle.slice(0, 80),
       date: new Date().toISOString(),
       durationMin: fullMeta.durationMin,
+      intensity: "medium",
+      categories: ["Possession", "Recovery"],
+      description: desc.slice(0, 12000),
+    });
+  };
+
+  const saveManualAsSession = () => {
+    if (!manualPlanReady) return;
+    const desc = [
+      `Plano manual por tópicos (escalão: ${TRAINING_AGE_GROUP_LABELS[selectedAgeGroup]}).`,
+      "",
+      ...manualPlanBlocks.map(
+        (b) => `### ${b.title} (${b.durationMin} min, ${phaseLabel(b.phase)})\n${b.description}\n\n${b.coachingPoints}`
+      ),
+      "",
+      "Plano montado manualmente pelo treinador.",
+    ].join("\n");
+    addTrainingSession({
+      title: `Sessão manual · ${manualPlanDurationMin} min`.slice(0, 80),
+      date: new Date().toISOString(),
+      durationMin: manualPlanDurationMin,
       intensity: "medium",
       categories: ["Possession", "Recovery"],
       description: desc.slice(0, 12000),
@@ -488,7 +658,17 @@ export function TrainingPlansClient() {
             labTab === "full" ? "border-accent text-white" : "border-transparent text-zinc-500 hover:text-zinc-300"
           )}
         >
-          Sessão completa
+          Sessão completa AI
+        </button>
+        <button
+          type="button"
+          onClick={() => setLabTab("manual")}
+          className={cn(
+            "-mb-px border-b-2 px-4 py-2 text-sm font-medium transition-colors",
+            labTab === "manual" ? "border-accent text-white" : "border-transparent text-zinc-500 hover:text-zinc-300"
+          )}
+        >
+          Sessão completa manual
         </button>
         <button
           type="button"
@@ -839,6 +1019,165 @@ export function TrainingPlansClient() {
                   ))}
                 </ul>
               )}
+            </CardContent>
+          </Card>
+        </div>
+      ) : labTab === "manual" ? (
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Sessão completa manual</CardTitle>
+              <p className="text-sm text-zinc-500">
+                Define quantos exercícios queres e quantos por tópico. Depois escolhe os exercícios no catálogo para
+                fechar a sessão.
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div>
+                <p className="mb-2 text-xs font-medium uppercase tracking-wide text-zinc-500">Quantidade total de exercícios</p>
+                <div className="flex flex-wrap gap-2">
+                  {MANUAL_TOTAL_EXERCISE_OPTIONS.map((n) => (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => setManualTotalExercises(n)}
+                      className={cn(
+                        "rounded-xl px-4 py-2 text-sm font-medium transition-colors",
+                        manualTotalExercises === n
+                          ? "bg-accent/20 text-accent"
+                          : "bg-surface-raised text-zinc-400 hover:text-zinc-200"
+                      )}
+                    >
+                      {n}
+                    </button>
+                  ))}
+                </div>
+                <p className="mt-2 text-xs text-zinc-500">Soma dos tópicos: {manualTargetTotal}</p>
+                {manualTargetMismatch ? (
+                  <p className="mt-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+                    A soma dos tópicos tem de ser igual ao total ({manualTotalExercises}).
+                  </p>
+                ) : null}
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-2">
+                {MANUAL_CATEGORY_ORDER.map((c) => (
+                  <label key={`target-${c}`} className="rounded-xl border border-surface-border bg-surface-raised/20 px-3 py-2">
+                    <span className="block text-xs text-zinc-500">{SAVED_EXERCISE_CATEGORY_LABELS[c]}</span>
+                    <input
+                      type="number"
+                      min={0}
+                      max={12}
+                      value={manualCategoryTargets[c] ?? 0}
+                      onChange={(e) => setManualTargetForCategory(c, Number.parseInt(e.target.value || "0", 10))}
+                      className="mt-1 w-20 rounded-lg border border-surface-border bg-[#0c1014] px-2 py-1 text-sm text-zinc-200"
+                    />
+                  </label>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {MANUAL_CATEGORY_ORDER.filter((c) => (manualCategoryTargets[c] ?? 0) > 0).map((c) => {
+            const want = manualCategoryTargets[c] ?? 0;
+            const selectedIds = manualSelectedCatalogIds[c] ?? [];
+            const options = trainingCatalog
+              .filter((item) => item.filterCategories.includes(c))
+              .sort((a, b) => a.title.localeCompare(b.title, "pt-PT"));
+            return (
+              <Card key={`manual-pick-${c}`}>
+                <CardHeader>
+                  <CardTitle className="text-base">
+                    {SAVED_EXERCISE_CATEGORY_LABELS[c]} ({selectedIds.length}/{want})
+                  </CardTitle>
+                  <p className="text-xs text-zinc-500">
+                    Escolhe {want} exercício(s) deste tópico.
+                  </p>
+                </CardHeader>
+                <CardContent>
+                  {options.length === 0 ? (
+                    <p className="text-sm text-zinc-500">Sem exercícios disponíveis neste tópico.</p>
+                  ) : (
+                    <ul className="space-y-2">
+                      {options.map((item) => {
+                        const checked = selectedIds.includes(item.catalogId);
+                        const disabled = !checked && selectedIds.length >= want;
+                        return (
+                          <li key={`manual-item-${c}-${item.catalogId}`}>
+                            <label
+                              className={cn(
+                                "flex cursor-pointer items-start gap-3 rounded-xl border px-3 py-2 transition-colors",
+                                checked
+                                  ? "border-accent/40 bg-accent/10"
+                                  : "border-surface-border bg-surface-raised/10 hover:border-zinc-600"
+                              )}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                disabled={disabled}
+                                onChange={() => toggleManualCatalogItem(c, item.catalogId)}
+                                className="mt-0.5 h-4 w-4 rounded border-zinc-600"
+                              />
+                              <div className="min-w-0 flex-1">
+                                <p className="text-sm font-medium text-zinc-100">{item.title}</p>
+                                <p className="text-xs text-zinc-500">
+                                  {phaseLabel(item.phase)} · {item.durationMin} min
+                                </p>
+                                <p className="mt-1 text-xs text-zinc-500">{item.brief}</p>
+                              </div>
+                            </label>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
+
+          <Card className="border-emerald-500/20">
+            <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <CardTitle>Resumo da sessão manual</CardTitle>
+                <p className="mt-1 text-sm text-zinc-500">
+                  {manualPlanBlocks.length} exercícios · {manualPlanDurationMin} min
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button type="button" variant="secondary" className="text-xs" onClick={printManualPlan} disabled={!manualPlanReady}>
+                  Imprimir / PDF
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="text-xs"
+                  onClick={saveManualAsSession}
+                  disabled={!manualPlanReady}
+                >
+                  Guardar no plano manual
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {!manualPlanReady ? (
+                <p className="text-sm text-zinc-500">
+                  Completa as escolhas por tópico para ativar impressão e guardar.
+                </p>
+              ) : null}
+              <ol className="space-y-2">
+                {manualPlanBlocks.map((b, i) => (
+                  <li key={`manual-summary-${b.title}-${i}`} className="rounded-xl border border-surface-border bg-surface-raised/10 px-3 py-2">
+                    <p className="text-sm font-medium text-zinc-100">
+                      {i + 1}. {b.title}
+                    </p>
+                    <p className="text-xs text-zinc-500">
+                      {phaseLabel(b.phase)} · {b.durationMin} min
+                    </p>
+                  </li>
+                ))}
+              </ol>
             </CardContent>
           </Card>
         </div>
