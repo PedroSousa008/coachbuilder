@@ -1631,6 +1631,43 @@ function splitMinutes(total: number, parts: number): number[] {
   return Array.from({ length: parts }, (_, i) => base + (i < rest ? 1 : 0));
 }
 
+function clampDuration(base: number): { min: number; max: number } {
+  return { min: Math.max(5, base - 5), max: base + 5 };
+}
+
+function adjustDurationsToTarget(baseDurations: number[], targetTotal: number): number[] {
+  const durations = [...baseDurations];
+  const bounds = baseDurations.map(clampDuration);
+  let current = durations.reduce((a, b) => a + b, 0);
+
+  if (current < targetTotal) {
+    for (;;) {
+      let changed = false;
+      for (let i = 0; i < durations.length && current < targetTotal; i++) {
+        if (durations[i]! < bounds[i]!.max) {
+          durations[i]! += 1;
+          current += 1;
+          changed = true;
+        }
+      }
+      if (!changed || current >= targetTotal) break;
+    }
+  } else if (current > targetTotal) {
+    for (;;) {
+      let changed = false;
+      for (let i = durations.length - 1; i >= 0 && current > targetTotal; i--) {
+        if (durations[i]! > bounds[i]!.min) {
+          durations[i]! -= 1;
+          current -= 1;
+          changed = true;
+        }
+      }
+      if (!changed || current <= targetTotal) break;
+    }
+  }
+  return durations;
+}
+
 /**
  * Semente estável para escolher variantes (texto do objetivo + duração).
  */
@@ -1661,16 +1698,22 @@ export function buildLocalFullTrainingSession(params: {
   }
 
   if (explicitDefs.length > 0) {
-    const split = splitMinutes(Math.max(durationMin, explicitDefs.length), explicitDefs.length);
-    const blocks: AiTrainingBlock[] = explicitDefs.map((def, i) => {
-      const mins = Math.max(5, split[i] ?? 5);
+    const selectedDefs: MainDrillDef[] = [];
+    let explicitTotal = 0;
+    let i = 0;
+    while (explicitTotal < durationMin - 2 && i < 80) {
+      const def = explicitDefs[i % explicitDefs.length]!;
+      selectedDefs.push(def);
+      explicitTotal += singleDrillDurationForTitle(def.title, objective.length);
+      i += 1;
+    }
+    if (selectedDefs.length === 0) selectedDefs.push(explicitDefs[0]!);
+    const baseDurations = selectedDefs.map((d) => singleDrillDurationForTitle(d.title, objective.length));
+    const adjusted = adjustDurationsToTarget(baseDurations, durationMin);
+    const blocks: AiTrainingBlock[] = selectedDefs.map((def, idx) => {
+      const mins = adjusted[idx]!;
       const body = def.describe(players, mins);
-      return {
-        title: def.title,
-        ...body,
-        durationMin: mins,
-        phase: "main",
-      };
+      return { title: def.title, ...body, durationMin: mins, phase: "main" };
     });
 
     const listed = explicitDefs.map((d) => d.title).join(" · ");
@@ -1684,16 +1727,13 @@ export function buildLocalFullTrainingSession(params: {
   }
 
   const seed = hashSeed(objective, durationMin);
-  const nMain = durationMin <= 40 ? 2 : durationMin <= 75 ? 3 : 4;
 
   const summary = `Plano gerado localmente com base no teu objetivo (${themes.filter((t) => t !== "balanced").join(", ") || "equilíbrio"}) e ${players.length} jogadores seleccionados. Ajusta tempos e espaços ao teu relvado.`;
 
   const recalc: AiTrainingBlock[] = [];
-  const warmD = Math.min(25, Math.max(8, Math.round(durationMin * 0.17)));
-  const coolD = Math.min(18, Math.max(5, Math.round(durationMin * 0.1)));
-  let mainTotal = durationMin - warmD - coolD;
-  if (mainTotal < 10) mainTotal = 10;
-  const parts2 = splitMinutes(mainTotal, nMain);
+  const warmBase = singleDrillDurationForTitle("Warm Up with Ball", objective.length);
+  const coolBase = 10;
+  const targetMainTotal = Math.max(5, durationMin - warmBase - coolBase);
   const allowedMain = filterDrillsByAgeGroup(
     MAIN_DRILLS.filter((d) => d.title !== "Warm Up with Ball"),
     ageGroup,
@@ -1702,19 +1742,36 @@ export function buildLocalFullTrainingSession(params: {
   if (ageGroup && allowedMain.length === 0) {
     throw new Error("no_drills_for_age_group");
   }
-  const defs2 = pickMainDrills(
+  const rankedDefs = pickMainDrills(
     themes,
-    nMain,
+    Math.max(allowedMain.length, 1),
     seed,
     new Set<string>(["Warm Up with Ball"]),
     ageGroup,
     exerciseAgeMap
   );
+  if (rankedDefs.length === 0) throw new Error("no_drills_for_age_group");
+  const defs2: MainDrillDef[] = [];
+  let selectedMainTotal = 0;
+  let idx = 0;
+  while (selectedMainTotal < targetMainTotal - 2 && idx < 160) {
+    const def = rankedDefs[idx % rankedDefs.length]!;
+    defs2.push(def);
+    selectedMainTotal += singleDrillDurationForTitle(def.title, objective.length);
+    idx += 1;
+  }
+  if (defs2.length === 0) defs2.push(rankedDefs[0]!);
   const warmUpAllowed =
     !ageGroup || resolveExerciseAgeGroupsForTitle("Warm Up with Ball", exerciseAgeMap).includes(ageGroup);
   if (!warmUpAllowed) {
     throw new Error("warmup_not_in_age_group");
   }
+
+  const mainBaseDurations = defs2.map((def) => singleDrillDurationForTitle(def.title, objective.length));
+  const adjustedMainDurations = adjustDurationsToTarget(mainBaseDurations, targetMainTotal);
+  const allAdjusted = adjustDurationsToTarget([warmBase, ...adjustedMainDurations, coolBase], durationMin);
+  const warmD = allAdjusted[0]!;
+  const coolD = allAdjusted[allAdjusted.length - 1]!;
 
   recalc.push({
     title: "Warm Up with Ball",
@@ -1729,7 +1786,7 @@ export function buildLocalFullTrainingSession(params: {
   });
 
   defs2.forEach((def, i) => {
-    const mins = parts2[i] ?? Math.floor(mainTotal / nMain);
+    const mins = allAdjusted[i + 1] ?? adjustedMainDurations[i] ?? singleDrillDurationForTitle(def.title, objective.length);
     const body = def.describe(players, mins);
     recalc.push({
       title: def.title,
@@ -1748,18 +1805,6 @@ export function buildLocalFullTrainingSession(params: {
     coachingPoints: "Sem forçar amplitude máxima; foco em costas e posteriores de coxa.",
     setup: "Relvado ou final do campo.",
   });
-
-  const sum = recalc.reduce((a, b) => a + b.durationMin, 0);
-  const drift = durationMin - sum;
-  if (drift !== 0) {
-    for (let i = recalc.length - 1; i >= 0; i--) {
-      if (recalc[i]!.phase === "main") {
-        const b = recalc[i]!;
-        recalc[i] = { ...b, durationMin: Math.max(5, b.durationMin + drift) };
-        break;
-      }
-    }
-  }
 
   const themePt: Record<TrainingThemeId, string> = {
     possession: "Posse",
