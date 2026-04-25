@@ -120,15 +120,18 @@ export function buildFullSessionDocumentHtml(params: {
     body { font-family: system-ui, sans-serif; margin: 0; color: #111; line-height: 1.24; font-size: 11px; }
     .sheet {
       width: 100%;
-      min-height: calc(297mm - 20mm);
+      height: 276mm;
       display: flex;
       flex-direction: column;
-      page-break-after: always;
-      break-after: page;
       overflow: hidden;
       padding: 0;
+      page-break-inside: avoid;
+      break-inside: avoid;
     }
-    .sheet:last-child { page-break-after: auto; break-after: auto; }
+    .sheet + .sheet {
+      page-break-before: always;
+      break-before: page;
+    }
     .page-header h1 { font-size: 18px; margin: 0 0 1.5mm; line-height: 1.08; }
     .meta { color: #444; font-size: 9px; margin: 0.5mm 0; }
     .page-body { flex: 1; min-height: 0; }
@@ -186,8 +189,8 @@ export function buildSingleDrillDocumentHtml(params: {
     @page { size: A4; margin: 10mm; }
     * { box-sizing: border-box; }
     body { font-family: system-ui, sans-serif; margin: 0; color: #111; line-height: 1.24; font-size: 11px; }
-    .sheet { min-height: calc(297mm - 20mm); display: flex; flex-direction: column; page-break-after: always; break-after: page; }
-    .sheet:last-child { page-break-after: auto; break-after: auto; }
+    .sheet { height: 276mm; display: flex; flex-direction: column; page-break-inside: avoid; break-inside: avoid; }
+    .sheet + .sheet { page-break-before: always; break-before: page; }
     h1 { font-size: 18px; margin: 0 0 1.5mm; line-height: 1.08; }
     .meta { color: #555; font-size: 9px; margin: 0.5mm 0; }
     .page-body { flex: 1; min-height: 0; }
