@@ -72,14 +72,14 @@ export function buildFullSessionDocumentHtml(params: {
       <section class="sheet back">
         <header class="page-header">
           <h1>${esc(b.title)} · Folha de trabalho</h1>
-          <p class="meta">Parte de trás — Notas, Jogadores, Feedback</p>
+          <p class="meta">Parte de trás — Notas e Jogadores</p>
         </header>
-        <main class="page-body back-grid">
+        <main class="page-body back-layout">
           <section class="table-card">
             <h2>Notas</h2>
             <table class="grid-table notes">
               <tbody>
-                ${Array.from({ length: 10 }, () => `<tr><td>&nbsp;</td></tr>`).join("")}
+                ${Array.from({ length: 3 }, () => `<tr><td>&nbsp;</td></tr>`).join("")}
               </tbody>
             </table>
           </section>
@@ -100,22 +100,6 @@ export function buildFullSessionDocumentHtml(params: {
                         .join("")
                     : `<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>`
                 }
-              </tbody>
-            </table>
-          </section>
-          <section class="table-card">
-            <h2>Feedback</h2>
-            <table class="grid-table feedback">
-              <thead>
-                <tr><th>Critério</th><th>1-5</th><th>Comentário</th></tr>
-              </thead>
-              <tbody>
-                <tr><td>Intensidade</td><td>&nbsp;</td><td>&nbsp;</td></tr>
-                <tr><td>Execução técnica</td><td>&nbsp;</td><td>&nbsp;</td></tr>
-                <tr><td>Tomada de decisão</td><td>&nbsp;</td><td>&nbsp;</td></tr>
-                <tr><td>Comunicação</td><td>&nbsp;</td><td>&nbsp;</td></tr>
-                <tr><td>Concentração</td><td>&nbsp;</td><td>&nbsp;</td></tr>
-                <tr><td>Objetivo cumprido</td><td>&nbsp;</td><td>&nbsp;</td></tr>
               </tbody>
             </table>
           </section>
@@ -161,21 +145,20 @@ export function buildFullSessionDocumentHtml(params: {
     }
     .image-fallback { border: 1px dashed #bbb; border-radius: 8px; padding: 10mm 4mm; text-align: center; color: #666; margin: 1.2mm 0 1.6mm; }
     .exercise-image-wrap figcaption { margin-top: 0.8mm; font-size: 8px; color: #555; }
-    .back-grid { display: grid; grid-template-rows: 1.45fr 1fr 1fr; gap: 2mm; }
+    .back-layout { display: flex; flex-direction: column; gap: 2mm; overflow: hidden; }
     .table-card { border: 1px solid #d8d8d8; border-radius: 8px; padding: 1.5mm; }
     .table-card h2 { margin: 0 0 1mm; font-size: 11px; }
     .grid-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
     .grid-table th, .grid-table td { border: 1px solid #d4d4d4; padding: 1.1mm 1.4mm; font-size: 9px; vertical-align: top; }
     .grid-table th { background: #f5f5f5; text-align: left; font-weight: 600; }
-    .grid-table.notes td { height: 7.5mm; }
-    .grid-table.players td, .grid-table.feedback td { height: 6.3mm; }
+    .grid-table.notes td { height: 16mm; }
+    .grid-table.players td { height: 6mm; }
     .grid-table.players th:nth-child(1) { width: 8%; }
     .grid-table.players th:nth-child(2) { width: 42%; }
     .grid-table.players th:nth-child(3) { width: 40%; }
     .grid-table.players th:nth-child(4) { width: 14%; text-align: center; }
-    .grid-table.feedback th:nth-child(1) { width: 35%; }
-    .grid-table.feedback th:nth-child(2) { width: 12%; text-align: center; }
-    .grid-table.feedback th:nth-child(3) { width: 53%; }
+    .back-layout .table-card:nth-child(2) { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+    .back-layout .table-card:nth-child(2) .grid-table { height: 100%; }
     .page-footer { margin-top: auto; padding-top: 1.5mm; border-top: 1px solid #ddd; text-align: center; font-size: 9px; color: #333; }
   </style>
 </head>
@@ -260,32 +243,18 @@ export function buildSingleDrillDocumentHtml(params: {
   <section class="sheet">
     <header>
       <h1>${esc(drill.title)} · Folha de trabalho</h1>
-      <p class="meta">Parte de trás — Notas, Jogadores, Feedback</p>
+      <p class="meta">Parte de trás — Notas e Jogadores</p>
     </header>
-    <main class="page-body back-grid">
+    <main class="page-body back-layout">
       <section class="table-card">
         <h2>Notas</h2>
-        <table class="grid-table notes"><tbody>${Array.from({ length: 10 }, () => `<tr><td>&nbsp;</td></tr>`).join("")}</tbody></table>
+        <table class="grid-table notes"><tbody>${Array.from({ length: 3 }, () => `<tr><td>&nbsp;</td></tr>`).join("")}</tbody></table>
       </section>
       <section class="table-card">
         <h2>Jogadores</h2>
         <table class="grid-table players">
           <thead><tr><th>#</th><th>Nome</th><th>Observações</th><th>Rating</th></tr></thead>
-          <tbody>${Array.from({ length: 10 }, (_, i) => `<tr><td>${i + 1}</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>`).join("")}</tbody>
-        </table>
-      </section>
-      <section class="table-card">
-        <h2>Feedback</h2>
-        <table class="grid-table feedback">
-          <thead><tr><th>Critério</th><th>1-5</th><th>Comentário</th></tr></thead>
-          <tbody>
-            <tr><td>Intensidade</td><td>&nbsp;</td><td>&nbsp;</td></tr>
-            <tr><td>Execução técnica</td><td>&nbsp;</td><td>&nbsp;</td></tr>
-            <tr><td>Tomada de decisão</td><td>&nbsp;</td><td>&nbsp;</td></tr>
-            <tr><td>Comunicação</td><td>&nbsp;</td><td>&nbsp;</td></tr>
-            <tr><td>Concentração</td><td>&nbsp;</td><td>&nbsp;</td></tr>
-            <tr><td>Objetivo cumprido</td><td>&nbsp;</td><td>&nbsp;</td></tr>
-          </tbody>
+          <tbody>${Array.from({ length: 14 }, (_, i) => `<tr><td>${i + 1}</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>`).join("")}</tbody>
         </table>
       </section>
     </main>
