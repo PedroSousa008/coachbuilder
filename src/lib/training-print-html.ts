@@ -171,11 +171,10 @@ export function buildFullSessionDocumentHtml(params: {
     .sheet {
       width: 100%;
       height: 272mm;
-      position: relative;
-      display: flex;
-      flex-direction: column;
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr) 5.5mm;
       overflow: hidden;
-      padding: 0 0 6mm;
+      padding: 0;
       page-break-inside: avoid;
       break-inside: avoid;
       page-break-after: always;
@@ -186,7 +185,7 @@ export function buildFullSessionDocumentHtml(params: {
     .sheet.back .page-body { overflow: hidden; }
     .page-header h1 { font-size: 18px; margin: 0 0 1.5mm; line-height: 1.08; }
     .meta { color: #444; font-size: 9px; margin: 0.5mm 0; }
-    .page-body { flex: 1; min-height: 0; }
+    .page-body { min-height: 0; overflow: hidden; }
     .page-body p { margin: 1.1mm 0; }
     .diagram { background: #f6f6f6; padding: 5px 7px; border-radius: 6px; font-size: 10px; }
     .exercise-image-wrap { margin: 1.2mm 0 1.6mm; }
@@ -235,11 +234,6 @@ export function buildFullSessionDocumentHtml(params: {
     .back-layout .table-card:nth-child(2) { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
     .back-layout .table-card:nth-child(2) .grid-table { height: auto; }
     .page-footer {
-      position: absolute;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      height: 5.5mm;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -278,10 +272,9 @@ export function buildSingleDrillDocumentHtml(params: {
     body { font-family: system-ui, sans-serif; margin: 0; color: #111; line-height: 1.24; font-size: 11px; }
     .sheet {
       height: 272mm;
-      position: relative;
-      display: flex;
-      flex-direction: column;
-      padding: 0 0 6mm;
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr) 5.5mm;
+      padding: 0;
       page-break-inside: avoid;
       break-inside: avoid;
       page-break-after: always;
@@ -292,7 +285,7 @@ export function buildSingleDrillDocumentHtml(params: {
     .sheet.back .page-body { overflow: hidden; }
     h1 { font-size: 18px; margin: 0 0 1.5mm; line-height: 1.08; }
     .meta { color: #555; font-size: 9px; margin: 0.5mm 0; }
-    .page-body { flex: 1; min-height: 0; }
+    .page-body { min-height: 0; overflow: hidden; }
     .page-body p { margin: 1.1mm 0; }
     .exercise-image-wrap { margin: 1.2mm 0 1.6mm; }
     .exercise-image { display: block; width: 100%; max-height: 103mm; object-fit: contain; border-radius: 8px; border: 1px solid #ddd; }
@@ -333,11 +326,6 @@ export function buildSingleDrillDocumentHtml(params: {
     .back-layout .table-card:nth-child(2) { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
     .back-layout .table-card:nth-child(2) .grid-table { height: auto; }
     .page-footer {
-      position: absolute;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      height: 5.5mm;
       display: flex;
       align-items: center;
       justify-content: center;
