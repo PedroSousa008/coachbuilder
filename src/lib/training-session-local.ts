@@ -233,6 +233,12 @@ export const PASS_AND_MOVE_VIDEO_URL = "/videos/training/pass-move.mp4";
 export const REACTION_AND_FINISHING_VIDEO_URL = "/videos/training/reaction-finishing.mp4";
 
 /**
+ * Vídeo do exercício "Drible Rápido e Passe".
+ * Coloca o ficheiro em `public/videos/training/dribbling-passing.mp4`.
+ */
+export const DRIBBLING_FAST_AND_PASS_VIDEO_URL = "/videos/training/dribbling-passing.mp4";
+
+/**
  * Vídeo do exercício "Full Back Overlap - Striker".
  * Coloca o ficheiro em `public/videos/training/full-back-overlap-2.mp4` ou substitui por um link YouTube.
  */
@@ -381,6 +387,12 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
     "estímulo de cor",
     "mini baliza",
     "comando de cor",
+    "drible rápido e passe",
+    "drible rapido e passe",
+    "velocidade com bola",
+    "receção orientada",
+    "rececao orientada",
+    "qualidade no primeiro toque",
     "3v1",
     "fitness rondo",
     "rondo com finalização",
@@ -882,6 +894,12 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
     "estímulo de cor",
     "mini baliza",
     "comando de cor",
+    "drible rápido e passe",
+    "drible rapido e passe",
+    "velocidade com bola",
+    "receção orientada",
+    "rececao orientada",
+    "qualidade no primeiro toque",
   ],
   balanced: [],
 };
@@ -1012,6 +1030,26 @@ const MAIN_DRILLS: MainDrillDef[] = [
       diagramHint:
         "2 quadrados paralelos com 4 cones coloridos; no centro 2v1 em posse; comando de cor -> passe ao vértice chamado -> finalização 1 na mini-baliza; fase 2 com apoio do jogador junto à baliza para nova finalização; rotação de papéis por ronda.",
       videoUrl: REACTION_AND_FINISHING_VIDEO_URL,
+    }),
+  },
+  {
+    themes: ["possession", "balanced"],
+    title: "Drible Rápido e Passe",
+    describe: (pl, m) => ({
+      description: `Os jogadores recebem a bola de forma orientada e devem conduzi-la rapidamente através de um percurso de cones, controlando a velocidade e a mudança de direção. Após ultrapassar os cones, realizam um passe preciso para a mini baliza. De seguida, vão buscar a bola e regressam em condução rápida até à posição inicial para repetir o exercício. O foco está na condução em velocidade, agilidade, qualidade do primeiro toque e consistência no passe. (${m} min)`,
+      coachingPoints:
+        "Primeira receção sempre orientada para o corredor livre; condução com mudanças curtas de direção sem perder velocidade; levantar cabeça antes do passe final para acertar na mini baliza; recuperar bola rápido e regressar com intensidade controlada para manter ritmo contínuo.",
+      setup:
+        "Percurso com cones em slalom/corredor, mini baliza no final da ação, bolas de reposição no ponto de partida e zona de retorno marcada para não cruzar trajetórias.",
+      groupSplit:
+        pl.length >= 10
+          ? "Dois corredores em paralelo para reduzir espera; rotação contínua com saídas alternadas."
+          : pl.length >= 6
+            ? "Um corredor principal com partidas intervaladas de 2–3 segundos."
+            : "Espaço reduzido com menos cones e foco em qualidade técnica + ritmo constante.",
+      diagramHint:
+        "Receção orientada -> condução rápida em slalom de cones -> passe à mini baliza -> recolha da bola -> retorno em condução ao início; ciclo contínuo.",
+      videoUrl: DRIBBLING_FAST_AND_PASS_VIDEO_URL,
     }),
   },
   {
@@ -1948,6 +1986,7 @@ const SINGLE_DRILL_10_MIN_TITLES = new Set<string>([
   "Short Free Kick - Winger Movement",
   "1v1 Situations",
   "Passe e Movimentação",
+  "Drible Rápido e Passe",
 ]);
 const SINGLE_DRILL_8_MIN_TITLES = new Set<string>(["Dual Passing"]);
 const SINGLE_DRILL_5_MIN_TITLES = new Set<string>([
@@ -2308,6 +2347,7 @@ export function getTrainingCatalogItems(players: Player[]): TrainingCatalogItem[
     "Aquecimento com Bola - Movimentação": ["warmup"],
     "1v1 Situations": ["warmup", "transition", "physical"],
     "Passe e Movimentação": ["warmup", "possession"],
+    "Drible Rápido e Passe": ["possession"],
     "Reação e Finalização": ["possession", "finishing"],
 
     // Posse de bola

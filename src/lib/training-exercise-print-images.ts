@@ -47,6 +47,7 @@ const TRAINING_EXERCISE_PRINT_IMAGE_BY_TITLE: Record<string, string> = {
   "1v1 Situations": "1v1-situations.png",
   "Passe e Movimentação": "pass-move.png",
   "Reação e Finalização": "reaction-finishing.png",
+  "Drible Rápido e Passe": "dribbling-passing.png",
 };
 
 export const TRAINING_EXERCISE_PRINT_IMAGE_FOLDER = "/images/training-exercises";
