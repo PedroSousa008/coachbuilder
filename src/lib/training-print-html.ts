@@ -160,16 +160,16 @@ export function buildFullSessionDocumentHtml(params: {
   <meta charset="utf-8"/>
   <title>${esc(plan.sessionTitle)}</title>
   <style>
-    @page { size: A4; margin: 0; }
+    @page { size: A4; margin: 10mm; }
     * { box-sizing: border-box; }
     body { font-family: system-ui, sans-serif; margin: 0; color: #111; line-height: 1.24; font-size: 11px; }
     .sheet {
       width: 100%;
-      height: 297mm;
+      height: 258mm;
       display: grid;
       grid-template-rows: auto minmax(0, 1fr);
       overflow: hidden;
-      padding: 10mm;
+      padding: 0;
       page-break-inside: avoid;
       break-inside: avoid;
       page-break-after: always;
@@ -252,14 +252,14 @@ export function buildSingleDrillDocumentHtml(params: {
   <meta charset="utf-8"/>
   <title>${esc(drill.title)}</title>
   <style>
-    @page { size: A4; margin: 0; }
+    @page { size: A4; margin: 10mm; }
     * { box-sizing: border-box; }
     body { font-family: system-ui, sans-serif; margin: 0; color: #111; line-height: 1.24; font-size: 11px; }
     .sheet {
-      height: 297mm;
+      height: 258mm;
       display: grid;
       grid-template-rows: auto minmax(0, 1fr);
-      padding: 10mm;
+      padding: 0;
       page-break-inside: avoid;
       break-inside: avoid;
       page-break-after: always;
