@@ -239,6 +239,12 @@ export const REACTION_AND_FINISHING_VIDEO_URL = "/videos/training/reaction-finis
 export const DRIBBLING_FAST_AND_PASS_VIDEO_URL = "/videos/training/dribbling-passing.mp4";
 
 /**
+ * Vídeo do exercício "Posse de Bola com Transição".
+ * Coloca o ficheiro em `public/videos/training/possession-transfer.mp4`.
+ */
+export const POSSESSION_BALL_WITH_TRANSITION_VIDEO_URL = "/videos/training/possession-transfer.mp4";
+
+/**
  * Vídeo do exercício "Full Back Overlap - Striker".
  * Coloca o ficheiro em `public/videos/training/full-back-overlap-2.mp4` ou substitui por um link YouTube.
  */
@@ -399,6 +405,15 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
     "rondo com finalizacao",
     "passes rápidos",
     "passes rapidos",
+    "posse de bola com transicao",
+    "posse de bola com transição",
+    "posse com transicao",
+    "posse com transição",
+    "viragem de jogo",
+    "ligar jogo pelo chao",
+    "ligar jogo pelo chão",
+    "balizas laterais",
+    "mini balizas",
     "posse sob pressão",
     "posse sob pressao",
     "jogo curto com finalização rápida",
@@ -439,6 +454,14 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
   transition: [
     "transição",
     "transicao",
+    "posse de bola com transicao",
+    "posse de bola com transição",
+    "posse com transicao",
+    "posse com transição",
+    "viragem de jogo",
+    "ligar jogo pelo chao",
+    "ligar jogo pelo chão",
+    "balizas laterais",
     "vertical",
     "rápido",
     "rapido",
@@ -1119,6 +1142,26 @@ const MAIN_DRILLS: MainDrillDef[] = [
       diagramHint:
         "Receção orientada -> condução rápida em slalom de cones -> passe à mini baliza -> recolha da bola -> retorno em condução ao início; ciclo contínuo.",
       videoUrl: DRIBBLING_FAST_AND_PASS_VIDEO_URL,
+    }),
+  },
+  {
+    themes: ["possession", "transition", "pressing", "physical", "balanced"],
+    title: "Posse de Bola com Transição",
+    describe: (pl, m) => ({
+      description: `O exercício é composto por 3 equipas de 5 jogadores e dividido em 2 setores. Num dos lados joga-se uma situação de 5v3, enquanto a terceira equipa aguarda no setor oposto. A equipa de 5 em posse deve circular a bola e ligar jogo pelo chão através das balizas laterais para a equipa que está à espera no outro setor. Os 3 defensores procuram recuperar a bola e marcar nas mini balizas. Se conseguirem, trocam imediatamente de função: passam a ser a equipa em posse e a equipa que perdeu a bola passa a defender. Se a equipa em posse conseguir virar o jogo com sucesso para o outro setor, 2 jogadores da equipa que estava no setor central entram a pressionar, juntamente com 1 dos 3 defensores que já estava em ação. O exercício continua com transições constantes. O foco está na posse sob pressão, mudança de corredor, reação à perda e intensidade nas transições. (${m} min)`,
+      coachingPoints:
+        "Equipa em posse: circulação rápida com corpo aberto, passes rasteiros e decisões curtas; procurar sempre o corredor livre antes da viragem; após viragem bem-sucedida, 2 jogadores saltam à pressão com ângulo e distância corretos (não em linha). Defensores: pressão coordenada ao portador, sombra ao passe interior e recuperação agressiva para mini-balizas; após golo/recuperação, transição imediata de papéis sem pausa longa.",
+      setup:
+        "Dois setores rectangulares lado a lado (ex. 25×18 m cada, ajustável); mini-balizas nas extremidades laterais como 'portas' de viragem; 2–3 bolas de reposição; coletes para 3 equipas de 5.",
+      groupSplit:
+        pl.length >= 15
+          ? "3×5 com rotação por tempo (cada bloco 3–4 min) para manter intensidade e clareza de funções."
+          : pl.length >= 12
+            ? "Reduzir para 4v2+1 ou 4v3 no setor de posse e equipa de espera com 4; manter a lógica de viragem e pressão pós-viragem."
+            : "Versão reduzida em 1 setor com 3v2+neutro e viragem simulada com cones; treinador dá estímulo de pressão após cada passe lateral.",
+      diagramHint:
+        "Setor A: 5v3 em posse; setor B: equipa à espera; balizas laterais como canal de viragem; após viragem, +2 pressam do setor central +1 defensor; rotação contínua de equipas.",
+      videoUrl: POSSESSION_BALL_WITH_TRANSITION_VIDEO_URL,
     }),
   },
   {
@@ -2031,6 +2074,7 @@ const SINGLE_DRILL_15_MIN_TITLES = new Set<string>([
   "Defensive Recovery on Counter Attack",
   "Short Corner Routine",
   "Reação e Finalização",
+  "Posse de Bola com Transição",
 ]);
 const SINGLE_DRILL_10_MIN_TITLES = new Set<string>([
   "Passing Activation",
@@ -2115,6 +2159,15 @@ function singleDrillProgressionVariationsForTitle(title: string): {
   const isPassingActivation = title === "Passing Activation";
   const isDualPassing = title === "Dual Passing";
   const isPressingExercise = title === "Pressing Exercise";
+
+  if (title === "Posse de Bola com Transição") {
+    return {
+      progression:
+        "Reduz o tempo máximo na posse (ex.: 8–10 s) para forçar viragem; ou após viragem bem-sucedida exige 2 toques máx. no setor de chegada; ou os 2 que saltam à pressão só podem recuperar com desarme limpo (sem empurrão).",
+      variations:
+        "Trocar 5v3 por 5v2+1 neutro que só pode defender 1 toque; ou contar ponto duplo se a viragem vier em ≤4 passes; ou obrigar viragem obrigatoriamente pela baliza lateral 'fraca' durante 2 minutos.",
+    };
+  }
 
   const progression = isPressingExercise
     ? "Aumenta a exigência no último terço rival (menos tempo para sair); ou reduz o espaço para a 2ª bola; ou força viragem obrigatória sempre ao lado do central identificado como mais fraco."
@@ -2417,6 +2470,7 @@ export function getTrainingCatalogItems(players: Player[]): TrainingCatalogItem[
     "Passe e Movimentação": ["warmup", "possession"],
     "Drible Rápido e Passe": ["possession"],
     "Reação e Finalização": ["possession", "finishing"],
+    "Posse de Bola com Transição": ["possession", "transition", "pressing", "physical"],
 
     // Posse de bola
     "Offensive Between Lines": ["possession", "transition"],
