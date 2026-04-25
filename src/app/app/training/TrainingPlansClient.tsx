@@ -29,7 +29,7 @@ import {
   getTrainingCatalogItems,
   type TrainingCatalogItem,
 } from "@/lib/training-session-local";
-import { PlayCircle, Search } from "lucide-react";
+import { Bookmark, PlayCircle, Search } from "lucide-react";
 import {
   TRAINING_AGE_GROUP_LABELS,
   TRAINING_AGE_GROUPS,
@@ -67,6 +67,14 @@ function phaseLabel(p: AiTrainingPhase): string {
   if (p === "warmup") return "Aquecimento";
   if (p === "cooldown") return "Alongamento / volta à calma";
   return "Principal";
+}
+
+function normalizeExerciseTitle(title: string): string {
+  return title
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .toLowerCase()
+    .trim();
 }
 
 type SaveExercisePayload = Omit<NewSavedTrainingExerciseInput, "category">;
@@ -188,6 +196,11 @@ export function TrainingPlansClient() {
     if (catalogFilterPick.size === 0) return trainingCatalog;
     return trainingCatalog.filter((item) => item.filterCategories.some((c) => catalogFilterPick.has(c)));
   }, [trainingCatalog, catalogFilterPick]);
+
+  const savedExerciseTitleSet = useMemo(
+    () => new Set(savedTrainingExercises.map((ex) => normalizeExerciseTitle(ex.title))),
+    [savedTrainingExercises]
+  );
 
   const manualCatalogById = useMemo(
     () => new Map(trainingCatalog.map((item) => [item.catalogId, item])),
@@ -1107,6 +1120,7 @@ export function TrainingPlansClient() {
                       {options.map((item) => {
                         const checked = selectedIds.includes(item.catalogId);
                         const disabled = !checked && selectedIds.length >= want;
+                        const isSavedExercise = savedExerciseTitleSet.has(normalizeExerciseTitle(item.title));
                         return (
                           <li key={`manual-item-${c}-${item.catalogId}`}>
                             <label
@@ -1114,7 +1128,8 @@ export function TrainingPlansClient() {
                                 "flex cursor-pointer items-start gap-3 rounded-xl border px-3 py-2 transition-colors",
                                 checked
                                   ? "border-accent/40 bg-accent/10"
-                                  : "border-surface-border bg-surface-raised/10 hover:border-zinc-600"
+                                  : "border-surface-border bg-surface-raised/10 hover:border-zinc-600",
+                                isSavedExercise && "border-red-500/70 outline outline-1 outline-red-500/60"
                               )}
                             >
                               <input
@@ -1125,7 +1140,15 @@ export function TrainingPlansClient() {
                                 className="mt-0.5 h-4 w-4 rounded border-zinc-600"
                               />
                               <div className="min-w-0 flex-1">
-                                <p className="text-sm font-medium text-zinc-100">{item.title}</p>
+                                <div className="flex items-center gap-2">
+                                  <p className="text-sm font-medium text-zinc-100">{item.title}</p>
+                                  {isSavedExercise ? (
+                                    <span className="inline-flex items-center gap-1 rounded-full border border-red-500/50 bg-red-500/10 px-1.5 py-0.5 text-[10px] text-red-300">
+                                      <Bookmark className="h-3 w-3" />
+                                      Guardado
+                                    </span>
+                                  ) : null}
+                                </div>
                                 <p className="text-xs text-zinc-500">
                                   {phaseLabel(item.phase)} · {item.durationMin} min
                                 </p>
