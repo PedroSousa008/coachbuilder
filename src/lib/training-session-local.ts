@@ -911,6 +911,75 @@ function norm(s: string): string {
     .replace(/\p{M}/gu, "");
 }
 
+const TITLE_MATCH_STOP_WORDS = new Set([
+  "a",
+  "ao",
+  "aos",
+  "as",
+  "com",
+  "de",
+  "do",
+  "dos",
+  "da",
+  "das",
+  "e",
+  "em",
+  "na",
+  "nas",
+  "no",
+  "nos",
+  "o",
+  "os",
+  "para",
+  "por",
+  "um",
+  "uma",
+]);
+
+function stemPtToken(token: string): string {
+  if (token.length <= 3) return token;
+  if (token.endsWith("oes")) return `${token.slice(0, -3)}ao`;
+  if (token.endsWith("aes")) return `${token.slice(0, -3)}ao`;
+  if (token.endsWith("is") && token.length > 4) return `${token.slice(0, -2)}il`;
+  if (token.endsWith("es") && token.length > 4) return token.slice(0, -2);
+  if (token.endsWith("s") && token.length > 3) return token.slice(0, -1);
+  return token;
+}
+
+function titleMatchTokens(text: string): string[] {
+  return norm(text)
+    .split(/[^a-z0-9]+/g)
+    .map((t) => stemPtToken(t.trim()))
+    .filter((t) => t.length > 0 && !TITLE_MATCH_STOP_WORDS.has(t));
+}
+
+function scoreDrillTitleMatchInObjective(
+  objective: string,
+  title: string
+): { score: number; idx: number } {
+  const objectiveNorm = norm(objective);
+  const titleNorm = norm(title);
+  const exactIdx = objectiveNorm.indexOf(titleNorm);
+  if (exactIdx >= 0) return { score: 100, idx: exactIdx };
+
+  const titleTokens = titleMatchTokens(title);
+  const objectiveTokens = new Set(titleMatchTokens(objective));
+  if (titleTokens.length === 0 || objectiveTokens.size === 0) return { score: 0, idx: Number.MAX_SAFE_INTEGER };
+
+  let overlap = 0;
+  for (const t of titleTokens) if (objectiveTokens.has(t)) overlap += 1;
+  const ratio = overlap / titleTokens.length;
+  if (overlap < 2 || ratio < 0.66) return { score: 0, idx: Number.MAX_SAFE_INTEGER };
+
+  let idx = Number.MAX_SAFE_INTEGER;
+  for (const t of titleTokens) {
+    const i = objectiveNorm.indexOf(t);
+    if (i >= 0 && i < idx) idx = i;
+  }
+  if (idx === Number.MAX_SAFE_INTEGER) idx = objectiveNorm.length;
+  return { score: Math.round(ratio * 10), idx };
+}
+
 export function detectTrainingThemes(text: string): TrainingThemeId[] {
   const t = norm(text);
   const hit = new Set<TrainingThemeId>();
@@ -1725,13 +1794,12 @@ function pickMainDrills(
 
 /** Procura títulos de exercícios escritos no objetivo (case/acento insensitive), preservando a ordem no texto. */
 function extractExplicitDrillDefsFromObjective(objective: string): MainDrillDef[] {
-  const text = norm(objective);
   const found = MAIN_DRILLS.map((d) => ({
     d,
-    idx: text.indexOf(norm(d.title)),
+    ...scoreDrillTitleMatchInObjective(objective, d.title),
   }))
-    .filter((x) => x.idx >= 0)
-    .sort((a, b) => a.idx - b.idx);
+    .filter((x) => x.score > 0 && x.idx >= 0)
+    .sort((a, b) => (a.idx - b.idx) || (b.score - a.score));
 
   const out: MainDrillDef[] = [];
   const seen = new Set<string>();
