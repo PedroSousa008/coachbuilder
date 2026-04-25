@@ -215,6 +215,12 @@ export const FREE_KICK_ROUTINE_VIDEO_URL = "/videos/training/free-kick-routine.m
 export const SHORT_FREE_KICK_WINGER_MOVEMENT_VIDEO_URL = "/videos/training/short-free-kick.mp4";
 
 /**
+ * Vídeo do exercício "1v1 Situations".
+ * Coloca o ficheiro em `public/videos/training/1v1-situations.mp4`.
+ */
+export const ONE_V_ONE_SITUATIONS_VIDEO_URL = "/videos/training/1v1-situations.mp4";
+
+/**
  * Vídeo do exercício "Full Back Overlap - Striker".
  * Coloca o ficheiro em `public/videos/training/full-back-overlap-2.mp4` ou substitui por um link YouTube.
  */
@@ -730,6 +736,15 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
     "inferioridade numérica",
     "inferioridade numerica",
     "3v2 finishing drill",
+    "1v1",
+    "1v1 situations",
+    "situações de 1v1",
+    "situacoes de 1v1",
+    "jogo rápido",
+    "jogo rapido",
+    "drible",
+    "reação",
+    "reacao",
   ],
   wide: [
     "largo",
@@ -818,6 +833,15 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
     "controle de bola",
     "ativação",
     "ativacao",
+    "1v1 situations",
+    "1v1",
+    "jogo rápido",
+    "jogo rapido",
+    "movimentos rápidos e objetivos",
+    "movimentos rapidos e objetivos",
+    "reação",
+    "reacao",
+    "drible",
   ],
   balanced: [],
 };
@@ -888,6 +912,26 @@ const MAIN_DRILLS: MainDrillDef[] = [
       diagramHint:
         "Sequência linear: escada → slalom cones → saltos barreira → vaivém sprint final; seta de retorno ao ponto inicial entre séries.",
       videoUrl: PASSING_ACTIVATION_VIDEO_URL,
+    }),
+  },
+  {
+    themes: ["physical", "transition", "balanced"],
+    title: "1v1 Situations",
+    describe: (pl, m) => ({
+      description: `Colocam-se 2 cones de partida afastados cerca de 5 metros, com 5 cones centrais alinhados a dividir os dois lados. Nas laterais ficam 2 balizas pequenas. Dois jogadores arrancam em simultâneo em direção aos cones centrais, sendo que um parte com bola e outro sem bola. Quando se encontram frente a frente, inicia-se o 1v1: o jogador com bola deve ultrapassar o adversário e entrar em sprint por uma das balizas laterais, enquanto o defensor tenta recuperar ou desarmar. Após cada ação entram os jogadores seguintes, e os que terminaram trocam funções (atacante passa a defender e vice-versa). O foco está na reação, drible, agressividade defensiva e intensidade no aquecimento. (${m} min)`,
+      coachingPoints:
+        "Arranque explosivo nos primeiros metros, cabeça levantada antes do duelo, atacar o defensor com intenção (finta curta + mudança de velocidade), finalizar a ação com sprint decidido para uma baliza lateral; defensor reage rápido, encurta espaço e temporiza sem mergulhar cedo no desarme.",
+      setup:
+        "2 cones de partida com ~5 m entre si; 5 cones centrais em linha como zona de encontro; 2 mini-balizas laterais; bolas na linha de partida do atacante.",
+      groupSplit:
+        pl.length >= 10
+          ? "Duas filas por lado (atacantes e defensores) para manter ritmo alto; rotação contínua ataque ↔ defesa a cada repetição."
+          : pl.length >= 6
+            ? "Uma fila de atacantes e uma de defensores; quem termina troca de função e vai para o fim da fila oposta."
+            : "Espaço reduzido com séries curtas (20–30s) e recuperação ativa entre repetições.",
+      diagramHint:
+        "Partida em 2 cones (5 m) → corrida aos 5 cones centrais → duelo 1v1 → atacante sai em sprint para mini-baliza lateral; rotação de papéis no fim.",
+      videoUrl: ONE_V_ONE_SITUATIONS_VIDEO_URL,
     }),
   },
   {
@@ -1776,6 +1820,7 @@ const SINGLE_DRILL_10_MIN_TITLES = new Set<string>([
   "(2+1)v1 Transition",
   "Free Kick Routine",
   "Short Free Kick - Winger Movement",
+  "1v1 Situations",
 ]);
 const SINGLE_DRILL_8_MIN_TITLES = new Set<string>(["Dual Passing"]);
 const SINGLE_DRILL_5_MIN_TITLES = new Set<string>([
@@ -2125,6 +2170,7 @@ export function getTrainingCatalogItems(players: Player[]): TrainingCatalogItem[
     "Passing Activation": ["warmup"],
     "Dual Passing": ["warmup"],
     "Aquecimento com Bola - Movimentação": ["warmup"],
+    "1v1 Situations": ["warmup", "transition", "physical"],
 
     // Posse de bola
     "Offensive Between Lines": ["possession", "transition"],

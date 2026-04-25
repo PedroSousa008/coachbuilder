@@ -44,6 +44,7 @@ const TRAINING_EXERCISE_PRINT_IMAGE_BY_TITLE: Record<string, string> = {
   "Free Kick Routine": "free-kick-routine.png",
   "Short Free Kick - Winger Movement": "short-free-kick.png",
   "Defensive Recovery on Counter Attack": "defensive-recovery.png",
+  "1v1 Situations": "1v1-situations.png",
 };
 
 export const TRAINING_EXERCISE_PRINT_IMAGE_FOLDER = "/images/training-exercises";
