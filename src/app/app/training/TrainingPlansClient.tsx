@@ -33,7 +33,6 @@ import { Search } from "lucide-react";
 import {
   TRAINING_AGE_GROUP_LABELS,
   TRAINING_AGE_GROUPS,
-  resolveExerciseAgeGroupsForTitle,
   type TrainingExerciseAgeMap,
 } from "@/lib/training-age-groups";
 import {
@@ -142,23 +141,6 @@ export function TrainingPlansClient() {
       setCoachProfile({ trainingSquadAgeGroup: ageGroup });
     },
     [setCoachProfile]
-  );
-
-  const toggleExerciseAgeGroup = useCallback(
-    (title: string, ageGroup: TrainingAgeGroupId) => {
-      const current = resolveExerciseAgeGroupsForTitle(title, exerciseAgeMap);
-      const already = current.includes(ageGroup);
-      const next = already ? current.filter((x) => x !== ageGroup) : [...current, ageGroup];
-      const normalized = TRAINING_AGE_GROUPS.filter((id) => next.includes(id));
-      const nextMap: TrainingExerciseAgeMap = { ...(exerciseAgeMap ?? {}) };
-      if (normalized.length === 0 || normalized.length === TRAINING_AGE_GROUPS.length) {
-        delete nextMap[title];
-      } else {
-        nextMap[title] = normalized;
-      }
-      setCoachProfile({ trainingExerciseAgeMap: Object.keys(nextMap).length > 0 ? nextMap : undefined });
-    },
-    [exerciseAgeMap, setCoachProfile]
   );
 
   const filteredTrainingCatalog = useMemo(() => {
@@ -562,10 +544,6 @@ export function TrainingPlansClient() {
                 Filtra por uma ou mais categorias; sem nenhuma selecção vês a lista completa. A bola com a lupa mostra
                 a explicação; «Guardar exercício» envia para «Meus exercícios» com o mesmo detalhe que os outros.
               </p>
-              <p className="text-xs text-zinc-500">
-                Define aqui os escalões de cada exercício. O gerador só vai usar exercícios compatíveis com o escalão
-                escolhido acima.
-              </p>
             </CardHeader>
             <CardContent className="space-y-6">
               <div>
@@ -617,27 +595,6 @@ export function TrainingPlansClient() {
                           <Badge variant="muted" className="text-[10px]">
                             {phaseLabel(item.phase)} · {item.durationMin} min
                           </Badge>
-                        </div>
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          {TRAINING_AGE_GROUPS.map((ageId) => {
-                            const on = resolveExerciseAgeGroupsForTitle(item.title, exerciseAgeMap).includes(ageId);
-                            return (
-                              <button
-                                key={`${item.catalogId}-${ageId}`}
-                                type="button"
-                                onClick={() => toggleExerciseAgeGroup(item.title, ageId)}
-                                className={cn(
-                                  "rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors",
-                                  on
-                                    ? "bg-indigo-500/25 text-indigo-100"
-                                    : "bg-surface-raised text-zinc-400 hover:text-zinc-200"
-                                )}
-                                title={`Associar ${TRAINING_AGE_GROUP_LABELS[ageId]} ao exercício`}
-                              >
-                                {TRAINING_AGE_GROUP_LABELS[ageId]}
-                              </button>
-                            );
-                          })}
                         </div>
                         <div className="mt-2 flex flex-wrap gap-1">
                           {item.filterCategories.map((c) => (
