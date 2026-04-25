@@ -51,7 +51,6 @@ const DURATIONS = [30, 60, 90, 120] as const;
 const MANUAL_TOTAL_EXERCISE_OPTIONS = [4, 5, 6, 7, 8, 9, 10, 12] as const;
 const MANUAL_CATEGORY_ORDER: SavedExerciseCategory[] = [
   "warmup",
-  "stretching",
   "possession",
   "goalKick",
   "setPiece",
@@ -61,6 +60,7 @@ const MANUAL_CATEGORY_ORDER: SavedExerciseCategory[] = [
   "transition",
   "physical",
   "mixed",
+  "stretching",
 ];
 
 function phaseLabel(p: AiTrainingPhase): string {
