@@ -59,6 +59,7 @@ export const DEFAULT_TRAINING_EXERCISE_AGE_MAP: TrainingExerciseAgeMap = {
   "Pressing Exercise": ["iniciado", "juvenil", "junior", "senior"],
   "1v1 Situations": ["benjamin", "iniciado"],
   "Passe e Movimentação": ["benjamin", "iniciado"],
+  "Reação e Finalização": ["benjamin", "iniciado", "infantil", "junior"],
 };
 
 export function isTrainingAgeGroupId(value: unknown): value is TrainingAgeGroupId {

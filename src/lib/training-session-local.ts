@@ -227,6 +227,12 @@ export const ONE_V_ONE_SITUATIONS_VIDEO_URL = "/videos/training/1v1-situations.m
 export const PASS_AND_MOVE_VIDEO_URL = "/videos/training/pass-move.mp4";
 
 /**
+ * Vídeo do exercício "Reação e Finalização".
+ * Coloca o ficheiro em `public/videos/training/reaction-finishing.mp4`.
+ */
+export const REACTION_AND_FINISHING_VIDEO_URL = "/videos/training/reaction-finishing.mp4";
+
+/**
  * Vídeo do exercício "Full Back Overlap - Striker".
  * Coloca o ficheiro em `public/videos/training/full-back-overlap-2.mp4` ou substitui por um link YouTube.
  */
@@ -368,6 +374,13 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
     "apoio constante",
     "rapidez de execução",
     "rapidez de execucao",
+    "reação e finalização",
+    "reacao e finalizacao",
+    "2v1",
+    "estimulo de cor",
+    "estímulo de cor",
+    "mini baliza",
+    "comando de cor",
     "3v1",
     "fitness rondo",
     "rondo com finalização",
@@ -862,6 +875,13 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
     "apoio constante",
     "rapidez de execução",
     "rapidez de execucao",
+    "reação e finalização",
+    "reacao e finalizacao",
+    "2v1",
+    "estimulo de cor",
+    "estímulo de cor",
+    "mini baliza",
+    "comando de cor",
   ],
   balanced: [],
 };
@@ -972,6 +992,26 @@ const MAIN_DRILLS: MainDrillDef[] = [
       diagramHint:
         "Cones exteriores (10 m) + quadrado central; passe exterior → centro (1 toque) → devolução → passe para colega que abriu → exterior ocupa centro; rotação contínua.",
       videoUrl: PASS_AND_MOVE_VIDEO_URL,
+    }),
+  },
+  {
+    themes: ["possession", "finishing", "balanced"],
+    title: "Reação e Finalização",
+    describe: (pl, m) => ({
+      description: `O exercício é realizado com 2 equipas em simultâneo, competindo entre si, necessitando no mínimo 16 jogadores. Existem 2 quadrados idênticos, cada um com 4 cones nos vértices (cores iguais nos dois campos, mas em posições diferentes), uma mini baliza e 1 jogador junto à baliza. Em cada quadrado começa uma situação de 2v1, onde os 2 jogadores em posse devem manter a bola o máximo de tempo possível em espaço reduzido. Se conseguirem manter a posse durante o tempo definido, aguardam o comando do treinador, que grita uma das 4 cores. De imediato, os jogadores devem identificar o cone correto e passar para o colega colocado nesse vértice. Esse jogador finaliza de primeira na mini baliza. Se marcar, soma 1 ponto. O exercício continua logo de seguida: o jogador junto à baliza entra em ação e espera movimentação dos 2 colegas para combinar e tentar nova finalização de primeira, enquanto o defensor tenta impedir. Se marcarem, somam mais 1 ponto. Se a dupla perder a posse antes do comando, falha a primeira fase, mas pode continuar a disputar a segunda oportunidade de pontuar. Após cada ronda: os 2 jogadores do centro trocam com 2 jogadores dos vértices e o defensor troca com o jogador que estava junto à baliza. O foco está na posse sob pressão, reação ao estímulo, rapidez mental, finalização e competitividade. (${m} min)`,
+      coachingPoints:
+        "Dupla em posse com linhas de passe curtas e apoio angular constante; leitura rápida do estímulo de cor sem perder qualidade técnica; passe final tenso para remate de primeira; após a primeira finalização, atacar logo a segunda fase com mobilidade e decisão rápida para finalizar antes do defensor estabilizar.",
+      setup:
+        "Dois quadrados idênticos (um por equipa), 4 cones coloridos nos vértices de cada quadrado, 1 mini-baliza por campo, 1 jogador de apoio junto à baliza, bolas de reposição junto ao treinador.",
+      groupSplit:
+        pl.length >= 16
+          ? "Dois campos em paralelo com rotação contínua: 2 no centro, 1 defensor, 1 junto à baliza e 2 nos vértices activos em cada ronda."
+          : pl.length >= 12
+            ? "Um campo principal com rondas mais curtas e competição por tempo/pontos; equipa de espera roda por função a cada série."
+            : "Versão reduzida em 1 campo com menos vértices activos, mantendo o estímulo de cor e as 2 fases de finalização.",
+      diagramHint:
+        "2 quadrados paralelos com 4 cones coloridos; no centro 2v1 em posse; comando de cor -> passe ao vértice chamado -> finalização 1 na mini-baliza; fase 2 com apoio do jogador junto à baliza para nova finalização; rotação de papéis por ronda.",
+      videoUrl: REACTION_AND_FINISHING_VIDEO_URL,
     }),
   },
   {
@@ -1884,6 +1924,7 @@ const SINGLE_DRILL_15_MIN_TITLES = new Set<string>([
   "Between the Lines",
   "Defensive Recovery on Counter Attack",
   "Short Corner Routine",
+  "Reação e Finalização",
 ]);
 const SINGLE_DRILL_10_MIN_TITLES = new Set<string>([
   "Passing Activation",
@@ -2267,6 +2308,7 @@ export function getTrainingCatalogItems(players: Player[]): TrainingCatalogItem[
     "Aquecimento com Bola - Movimentação": ["warmup"],
     "1v1 Situations": ["warmup", "transition", "physical"],
     "Passe e Movimentação": ["warmup", "possession"],
+    "Reação e Finalização": ["possession", "finishing"],
 
     // Posse de bola
     "Offensive Between Lines": ["possession", "transition"],
