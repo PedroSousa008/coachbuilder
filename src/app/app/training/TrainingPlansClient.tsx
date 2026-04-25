@@ -29,7 +29,7 @@ import {
   getTrainingCatalogItems,
   type TrainingCatalogItem,
 } from "@/lib/training-session-local";
-import { Search } from "lucide-react";
+import { PlayCircle, Search } from "lucide-react";
 import {
   TRAINING_AGE_GROUP_LABELS,
   TRAINING_AGE_GROUPS,
@@ -285,6 +285,11 @@ export function TrainingPlansClient() {
     },
     [manualCategoryTargets]
   );
+
+  const openManualExerciseVideo = useCallback((videoUrl?: string) => {
+    if (!videoUrl) return;
+    window.open(videoUrl, "_blank", "noopener,noreferrer");
+  }, []);
 
   const filteredSaved = useMemo(() => {
     const list = [...savedTrainingExercises].sort(
@@ -1127,6 +1132,21 @@ export function TrainingPlansClient() {
                                 <p className="mt-1 text-xs text-zinc-500">{item.brief}</p>
                               </div>
                             </label>
+                            <div className="mt-1 pl-7">
+                              {item.videoUrl ? (
+                                <button
+                                  type="button"
+                                  onClick={() => openManualExerciseVideo(item.videoUrl)}
+                                  className="inline-flex items-center gap-1 text-xs text-accent hover:text-accent/80"
+                                  aria-label={`Ver vídeo do exercício ${item.title}`}
+                                >
+                                  <PlayCircle className="h-3.5 w-3.5" />
+                                  Ver vídeo
+                                </button>
+                              ) : (
+                                <p className="text-xs text-zinc-600">Sem vídeo disponível</p>
+                              )}
+                            </div>
                           </li>
                         );
                       })}
