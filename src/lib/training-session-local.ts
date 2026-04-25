@@ -221,6 +221,12 @@ export const SHORT_FREE_KICK_WINGER_MOVEMENT_VIDEO_URL = "/videos/training/short
 export const ONE_V_ONE_SITUATIONS_VIDEO_URL = "/videos/training/1v1-situations.mp4";
 
 /**
+ * Vídeo do exercício "Passe e Movimentação".
+ * Coloca o ficheiro em `public/videos/training/pass-move.mp4`.
+ */
+export const PASS_AND_MOVE_VIDEO_URL = "/videos/training/pass-move.mp4";
+
+/**
  * Vídeo do exercício "Full Back Overlap - Striker".
  * Coloca o ficheiro em `public/videos/training/full-back-overlap-2.mp4` ou substitui por um link YouTube.
  */
@@ -355,6 +361,13 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
     "rondo to counter",
     "2+1v1 transition",
     "(2+1)v1 transition",
+    "passe e movimentacao",
+    "passe e movimentação",
+    "rececao",
+    "receção",
+    "apoio constante",
+    "rapidez de execução",
+    "rapidez de execucao",
     "3v1",
     "fitness rondo",
     "rondo com finalização",
@@ -842,6 +855,13 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
     "reação",
     "reacao",
     "drible",
+    "passe e movimentacao",
+    "passe e movimentação",
+    "rececao",
+    "receção",
+    "apoio constante",
+    "rapidez de execução",
+    "rapidez de execucao",
   ],
   balanced: [],
 };
@@ -932,6 +952,26 @@ const MAIN_DRILLS: MainDrillDef[] = [
       diagramHint:
         "Partida em 2 cones (5 m) → corrida aos 5 cones centrais → duelo 1v1 → atacante sai em sprint para mini-baliza lateral; rotação de papéis no fim.",
       videoUrl: ONE_V_ONE_SITUATIONS_VIDEO_URL,
+    }),
+  },
+  {
+    themes: ["physical", "possession", "balanced"],
+    title: "Passe e Movimentação",
+    describe: (pl, m) => ({
+      description: `Colocam-se 2 cones afastados 10 metros, com um quadrado no centro. Dentro do quadrado começa 1 jogador, enquanto os restantes se posicionam nos cones exteriores. A bola inicia num jogador exterior, que passa ao jogador dentro do quadrado. Este joga de primeira, devolvendo a bola, e sai de seguida para fora do quadrado. O jogador exterior que recebeu volta a passar para esse colega que abriu fora do quadrado e corre para ocupar o espaço central, recebendo novamente para dar continuidade ao exercício. Regras: máximo de 2 toques para os jogadores exteriores e jogador no quadrado sempre em 1 toque. O foco está na qualidade de passe, mobilidade, apoio constante e rapidez de execução. (${m} min)`,
+      coachingPoints:
+        "Passe tenso e orientado ao pé de apoio; jogador central prepara o corpo antes da receção para devolver de primeira com qualidade; exterior controla no máximo em 2 toques e já acelera a próxima linha de passe; mobilidade constante para não haver linhas mortas.",
+      setup:
+        "2 cones exteriores com ~10 m de distância; quadrado central marcado com cones (4–6 m de lado); 1 bola por estação e bolas de reposição.",
+      groupSplit:
+        pl.length >= 10
+          ? "Dois quadrados em paralelo para alta repetição; rotação contínua exterior → centro → exterior."
+          : pl.length >= 6
+            ? "Um quadrado com fila curta; alternar sentido de passe a cada 2–3 minutos."
+            : "Espaço reduzido com foco técnico e ritmo controlado; treinador pode servir bola de reposição.",
+      diagramHint:
+        "Cones exteriores (10 m) + quadrado central; passe exterior → centro (1 toque) → devolução → passe para colega que abriu → exterior ocupa centro; rotação contínua.",
+      videoUrl: PASS_AND_MOVE_VIDEO_URL,
     }),
   },
   {
@@ -1866,6 +1906,7 @@ const SINGLE_DRILL_10_MIN_TITLES = new Set<string>([
   "Free Kick Routine",
   "Short Free Kick - Winger Movement",
   "1v1 Situations",
+  "Passe e Movimentação",
 ]);
 const SINGLE_DRILL_8_MIN_TITLES = new Set<string>(["Dual Passing"]);
 const SINGLE_DRILL_5_MIN_TITLES = new Set<string>([
@@ -2225,6 +2266,7 @@ export function getTrainingCatalogItems(players: Player[]): TrainingCatalogItem[
     "Dual Passing": ["warmup"],
     "Aquecimento com Bola - Movimentação": ["warmup"],
     "1v1 Situations": ["warmup", "transition", "physical"],
+    "Passe e Movimentação": ["warmup", "possession"],
 
     // Posse de bola
     "Offensive Between Lines": ["possession", "transition"],
