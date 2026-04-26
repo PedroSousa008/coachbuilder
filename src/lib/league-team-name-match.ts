@@ -9,10 +9,7 @@ export function compactTeamName(raw: string): string {
     .replace(/[^a-z0-9]+/g, " ")
     .trim()
     .replace(/\s+/g, " ");
-  s = s.replace(
-    /\b(fc|sc|sl|cd|gd|cf|afc|ac|ad|ud|us|sv|cfp|cdf|cdp|gdch|scu|scd|bc|bk)\b/g,
-    ""
-  );
+  s = s.replace(/\b(fc|sc|sl|cd|gd|cf|afc|ac|ad|ud|us|sv|cfp|cdf|cdp|gdch|scu|scd|bc|bk|sad)\b/g, "");
   return s.replace(/\s+/g, " ").trim();
 }
 
@@ -50,22 +47,33 @@ export function teamNamesLikelyMatch(a: string, b: string, minScore = 0.42): boo
   return scoreTeamMatch(a, b) >= minScore;
 }
 
-const ROW_MATCH_MIN = 0.38;
+const ROW_MATCH_MIN = 0.55;
+const ROW_MATCH_GAP_MIN = 0.12;
+const STRONG_MATCH = 0.9;
 
 /** Best standings row for OCR text, or null if confidence is too low. */
 export function findBestStandingsRowForOcr(ocrName: string, rows: StandingsTeamRow[]): StandingsTeamRow | null {
-  const trimmed = ocrName.trim();
-  if (!trimmed) return null;
+  const query = compactTeamName(ocrName);
+  if (!query) return null;
+  if (query.length <= 3) {
+    const exactShort = rows.find((r) => compactTeamName(r.team) === query);
+    return exactShort ?? null;
+  }
   let best: StandingsTeamRow | null = null;
   let bestScore = 0;
+  let secondBestScore = 0;
   for (const r of rows) {
-    if (!r.team.trim()) continue;
-    const s = scoreTeamMatch(trimmed, r.team);
+    if (!compactTeamName(r.team)) continue;
+    const s = scoreTeamMatch(query, r.team);
     if (s > bestScore) {
+      secondBestScore = bestScore;
       bestScore = s;
       best = r;
+    } else if (s > secondBestScore) {
+      secondBestScore = s;
     }
   }
   if (!best || bestScore < ROW_MATCH_MIN) return null;
+  if (bestScore < STRONG_MATCH && bestScore - secondBestScore < ROW_MATCH_GAP_MIN) return null;
   return best;
 }
