@@ -82,6 +82,7 @@ import {
   normalizeStandingsRow,
   sortStandingsRows,
   toLeagueTableRows,
+  toLeagueTableRowsPreserveOrder,
 } from "@/lib/league-standings";
 
 function normalizeCoachProfileState(profile: CoachProfileState): CoachProfileState {
@@ -1605,10 +1606,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       const targetPhaseId = phaseId ?? prev.activePhaseId;
       const phases = prev.phases.map((phase) => {
         if (phase.id !== targetPhaseId) return phase;
+        // Do not re-sort on name edits: tie-break uses localeCompare on team name, so partial
+        // names jump rows while every team is still on 0 points.
         const rows = phase.standings.rows.map((row) => (row.teamId === teamId ? { ...row, team: name.trim() } : row));
-        const sorted = sortStandingsRows(rows);
-        const updated = { ...phase, standings: { ...phase.standings, rows: sorted, updatedAt: new Date().toISOString() } };
-        if (updated.id === prev.activePhaseId) setLeagueTableRows(toLeagueTableRows(updated.standings.rows));
+        const updated = { ...phase, standings: { ...phase.standings, rows, updatedAt: new Date().toISOString() } };
+        if (updated.id === prev.activePhaseId) setLeagueTableRows(toLeagueTableRowsPreserveOrder(updated.standings.rows));
         return updated;
       });
       return { ...prev, phases };

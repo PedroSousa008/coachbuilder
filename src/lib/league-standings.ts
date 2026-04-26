@@ -37,19 +37,29 @@ export function sortStandingsRows(rows: StandingsTeamRow[]): StandingsTeamRow[] 
     });
 }
 
+function standingsRowToLeagueTableRow(n: StandingsTeamRow, position: number): LeagueTableRow {
+  return {
+    position,
+    team: n.team,
+    played: n.played,
+    won: n.won,
+    drawn: n.drawn,
+    lost: n.lost,
+    goalsFor: n.goalsFor,
+    goalsAgainst: n.goalsAgainst,
+    goalDifference: n.goalsFor - n.goalsAgainst,
+    points: n.points,
+  };
+}
+
+/** Classificação ordenada por pontos / GM (uso após resultados ou edição de estatísticas). */
 export function toLeagueTableRows(rows: StandingsTeamRow[]): LeagueTableRow[] {
-  return sortStandingsRows(rows).map((r, idx) => ({
-    position: idx + 1,
-    team: r.team,
-    played: r.played,
-    won: r.won,
-    drawn: r.drawn,
-    lost: r.lost,
-    goalsFor: r.goalsFor,
-    goalsAgainst: r.goalsAgainst,
-    goalDifference: r.goalsFor - r.goalsAgainst,
-    points: r.points,
-  }));
+  return sortStandingsRows(rows).map((r, idx) => standingsRowToLeagueTableRow(r, idx + 1));
+}
+
+/** Mantém a ordem das linhas na UI (ex.: ao editar nomes sem alterar pontos). */
+export function toLeagueTableRowsPreserveOrder(rows: StandingsTeamRow[]): LeagueTableRow[] {
+  return rows.map((r, idx) => standingsRowToLeagueTableRow(normalizeStandingsRow(r), idx + 1));
 }
 
 export function createEmptyLeagueSetup(teamCount: number, phaseCount: number): LeagueSetup {
