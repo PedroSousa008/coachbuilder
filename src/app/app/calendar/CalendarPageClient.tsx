@@ -147,7 +147,7 @@ export function CalendarPageClient() {
   const [resultsOcrText, setResultsOcrText] = useState("");
   const [ocrBusy, setOcrBusy] = useState(false);
   const [ocrError, setOcrError] = useState<string | null>(null);
-  const [viewMonth, setViewMonth] = useState(() => new Date(nowMs));
+  const [viewMonth, setViewMonth] = useState(() => new Date());
   const [refreshing, setRefreshing] = useState(false);
   const [nextSectionOpen, setNextSectionOpen] = useState(true);
   const [previousSectionOpen, setPreviousSectionOpen] = useState(true);
