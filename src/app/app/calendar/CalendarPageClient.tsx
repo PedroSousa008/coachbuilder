@@ -123,12 +123,6 @@ export function CalendarPageClient() {
     }
   };
 
-  const badgeForScheduleKind = (k: CompetitionKind) => {
-    if (k === "league") return { label: "League table", variant: "default" as const };
-    if (k === "tournament") return { label: "Cup / knockout", variant: "accent" as const };
-    return { label: "Schedule", variant: "muted" as const };
-  };
-
   return (
     <div className="mx-auto max-w-6xl space-y-10">
       <div>
