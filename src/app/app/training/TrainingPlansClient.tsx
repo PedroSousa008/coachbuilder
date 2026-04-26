@@ -206,6 +206,15 @@ export function TrainingPlansClient() {
     () => new Map(trainingCatalog.map((item) => [item.catalogId, item])),
     [trainingCatalog]
   );
+  const manualSelectedCategoryByCatalogId = useMemo(() => {
+    const out = new Map<string, SavedExerciseCategory>();
+    for (const category of MANUAL_CATEGORY_ORDER) {
+      for (const id of manualSelectedCatalogIds[category] ?? []) {
+        if (!out.has(id)) out.set(id, category);
+      }
+    }
+    return out;
+  }, [manualSelectedCatalogIds]);
 
   const manualTargetTotal = useMemo(
     () => MANUAL_CATEGORY_ORDER.reduce((sum, c) => sum + (manualCategoryTargets[c] ?? 0), 0),
@@ -221,9 +230,12 @@ export function TrainingPlansClient() {
 
   const manualPlanBlocks = useMemo(() => {
     const blocks: AiTrainingBlock[] = [];
+    const seen = new Set<string>();
     for (const c of MANUAL_CATEGORY_ORDER) {
       const ids = manualSelectedCatalogIds[c] ?? [];
       for (const id of ids) {
+        if (seen.has(id)) continue;
+        seen.add(id);
         const item = manualCatalogById.get(id);
         if (!item) continue;
         blocks.push({
@@ -293,7 +305,14 @@ export function TrainingPlansClient() {
           return { ...prev, [category]: current.filter((id) => id !== catalogId) };
         }
         if (limit <= 0 || current.length >= limit) return prev;
-        return { ...prev, [category]: [...current, catalogId] };
+        const next = { ...prev };
+        for (const c of MANUAL_CATEGORY_ORDER) {
+          const list = next[c] ?? [];
+          if (!list.includes(catalogId)) continue;
+          next[c] = list.filter((id) => id !== catalogId);
+        }
+        next[category] = [...(next[category] ?? []), catalogId];
+        return next;
       });
     },
     [manualCategoryTargets]
@@ -1118,8 +1137,11 @@ export function TrainingPlansClient() {
                   ) : (
                     <ul className="space-y-2">
                       {options.map((item) => {
-                        const checked = selectedIds.includes(item.catalogId);
-                        const disabled = !checked && selectedIds.length >= want;
+                        const selectedCategory = manualSelectedCategoryByCatalogId.get(item.catalogId);
+                        const checked = selectedCategory !== undefined;
+                        const selectedInThisCategory = selectedCategory === c;
+                        const selectedElsewhere = checked && !selectedInThisCategory;
+                        const disabled = selectedElsewhere || (!checked && selectedIds.length >= want);
                         const isSavedExercise = savedExerciseTitleSet.has(normalizeExerciseTitle(item.title));
                         return (
                           <li key={`manual-item-${c}-${item.catalogId}`}>
@@ -1155,6 +1177,11 @@ export function TrainingPlansClient() {
                                 <p className="mt-1 text-xs text-zinc-500">{item.brief}</p>
                               </div>
                             </label>
+                            {selectedElsewhere ? (
+                              <p className="mt-1 pl-7 text-[11px] text-zinc-500">
+                                Já selecionado em {SAVED_EXERCISE_CATEGORY_LABELS[selectedCategory!]}.
+                              </p>
+                            ) : null}
                             <div className="mt-1 pl-7">
                               {item.videoUrl ? (
                                 <button
