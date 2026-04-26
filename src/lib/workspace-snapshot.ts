@@ -6,6 +6,7 @@ import type {
   LeagueTableRow,
   MatchFixture,
   Message,
+  PastClubResult,
   Player,
   SavedTrainingExercise,
   StaffMember,
@@ -33,6 +34,7 @@ export type LeaguePersistSnapshot = {
   lastFetched: string | null;
   lastError: string | null;
   setup?: LeagueSetup | null;
+  pastClubResults?: PastClubResult[];
 };
 
 /** Payload guardado na BD e enviado pela API (versão explícita para migrações futuras). */
@@ -85,6 +87,7 @@ export function emptyWorkspaceSnapshot(): WorkspaceSnapshotV1 {
       lastFetched: null,
       lastError: null,
       setup: null,
+      pastClubResults: [],
     },
     coachProfile: { name: "", club: "", role: "Head Coach", email: "" },
     tactics: [],
@@ -176,6 +179,7 @@ export function collectWorkspaceFromLocalStorage(userId: string): WorkspaceSnaps
       lastFetched: league.lastFetched ?? null,
       lastError: league.lastError ?? null,
       setup: (league.setup as LeagueSetup | null | undefined) ?? null,
+      pastClubResults: Array.isArray(league.pastClubResults) ? (league.pastClubResults as PastClubResult[]) : [],
     },
     coachProfile: {
       name: "",
@@ -249,6 +253,9 @@ export function parseWorkspacePayload(raw: unknown): WorkspaceSnapshotV1 | null 
           : L.setup === null
             ? null
             : e.league.setup,
+      pastClubResults: Array.isArray(L.pastClubResults)
+        ? (L.pastClubResults as PastClubResult[])
+        : e.league.pastClubResults ?? [],
     },
     coachProfile:
       o.coachProfile && typeof o.coachProfile === "object"

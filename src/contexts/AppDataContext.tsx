@@ -19,6 +19,7 @@ import type {
   LeagueSetup,
   LeagueImportedMatch,
   ParsedMatchEvent,
+  ResolvedLeagueResult,
   LeagueTableRow,
   MatchFixture,
   Message,
@@ -38,6 +39,7 @@ import type {
   TeamCallupState,
   TrainingSession,
   StandingsTeamRow,
+  PastClubResult,
 } from "@/types";
 import { tallyForTactic } from "@/lib/tactics-match-stats";
 import { mockCoach } from "@/data/mock";
@@ -84,6 +86,7 @@ import {
   toLeagueTableRows,
   toLeagueTableRowsPreserveOrder,
 } from "@/lib/league-standings";
+import { buildPastClubResultsFromResolved, mergePastClubResults } from "@/lib/league-past-club-results";
 
 function normalizeCoachProfileState(profile: CoachProfileState): CoachProfileState {
   const normalized = withNormalizedHonorCategories(withNormalizedCareerSeasonsInProfile(profile));
@@ -204,6 +207,7 @@ type LeaguePersist = {
   lastFetched: string | null;
   lastError: string | null;
   setup?: LeagueSetup | null;
+  pastClubResults?: PastClubResult[];
 };
 
 /** Strips persisted errors from the removed URL/HTML league import flow. */
@@ -305,6 +309,8 @@ type AppDataContextValue = {
   applyLeagueMatchEvents: (events: ParsedMatchEvent[], phaseId?: string) => void;
   /** Persist league state to local storage (and cloud when enabled) immediately. */
   saveLeagueTableSnapshot: () => void;
+  pastClubResults: PastClubResult[];
+  updatePastClubResultNote: (id: string, notes: string) => void;
 
   coachProfile: CoachProfileState;
   setCoachProfile: (patch: Partial<CoachProfileState>) => void;
@@ -405,6 +411,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [leagueTableLastFetched, setLeagueTableLastFetched] = useState<string | null>(null);
   const [leagueTableFetchError, setLeagueTableFetchError] = useState<string | null>(null);
   const [leagueSetup, setLeagueSetup] = useState<LeagueSetup | null>(null);
+  const [pastClubResults, setPastClubResults] = useState<PastClubResult[]>([]);
   /** After FPF returns HTTP 403 to our server, avoid repeating doomed fetches on a timer until the URL changes or HTML is pasted. */
   const fpfSkipServerFetchRef = useRef(false);
   const fpfSkipServerFetchUrlRef = useRef<string>("");
@@ -460,6 +467,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       setLeagueTableLastFetched(null);
       setLeagueTableFetchError(null);
       setLeagueSetup(null);
+      setPastClubResults([]);
       fpfSkipServerFetchRef.current = false;
       fpfSkipServerFetchUrlRef.current = "";
       setCoachProfileState(normalizeCoachProfileState(defaultCoachProfile()));
@@ -512,6 +520,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setLeagueTableLastFetched(league.lastFetched ?? null);
     setLeagueTableFetchError(normalizeLeaguePersistFetchError(league.lastError, loadedSetup));
     setLeagueSetup(loadedSetup);
+    setPastClubResults(Array.isArray(league.pastClubResults) ? league.pastClubResults : []);
     setSavedTactics(loadJSON<Tactic[]>(ks.tactics, []));
     setTacticMatches(loadJSON<TacticMatch[]>(ks.tacticMatches, []));
     setTacticPlayerNotesState(loadJSON<Record<string, TacticPlayerAnalysisNote>>(ks.tacticPlayerNotes, {}));
@@ -561,6 +570,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           setLeagueTableLastFetched(s.league.lastFetched ?? null);
           setLeagueTableFetchError(normalizeLeaguePersistFetchError(s.league.lastError, cloudSetup));
           setLeagueSetup(cloudSetup);
+          setPastClubResults(s.league.pastClubResults ?? []);
           setSavedTactics(s.tactics);
           setTacticMatches(s.tacticMatches);
           setTacticPlayerNotesState(s.tacticPlayerNotes);
@@ -618,6 +628,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       leagueTableLastFetched,
       leagueTableFetchError,
       leagueSetup,
+      pastClubResults,
       coachProfile,
       savedTactics,
       tacticMatches,
@@ -654,6 +665,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     leagueTableLastFetched,
     leagueTableFetchError,
     leagueSetup,
+    pastClubResults,
     coachProfile,
     savedTactics,
     tacticMatches,
@@ -718,6 +730,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       lastFetched: leagueTableLastFetched,
       lastError: leagueTableFetchError,
       setup: leagueSetup,
+      pastClubResults,
     } satisfies LeaguePersist);
   }, [
     hydrated,
@@ -729,6 +742,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     leagueTableLastFetched,
     leagueTableFetchError,
     leagueSetup,
+    pastClubResults,
   ]);
 
   useEffect(() => {
@@ -1608,7 +1622,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         if (phase.id !== targetPhaseId) return phase;
         // Do not re-sort on name edits: tie-break uses localeCompare on team name, so partial
         // names jump rows while every team is still on 0 points.
-        const rows = phase.standings.rows.map((row) => (row.teamId === teamId ? { ...row, team: name.trim() } : row));
+        const rows = phase.standings.rows.map((row) => (row.teamId === teamId ? { ...row, team: name } : row));
         const updated = { ...phase, standings: { ...phase.standings, rows, updatedAt: new Date().toISOString() } };
         if (updated.id === prev.activePhaseId) setLeagueTableRows(toLeagueTableRowsPreserveOrder(updated.standings.rows));
         return updated;
@@ -1651,15 +1665,20 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
   const applyLeagueMatchEvents = useCallback((events: ParsedMatchEvent[], phaseId?: string) => {
     if (!events.length) return;
+    let appliedSnapshot: ResolvedLeagueResult[] = [];
     setLeagueSetup((prev) => {
       if (!prev) return prev;
       const targetPhaseId = phaseId ?? prev.activePhaseId;
       const phases = prev.phases.map((phase) => {
         if (phase.id !== targetPhaseId) return phase;
-        const rows = applyMatchEventsToStandings(phase.standings.rows, events);
-        const updated = { ...phase, standings: { ...phase.standings, rows, updatedAt: new Date().toISOString() } };
+        const { rows: nextRows, applied } = applyMatchEventsToStandings(phase.standings.rows, events);
+        appliedSnapshot = applied;
+        const updated = {
+          ...phase,
+          standings: { ...phase.standings, rows: nextRows, updatedAt: new Date().toISOString() },
+        };
         if (updated.id === prev.activePhaseId) {
-          setLeagueTableRows(toLeagueTableRows(rows));
+          setLeagueTableRows(toLeagueTableRows(nextRows));
           setLeagueTableLastFetched(new Date().toISOString());
           setLeagueTableFetchError(null);
         }
@@ -1667,6 +1686,16 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       });
       return { ...prev, phases };
     });
+    const club = coachProfile.club.trim();
+    if (club && appliedSnapshot.length) {
+      setPastClubResults((prev) =>
+        mergePastClubResults(prev, buildPastClubResultsFromResolved(club, appliedSnapshot))
+      );
+    }
+  }, [coachProfile.club]);
+
+  const updatePastClubResultNote = useCallback((id: string, notes: string) => {
+    setPastClubResults((prev) => prev.map((r) => (r.id === id ? { ...r, notes } : r)));
   }, []);
 
   const saveLeagueTableSnapshot = useCallback(() => {
@@ -1681,6 +1710,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         lastFetched: fetchedAt,
         lastError: leagueTableFetchError,
         setup: leagueSetup,
+        pastClubResults,
       } satisfies LeaguePersist);
     }
     if (shouldUseCloudClientApis(user) && cloudRemoteReady && hydrated && user?.id) {
@@ -1700,6 +1730,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         leagueTableLastFetched: fetchedAt,
         leagueTableFetchError,
         leagueSetup,
+        pastClubResults,
         coachProfile,
         savedTactics,
         tacticMatches,
@@ -1724,6 +1755,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     leagueCompetitionName,
     leagueTableFetchError,
     leagueSetup,
+    pastClubResults,
     user,
     cloudRemoteReady,
     players,
@@ -1882,6 +1914,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       updateLeagueTeamStats,
       applyLeagueMatchEvents,
       saveLeagueTableSnapshot,
+      pastClubResults,
+      updatePastClubResultNote,
       coachProfile,
       setCoachProfile,
       savedTactics,
@@ -1953,6 +1987,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       updateLeagueTeamStats,
       applyLeagueMatchEvents,
       saveLeagueTableSnapshot,
+      pastClubResults,
+      updatePastClubResultNote,
       coachProfile,
       setCoachProfile,
       savedTactics,

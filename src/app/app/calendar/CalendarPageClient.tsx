@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Table2 } from "lucide-react";
 import type { MatchFixture } from "@/types";
 import { useAppData } from "@/contexts/AppDataContext";
@@ -11,7 +11,7 @@ import { FixtureFormModal } from "@/components/calendar/FixtureFormModal";
 import { useScheduleNow } from "@/hooks/useScheduleNow";
 import { buildMonthGrid, isSameLocalDay } from "@/lib/coaching-professionals-calendar";
 import { cn } from "@/lib/utils";
-import type { ParsedMatchEvent } from "@/types";
+import { parseMatchEventsFromOcrText } from "@/lib/league-results-ocr-parse";
 
 const cellInputClass =
   "h-8 min-w-0 px-1.5 py-0 text-xs tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none";
@@ -39,6 +39,8 @@ export function CalendarPageClient() {
     updateLeagueTeamStats,
     applyLeagueMatchEvents,
     saveLeagueTableSnapshot,
+    pastClubResults,
+    updatePastClubResultNote,
     coachProfile,
     players,
     staff,
@@ -51,6 +53,7 @@ export function CalendarPageClient() {
   const [resultsOcrText, setResultsOcrText] = useState("");
   const [ocrBusy, setOcrBusy] = useState(false);
   const [ocrError, setOcrError] = useState<string | null>(null);
+  const resultsImageInputRef = useRef<HTMLInputElement>(null);
   const [viewMonth, setViewMonth] = useState(() => new Date());
   const nowMs = useScheduleNow();
   const monthCells = useMemo(
@@ -103,26 +106,56 @@ export function CalendarPageClient() {
     initializeLeagueSetup(teams, phases);
   };
 
-  const handleProcessResultsText = async () => {
-    const text = resultsOcrText.trim();
-    if (!text) return;
+  const handleApplyResults = async () => {
+    if (!leagueSetup) {
+      setOcrError("Cria primeiro a tabela da liga (setup).");
+      return;
+    }
     setOcrBusy(true);
     setOcrError(null);
     try {
-      const res = await fetch("/api/league-results-image", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ocrText: text }),
-      });
-      const data = (await res.json()) as { ok?: boolean; error?: string; events?: ParsedMatchEvent[] };
-      if (!data.ok || !Array.isArray(data.events)) {
-        setOcrError(data.error ?? "Could not parse image results.");
+      let combined = resultsOcrText;
+      const file = resultsImageInputRef.current?.files?.[0];
+      if (file) {
+        try {
+          const { createWorker } = await import("tesseract.js");
+          const worker = await createWorker("por+eng");
+          const {
+            data: { text },
+          } = await worker.recognize(file);
+          await worker.terminate();
+          const extracted = (text ?? "").trim();
+          if (extracted) {
+            combined = combined.trim() ? `${combined.trim()}\n${extracted}` : extracted;
+            setResultsOcrText(combined);
+          }
+        } catch {
+          setOcrError(
+            "Não foi possível ler a imagem (OCR). Corre `npm install` no projeto e tenta de novo, ou cola o texto reconhecido abaixo."
+          );
+          setOcrBusy(false);
+          return;
+        }
+      }
+      const trimmed = combined.trim();
+      if (!trimmed) {
+        setOcrError("Carrega uma imagem com a grelha de resultados ou cola o texto (ex.: SL Benfica 2-1 FC Porto).");
+        setOcrBusy(false);
         return;
       }
-      applyLeagueMatchEvents(data.events);
+      const events = parseMatchEventsFromOcrText(trimmed);
+      if (!events.length) {
+        setOcrError(
+          "Não encontrei jogos no texto. Usa linhas como: Equipa A 2-1 Equipa B (ou 2:1). Confirma que os nomes estão próximos dos golos."
+        );
+        setOcrBusy(false);
+        return;
+      }
+      applyLeagueMatchEvents(events);
       setResultsOcrText("");
+      if (resultsImageInputRef.current) resultsImageInputRef.current.value = "";
     } catch {
-      setOcrError("Could not process results image.");
+      setOcrError("Erro ao aplicar resultados.");
     } finally {
       setOcrBusy(false);
     }
@@ -387,25 +420,37 @@ export function CalendarPageClient() {
           )}
 
           <div className="rounded-xl border border-surface-border bg-surface-raised/30 p-4">
-            <p className="text-sm font-semibold text-white">Resultados por print (upload/câmara)</p>
+            <p className="text-sm font-semibold text-white">Resultados por print</p>
             <p className="mt-1 text-xs text-zinc-500">
-              Carrega uma imagem ou usa câmara. Nesta versão, cola o texto OCR dos resultados para aplicar atualização
-              automática da tabela.
+              Um único upload de imagem (galeria ou câmara). Ao carregar em <strong>Aplicar resultados</strong> lemos o
+              texto na app, encontramos jogos (casa golos fora), cruzamos nomes com a tabela (ex.: FC Porto ≈ Porto) e
+              atualizamos J, V, E, D, golos e pontos. Define o <strong>clube</strong> no Perfil para guardar jogos
+              passados só dessa equipa.
             </p>
-            <div className="mt-3 grid gap-3 sm:grid-cols-2">
-              <Input type="file" accept="image/*" />
-              <Input type="file" accept="image/*" capture="environment" />
+            <div className="mt-3">
+              <label className="text-xs font-medium text-zinc-500" htmlFor="results-image">
+                Imagem (screenshot / foto)
+              </label>
+              <Input
+                id="results-image"
+                ref={resultsImageInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="mt-1.5 cursor-pointer"
+              />
             </div>
+            <p className="mt-3 text-xs font-medium text-zinc-500">Texto (opcional — junta-se ao OCR da imagem)</p>
             <textarea
               value={resultsOcrText}
               onChange={(e) => setResultsOcrText(e.target.value)}
-              placeholder="Ex.: Equipa A 2-1 Equipa B"
+              placeholder="Ex.: SL Benfica 2-1 FC Porto"
               rows={4}
-              className="mt-3 min-h-[96px] w-full resize-y rounded-xl border border-surface-border bg-surface-raised/90 px-4 py-3 text-sm text-zinc-100 placeholder:text-zinc-500 focus:border-accent/50 focus:outline-none focus:ring-2 focus:ring-accent/20"
+              className="mt-1.5 min-h-[96px] w-full resize-y rounded-xl border border-surface-border bg-surface-raised/90 px-4 py-3 text-sm text-zinc-100 placeholder:text-zinc-500 focus:border-accent/50 focus:outline-none focus:ring-2 focus:ring-accent/20"
             />
-            <div className="mt-2 flex items-center justify-between gap-2">
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
               {ocrError ? <p className="text-xs text-amber-300">{ocrError}</p> : <span />}
-              <Button type="button" onClick={handleProcessResultsText} disabled={ocrBusy || !resultsOcrText.trim()}>
+              <Button type="button" onClick={() => void handleApplyResults()} disabled={ocrBusy}>
                 {ocrBusy ? "A processar..." : "Aplicar resultados"}
               </Button>
             </div>
@@ -487,6 +532,59 @@ export function CalendarPageClient() {
                 );
               })}
             </div>
+          </div>
+
+          <div className="rounded-xl border border-surface-border bg-surface-raised/30 p-4">
+            <p className="text-sm font-semibold text-white">Jogos anteriores (Perfil)</p>
+            <p className="mt-1 text-xs text-zinc-500">
+              Só aparecem jogos em que o clube <strong>{coachProfile.club.trim() || "—"}</strong> participou, após
+              aplicares resultados por OCR. Resultado a verde / cinzento / vermelho conforme vitória, empate ou
+              derrota do teu clube.
+            </p>
+            {!coachProfile.club.trim() ? (
+              <p className="mt-3 text-sm text-amber-200/90">Define o nome do clube no Perfil para ver esta lista.</p>
+            ) : pastClubResults.length === 0 ? (
+              <p className="mt-3 text-sm text-zinc-500">Ainda não há jogos guardados para este clube.</p>
+            ) : (
+              <div className="mt-3 overflow-x-auto rounded-xl border border-surface-border">
+                <table className="w-full min-w-[520px] text-left text-xs">
+                  <thead>
+                    <tr className="border-b border-surface-border bg-zinc-900/50 text-[10px] uppercase tracking-wide text-zinc-500">
+                      <th className="px-2 py-2 font-medium">Casa</th>
+                      <th className="px-2 py-2 font-medium">Fora</th>
+                      <th className="px-2 py-2 font-medium">Resultado</th>
+                      <th className="px-2 py-2 font-medium">Observações</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pastClubResults.map((row) => (
+                      <tr key={row.id} className="border-b border-surface-border/60 last:border-0">
+                        <td className="px-2 py-2 text-zinc-200">{row.homeSide}</td>
+                        <td className="px-2 py-2 text-zinc-200">{row.awaySide}</td>
+                        <td
+                          className={cn(
+                            "px-2 py-2 font-semibold tabular-nums",
+                            row.outcome === "W" && "text-emerald-300",
+                            row.outcome === "D" && "text-zinc-400",
+                            row.outcome === "L" && "text-red-400/90"
+                          )}
+                        >
+                          {row.homeGoals} — {row.awayGoals}
+                        </td>
+                        <td className="px-2 py-2">
+                          <Input
+                            value={row.notes}
+                            onChange={(e) => updatePastClubResultNote(row.id, e.target.value)}
+                            placeholder="Notas"
+                            className="h-8 text-xs"
+                          />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
 
           {leagueTableLastFetched && (

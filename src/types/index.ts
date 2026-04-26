@@ -541,6 +541,26 @@ export interface ParsedMatchEvent {
   source?: "image" | "manual" | "import";
 }
 
+/** One fixture resolved against standings rows (for past games + fuzzy apply). */
+export interface ResolvedLeagueResult {
+  homeRow: StandingsTeamRow;
+  awayRow: StandingsTeamRow;
+  homeGoals: number;
+  awayGoals: number;
+}
+
+/** Jogos já disputados envolvendo o clube do Perfil (alimentado por resultados OCR). */
+export interface PastClubResult {
+  id: string;
+  homeSide: string;
+  awaySide: string;
+  homeGoals: number;
+  awayGoals: number;
+  outcome: "W" | "D" | "L";
+  notes: string;
+  recordedAt: string;
+}
+
 /** Imported from federation pages (e.g. FPF resultados) — past and future fixtures. */
 export interface LeagueImportedMatch {
   id: string;

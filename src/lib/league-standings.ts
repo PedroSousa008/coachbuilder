@@ -1,4 +1,12 @@
-import type { LeaguePhase, LeagueSetup, LeagueTableRow, ParsedMatchEvent, StandingsTeamRow } from "@/types";
+import type {
+  LeaguePhase,
+  LeagueSetup,
+  LeagueTableRow,
+  ParsedMatchEvent,
+  ResolvedLeagueResult,
+  StandingsTeamRow,
+} from "@/types";
+import { findBestStandingsRowForOcr } from "@/lib/league-team-name-match";
 
 function toNonNegativeInt(v: unknown): number {
   const n = typeof v === "number" ? v : typeof v === "string" ? Number(v) : NaN;
@@ -16,7 +24,7 @@ export function normalizeStandingsRow(row: StandingsTeamRow): StandingsTeamRow {
   const points = won * 3 + drawn;
   return {
     teamId: row.teamId,
-    team: row.team.trim(),
+    team: typeof row.team === "string" ? row.team : "",
     played,
     won,
     drawn,
@@ -96,15 +104,23 @@ export function createEmptyLeagueSetup(teamCount: number, phaseCount: number): L
   };
 }
 
-export function applyMatchEventsToStandings(rows: StandingsTeamRow[], events: ParsedMatchEvent[]): StandingsTeamRow[] {
-  const byName = new Map<string, StandingsTeamRow>();
-  for (const r of rows.map((x) => normalizeStandingsRow(x))) {
-    byName.set(r.team.trim().toLowerCase(), { ...r });
-  }
+export function applyMatchEventsToStandings(
+  rows: StandingsTeamRow[],
+  events: ParsedMatchEvent[]
+): { rows: StandingsTeamRow[]; applied: ResolvedLeagueResult[] } {
+  const rowsCopy = rows.map((r) => ({ ...normalizeStandingsRow(r) }));
+  const applied: ResolvedLeagueResult[] = [];
   for (const event of events) {
-    const home = byName.get(event.homeTeam.trim().toLowerCase());
-    const away = byName.get(event.awayTeam.trim().toLowerCase());
-    if (!home || !away) continue;
+    const home = findBestStandingsRowForOcr(event.homeTeam, rowsCopy);
+    const away = findBestStandingsRowForOcr(event.awayTeam, rowsCopy);
+    if (!home || !away || home.teamId === away.teamId) continue;
+
+    applied.push({
+      homeRow: { ...home },
+      awayRow: { ...away },
+      homeGoals: event.homeGoals,
+      awayGoals: event.awayGoals,
+    });
 
     home.played += 1;
     away.played += 1;
@@ -125,5 +141,5 @@ export function applyMatchEventsToStandings(rows: StandingsTeamRow[], events: Pa
     home.points = home.won * 3 + home.drawn;
     away.points = away.won * 3 + away.drawn;
   }
-  return sortStandingsRows([...byName.values()]);
+  return { rows: sortStandingsRows(rowsCopy), applied };
 }

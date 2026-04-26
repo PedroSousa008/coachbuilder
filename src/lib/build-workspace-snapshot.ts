@@ -7,6 +7,7 @@ import type {
   LeagueTableRow,
   MatchFixture,
   Message,
+  PastClubResult,
   Player,
   SavedTrainingExercise,
   SketchAreaState,
@@ -36,6 +37,7 @@ export function buildWorkspaceSnapshotV1(params: {
   leagueTableLastFetched: string | null;
   leagueTableFetchError: string | null;
   leagueSetup: LeagueSetup | null;
+  pastClubResults: PastClubResult[];
   coachProfile: CoachProfileState;
   savedTactics: Tactic[];
   tacticMatches: TacticMatch[];
@@ -62,6 +64,7 @@ export function buildWorkspaceSnapshotV1(params: {
       lastFetched: params.leagueTableLastFetched,
       lastError: params.leagueTableFetchError,
       setup: params.leagueSetup,
+      pastClubResults: params.pastClubResults,
     },
     coachProfile: params.coachProfile,
     tactics: params.savedTactics,

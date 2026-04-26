@@ -31,7 +31,7 @@ test("sortStandingsRows orders by points then goalsFor", () => {
 });
 
 test("applyMatchEventsToStandings updates W/D/L and points", () => {
-  const next = applyMatchEventsToStandings(
+  const { rows: next } = applyMatchEventsToStandings(
     [
       {
         teamId: "a",
@@ -63,4 +63,40 @@ test("applyMatchEventsToStandings updates W/D/L and points", () => {
   assert.equal(a?.points, 3);
   assert.equal(a?.won, 1);
   assert.equal(b?.lost, 1);
+});
+
+test("applyMatchEventsToStandings matches OCR club names to table rows (fuzzy)", () => {
+  const { rows: next } = applyMatchEventsToStandings(
+    [
+      {
+        teamId: "a",
+        team: "Benfica",
+        played: 0,
+        won: 0,
+        drawn: 0,
+        lost: 0,
+        goalsFor: 0,
+        goalsAgainst: 0,
+        points: 0,
+      },
+      {
+        teamId: "b",
+        team: "Porto",
+        played: 0,
+        won: 0,
+        drawn: 0,
+        lost: 0,
+        goalsFor: 0,
+        goalsAgainst: 0,
+        points: 0,
+      },
+    ],
+    [{ homeTeam: "SL Benfica", awayTeam: "FC Porto", homeGoals: 0, awayGoals: 0, source: "image" }]
+  );
+  const benfica = next.find((x) => x.team === "Benfica");
+  const porto = next.find((x) => x.team === "Porto");
+  assert.equal(benfica?.played, 1);
+  assert.equal(porto?.played, 1);
+  assert.equal(benfica?.drawn, 1);
+  assert.equal(porto?.drawn, 1);
 });
