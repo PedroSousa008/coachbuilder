@@ -50,6 +50,7 @@ const TRAINING_EXERCISE_PRINT_IMAGE_BY_TITLE: Record<string, string> = {
   "Drible Rápido e Passe": "dribbling-passing.png",
   "Posse de Bola com Transição": "possession-transfer.png",
   "Sair a Jogar da Defesa com Pressão": "sair-jogar.png",
+  "Jogo do Galo": " jogo-galo.png",
 };
 
 export const TRAINING_EXERCISE_PRINT_IMAGE_FOLDER = "/images/training-exercises";

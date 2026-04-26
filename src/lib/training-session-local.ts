@@ -251,6 +251,12 @@ export const POSSESSION_BALL_WITH_TRANSITION_VIDEO_URL = "/videos/training/posse
 export const PLAYING_OUT_FROM_BACK_UNDER_PRESSURE_VIDEO_URL = "/videos/training/sair-jogar.mp4";
 
 /**
+ * Vídeo do exercício "Jogo do Galo".
+ * Coloca o ficheiro em `public/videos/training/jogo-galo.mp4`.
+ */
+export const TIC_TAC_TOE_GAME_VIDEO_URL = "/videos/training/jogo-galo.mp4";
+
+/**
  * Vídeo do exercício "Full Back Overlap - Striker".
  * Coloca o ficheiro em `public/videos/training/full-back-overlap-2.mp4` ou substitui por um link YouTube.
  */
@@ -1191,6 +1197,26 @@ const MAIN_DRILLS: MainDrillDef[] = [
     }),
   },
   {
+    themes: ["physical", "balanced"],
+    title: "Jogo do Galo",
+    describe: (pl, m) => ({
+      description: `O exercício adapta o clássico Jogo do Galo ao contexto do futebol. Existem 2 equipas, que competem para completar uma sequência de 3 em linha (horizontal, vertical ou diagonal). Cada equipa utiliza coletes de cor diferente ou, idealmente, bolas de cores distintas. Os jogadores saem rapidamente, colocam a bola/cor no espaço pretendido e regressam, entrando depois o colega seguinte. O objetivo é decidir rapidamente onde jogar para criar a própria sequência ou bloquear a adversária. O foco está na velocidade, reação, inteligência, visão de jogo e tomada de decisão sob pressão. (${m} min)`,
+      coachingPoints:
+        "Saída explosiva ao sinal, leitura rápida do tabuleiro antes de correr, comunicação curta entre colegas para não duplicar decisão e controlo da respiração para manter velocidade e clareza mental em repetições seguidas.",
+      setup:
+        "Tabuleiro 3x3 marcado no chão com cones/discos, 2 conjuntos de coletes (ou bolas de cores diferentes), linha de partida para cada equipa a 6–10 m do tabuleiro e bolas de reposição para ritmo contínuo.",
+      groupSplit:
+        pl.length >= 10
+          ? "Duas equipas com rotação rápida de 1 jogador por ação; quem termina volta ao fim da fila e o colega seguinte parte de imediato."
+          : pl.length >= 6
+            ? "Equipas curtas (3–4) com rondas mais frequentes; reduzir distância de partida para manter intensidade."
+            : "Versão reduzida com treinador a lançar estímulo verbal ('atacar' ou 'bloquear') antes de cada saída.",
+      diagramHint:
+        "Tabuleiro 3x3 ao centro; duas filas opostas; cada sprint coloca colete/bola numa casa; objetivo: completar 3 em linha ou bloquear adversário.",
+      videoUrl: TIC_TAC_TOE_GAME_VIDEO_URL,
+    }),
+  },
+  {
     themes: ["possession", "physical", "balanced"],
     title: "Dual Passing",
     describe: (_pl, m) => ({
@@ -2126,6 +2152,7 @@ const SINGLE_DRILL_10_MIN_TITLES = new Set<string>([
   "Passe e Movimentação",
   "Drible Rápido e Passe",
   "Sair a Jogar da Defesa com Pressão",
+  "Jogo do Galo",
 ]);
 const SINGLE_DRILL_8_MIN_TITLES = new Set<string>(["Dual Passing"]);
 const SINGLE_DRILL_5_MIN_TITLES = new Set<string>([
@@ -2193,6 +2220,15 @@ function singleDrillProgressionVariationsForTitle(title: string): {
         "Reduz espaço no setor de saída e limita a equipa em posse a 2 toques para acelerar decisão; ou aumenta o trigger de pressão (2 pressionantes saltam ao mesmo tempo após 3.º passe).",
       variations:
         "Após recuperação, obrigar finalização em ≤6 segundos no 3v2; ou trocar alvo de transição (baliza esquerda/direita obrigatória por comando); ou limitar o trinco a 1 toque em blocos curtos para estimular apoios rápidos.",
+    };
+  }
+
+  if (title === "Jogo do Galo") {
+    return {
+      progression:
+        "Aumenta distância entre linha de partida e tabuleiro para exigir mais velocidade; ou obriga decisão em ≤2 segundos após sinal para acelerar leitura do jogo.",
+      variations:
+        "Trocar para modo ofensivo/defensivo por comando (numa ronda só podes bloquear, noutra só podes completar linha); ou jogar com 2 bolas por ação (uma por equipa) para aumentar caos controlado e reação.",
     };
   }
 
@@ -2508,6 +2544,7 @@ export function getTrainingCatalogItems(players: Player[]): TrainingCatalogItem[
     "Reação e Finalização": ["possession", "finishing"],
     "Posse de Bola com Transição": ["possession", "transition", "pressing", "physical"],
     "Sair a Jogar da Defesa com Pressão": ["possession", "transition", "pressing", "goalKick", "finishing"],
+    "Jogo do Galo": ["warmup", "physical"],
 
     // Posse de bola
     "Offensive Between Lines": ["possession", "transition"],
