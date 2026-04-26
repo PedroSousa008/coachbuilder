@@ -36,6 +36,14 @@ function monthDayKey(isoDate: string): string | null {
   return `${m}-${day}`;
 }
 
+function isFpfResultadosUrl(url: string): boolean {
+  try {
+    return new URL(url).hostname.toLowerCase().includes("resultados.fpf.pt");
+  } catch {
+    return false;
+  }
+}
+
 function outcomeForMyTeam(
   m: LeagueImportedMatch,
   profileClub: string,
@@ -130,6 +138,7 @@ export function CalendarPageClient() {
   const [nextSectionOpen, setNextSectionOpen] = useState(true);
   const [previousSectionOpen, setPreviousSectionOpen] = useState(true);
   const nowMs = useScheduleNow();
+  const leagueUrlIsFpf = useMemo(() => isFpfResultadosUrl(leagueTableUrl.trim()), [leagueTableUrl]);
 
   useEffect(() => {
     setUrlDraft(leagueTableUrl);
@@ -137,16 +146,18 @@ export function CalendarPageClient() {
 
   useEffect(() => {
     if (!hydrated || !leagueTableUrl.trim()) return;
+    if (leagueUrlIsFpf) return;
     void refreshLeagueTable();
-  }, [hydrated, leagueTableUrl, refreshLeagueTable]);
+  }, [hydrated, leagueTableUrl, refreshLeagueTable, leagueUrlIsFpf]);
 
   useEffect(() => {
     if (!leagueTableUrl.trim()) return;
+    if (leagueUrlIsFpf) return;
     const id = setInterval(() => {
       void refreshLeagueTable();
     }, 6 * 60 * 60 * 1000);
     return () => clearInterval(id);
-  }, [leagueTableUrl, refreshLeagueTable]);
+  }, [leagueTableUrl, refreshLeagueTable, leagueUrlIsFpf]);
 
   const candidates = useMemo(
     () => collectUniqueTeamNames({ tableRows: leagueTableRows, matches: leagueMatches }),
@@ -633,10 +644,9 @@ export function CalendarPageClient() {
             League table
           </CardTitle>
           <CardDescription>
-            Paste the public URL of your league standings page. We fetch it on this server and parse HTML tables or
-            known layouts (e.g. FPF resultados.fpf.pt classificações). FPF sometimes returns HTTP 403 to cloud servers —
-            if refresh fails, your browser can still open the page: copy the full HTML (View Page Source) and use the
-            fallback field below. With your club set in Profile, that row is highlighted and labelled in the table.
+            Paste the public URL of your league standings page. For FPF (`resultados.fpf.pt`), use the URL only as
+            reference and import via pasted HTML (View Page Source), because direct server refresh is often blocked
+            with HTTP 403. With your club set in Profile, that row is highlighted and labelled in the table.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -657,15 +667,26 @@ export function CalendarPageClient() {
               <Button type="button" variant="secondary" onClick={saveUrl}>
                 Save URL
               </Button>
-              <Button type="button" onClick={handleRefresh} disabled={refreshing || !leagueTableUrl.trim()}>
+              <Button
+                type="button"
+                variant={leagueUrlIsFpf ? "secondary" : "default"}
+                onClick={handleRefresh}
+                disabled={refreshing || !leagueTableUrl.trim()}
+              >
                 <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
-                Refresh now
+                {leagueUrlIsFpf ? "Try direct refresh (optional)" : "Refresh now"}
               </Button>
             </div>
           </div>
+          {leagueUrlIsFpf && (
+            <p className="rounded-xl border border-amber-500/25 bg-amber-500/5 px-4 py-3 text-sm text-amber-200/90">
+              FPF mode active: updates should be done via pasted HTML below. We keep the URL as competition reference,
+              but automatic refresh from the server is disabled for FPF links.
+            </p>
+          )}
           <div>
             <label className="text-xs font-medium text-zinc-500" htmlFor="league-html-fallback">
-              Import from pasted HTML (FPF fallback)
+              Import from pasted HTML {leagueUrlIsFpf ? "(recommended)" : "(FPF fallback)"}
             </label>
             <textarea
               id="league-html-fallback"
@@ -678,11 +699,11 @@ export function CalendarPageClient() {
             <div className="mt-2 flex justify-end">
               <Button
                 type="button"
-                variant="secondary"
+                variant={leagueUrlIsFpf ? "default" : "secondary"}
                 onClick={handleImportFromPastedHtml}
                 disabled={refreshing || !leagueTableUrl.trim() || !fpfHtmlDraft.trim()}
               >
-                Import from HTML
+                {leagueUrlIsFpf ? "Update table from HTML" : "Import from HTML"}
               </Button>
             </div>
           </div>
@@ -693,8 +714,10 @@ export function CalendarPageClient() {
           )}
           {leagueTableLastFetched && (
             <p className="text-xs text-zinc-600">
-              Last updated: {new Date(leagueTableLastFetched).toLocaleString("en-GB")} · Auto-refresh every 6 hours
-              while this page is open (manual refresh anytime).
+              Last updated: {new Date(leagueTableLastFetched).toLocaleString("en-GB")} ·{" "}
+              {leagueUrlIsFpf
+                ? "FPF mode: update by pasted HTML."
+                : "Auto-refresh every 6 hours while this page is open (manual refresh anytime)."}
             </p>
           )}
           {leagueTableRows.length > 0 ? (
