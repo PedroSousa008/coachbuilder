@@ -6,7 +6,7 @@ import type {
   ResolvedLeagueResult,
   StandingsTeamRow,
 } from "@/types";
-import { findBestStandingsRowForOcr } from "@/lib/league-team-name-match";
+import { findBestStandingsRowMatchForOcr } from "@/lib/league-team-name-match";
 
 function toNonNegativeInt(v: unknown): number {
   const n = typeof v === "number" ? v : typeof v === "string" ? Number(v) : NaN;
@@ -110,10 +110,31 @@ export function applyMatchEventsToStandings(
 ): { rows: StandingsTeamRow[]; applied: ResolvedLeagueResult[] } {
   const rowsCopy = rows.map((r) => ({ ...normalizeStandingsRow(r) }));
   const applied: ResolvedLeagueResult[] = [];
-  for (const event of events) {
-    const home = findBestStandingsRowForOcr(event.homeTeam, rowsCopy);
-    const away = findBestStandingsRowForOcr(event.awayTeam, rowsCopy);
-    if (!home || !away || home.teamId === away.teamId) continue;
+  const resolved = events
+    .map((event) => {
+      const homeMatch = findBestStandingsRowMatchForOcr(event.homeTeam, rowsCopy);
+      const awayMatch = findBestStandingsRowMatchForOcr(event.awayTeam, rowsCopy);
+      if (!homeMatch || !awayMatch || homeMatch.row.teamId === awayMatch.row.teamId) return null;
+      return {
+        event,
+        homeTeamId: homeMatch.row.teamId,
+        awayTeamId: awayMatch.row.teamId,
+        confidence: homeMatch.score + awayMatch.score,
+      };
+    })
+    .filter((x): x is NonNullable<typeof x> => x != null)
+    .sort((a, b) => b.confidence - a.confidence);
+
+  // OCR guardrail: in one import batch, a team should not appear in multiple fixtures.
+  const usedTeamIds = new Set<string>();
+  for (const candidate of resolved) {
+    if (usedTeamIds.has(candidate.homeTeamId) || usedTeamIds.has(candidate.awayTeamId)) continue;
+    usedTeamIds.add(candidate.homeTeamId);
+    usedTeamIds.add(candidate.awayTeamId);
+    const home = rowsCopy.find((r) => r.teamId === candidate.homeTeamId);
+    const away = rowsCopy.find((r) => r.teamId === candidate.awayTeamId);
+    if (!home || !away) continue;
+    const event = candidate.event;
 
     applied.push({
       homeRow: { ...home },

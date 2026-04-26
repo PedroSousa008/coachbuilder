@@ -51,13 +51,27 @@ const ROW_MATCH_MIN = 0.55;
 const ROW_MATCH_GAP_MIN = 0.12;
 const STRONG_MATCH = 0.9;
 
+export type StandingsRowMatch = {
+  row: StandingsTeamRow;
+  score: number;
+};
+
 /** Best standings row for OCR text, or null if confidence is too low. */
 export function findBestStandingsRowForOcr(ocrName: string, rows: StandingsTeamRow[]): StandingsTeamRow | null {
+  const m = findBestStandingsRowMatchForOcr(ocrName, rows);
+  return m?.row ?? null;
+}
+
+/** Best standings row for OCR text with score, or null if confidence is low/ambiguous. */
+export function findBestStandingsRowMatchForOcr(
+  ocrName: string,
+  rows: StandingsTeamRow[]
+): StandingsRowMatch | null {
   const query = compactTeamName(ocrName);
   if (!query) return null;
   if (query.length <= 3) {
     const exactShort = rows.find((r) => compactTeamName(r.team) === query);
-    return exactShort ?? null;
+    return exactShort ? { row: exactShort, score: 1 } : null;
   }
   let best: StandingsTeamRow | null = null;
   let bestScore = 0;
@@ -75,5 +89,5 @@ export function findBestStandingsRowForOcr(ocrName: string, rows: StandingsTeamR
   }
   if (!best || bestScore < ROW_MATCH_MIN) return null;
   if (bestScore < STRONG_MATCH && bestScore - secondBestScore < ROW_MATCH_GAP_MIN) return null;
-  return best;
+  return { row: best, score: bestScore };
 }
