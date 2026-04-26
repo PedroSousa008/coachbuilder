@@ -37,6 +37,35 @@ test("findBestStandingsRowForOcr picks table row from OCR variant", () => {
   assert.equal(b?.team, "Benfica");
 });
 
+test("findBestStandingsRowForOcr ignores accents and spacing for same letter sequence", () => {
+  const rows: StandingsTeamRow[] = [
+    {
+      teamId: "1",
+      team: "Vitoria",
+      played: 0,
+      won: 0,
+      drawn: 0,
+      lost: 0,
+      goalsFor: 0,
+      goalsAgainst: 0,
+      points: 0,
+    },
+    {
+      teamId: "2",
+      team: "Famalicão",
+      played: 0,
+      won: 0,
+      drawn: 0,
+      lost: 0,
+      goalsFor: 0,
+      goalsAgainst: 0,
+      points: 0,
+    },
+  ];
+  assert.equal(findBestStandingsRowForOcr("Vitória Sc", rows)?.team, "Vitoria");
+  assert.equal(findBestStandingsRowForOcr("FC Famalicao", rows)?.team, "Famalicão");
+});
+
 test("findBestStandingsRowForOcr rejects ambiguous fuzzy matches", () => {
   const rows: StandingsTeamRow[] = [
     {

@@ -13,6 +13,10 @@ export function compactTeamName(raw: string): string {
   return s.replace(/\s+/g, " ").trim();
 }
 
+function letterSequence(raw: string): string {
+  return compactTeamName(raw).replace(/\s+/g, "");
+}
+
 function levenshtein(a: string, b: string): number {
   const m = a.length;
   const n = b.length;
@@ -35,6 +39,9 @@ export function scoreTeamMatch(ocrOrA: string, tableOrB: string): number {
   const A = compactTeamName(ocrOrA);
   const B = compactTeamName(tableOrB);
   if (!A || !B) return 0;
+  const LA = A.replace(/\s+/g, "");
+  const LB = B.replace(/\s+/g, "");
+  if (LA && LB && LA === LB) return 1;
   if (A === B) return 1;
   if (A.includes(B) || B.includes(A)) return 0.9;
   const maxLen = Math.max(A.length, B.length);
@@ -69,6 +76,21 @@ export function findBestStandingsRowMatchForOcr(
 ): StandingsRowMatch | null {
   const query = compactTeamName(ocrName);
   if (!query) return null;
+  const queryLetters = letterSequence(query);
+
+  // Hard match by exact letter sequence (accent/spacing agnostic).
+  const exactSeq = rows.find((r) => letterSequence(r.team) === queryLetters && queryLetters.length > 0);
+  if (exactSeq) return { row: exactSeq, score: 1 };
+
+  // If OCR name includes prefixes/suffixes but core letters match a row exactly (or vice-versa), trust it.
+  const seqContain = rows.find((r) => {
+    const rowLetters = letterSequence(r.team);
+    if (!rowLetters || !queryLetters) return false;
+    if (queryLetters.length < 5 || rowLetters.length < 5) return false;
+    return queryLetters.includes(rowLetters) || rowLetters.includes(queryLetters);
+  });
+  if (seqContain) return { row: seqContain, score: 0.96 };
+
   if (query.length <= 3) {
     const exactShort = rows.find((r) => compactTeamName(r.team) === query);
     return exactShort ? { row: exactShort, score: 1 } : null;
