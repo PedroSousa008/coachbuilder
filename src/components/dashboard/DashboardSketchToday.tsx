@@ -58,9 +58,14 @@ export function DashboardSketchToday() {
           </CardTitle>
           <p className="text-xs text-zinc-500">{t0}</p>
         </div>
-        <Link href="/app/sketch" className="text-xs font-medium text-accent hover:underline">
-          {isPt ? "Sketch Area" : "Sketch Area"}
-        </Link>
+        <div className="flex shrink-0 flex-col items-end gap-1 sm:flex-row sm:gap-3">
+          <Link href="/app/calendar" className="text-xs font-medium text-accent hover:underline">
+            {isPt ? "Calendário" : "Calendar"}
+          </Link>
+          <Link href="/app/sketch" className="text-xs font-medium text-zinc-400 hover:text-accent hover:underline">
+            Sketch Area
+          </Link>
+        </div>
       </CardHeader>
       <CardContent>
         {hasPlan ? (
@@ -75,8 +80,8 @@ export function DashboardSketchToday() {
         ) : (
           <p className="text-sm text-zinc-500">
             {isPt
-              ? "Nada agendado para hoje. Abre o Sketch Area quando quiseres planear."
-              : "Nothing scheduled for today. Open Sketch Area when you want to plan."}
+              ? "Nada agendado para hoje. Usa o Calendário para jogos da equipa ou o Sketch Area para notas e eventos."
+              : "Nothing scheduled for today. Use Calendar for team fixtures or Sketch Area for notes and events."}
           </p>
         )}
         {sketchArea.tasks.some((x) => !x.completed && x.dueDate && x.dueDate < t0) ? (

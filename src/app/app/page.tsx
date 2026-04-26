@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { GitBranch, CalendarDays, MessageSquare, PenSquare, Target, TrendingUp } from "lucide-react";
+import { Calendar, GitBranch, CalendarDays, MessageSquare, PenSquare, Target, TrendingUp } from "lucide-react";
 import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -219,6 +219,13 @@ export default function DashboardPage() {
           >
             <GitBranch className="h-4 w-4" />
             {isPt ? "Criar tática" : "Create tactic"}
+          </Link>
+          <Link
+            href="/app/calendar"
+            className="inline-flex h-11 items-center gap-2 rounded-xl border border-surface-border bg-surface-raised px-5 text-sm font-medium text-zinc-200 hover:border-zinc-600"
+          >
+            <Calendar className="h-4 w-4" />
+            {isPt ? "Calendário e liga" : "Calendar & league"}
           </Link>
           <Link
             href="/app/training"

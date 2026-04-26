@@ -666,7 +666,17 @@ export function SketchAreaClient() {
             <CardHeader className="flex flex-row flex-wrap items-end justify-between gap-2">
               <div>
                 <CardTitle>Day view</CardTitle>
-                <p className="text-xs text-zinc-500">{calDay}</p>
+                <p className={cn("text-xs", calDay === todayDay() ? "font-medium text-accent" : "text-zinc-500")}>
+                  {calDay}
+                  {calDay === todayDay() ? <span className="ml-1.5 font-normal text-accent/80">· hoje</span> : null}
+                </p>
+                <p className="mt-1 text-xs">
+                  <Link href="/app/calendar" className="font-medium text-accent hover:underline">
+                    Calendário da equipa
+                  </Link>
+                  <span className="text-zinc-600"> · </span>
+                  <span className="text-zinc-500">jogos, classificação e OCR</span>
+                </p>
               </div>
               <Input type="date" className="max-w-[200px]" value={calDay} onChange={(e) => setCalDay(e.target.value)} />
             </CardHeader>

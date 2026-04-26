@@ -50,11 +50,11 @@ export function DashboardNextMatch() {
       <>
         <p className="text-sm text-zinc-400">
           {isPt
-            ? "Ainda não existe próximo jogo. Define o nome do clube no Perfil, atualiza o URL da liga no Calendário, ou adiciona um jogo manual."
-            : "No upcoming fixture yet. Set your club name under Profile (to match league imports), refresh the league URL on Calendar, or add a manual fixture."}
+            ? "Ainda não há próximo jogo. Configura a liga e a classificação no Calendário, regista o nome do clube no Perfil (para destacar a tua equipa) e adiciona jogos ou resultados (OCR) — ou cria um jogo manual."
+            : "No upcoming fixture yet. Set up your league on Calendar, match your club name in Profile, add fixtures or paste OCR results, or create a manual match."}
         </p>
         <Link href="/app/calendar" className="mt-6 inline-block text-sm font-medium text-accent hover:underline">
-          {isPt ? "Calendário e liga" : "Calendar & league"}
+          {isPt ? "Abrir calendário" : "Open calendar"}
         </Link>
       </>
     );

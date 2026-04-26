@@ -10,7 +10,11 @@ import { Input } from "@/components/ui/Input";
 import { FixtureFormModal } from "@/components/calendar/FixtureFormModal";
 import { useScheduleNow } from "@/hooks/useScheduleNow";
 import { buildMonthGrid, isSameLocalDay } from "@/lib/coaching-professionals-calendar";
+import { cn } from "@/lib/utils";
 import type { ParsedMatchEvent } from "@/types";
+
+const cellInputClass =
+  "h-8 min-w-0 px-1.5 py-0 text-xs tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none";
 
 function monthDayKey(isoDate: string): string | null {
   if (!isoDate) return null;
@@ -34,6 +38,7 @@ export function CalendarPageClient() {
     updateLeagueTeamName,
     updateLeagueTeamStats,
     applyLeagueMatchEvents,
+    saveLeagueTableSnapshot,
     coachProfile,
     players,
     staff,
@@ -52,6 +57,7 @@ export function CalendarPageClient() {
     () => buildMonthGrid(viewMonth.getFullYear(), viewMonth.getMonth()),
     [viewMonth]
   );
+  const today = useMemo(() => new Date(nowMs), [nowMs]);
 
   const birthdayRows = useMemo(() => {
     const now = new Date(nowMs);
@@ -228,33 +234,49 @@ export function CalendarPageClient() {
 
           {leagueSetup && (
             <div className="space-y-4 rounded-xl border border-surface-border bg-surface-raised/30 p-4">
-              <div className="flex flex-wrap items-center gap-2">
-                <p className="text-sm font-semibold text-white">Fase ativa</p>
-                {leagueSetup.phases.map((phase) => (
-                  <Button
-                    key={phase.id}
-                    type="button"
-                    size="sm"
-                    variant={leagueSetup.activePhaseId === phase.id ? "primary" : "secondary"}
-                    onClick={() => setActiveLeaguePhase(phase.id)}
-                  >
-                    {phase.name}
-                  </Button>
-                ))}
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-sm font-semibold text-white">Fase ativa</p>
+                  {leagueSetup.phases.map((phase) => (
+                    <Button
+                      key={phase.id}
+                      type="button"
+                      size="sm"
+                      variant={leagueSetup.activePhaseId === phase.id ? "primary" : "secondary"}
+                      onClick={() => setActiveLeaguePhase(phase.id)}
+                    >
+                      {phase.name}
+                    </Button>
+                  ))}
+                </div>
+                <Button type="button" size="sm" variant="secondary" onClick={() => saveLeagueTableSnapshot()}>
+                  Guardar tabela
+                </Button>
               </div>
-              <div className="overflow-x-auto rounded-xl border border-surface-border">
-                <table className="w-full min-w-[760px] text-left text-sm">
+              <div className="rounded-xl border border-surface-border">
+                <table className="w-full table-fixed text-left text-[11px] sm:text-xs">
+                  <colgroup>
+                    <col className="w-8" />
+                    <col />
+                    <col className="w-[2.25rem] sm:w-10" />
+                    <col className="w-[2.25rem] sm:w-10" />
+                    <col className="w-[2.25rem] sm:w-10" />
+                    <col className="w-[2.25rem] sm:w-10" />
+                    <col className="w-[2.25rem] sm:w-10" />
+                    <col className="w-[2.25rem] sm:w-10" />
+                    <col className="w-[2.25rem] sm:w-10" />
+                  </colgroup>
                   <thead>
-                    <tr className="border-b border-surface-border bg-zinc-900/50 text-xs uppercase tracking-wider text-zinc-500">
-                      <th className="px-2 py-2.5 font-medium">POS</th>
-                      <th className="px-2 py-2.5 font-medium">Nome</th>
-                      <th className="px-2 py-2.5 font-medium text-center">JGS</th>
-                      <th className="px-2 py-2.5 font-medium text-center">V</th>
-                      <th className="px-2 py-2.5 font-medium text-center">E</th>
-                      <th className="px-2 py-2.5 font-medium text-center">D</th>
-                      <th className="px-2 py-2.5 font-medium text-center">GM</th>
-                      <th className="px-2 py-2.5 font-medium text-center">GS</th>
-                      <th className="px-2 py-2.5 font-medium text-right">PTS</th>
+                    <tr className="border-b border-surface-border bg-zinc-900/50 text-[10px] font-medium uppercase tracking-wide text-zinc-500 sm:text-[11px]">
+                      <th className="px-0.5 py-2 sm:px-1">#</th>
+                      <th className="px-1 py-2">Nome</th>
+                      <th className="px-0.5 py-2 text-center">J</th>
+                      <th className="px-0.5 py-2 text-center">V</th>
+                      <th className="px-0.5 py-2 text-center">E</th>
+                      <th className="px-0.5 py-2 text-center">D</th>
+                      <th className="px-0.5 py-2 text-center">GM</th>
+                      <th className="px-0.5 py-2 text-center">GS</th>
+                      <th className="px-0.5 py-2 text-right">Pts</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -262,16 +284,18 @@ export function CalendarPageClient() {
                       .find((p) => p.id === leagueSetup.activePhaseId)
                       ?.standings.rows.map((row, idx) => (
                         <tr key={row.teamId} className="border-b border-surface-border/60 last:border-0">
-                          <td className="px-2 py-2 text-zinc-300">{idx + 1}</td>
-                          <td className="px-2 py-2">
+                          <td className="px-0.5 py-1.5 text-center text-zinc-400 tabular-nums sm:px-1">{idx + 1}</td>
+                          <td className="min-w-0 px-1 py-1.5">
                             <Input
                               value={row.team}
                               onChange={(e) => updateLeagueTeamName(row.teamId, e.target.value)}
-                              placeholder="Nome da equipa"
-                              className="h-9"
+                              placeholder="Equipa"
+                              className={cn(cellInputClass, "text-left")}
+                              onPointerDown={(e) => e.stopPropagation()}
+                              onClick={(e) => e.stopPropagation()}
                             />
                           </td>
-                          <td className="px-2 py-2 text-center">
+                          <td className="px-0.5 py-1.5 sm:px-1">
                             <Input
                               type="number"
                               min={0}
@@ -279,19 +303,25 @@ export function CalendarPageClient() {
                               onChange={(e) =>
                                 updateLeagueTeamStats(row.teamId, { played: Number(e.target.value || 0) })
                               }
-                              className="h-9 text-center"
+                              className={cn(cellInputClass, "text-center")}
+                              onPointerDown={(e) => e.stopPropagation()}
+                              onClick={(e) => e.stopPropagation()}
+                              onFocus={(e) => e.currentTarget.select()}
                             />
                           </td>
-                          <td className="px-2 py-2 text-center">
+                          <td className="px-0.5 py-1.5 sm:px-1">
                             <Input
                               type="number"
                               min={0}
                               value={row.won}
                               onChange={(e) => updateLeagueTeamStats(row.teamId, { won: Number(e.target.value || 0) })}
-                              className="h-9 text-center"
+                              className={cn(cellInputClass, "text-center")}
+                              onPointerDown={(e) => e.stopPropagation()}
+                              onClick={(e) => e.stopPropagation()}
+                              onFocus={(e) => e.currentTarget.select()}
                             />
                           </td>
-                          <td className="px-2 py-2 text-center">
+                          <td className="px-0.5 py-1.5 sm:px-1">
                             <Input
                               type="number"
                               min={0}
@@ -299,19 +329,25 @@ export function CalendarPageClient() {
                               onChange={(e) =>
                                 updateLeagueTeamStats(row.teamId, { drawn: Number(e.target.value || 0) })
                               }
-                              className="h-9 text-center"
+                              className={cn(cellInputClass, "text-center")}
+                              onPointerDown={(e) => e.stopPropagation()}
+                              onClick={(e) => e.stopPropagation()}
+                              onFocus={(e) => e.currentTarget.select()}
                             />
                           </td>
-                          <td className="px-2 py-2 text-center">
+                          <td className="px-0.5 py-1.5 sm:px-1">
                             <Input
                               type="number"
                               min={0}
                               value={row.lost}
                               onChange={(e) => updateLeagueTeamStats(row.teamId, { lost: Number(e.target.value || 0) })}
-                              className="h-9 text-center"
+                              className={cn(cellInputClass, "text-center")}
+                              onPointerDown={(e) => e.stopPropagation()}
+                              onClick={(e) => e.stopPropagation()}
+                              onFocus={(e) => e.currentTarget.select()}
                             />
                           </td>
-                          <td className="px-2 py-2 text-center">
+                          <td className="px-0.5 py-1.5 sm:px-1">
                             <Input
                               type="number"
                               min={0}
@@ -319,10 +355,13 @@ export function CalendarPageClient() {
                               onChange={(e) =>
                                 updateLeagueTeamStats(row.teamId, { goalsFor: Number(e.target.value || 0) })
                               }
-                              className="h-9 text-center"
+                              className={cn(cellInputClass, "text-center")}
+                              onPointerDown={(e) => e.stopPropagation()}
+                              onClick={(e) => e.stopPropagation()}
+                              onFocus={(e) => e.currentTarget.select()}
                             />
                           </td>
-                          <td className="px-2 py-2 text-center">
+                          <td className="px-0.5 py-1.5 sm:px-1">
                             <Input
                               type="number"
                               min={0}
@@ -330,10 +369,15 @@ export function CalendarPageClient() {
                               onChange={(e) =>
                                 updateLeagueTeamStats(row.teamId, { goalsAgainst: Number(e.target.value || 0) })
                               }
-                              className="h-9 text-center"
+                              className={cn(cellInputClass, "text-center")}
+                              onPointerDown={(e) => e.stopPropagation()}
+                              onClick={(e) => e.stopPropagation()}
+                              onFocus={(e) => e.currentTarget.select()}
                             />
                           </td>
-                          <td className="px-2 py-2 text-right font-semibold text-white">{row.points}</td>
+                          <td className="px-0.5 py-1.5 text-right text-[11px] font-semibold tabular-nums text-white sm:px-1 sm:text-xs">
+                            {row.points}
+                          </td>
                         </tr>
                       ))}
                   </tbody>
@@ -389,6 +433,9 @@ export function CalendarPageClient() {
                 >
                   Mês anterior
                 </Button>
+                <Button type="button" variant="secondary" size="sm" onClick={() => setViewMonth(new Date(nowMs))}>
+                  Hoje
+                </Button>
                 <Button
                   type="button"
                   variant="secondary"
@@ -402,20 +449,37 @@ export function CalendarPageClient() {
             <p className="mb-3 text-xs text-zinc-500">
               {viewMonth.toLocaleString("pt-PT", { month: "long", year: "numeric" })}
             </p>
-            <div className="grid grid-cols-7 gap-2 text-xs">
+            <div className="grid grid-cols-7 gap-1.5 text-[10px] sm:gap-2 sm:text-xs">
               {["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"].map((d) => (
-                <p key={d} className="px-2 py-1 text-zinc-500">
+                <p key={d} className="px-1 py-1 text-zinc-500 sm:px-2">
                   {d}
                 </p>
               ))}
               {monthCells.map((day, idx) => {
                 if (!day) return <div key={`empty-${idx}`} className="h-20 rounded-lg border border-transparent" />;
                 const items = fixtures.filter((f) => isSameLocalDay(new Date(f.kickoff), day));
+                const isToday = isSameLocalDay(day, today);
                 return (
-                  <div key={day.toISOString()} className="h-20 rounded-lg border border-surface-border p-2">
-                    <p className="text-[11px] text-zinc-400">{day.getDate()}</p>
+                  <div
+                    key={day.toISOString()}
+                    className={cn(
+                      "h-20 rounded-lg border p-1.5 sm:p-2",
+                      isToday
+                        ? "border-accent/80 bg-accent/15 ring-2 ring-accent/60 ring-offset-2 ring-offset-zinc-950"
+                        : "border-surface-border"
+                    )}
+                  >
+                    <p
+                      className={cn(
+                        "text-[10px] font-medium tabular-nums sm:text-[11px]",
+                        isToday ? "text-accent" : "text-zinc-400"
+                      )}
+                    >
+                      {day.getDate()}
+                      {isToday ? <span className="ml-1 text-[9px] font-normal text-accent/90">· hoje</span> : null}
+                    </p>
                     {items.slice(0, 2).map((f, i) => (
-                      <p key={`${day.toISOString()}-${i}`} className="truncate text-[11px] text-zinc-200">
+                      <p key={`${day.toISOString()}-${i}`} className="truncate text-[10px] text-zinc-200 sm:text-[11px]">
                         vs {f.opponent}
                       </p>
                     ))}

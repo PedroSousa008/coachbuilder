@@ -302,6 +302,8 @@ type AppDataContextValue = {
     phaseId?: string
   ) => void;
   applyLeagueMatchEvents: (events: ParsedMatchEvent[], phaseId?: string) => void;
+  /** Persist league state to local storage (and cloud when enabled) immediately. */
+  saveLeagueTableSnapshot: () => void;
 
   coachProfile: CoachProfileState;
   setCoachProfile: (patch: Partial<CoachProfileState>) => void;
@@ -1665,6 +1667,80 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const saveLeagueTableSnapshot = useCallback(() => {
+    const fetchedAt = new Date().toISOString();
+    setLeagueTableLastFetched(fetchedAt);
+    if (hydrated && ks) {
+      saveJSON(ks.league, {
+        url: leagueTableUrl,
+        rows: leagueTableRows,
+        matches: leagueMatches,
+        competitionName: leagueCompetitionName,
+        lastFetched: fetchedAt,
+        lastError: leagueTableFetchError,
+        setup: leagueSetup,
+      } satisfies LeaguePersist);
+    }
+    if (shouldUseCloudClientApis(user) && cloudRemoteReady && hydrated && user?.id) {
+      const snap = buildWorkspaceSnapshotV1({
+        players,
+        staff,
+        teamRoles,
+        conversations,
+        messagesByConv,
+        trainingSessions,
+        trainingPlayerIdsBySession,
+        fixtures,
+        leagueTableUrl,
+        leagueTableRows,
+        leagueMatches,
+        leagueCompetitionName,
+        leagueTableLastFetched: fetchedAt,
+        leagueTableFetchError,
+        leagueSetup,
+        coachProfile,
+        savedTactics,
+        tacticMatches,
+        tacticPlayerNotes,
+        savedTrainingExercises,
+        sketchArea,
+        teamCallup,
+      });
+      void fetch("/api/cloud/workspace", {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ payload: snap }),
+      });
+    }
+  }, [
+    hydrated,
+    ks,
+    leagueTableUrl,
+    leagueTableRows,
+    leagueMatches,
+    leagueCompetitionName,
+    leagueTableFetchError,
+    leagueSetup,
+    user,
+    cloudRemoteReady,
+    players,
+    staff,
+    teamRoles,
+    conversations,
+    messagesByConv,
+    trainingSessions,
+    trainingPlayerIdsBySession,
+    fixtures,
+    coachProfile,
+    savedTactics,
+    tacticMatches,
+    tacticPlayerNotes,
+    savedTrainingExercises,
+    sketchArea,
+    teamCallup,
+  ]);
+
   const setCoachProfile = useCallback((patch: Partial<CoachProfileState>) => {
     setCoachProfileState((prev) => normalizeCoachProfileState({ ...prev, ...patch }));
   }, []);
@@ -1803,6 +1879,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       updateLeagueTeamName,
       updateLeagueTeamStats,
       applyLeagueMatchEvents,
+      saveLeagueTableSnapshot,
       coachProfile,
       setCoachProfile,
       savedTactics,
@@ -1873,6 +1950,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       updateLeagueTeamName,
       updateLeagueTeamStats,
       applyLeagueMatchEvents,
+      saveLeagueTableSnapshot,
       coachProfile,
       setCoachProfile,
       savedTactics,
