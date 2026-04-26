@@ -10,6 +10,7 @@ import {
 
 /** FPF loads many matchday fragments; allow enough time on cold starts. */
 export const maxDuration = 120;
+export const runtime = "nodejs";
 
 export async function POST(req: Request) {
   try {
@@ -18,6 +19,27 @@ export async function POST(req: Request) {
     if (!url || !isAllowedLeagueTableUrl(url)) {
       return NextResponse.json({ ok: false, error: "Enter a valid http(s) URL." }, { status: 400 });
     }
+    let parsedUrl: URL;
+    try {
+      parsedUrl = new URL(url);
+    } catch {
+      return NextResponse.json({ ok: false, error: "Enter a valid URL." }, { status: 400 });
+    }
+    const host = parsedUrl.hostname.toLowerCase();
+    if (host.includes("resultados.fpf.pt")) {
+      const competitionId = parsedUrl.searchParams.get("competitionId")?.trim() ?? "";
+      const isDetailsPage = /\/competition\/details$/i.test(parsedUrl.pathname);
+      if (isDetailsPage && !/^\d+$/.test(competitionId)) {
+        return NextResponse.json(
+          {
+            ok: false,
+            error:
+              "FPF URL invalid: missing competitionId. Open the competition page on resultados.fpf.pt and copy the full URL (with a numeric competitionId).",
+          },
+          { status: 400 }
+        );
+      }
+    }
 
     const res = await fetch(url, {
       headers: {
@@ -25,6 +47,10 @@ export async function POST(req: Request) {
           "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         "Accept-Language": "pt-PT,pt;q=0.9,en-GB;q=0.8,en;q=0.7",
+        "Cache-Control": "no-cache",
+        Pragma: "no-cache",
+        Referer: "https://resultados.fpf.pt/",
+        Origin: "https://resultados.fpf.pt",
       },
       redirect: "follow",
       cache: "no-store",
@@ -54,7 +80,6 @@ export async function POST(req: Request) {
     const roundMap = extractFpfFixtureRoundMapFromHtml(html);
     let matches = parseFpfMatchesFromHtml(html, url, roundMap);
     try {
-      const host = new URL(url).hostname.toLowerCase();
       if (host.includes("resultados.fpf.pt")) {
         const extra = await fetchFpfMatchesFromFixtureRounds(html, url, fetch);
         matches = dedupeMatches([...matches, ...extra]);
