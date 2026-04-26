@@ -358,7 +358,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [leagueCompetitionName, setLeagueCompetitionName] = useState<string | null>(null);
   const [leagueTableLastFetched, setLeagueTableLastFetched] = useState<string | null>(null);
   const [leagueTableFetchError, setLeagueTableFetchError] = useState<string | null>(null);
-  /** After a browser CORS/network failure for FPF, avoid hammering our API with doomed server-side fetches. */
+  /** After FPF returns HTTP 403 to our server, avoid repeating doomed fetches on a timer until the URL changes or HTML is pasted. */
   const fpfSkipServerFetchRef = useRef(false);
   const fpfSkipServerFetchUrlRef = useRef<string>("");
   const [coachProfile, setCoachProfileState] = useState<CoachProfileState>(() =>
