@@ -1,33 +1,16 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Calendar, ChevronDown, Table2, Trash2, Pencil } from "lucide-react";
-import type { LeagueImportedMatch, MatchFixture } from "@/types";
+import { Table2 } from "lucide-react";
+import type { MatchFixture } from "@/types";
 import { useAppData } from "@/contexts/AppDataContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { Badge } from "@/components/ui/Badge";
 import { Input } from "@/components/ui/Input";
 import { FixtureFormModal } from "@/components/calendar/FixtureFormModal";
-import { formatKickoff } from "@/lib/format";
-import { collectUniqueTeamNames, pickBestTeamMatch, userClubMatchesOfficialTeam } from "@/lib/team-match";
-import { cn } from "@/lib/utils";
-import { inferCompetitionKind, type CompetitionKind } from "@/lib/competition-kind";
 import { useScheduleNow } from "@/hooks/useScheduleNow";
-import { isImportedMatchUpcoming, isKickoffInFuture } from "@/lib/lisbon-date";
 import { buildMonthGrid, isSameLocalDay } from "@/lib/coaching-professionals-calendar";
 import type { ParsedMatchEvent } from "@/types";
-
-function formatKickoffShort(iso: string) {
-  const d = new Date(iso);
-  return d.toLocaleString("en-GB", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
 
 function monthDayKey(isoDate: string): string | null {
   if (!isoDate) return null;
@@ -38,81 +21,12 @@ function monthDayKey(isoDate: string): string | null {
   return `${m}-${day}`;
 }
 
-function outcomeForMyTeam(
-  m: LeagueImportedMatch,
-  profileClub: string,
-  label: string,
-  candidates: string[]
-): { opponent: string; short: string; outcome: "W" | "D" | "L" } | null {
-  if (m.homeScore === undefined || m.awayScore === undefined) return null;
-  const homeHit =
-    userClubMatchesOfficialTeam(label, m.homeTeam, candidates) ||
-    (!!profileClub && userClubMatchesOfficialTeam(profileClub, m.homeTeam, candidates));
-  const awayHit =
-    userClubMatchesOfficialTeam(label, m.awayTeam, candidates) ||
-    (!!profileClub && userClubMatchesOfficialTeam(profileClub, m.awayTeam, candidates));
-  if (!homeHit && !awayHit) return null;
-  const gf = homeHit ? m.homeScore : m.awayScore;
-  const ga = homeHit ? m.awayScore : m.homeScore;
-  const opp = homeHit ? m.awayTeam : m.homeTeam;
-  let outcome: "W" | "D" | "L";
-  if (gf > ga) outcome = "W";
-  else if (gf < ga) outcome = "L";
-  else outcome = "D";
-  const short = `${outcome} ${gf}–${ga} vs ${opp}`;
-  return { opponent: opp, short, outcome };
-}
-
-type NextRow =
-  | { kind: "manual"; fixture: MatchFixture }
-  | { kind: "imported"; match: LeagueImportedMatch; scheduleKind: CompetitionKind };
-
-type PrevRow =
-  | { kind: "manual"; fixture: MatchFixture }
-  | {
-      kind: "imported";
-      match: LeagueImportedMatch;
-      outcome: "W" | "D" | "L";
-      line: string;
-    }
-  | { kind: "imported-neutral"; match: LeagueImportedMatch; line: string };
-
-function neutralResultLine(m: LeagueImportedMatch): string {
-  if (m.homeScore != null && m.awayScore != null) {
-    return `${m.homeTeam} ${m.homeScore}–${m.awayScore} ${m.awayTeam}`;
-  }
-  return `${m.homeTeam} vs ${m.awayTeam}`;
-}
-
-/** Canonical table name first; fall back to profile spelling so we never miss the club. */
-function myTeamPlaysMatch(
-  m: LeagueImportedMatch,
-  profileClub: string,
-  label: string,
-  candidates: string[]
-): boolean {
-  const primary =
-    userClubMatchesOfficialTeam(label, m.homeTeam, candidates) ||
-    userClubMatchesOfficialTeam(label, m.awayTeam, candidates);
-  if (primary) return true;
-  if (profileClub && label !== profileClub) {
-    return (
-      userClubMatchesOfficialTeam(profileClub, m.homeTeam, candidates) ||
-      userClubMatchesOfficialTeam(profileClub, m.awayTeam, candidates)
-    );
-  }
-  return false;
-}
-
 export function CalendarPageClient() {
   const {
     fixtures,
     addFixture,
     updateFixture,
     removeFixture,
-    leagueTableRows,
-    leagueMatches,
-    leagueCompetitionName,
     leagueTableLastFetched,
     leagueTableFetchError,
     leagueSetup,
@@ -134,120 +48,7 @@ export function CalendarPageClient() {
   const [ocrBusy, setOcrBusy] = useState(false);
   const [ocrError, setOcrError] = useState<string | null>(null);
   const [viewMonth, setViewMonth] = useState(() => new Date());
-  const [nextSectionOpen, setNextSectionOpen] = useState(true);
-  const [previousSectionOpen, setPreviousSectionOpen] = useState(true);
   const nowMs = useScheduleNow();
-
-  const candidates = useMemo(
-    () => collectUniqueTeamNames({ tableRows: leagueTableRows, matches: leagueMatches }),
-    [leagueTableRows, leagueMatches]
-  );
-
-  const club = coachProfile.club.trim();
-
-  const resolvedClub = useMemo(() => {
-    if (!club || candidates.length === 0) return null;
-    return pickBestTeamMatch(club, candidates);
-  }, [club, candidates]);
-
-  /** Official name from the league import (classificação + jogos), not only the Profile spelling. */
-  const teamLabel = (resolvedClub?.name ?? club).trim();
-
-  const isMyTeamInTable = useMemo(() => {
-    return (tableTeamName: string) => {
-      if (!club) return false;
-      const t = tableTeamName.trim();
-      if (!t) return false;
-      return (
-        userClubMatchesOfficialTeam(teamLabel, t, candidates) ||
-        userClubMatchesOfficialTeam(club, t, candidates)
-      );
-    };
-  }, [club, teamLabel, candidates]);
-
-  const pageScheduleKind = useMemo(
-    () => inferCompetitionKind(leagueCompetitionName ?? ""),
-    [leagueCompetitionName]
-  );
-
-  /**
-   * Importados FPF: **marcador** = jogo já disputado (Previous). Sem marcador: futuro → Next; passado → Previous.
-   * Jogos manuais: só pela data/hora.
-   */
-  const { nextGameRows, previousGameRows } = useMemo(() => {
-    const next: NextRow[] = [];
-    const prev: PrevRow[] = [];
-    const sk = pageScheduleKind;
-
-    if (club) {
-      for (const m of leagueMatches) {
-        if (!myTeamPlaysMatch(m, club, teamLabel, candidates)) continue;
-
-        if (isImportedMatchUpcoming(m, nowMs)) {
-          next.push({ kind: "imported", match: m, scheduleKind: sk });
-          continue;
-        }
-        const o = outcomeForMyTeam(m, club, teamLabel, candidates);
-        if (o) {
-          prev.push({ kind: "imported", match: m, outcome: o.outcome, line: o.short });
-        } else {
-          const homeHit =
-            userClubMatchesOfficialTeam(teamLabel, m.homeTeam, candidates) ||
-            (!!club && userClubMatchesOfficialTeam(club, m.homeTeam, candidates));
-          const opp = homeHit ? m.awayTeam : m.homeTeam;
-          prev.push({
-            kind: "imported-neutral",
-            match: m,
-            line: `vs ${opp} · ${neutralResultLine(m)}`,
-          });
-        }
-      }
-    } else {
-      for (const m of leagueMatches) {
-        if (isImportedMatchUpcoming(m, nowMs)) {
-          next.push({ kind: "imported", match: m, scheduleKind: sk });
-        } else {
-          prev.push({ kind: "imported-neutral", match: m, line: neutralResultLine(m) });
-        }
-      }
-    }
-
-    for (const f of fixtures) {
-      if (isKickoffInFuture(f.kickoff, nowMs)) next.push({ kind: "manual", fixture: f });
-      else prev.push({ kind: "manual", fixture: f });
-    }
-
-    next.sort((a, b) => {
-      const ra = a.kind === "imported" ? (a.match.fpfRound ?? 9999) : 99999;
-      const rb = b.kind === "imported" ? (b.match.fpfRound ?? 9999) : 99999;
-      const ta = a.kind === "manual" ? new Date(a.fixture.kickoff).getTime() : new Date(a.match.kickoff).getTime();
-      const tb = b.kind === "manual" ? new Date(b.fixture.kickoff).getTime() : new Date(b.match.kickoff).getTime();
-      if (ra !== rb) return ra - rb;
-      return ta - tb;
-    });
-    prev.sort((a, b) => {
-      const ra =
-        a.kind === "manual"
-          ? -1
-          : a.kind === "imported" || a.kind === "imported-neutral"
-            ? (a.match.fpfRound ?? -1)
-            : -1;
-      const rb =
-        b.kind === "manual"
-          ? -1
-          : b.kind === "imported" || b.kind === "imported-neutral"
-            ? (b.match.fpfRound ?? -1)
-            : -1;
-      const ta = a.kind === "manual" ? new Date(a.fixture.kickoff).getTime() : new Date(a.match.kickoff).getTime();
-      const tb = b.kind === "manual" ? new Date(b.fixture.kickoff).getTime() : new Date(b.match.kickoff).getTime();
-      if (ra !== rb) return rb - ra;
-      return tb - ta;
-    });
-
-    return { nextGameRows: next, previousGameRows: prev };
-  }, [leagueMatches, fixtures, club, teamLabel, candidates, pageScheduleKind, nowMs]);
-
-  const showFullStats = leagueTableRows.some((r) => r.played != null);
   const monthCells = useMemo(
     () => buildMonthGrid(viewMonth.getFullYear(), viewMonth.getMonth()),
     [viewMonth]
@@ -333,16 +134,8 @@ export function CalendarPageClient() {
       <div>
         <h2 className="font-display text-xl font-semibold text-white">Calendar & matchweek</h2>
         <p className="mt-1 text-sm text-zinc-500">
-          <span className="font-semibold text-zinc-300">Next:</span> jogos sem resultado e com horário ainda no futuro
-          (ou data em falta).
-          <span className="font-semibold text-zinc-300"> Previous:</span> jogos já com marcador, ou já disputados no
-          calendário (hora passada) sem marcador.
+          Configura a liga, preenche a classificação por fase, atualiza por OCR e gere jogos futuros no calendário.
         </p>
-        {resolvedClub && (
-          <p className="mt-2 text-xs text-accent">
-            Resolved club: <span className="font-medium text-white">{resolvedClub.name}</span> (from your spelling)
-          </p>
-        )}
       </div>
 
       <Card>
@@ -383,248 +176,6 @@ export function CalendarPageClient() {
           else addFixture(input);
         }}
       />
-
-      <Card>
-        <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-4">
-          <div>
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="h-5 w-5 text-accent" strokeWidth={1.75} />
-              Your fixtures
-            </CardTitle>
-            <CardDescription>
-              Jogos com resultado aparecem em Previous; sem resultado ficam em Next pela data/hora. Perfil = filtro da
-              equipa.
-            </CardDescription>
-          </div>
-          <Button
-            type="button"
-            onClick={() => {
-              setEditing(null);
-              setFixtureModalOpen(true);
-            }}
-          >
-            Adicionar Jogo
-          </Button>
-        </CardHeader>
-        <CardContent className="space-y-10">
-          {!club && leagueMatches.length > 0 && (
-            <p className="text-sm text-zinc-400">
-              Showing every fixture from the league import. Add your club under Profile to filter to your team only.
-            </p>
-          )}
-          {!club && leagueMatches.length === 0 && (
-            <p className="text-sm text-amber-200/90">
-              Add your club in Profile to highlight your matches — or leave it blank to see all fixtures once the league
-              URL is refreshed.
-            </p>
-          )}
-
-          <div>
-            <button
-              type="button"
-              onClick={() => setNextSectionOpen((o) => !o)}
-              className="mb-3 flex w-full items-center justify-between gap-2 rounded-lg py-1 text-left text-xs font-semibold uppercase tracking-wider text-zinc-400 hover:text-zinc-200"
-              aria-expanded={nextSectionOpen}
-            >
-              <span>
-                Next games
-                {nextGameRows.length > 0 ? ` (${nextGameRows.length})` : ""}
-              </span>
-              <ChevronDown
-                className={`h-4 w-4 shrink-0 transition-transform ${nextSectionOpen ? "rotate-0" : "-rotate-90"}`}
-                aria-hidden
-              />
-            </button>
-            {nextSectionOpen &&
-              (nextGameRows.length === 0 ? (
-              <p className="text-sm text-zinc-500">
-                No upcoming games yet.
-              </p>
-            ) : (
-              <ul className="space-y-3">
-                {nextGameRows.map((row) => {
-                  if (row.kind === "manual") {
-                    const f = row.fixture;
-                    return (
-                      <li
-                        key={f.id}
-                        className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-900 bg-black px-4 py-3 text-white shadow-sm"
-                      >
-                        <div>
-                          <p className="font-medium">vs {f.opponent}</p>
-                          <p className="text-xs text-zinc-400">{f.competition}</p>
-                          <p className="mt-1 text-xs text-zinc-500">{formatKickoffShort(f.kickoff)}</p>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <Badge variant="muted">Manual</Badge>
-                          <Badge className="border-zinc-600 bg-zinc-900 text-zinc-200">
-                            {f.venue === "home" ? "Home" : "Away"}
-                          </Badge>
-                          <button
-                            type="button"
-                            className="rounded-lg p-2 text-zinc-400 hover:bg-white/10"
-                            aria-label="Edit fixture"
-                            onClick={() => {
-                              setEditing(f);
-                              setFixtureModalOpen(true);
-                            }}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </button>
-                          <button
-                            type="button"
-                            className="rounded-lg p-2 text-zinc-400 hover:bg-red-500/20 hover:text-red-300"
-                            aria-label="Remove fixture"
-                            onClick={() => removeFixture(f.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </li>
-                    );
-                  }
-                  const m = row.match;
-                  const b = badgeForScheduleKind(row.scheduleKind);
-                  if (!club) {
-                    return (
-                      <li
-                        key={`next-imp-${m.id}`}
-                        className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-900 bg-black px-4 py-3 text-white shadow-sm"
-                      >
-                        <div>
-                          <p className="font-medium">
-                            {m.homeTeam} <span className="text-zinc-500">vs</span> {m.awayTeam}
-                          </p>
-                          <p className="text-xs text-zinc-400">{leagueCompetitionName ?? "Competition"}</p>
-                          {m.fpfRound != null && (
-                            <p className="mt-0.5 text-xs text-zinc-500">Jornada {m.fpfRound}</p>
-                          )}
-                          <p className="mt-1 text-xs text-zinc-500">{formatKickoffShort(m.kickoff)}</p>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <Badge variant={b.variant}>{b.label}</Badge>
-                          <Badge variant="default">Imported</Badge>
-                        </div>
-                      </li>
-                    );
-                  }
-                  const homeHit =
-                    userClubMatchesOfficialTeam(teamLabel, m.homeTeam, candidates) ||
-                    (!!club && userClubMatchesOfficialTeam(club, m.homeTeam, candidates));
-                  const venue = homeHit ? "home" : "away";
-                  const opp = homeHit ? m.awayTeam : m.homeTeam;
-                  return (
-                    <li
-                      key={`next-imp-${m.id}`}
-                      className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-900 bg-black px-4 py-3 text-white shadow-sm"
-                    >
-                      <div>
-                        <p className="font-medium">vs {opp}</p>
-                        <p className="text-xs text-zinc-400">{leagueCompetitionName ?? "Competition"}</p>
-                        {m.fpfRound != null && (
-                          <p className="mt-0.5 text-xs text-zinc-500">Jornada {m.fpfRound}</p>
-                        )}
-                        <p className="mt-1 text-xs text-zinc-500">{formatKickoffShort(m.kickoff)}</p>
-                      </div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Badge variant={b.variant}>{b.label}</Badge>
-                        <Badge className="border-zinc-600 bg-zinc-900 text-zinc-200">
-                          {venue === "home" ? "Home" : "Away"}
-                        </Badge>
-                        <Badge variant="default">Imported</Badge>
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
-            ))}
-          </div>
-
-          <div>
-            <button
-              type="button"
-              onClick={() => setPreviousSectionOpen((o) => !o)}
-              className="mb-3 flex w-full items-center justify-between gap-2 rounded-lg py-1 text-left text-xs font-semibold uppercase tracking-wider text-zinc-400 hover:text-zinc-200"
-              aria-expanded={previousSectionOpen}
-            >
-              <span>
-                Previous games
-                {previousGameRows.length > 0 ? ` (${previousGameRows.length})` : ""}
-              </span>
-              <ChevronDown
-                className={`h-4 w-4 shrink-0 transition-transform ${previousSectionOpen ? "rotate-0" : "-rotate-90"}`}
-                aria-hidden
-              />
-            </button>
-            {previousSectionOpen &&
-              (previousGameRows.length === 0 ? (
-              <p className="text-sm text-zinc-500">
-                No past games yet (kick-offs before now appear here).
-              </p>
-            ) : (
-              <ul className="space-y-3">
-                {previousGameRows.map((row) => {
-                  if (row.kind === "manual") {
-                    const f = row.fixture;
-                    return (
-                      <li
-                        key={`prev-man-${f.id}`}
-                        className="rounded-xl border border-white/25 bg-white/5 px-4 py-3 text-sm text-zinc-200"
-                      >
-                        <p className="font-medium text-white">vs {f.opponent}</p>
-                        <p className="text-xs text-zinc-500">{f.competition}</p>
-                        <p className="mt-1 text-xs text-zinc-500">{formatKickoff(f.kickoff)}</p>
-                        <p className="mt-1 text-xs text-zinc-600">Manual entry (no score stored)</p>
-                      </li>
-                    );
-                  }
-                  if (row.kind === "imported-neutral") {
-                    const { match: m, line } = row;
-                    return (
-                      <li
-                        key={`prev-neu-${m.id}`}
-                        className="rounded-xl border border-zinc-600 bg-zinc-900/70 px-4 py-3 text-sm text-zinc-100 shadow-sm"
-                      >
-                        <p className="font-semibold">{line}</p>
-                        {m.fpfRound != null && (
-                          <p className="mt-1 text-xs text-zinc-500">Jornada {m.fpfRound}</p>
-                        )}
-                        <p className="mt-1 text-xs text-zinc-500">{formatKickoff(m.kickoff)}</p>
-                        <div className="mt-2">
-                          <Badge variant="muted" className="bg-black/20">
-                            {badgeForScheduleKind(pageScheduleKind).label}
-                          </Badge>
-                        </div>
-                      </li>
-                    );
-                  }
-                  const { match: m, outcome, line } = row;
-                  const boxClass =
-                    outcome === "W"
-                      ? "border-2 border-emerald-500/80 bg-emerald-950/55 text-emerald-50"
-                      : outcome === "D"
-                        ? "border-2 border-white/60 bg-white/10 text-white"
-                        : "border-2 border-red-500/75 bg-red-950/45 text-red-50";
-                  return (
-                    <li key={`prev-imp-${m.id}`} className={`rounded-xl px-4 py-3 text-sm shadow-sm ${boxClass}`}>
-                      <p className="font-semibold">{line}</p>
-                      {m.fpfRound != null && (
-                        <p className="mt-1 text-xs opacity-90">Jornada {m.fpfRound}</p>
-                      )}
-                      <p className="mt-1 text-xs opacity-90">{formatKickoff(m.kickoff)}</p>
-                      <div className="mt-2">
-                        <Badge variant="muted" className="bg-black/20">
-                          {badgeForScheduleKind(pageScheduleKind).label}
-                        </Badge>
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
 
       <Card>
         <CardHeader>
@@ -829,6 +380,16 @@ export function CalendarPageClient() {
               <div className="flex gap-2">
                 <Button
                   type="button"
+                  size="sm"
+                  onClick={() => {
+                    setEditing(null);
+                    setFixtureModalOpen(true);
+                  }}
+                >
+                  Adicionar Jogo
+                </Button>
+                <Button
+                  type="button"
                   variant="secondary"
                   size="sm"
                   onClick={() => setViewMonth((d) => new Date(d.getFullYear(), d.getMonth() - 1, 1))}
@@ -856,16 +417,13 @@ export function CalendarPageClient() {
               ))}
               {monthCells.map((day, idx) => {
                 if (!day) return <div key={`empty-${idx}`} className="h-20 rounded-lg border border-transparent" />;
-                const items = nextGameRows.filter((row) => {
-                  const k = row.kind === "manual" ? row.fixture.kickoff : row.match.kickoff;
-                  return isSameLocalDay(new Date(k), day);
-                });
+                const items = fixtures.filter((f) => isSameLocalDay(new Date(f.kickoff), day));
                 return (
                   <div key={day.toISOString()} className="h-20 rounded-lg border border-surface-border p-2">
                     <p className="text-[11px] text-zinc-400">{day.getDate()}</p>
-                    {items.slice(0, 2).map((row, i) => (
+                    {items.slice(0, 2).map((f, i) => (
                       <p key={`${day.toISOString()}-${i}`} className="truncate text-[11px] text-zinc-200">
-                        {row.kind === "manual" ? `vs ${row.fixture.opponent}` : `${row.match.homeTeam} x ${row.match.awayTeam}`}
+                        vs {f.opponent}
                       </p>
                     ))}
                   </div>
@@ -885,146 +443,8 @@ export function CalendarPageClient() {
               edits or result ingestion.
             </p>
           )}
-          {leagueTableRows.length > 0 ? (
-            <div className="overflow-x-auto rounded-xl border border-surface-border">
-              <table className="w-full min-w-[640px] text-left text-sm">
-                <thead>
-                  <tr className="border-b border-surface-border bg-zinc-900/50 text-xs uppercase tracking-wider text-zinc-500">
-                    <th className="px-3 py-3 font-medium">#</th>
-                    <th className="px-3 py-3 font-medium">Team</th>
-                    {showFullStats && (
-                      <>
-                        <th className="px-2 py-3 font-medium text-center" title="Jogos">
-                          J
-                        </th>
-                        <th className="px-2 py-3 font-medium text-center" title="Vitórias">
-                          V
-                        </th>
-                        <th className="px-2 py-3 font-medium text-center" title="Empates">
-                          E
-                        </th>
-                        <th className="px-2 py-3 font-medium text-center" title="Derrotas">
-                          D
-                        </th>
-                        <th className="px-2 py-3 font-medium text-center" title="Golos marcados">
-                          GM
-                        </th>
-                        <th className="px-2 py-3 font-medium text-center" title="Golos sofridos">
-                          GS
-                        </th>
-                        <th className="px-2 py-3 font-medium text-center" title="Diferença de golos">
-                          DG
-                        </th>
-                      </>
-                    )}
-                    <th className="px-3 py-3 font-medium text-right">Pts</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {leagueTableRows.map((row, i) => {
-                    const mine = isMyTeamInTable(row.team);
-                    return (
-                    <tr
-                      key={`${row.team}-${i}`}
-                      aria-current={mine ? "true" : undefined}
-                      title={mine ? "A tua equipa (Perfil)" : undefined}
-                      className={cn(
-                        "border-b border-surface-border/60 last:border-0 transition-colors",
-                        mine &&
-                          "border-l-4 border-l-accent bg-accent/10 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]"
-                      )}
-                    >
-                      <td className={cn("px-3 py-2.5 text-zinc-400", mine && "font-semibold text-accent")}>
-                        {row.position}
-                      </td>
-                      <td className="px-3 py-2.5">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className={cn("font-medium text-white", mine && "font-semibold")}>{row.team}</span>
-                          {mine && (
-                            <Badge variant="accent" className="shrink-0 text-[10px] uppercase tracking-wide">
-                              A tua equipa
-                            </Badge>
-                          )}
-                        </div>
-                      </td>
-                      {showFullStats && (
-                        <>
-                          <td
-                            className={cn(
-                              "px-2 py-2.5 text-center tabular-nums text-zinc-400",
-                              mine && "text-zinc-200"
-                            )}
-                          >
-                            {row.played ?? "—"}
-                          </td>
-                          <td
-                            className={cn(
-                              "px-2 py-2.5 text-center tabular-nums text-zinc-400",
-                              mine && "text-zinc-200"
-                            )}
-                          >
-                            {row.won ?? "—"}
-                          </td>
-                          <td
-                            className={cn(
-                              "px-2 py-2.5 text-center tabular-nums text-zinc-400",
-                              mine && "text-zinc-200"
-                            )}
-                          >
-                            {row.drawn ?? "—"}
-                          </td>
-                          <td
-                            className={cn(
-                              "px-2 py-2.5 text-center tabular-nums text-zinc-400",
-                              mine && "text-zinc-200"
-                            )}
-                          >
-                            {row.lost ?? "—"}
-                          </td>
-                          <td
-                            className={cn(
-                              "px-2 py-2.5 text-center tabular-nums text-zinc-400",
-                              mine && "text-zinc-200"
-                            )}
-                          >
-                            {row.goalsFor ?? "—"}
-                          </td>
-                          <td
-                            className={cn(
-                              "px-2 py-2.5 text-center tabular-nums text-zinc-400",
-                              mine && "text-zinc-200"
-                            )}
-                          >
-                            {row.goalsAgainst ?? "—"}
-                          </td>
-                          <td
-                            className={cn(
-                              "px-2 py-2.5 text-center tabular-nums text-zinc-400",
-                              mine && "text-zinc-200"
-                            )}
-                          >
-                            {row.goalDifference ?? "—"}
-                          </td>
-                        </>
-                      )}
-                      <td
-                        className={cn(
-                          "px-3 py-2.5 text-right tabular-nums text-zinc-300",
-                          mine && "font-semibold text-white"
-                        )}
-                      >
-                        {row.points ?? "—"}
-                      </td>
-                    </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            !leagueTableFetchError && (
-              <p className="text-sm text-zinc-500">No table loaded yet. Run the setup above to create your league.</p>
-            )
+          {!leagueSetup && !leagueTableFetchError && (
+            <p className="text-sm text-zinc-500">No table loaded yet. Run the setup above to create your league.</p>
           )}
         </CardContent>
       </Card>
