@@ -205,6 +205,28 @@ type LeaguePersist = {
   setup?: LeagueSetup | null;
 };
 
+/** Strips persisted errors from the removed URL/HTML league import flow. */
+function normalizeLeaguePersistFetchError(
+  lastError: string | null | undefined,
+  setup: LeagueSetup | null | undefined
+): string | null {
+  if (setup?.configured) return null;
+  if (lastError == null || lastError === "") return null;
+  const m = lastError.toLowerCase();
+  if (
+    (m.includes("does not look like") && m.includes("html")) ||
+    m.includes("resultados.fpf") ||
+    m.includes("view page source") ||
+    m.includes("save page as html") ||
+    m.includes("pasted html") ||
+    m.includes("import from pasted html") ||
+    (m.includes("http 403") && m.includes("fpf"))
+  ) {
+    return null;
+  }
+  return lastError;
+}
+
 type AppDataContextValue = {
   hydrated: boolean;
   players: Player[];
@@ -479,13 +501,14 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       } as CoachProfileState)
     );
     const league = loadJSON<Partial<LeaguePersist>>(ks.league, {});
+    const loadedSetup = (league.setup as LeagueSetup | null | undefined) ?? null;
     setLeagueTableUrlState(league.url ?? "");
     setLeagueTableRows(league.rows ?? []);
     setLeagueMatches(dedupeMatches(league.matches ?? []));
     setLeagueCompetitionName(league.competitionName ?? null);
     setLeagueTableLastFetched(league.lastFetched ?? null);
-    setLeagueTableFetchError(league.lastError ?? null);
-    setLeagueSetup((league.setup as LeagueSetup | null | undefined) ?? null);
+    setLeagueTableFetchError(normalizeLeaguePersistFetchError(league.lastError, loadedSetup));
+    setLeagueSetup(loadedSetup);
     setSavedTactics(loadJSON<Tactic[]>(ks.tactics, []));
     setTacticMatches(loadJSON<TacticMatch[]>(ks.tacticMatches, []));
     setTacticPlayerNotesState(loadJSON<Record<string, TacticPlayerAnalysisNote>>(ks.tacticPlayerNotes, {}));
@@ -527,13 +550,14 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           setCoachProfileState(
             normalizeCoachProfileState({ ...defaultCoachProfile(), ...s.coachProfile } as CoachProfileState)
           );
+          const cloudSetup = (s.league.setup as LeagueSetup | null | undefined) ?? null;
           setLeagueTableUrlState(s.league.url ?? "");
           setLeagueTableRows(s.league.rows ?? []);
           setLeagueMatches(leagueMatchesDeduped);
           setLeagueCompetitionName(s.league.competitionName ?? null);
           setLeagueTableLastFetched(s.league.lastFetched ?? null);
-          setLeagueTableFetchError(s.league.lastError ?? null);
-          setLeagueSetup((s.league.setup as LeagueSetup | null | undefined) ?? null);
+          setLeagueTableFetchError(normalizeLeaguePersistFetchError(s.league.lastError, cloudSetup));
+          setLeagueSetup(cloudSetup);
           setSavedTactics(s.tactics);
           setTacticMatches(s.tacticMatches);
           setTacticPlayerNotesState(s.tacticPlayerNotes);

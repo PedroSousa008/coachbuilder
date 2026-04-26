@@ -73,7 +73,7 @@ export async function POST(req: Request) {
           {
             ok: false,
             error:
-              "That does not look like HTML. On resultados.fpf.pt open the competition page, use View Page Source (or Save Page As HTML), and paste the full document.",
+              "That does not look like a complete HTML document. Paste the full page source from your browser (View Page Source or Save Page As HTML).",
           },
           { status: 400 }
         );

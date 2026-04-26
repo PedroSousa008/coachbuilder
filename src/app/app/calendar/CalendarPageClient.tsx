@@ -28,7 +28,6 @@ export function CalendarPageClient() {
     updateFixture,
     removeFixture,
     leagueTableLastFetched,
-    leagueTableFetchError,
     leagueSetup,
     initializeLeagueSetup,
     setActiveLeaguePhase,
@@ -426,18 +425,13 @@ export function CalendarPageClient() {
             </div>
           </div>
 
-          {leagueTableFetchError && (
-            <p className="rounded-xl border border-amber-500/25 bg-amber-500/5 px-4 py-3 text-sm text-amber-200/90">
-              {leagueTableFetchError}
-            </p>
-          )}
           {leagueTableLastFetched && (
             <p className="text-xs text-zinc-600">
               Last updated: {new Date(leagueTableLastFetched).toLocaleString("en-GB")} · Updated from in-app table
               edits or result ingestion.
             </p>
           )}
-          {!leagueSetup && !leagueTableFetchError && (
+          {!leagueSetup && (
             <p className="text-sm text-zinc-500">No table loaded yet. Run the setup above to create your league.</p>
           )}
         </CardContent>
