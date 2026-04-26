@@ -125,6 +125,7 @@ export function CalendarPageClient() {
   const [fixtureModalOpen, setFixtureModalOpen] = useState(false);
   const [editing, setEditing] = useState<MatchFixture | null>(null);
   const [urlDraft, setUrlDraft] = useState("");
+  const [fpfHtmlDraft, setFpfHtmlDraft] = useState("");
   const [refreshing, setRefreshing] = useState(false);
   const [nextSectionOpen, setNextSectionOpen] = useState(true);
   const [previousSectionOpen, setPreviousSectionOpen] = useState(true);
@@ -304,6 +305,15 @@ export function CalendarPageClient() {
     setRefreshing(true);
     try {
       await refreshLeagueTable();
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  const handleImportFromPastedHtml = async () => {
+    setRefreshing(true);
+    try {
+      await refreshLeagueTable({ html: fpfHtmlDraft });
     } finally {
       setRefreshing(false);
     }
@@ -624,9 +634,9 @@ export function CalendarPageClient() {
           </CardTitle>
           <CardDescription>
             Paste the public URL of your league standings page. We fetch it on this server and parse HTML tables or
-            known layouts (e.g. FPF resultados.fpf.pt classificações). Heavy JavaScript-only pages may not work until we
-            add a dedicated integration. With your club set in Profile, that row is highlighted and labelled in the
-            table.
+            known layouts (e.g. FPF resultados.fpf.pt classificações). FPF sometimes returns HTTP 403 to cloud servers —
+            if refresh fails, your browser can still open the page: copy the full HTML (View Page Source) and use the
+            fallback field below. With your club set in Profile, that row is highlighted and labelled in the table.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -650,6 +660,29 @@ export function CalendarPageClient() {
               <Button type="button" onClick={handleRefresh} disabled={refreshing || !leagueTableUrl.trim()}>
                 <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
                 Refresh now
+              </Button>
+            </div>
+          </div>
+          <div>
+            <label className="text-xs font-medium text-zinc-500" htmlFor="league-html-fallback">
+              Import from pasted HTML (FPF fallback)
+            </label>
+            <textarea
+              id="league-html-fallback"
+              value={fpfHtmlDraft}
+              onChange={(e) => setFpfHtmlDraft(e.target.value)}
+              placeholder="Open the standings URL in your browser → View Page Source → copy all → paste here"
+              rows={5}
+              className="mt-1.5 min-h-[120px] w-full resize-y rounded-xl border border-surface-border bg-surface-raised/90 px-4 py-3 text-sm text-zinc-100 placeholder:text-zinc-500 focus:border-accent/50 focus:outline-none focus:ring-2 focus:ring-accent/20"
+            />
+            <div className="mt-2 flex justify-end">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={handleImportFromPastedHtml}
+                disabled={refreshing || !leagueTableUrl.trim() || !fpfHtmlDraft.trim()}
+              >
+                Import from HTML
               </Button>
             </div>
           </div>

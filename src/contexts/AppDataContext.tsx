@@ -258,7 +258,7 @@ type AppDataContextValue = {
   leagueCompetitionName: string | null;
   leagueTableLastFetched: string | null;
   leagueTableFetchError: string | null;
-  refreshLeagueTable: () => Promise<void>;
+  refreshLeagueTable: (opts?: { html?: string }) => Promise<void>;
 
   coachProfile: CoachProfileState;
   setCoachProfile: (patch: Partial<CoachProfileState>) => void;
@@ -312,6 +312,30 @@ function normalizeTeamRoles(raw: unknown): TeamRoles {
   };
 }
 
+function isFpfResultadosUrl(url: string): boolean {
+  try {
+    return new URL(url).hostname.toLowerCase().includes("resultados.fpf.pt");
+  } catch {
+    return false;
+  }
+}
+
+async function fetchFpfHtmlInBrowser(url: string): Promise<string> {
+  const r = await fetch(url, {
+    method: "GET",
+    mode: "cors",
+    credentials: "omit",
+    cache: "no-store",
+    headers: {
+      Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    },
+  });
+  if (!r.ok) {
+    throw new Error(`browser_fetch_${r.status}`);
+  }
+  return r.text();
+}
+
 export function AppDataProvider({ children }: { children: ReactNode }) {
   const { user, authReady } = useAuth();
   const ks = useMemo(() => (user?.id ? getAllUserDataKeys(user.id) : null), [user?.id]);
@@ -334,6 +358,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [leagueCompetitionName, setLeagueCompetitionName] = useState<string | null>(null);
   const [leagueTableLastFetched, setLeagueTableLastFetched] = useState<string | null>(null);
   const [leagueTableFetchError, setLeagueTableFetchError] = useState<string | null>(null);
+  /** After a browser CORS/network failure for FPF, avoid hammering our API with doomed server-side fetches. */
+  const fpfSkipServerFetchRef = useRef(false);
+  const fpfSkipServerFetchUrlRef = useRef<string>("");
   const [coachProfile, setCoachProfileState] = useState<CoachProfileState>(() =>
     normalizeCoachProfileState(defaultCoachProfile())
   );
@@ -345,6 +372,14 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [teamCallup, setTeamCallup] = useState<TeamCallupState>(() => emptyTeamCallupState());
 
   const [cloudRemoteReady, setCloudRemoteReady] = useState(() => !isCloudSyncEnabledClient());
+
+  useEffect(() => {
+    const t = leagueTableUrl.trim();
+    if (fpfSkipServerFetchUrlRef.current !== t) {
+      fpfSkipServerFetchUrlRef.current = t;
+      fpfSkipServerFetchRef.current = false;
+    }
+  }, [leagueTableUrl]);
 
   useEffect(() => {
     if (!shouldUseCloudClientApis(user)) {
@@ -377,6 +412,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       setLeagueCompetitionName(null);
       setLeagueTableLastFetched(null);
       setLeagueTableFetchError(null);
+      fpfSkipServerFetchRef.current = false;
+      fpfSkipServerFetchUrlRef.current = "";
       setCoachProfileState(normalizeCoachProfileState(defaultCoachProfile()));
       setSavedTactics([]);
       setTacticMatches([]);
@@ -1488,7 +1525,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setCoachProfileState((prev) => normalizeCoachProfileState({ ...prev, ...patch }));
   }, []);
 
-  const refreshLeagueTable = useCallback(async () => {
+  const refreshLeagueTable = useCallback(async (opts?: { html?: string }) => {
     const u = leagueTableUrl.trim();
     if (!u) {
       setLeagueTableFetchError("Paste a standings page URL first.");
@@ -1496,16 +1533,59 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     }
     setLeagueTableFetchError(null);
     try {
+      const pasted = typeof opts?.html === "string" ? opts.html.trim() : "";
+      if (pasted) {
+        fpfSkipServerFetchRef.current = false;
+      }
+
+      let htmlForPost: string | undefined;
+
+      if (pasted) {
+        htmlForPost = pasted;
+      } else if (isFpfResultadosUrl(u) && !fpfSkipServerFetchRef.current) {
+        try {
+          htmlForPost = await fetchFpfHtmlInBrowser(u);
+        } catch {
+          // Likely CORS or network — fall back to server fetch once per URL (unless skipped).
+        }
+      }
+
+      if (!htmlForPost && isFpfResultadosUrl(u) && fpfSkipServerFetchRef.current) {
+        setLeagueTableFetchError(
+          "FPF blocked server fetch (HTTP 403) and the browser cannot read the page cross-origin. Open the competition URL in your browser, copy the full page HTML (View Page Source), and use “Import from pasted HTML” on the calendar page."
+        );
+        return;
+      }
+
       const res = await fetch("/api/league-table", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: u }),
+        body: JSON.stringify(htmlForPost ? { url: u, html: htmlForPost } : { url: u }),
       });
-      const data = await res.json();
+      let data: {
+        ok?: boolean;
+        error?: string;
+        upstreamStatus?: number;
+        rows?: LeagueTableRow[];
+        matches?: LeagueImportedMatch[];
+        competitionName?: string;
+        fetchedAt?: string;
+      };
+      try {
+        data = await res.json();
+      } catch {
+        setLeagueTableFetchError("Could not read server response — try again.");
+        return;
+      }
       if (!data.ok) {
+        const upstream = typeof data.upstreamStatus === "number" ? data.upstreamStatus : undefined;
+        if (!pasted && !htmlForPost && isFpfResultadosUrl(u) && upstream === 403) {
+          fpfSkipServerFetchRef.current = true;
+        }
         setLeagueTableFetchError(typeof data.error === "string" ? data.error : "Could not update table.");
         return;
       }
+      fpfSkipServerFetchRef.current = false;
       setLeagueTableRows(data.rows ?? []);
       setLeagueMatches(dedupeMatches(Array.isArray(data.matches) ? data.matches : []));
       setLeagueCompetitionName(
