@@ -309,6 +309,8 @@ type AppDataContextValue = {
   applyLeagueMatchEvents: (events: ParsedMatchEvent[], phaseId?: string) => void;
   /** Persist league state to local storage (and cloud when enabled) immediately. */
   saveLeagueTableSnapshot: () => void;
+  /** Zera J/V/E/D/GM/GS/P em todas as fases; mantém nomes e ordem das equipas. */
+  clearLeagueStandingsStatsKeepNames: () => void;
   pastClubResults: PastClubResult[];
   updatePastClubResultNote: (id: string, notes: string) => void;
 
@@ -1775,6 +1777,36 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     teamCallup,
   ]);
 
+  const clearLeagueStandingsStatsKeepNames = useCallback(() => {
+    const now = new Date().toISOString();
+    setLeagueTableLastFetched(now);
+    setLeagueSetup((prev) => {
+      if (!prev) return prev;
+      const phases = prev.phases.map((phase) => ({
+        ...phase,
+        standings: {
+          ...phase.standings,
+          rows: phase.standings.rows.map((row) => ({
+            ...row,
+            played: 0,
+            won: 0,
+            drawn: 0,
+            lost: 0,
+            goalsFor: 0,
+            goalsAgainst: 0,
+            points: 0,
+          })),
+          updatedAt: now,
+        },
+      }));
+      const active = phases.find((p) => p.id === prev.activePhaseId) ?? phases[0];
+      if (active) {
+        setLeagueTableRows(toLeagueTableRowsPreserveOrder(active.standings.rows));
+      }
+      return { ...prev, phases };
+    });
+  }, []);
+
   const setCoachProfile = useCallback((patch: Partial<CoachProfileState>) => {
     setCoachProfileState((prev) => normalizeCoachProfileState({ ...prev, ...patch }));
   }, []);
@@ -1914,6 +1946,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       updateLeagueTeamStats,
       applyLeagueMatchEvents,
       saveLeagueTableSnapshot,
+      clearLeagueStandingsStatsKeepNames,
       pastClubResults,
       updatePastClubResultNote,
       coachProfile,
@@ -1987,6 +2020,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       updateLeagueTeamStats,
       applyLeagueMatchEvents,
       saveLeagueTableSnapshot,
+      clearLeagueStandingsStatsKeepNames,
       pastClubResults,
       updatePastClubResultNote,
       coachProfile,

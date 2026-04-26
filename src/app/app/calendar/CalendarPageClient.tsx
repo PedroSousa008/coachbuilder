@@ -39,6 +39,7 @@ export function CalendarPageClient() {
     updateLeagueTeamStats,
     applyLeagueMatchEvents,
     saveLeagueTableSnapshot,
+    clearLeagueStandingsStatsKeepNames,
     pastClubResults,
     updatePastClubResultNote,
     coachProfile,
@@ -282,9 +283,29 @@ export function CalendarPageClient() {
                     </Button>
                   ))}
                 </div>
-                <Button type="button" size="sm" variant="secondary" onClick={() => saveLeagueTableSnapshot()}>
-                  Guardar tabela
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                  <Button type="button" size="sm" variant="secondary" onClick={() => saveLeagueTableSnapshot()}>
+                    Guardar tabela
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => {
+                      if (
+                        typeof window !== "undefined" &&
+                        !window.confirm(
+                          "Apagar todo o conteúdo estatístico (J, V, E, D, GM, GS, pontos) em todas as fases, mantendo só os nomes das equipas?"
+                        )
+                      ) {
+                        return;
+                      }
+                      clearLeagueStandingsStatsKeepNames();
+                    }}
+                  >
+                    Apagar conteúdo
+                  </Button>
+                </div>
               </div>
               <div className="rounded-xl border border-surface-border">
                 <table className="w-full table-fixed text-left text-[11px] sm:text-xs">

@@ -23,6 +23,20 @@ test("parseMatchEventsFromOcrText does not treat 0:0 as a match result", () => {
   assert.equal(parseMatchEventsFromOcrText("Team A 0:0 Team B").length, 0);
 });
 
+test("parseMatchEventsFromOcrText reads jornada layout: home then away above score", () => {
+  const ocr = `Alverca Sad
+Fc Arouca
+2 - 1
+24 ABR
+Estádio Futebol Clube Alverca`;
+  const events = parseMatchEventsFromOcrText(ocr);
+  assert.equal(events.length, 1);
+  assert.equal(events[0]?.homeTeam, "Alverca Sad");
+  assert.equal(events[0]?.awayTeam, "Fc Arouca");
+  assert.equal(events[0]?.homeGoals, 2);
+  assert.equal(events[0]?.awayGoals, 1);
+});
+
 test("parseMatchEventsFromOcrText reads scorecard layout (home / score / away)", () => {
   const ocr = `Sl Benfica
 4 - 1
@@ -50,4 +64,28 @@ Moreirense Fc`;
 test("parseMatchEventsFromOcrText skips fixtures without a score", () => {
   const events = parseMatchEventsFromOcrText("AVS Futebol Sad\nSporting CP");
   assert.equal(events.length, 0);
+});
+
+test("parseMatchEventsFromOcrText parses several jornada blocks and skips kick-off times", () => {
+  const ocr = `Alverca Sad
+Fc Arouca
+2 - 1
+24 ABR
+Estádio X
+Cd Tondela, Sad
+Cd Nacional
+0 - 2
+25 ABR
+Estádio Y
+Avs
+Sporting Cp
+26 ABR
+20:30
+Estádio Aves`;
+  const events = parseMatchEventsFromOcrText(ocr);
+  assert.equal(events.length, 2);
+  assert.equal(events[0]?.homeTeam, "Alverca Sad");
+  assert.equal(events[0]?.awayTeam, "Fc Arouca");
+  assert.equal(events[1]?.homeTeam, "Cd Tondela, Sad");
+  assert.equal(events[1]?.awayTeam, "Cd Nacional");
 });

@@ -8,7 +8,7 @@ const GOAL_SEP = String.raw`[-–]`;
 
 /** Mesma linha: Equipa A 2-1 Equipa B */
 const RESULT_INLINE_RE = new RegExp(
-  `([A-Za-zÀ-ÿ0-9 .'\\-()]+?)\\s+(\\d{1,2})\\s*${GOAL_SEP}\\s*(\\d{1,2})\\s+([A-Za-zÀ-ÿ0-9 .'\\-()]+)`,
+  `([A-Za-zÀ-ÿ0-9 .,'\\-()]+?)\\s+(\\d{1,2})\\s*${GOAL_SEP}\\s*(\\d{1,2})\\s+([A-Za-zÀ-ÿ0-9 .,'\\-()]+)`,
   "g"
 );
 
@@ -94,7 +94,38 @@ function pushEvent(
   });
 }
 
-/** Cartão tipo: equipa casa (linha) / 4 - 1 / data / estádio / equipa fora. */
+/**
+ * Equipas imediatamente acima do resultado (OCR de cima para baixo: casa, fora, golos).
+ * `raw[0]` = mais perto do resultado (fora), `raw[raw.length-1]` = mais acima (casa).
+ */
+function collectTeamsAboveScore(lines: string[], scoreIndex: number): string[] {
+  const raw: string[] = [];
+  for (let j = scoreIndex - 1; j >= 0 && j >= scoreIndex - 14; j--) {
+    const L = lines[j] ?? "";
+    if (!L) continue;
+    if (lineContainsClockLikeToken(L)) continue;
+    if (isProbableDateLine(L)) continue;
+    if (isProbableVenueLine(L)) break;
+    if (j !== scoreIndex && SCORE_ONLY_LINE.test(L)) break;
+    if (looksLikeTeamName(L)) raw.push(L);
+    else if (raw.length) break;
+  }
+  return raw;
+}
+
+function findFirstTeamBelow(lines: string[], startIdx: number, endIdx: number): string {
+  for (let j = startIdx; j < lines.length && j <= endIdx; j++) {
+    const L = lines[j] ?? "";
+    if (!L) continue;
+    if (lineContainsClockLikeToken(L)) continue;
+    if (isProbableDateLine(L)) continue;
+    if (isProbableVenueLine(L)) continue;
+    if (looksLikeTeamName(L)) return L;
+  }
+  return "";
+}
+
+/** Cartão jornada: Casa / Fora / 2 - 1 / data / estádio — ou Casa / 2 - 1 / Fora (Benfica). */
 function parseMultilineScoreCard(lines: string[], seen: Set<string>, out: ParsedMatchEvent[]): void {
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i] ?? "";
@@ -105,29 +136,30 @@ function parseMultilineScoreCard(lines: string[], seen: Set<string>, out: Parsed
     const awayGoals = Number(scoreM[2]);
     if (!isPlausibleScore(homeGoals, awayGoals)) continue;
 
+    const above = collectTeamsAboveScore(lines, i);
     let homeTeam = "";
-    for (let j = i - 1; j >= 0 && j >= i - 10; j--) {
-      const L = lines[j] ?? "";
-      if (!L) continue;
-      if (lineContainsClockLikeToken(L)) continue;
-      if (looksLikeTeamName(L)) {
-        homeTeam = L;
-        break;
-      }
-    }
-
     let awayTeam = "";
-    for (let j = i + 1; j < lines.length && j <= i + 15; j++) {
-      const L = lines[j] ?? "";
-      if (!L) continue;
-      if (lineContainsClockLikeToken(L)) continue;
-      if (looksLikeTeamName(L)) {
-        awayTeam = L;
-        break;
+
+    if (above.length >= 2) {
+      homeTeam = above[above.length - 1]!;
+      awayTeam = above[above.length - 2]!;
+    } else if (above.length === 1) {
+      homeTeam = above[0]!;
+      awayTeam = findFirstTeamBelow(lines, i + 1, i + 18);
+    } else {
+      for (let j = i - 1; j >= 0 && j >= i - 10; j--) {
+        const L = lines[j] ?? "";
+        if (!L) continue;
+        if (lineContainsClockLikeToken(L)) continue;
+        if (looksLikeTeamName(L)) {
+          homeTeam = L;
+          break;
+        }
       }
+      awayTeam = findFirstTeamBelow(lines, i + 1, i + 18);
     }
 
-    if (homeTeam && awayTeam) {
+    if (homeTeam && awayTeam && collapse(homeTeam).toLowerCase() !== collapse(awayTeam).toLowerCase()) {
       pushEvent(out, seen, homeTeam, awayTeam, homeGoals, awayGoals);
     }
   }
