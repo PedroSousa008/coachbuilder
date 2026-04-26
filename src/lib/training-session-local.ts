@@ -245,6 +245,12 @@ export const DRIBBLING_FAST_AND_PASS_VIDEO_URL = "/videos/training/dribbling-pas
 export const POSSESSION_BALL_WITH_TRANSITION_VIDEO_URL = "/videos/training/possession-transfer.mp4";
 
 /**
+ * Vídeo do exercício "Sair a Jogar da Defesa com Pressão".
+ * Coloca o ficheiro em `public/videos/training/sair-jogar.mp4`.
+ */
+export const PLAYING_OUT_FROM_BACK_UNDER_PRESSURE_VIDEO_URL = "/videos/training/sair-jogar.mp4";
+
+/**
  * Vídeo do exercício "Full Back Overlap - Striker".
  * Coloca o ficheiro em `public/videos/training/full-back-overlap-2.mp4` ou substitui por um link YouTube.
  */
@@ -1162,6 +1168,26 @@ const MAIN_DRILLS: MainDrillDef[] = [
       diagramHint:
         "Setor A: 5v3 em posse; setor B: equipa à espera; balizas laterais como canal de viragem; após viragem, +2 pressam do setor central +1 defensor; rotação contínua de equipas.",
       videoUrl: POSSESSION_BALL_WITH_TRANSITION_VIDEO_URL,
+    }),
+  },
+  {
+    themes: ["possession", "transition", "pressing", "finishing", "balanced"],
+    title: "Sair a Jogar da Defesa com Pressão",
+    describe: (pl, m) => ({
+      description: `O exercício divide-se em 2 setores, cada um com balizas de 11. Em cada setor joga-se uma situação de 4v2, composta por guarda-redes, trinco e 2 jogadores de linha (centrais, médios ou laterais), contra 2 adversários que estão a pressionar (avançados ou extremos). O trinco pode mover-se apenas na horizontal, procurando estar sempre disponível para oferecer linha de passe. A equipa em posse tem como objetivo manter a bola o máximo de tempo possível; cada sequência de 10 passes vale 1 ponto. A equipa defensora procura recuperar a bola e atacar rapidamente uma das 2 balizas. Após a recuperação, pode entrar 1 jogador adicional do setor, criando uma situação de 3v2 ofensivo. O foco está na saída sob pressão, criação de linhas de passe, reação à perda e transição rápida para finalizar. (${m} min)`,
+      coachingPoints:
+        "Na posse: orientar receção para o lado livre, usar o trinco como apoio horizontal constante e alternar ritmo curto/longo para tirar pressão. Sem bola: pressão coordenada por dentro para fora, ataque imediato à baliza após recuperação e decisão rápida no 3v2 para finalizar antes da reorganização adversária.",
+      setup:
+        "2 setores com balizas de 11, cada setor com estrutura base de 4v2 (GR + trinco + 2 jogadores de linha vs 2 pressionantes), 2 balizas alvo para transição ofensiva após recuperação e bolas de reposição junto aos guarda-redes.",
+      groupSplit:
+        pl.length >= 15
+          ? "Três equipas de 5: duas em exercício simultâneo (um setor cada) e rotação por séries curtas de 2–3 minutos."
+          : pl.length >= 12
+            ? "Dois setores com 4v2 fixo e rotação de pressing a cada 60–90 segundos; jogador extra entra apenas no momento de recuperação."
+            : "Versão reduzida em 1 setor com 3v2+GR e regra de 6 passes por ponto; manter transição 3v2 com entrada de 1 apoio após recuperação.",
+      diagramHint:
+        "Dois setores paralelos em 4v2 de saída; trinco com deslocamento horizontal; contagem de 10 passes = 1 ponto; após recuperação, entrada de +1 atacante e transição 3v2 para finalização.",
+      videoUrl: PLAYING_OUT_FROM_BACK_UNDER_PRESSURE_VIDEO_URL,
     }),
   },
   {
@@ -2099,6 +2125,7 @@ const SINGLE_DRILL_10_MIN_TITLES = new Set<string>([
   "1v1 Situations",
   "Passe e Movimentação",
   "Drible Rápido e Passe",
+  "Sair a Jogar da Defesa com Pressão",
 ]);
 const SINGLE_DRILL_8_MIN_TITLES = new Set<string>(["Dual Passing"]);
 const SINGLE_DRILL_5_MIN_TITLES = new Set<string>([
@@ -2159,6 +2186,15 @@ function singleDrillProgressionVariationsForTitle(title: string): {
   const isPassingActivation = title === "Passing Activation";
   const isDualPassing = title === "Dual Passing";
   const isPressingExercise = title === "Pressing Exercise";
+
+  if (title === "Sair a Jogar da Defesa com Pressão") {
+    return {
+      progression:
+        "Reduz espaço no setor de saída e limita a equipa em posse a 2 toques para acelerar decisão; ou aumenta o trigger de pressão (2 pressionantes saltam ao mesmo tempo após 3.º passe).",
+      variations:
+        "Após recuperação, obrigar finalização em ≤6 segundos no 3v2; ou trocar alvo de transição (baliza esquerda/direita obrigatória por comando); ou limitar o trinco a 1 toque em blocos curtos para estimular apoios rápidos.",
+    };
+  }
 
   if (title === "Posse de Bola com Transição") {
     return {
@@ -2471,6 +2507,7 @@ export function getTrainingCatalogItems(players: Player[]): TrainingCatalogItem[
     "Drible Rápido e Passe": ["possession"],
     "Reação e Finalização": ["possession", "finishing"],
     "Posse de Bola com Transição": ["possession", "transition", "pressing", "physical"],
+    "Sair a Jogar da Defesa com Pressão": ["possession", "transition", "pressing", "goalKick", "finishing"],
 
     // Posse de bola
     "Offensive Between Lines": ["possession", "transition"],
