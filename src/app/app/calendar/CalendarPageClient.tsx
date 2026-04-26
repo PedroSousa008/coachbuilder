@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { Calendar, ChevronDown, RefreshCw, Table2, Trash2, Pencil } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Calendar, ChevronDown, Table2, Trash2, Pencil } from "lucide-react";
 import type { LeagueImportedMatch, MatchFixture } from "@/types";
 import { useAppData } from "@/contexts/AppDataContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
@@ -36,14 +36,6 @@ function monthDayKey(isoDate: string): string | null {
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
   return `${m}-${day}`;
-}
-
-function isFpfResultadosUrl(url: string): boolean {
-  try {
-    return new URL(url).hostname.toLowerCase().includes("resultados.fpf.pt");
-  } catch {
-    return false;
-  }
 }
 
 function outcomeForMyTeam(
@@ -118,14 +110,11 @@ export function CalendarPageClient() {
     addFixture,
     updateFixture,
     removeFixture,
-    leagueTableUrl,
-    setLeagueTableUrl,
     leagueTableRows,
     leagueMatches,
     leagueCompetitionName,
     leagueTableLastFetched,
     leagueTableFetchError,
-    refreshLeagueTable,
     leagueSetup,
     initializeLeagueSetup,
     setActiveLeaguePhase,
@@ -135,43 +124,19 @@ export function CalendarPageClient() {
     coachProfile,
     players,
     staff,
-    hydrated,
   } = useAppData();
 
   const [fixtureModalOpen, setFixtureModalOpen] = useState(false);
   const [editing, setEditing] = useState<MatchFixture | null>(null);
-  const [urlDraft, setUrlDraft] = useState("");
-  const [fpfHtmlDraft, setFpfHtmlDraft] = useState("");
   const [setupTeamsDraft, setSetupTeamsDraft] = useState("10");
   const [setupPhasesDraft, setSetupPhasesDraft] = useState("1");
   const [resultsOcrText, setResultsOcrText] = useState("");
   const [ocrBusy, setOcrBusy] = useState(false);
   const [ocrError, setOcrError] = useState<string | null>(null);
   const [viewMonth, setViewMonth] = useState(() => new Date());
-  const [refreshing, setRefreshing] = useState(false);
   const [nextSectionOpen, setNextSectionOpen] = useState(true);
   const [previousSectionOpen, setPreviousSectionOpen] = useState(true);
   const nowMs = useScheduleNow();
-  const leagueUrlIsFpf = useMemo(() => isFpfResultadosUrl(leagueTableUrl.trim()), [leagueTableUrl]);
-
-  useEffect(() => {
-    setUrlDraft(leagueTableUrl);
-  }, [leagueTableUrl]);
-
-  useEffect(() => {
-    if (!hydrated || !leagueTableUrl.trim()) return;
-    if (leagueUrlIsFpf) return;
-    void refreshLeagueTable();
-  }, [hydrated, leagueTableUrl, refreshLeagueTable, leagueUrlIsFpf]);
-
-  useEffect(() => {
-    if (!leagueTableUrl.trim()) return;
-    if (leagueUrlIsFpf) return;
-    const id = setInterval(() => {
-      void refreshLeagueTable();
-    }, 6 * 60 * 60 * 1000);
-    return () => clearInterval(id);
-  }, [leagueTableUrl, refreshLeagueTable, leagueUrlIsFpf]);
 
   const candidates = useMemo(
     () => collectUniqueTeamNames({ tableRows: leagueTableRows, matches: leagueMatches }),
@@ -326,28 +291,6 @@ export function CalendarPageClient() {
 
   const birthdaysToday = birthdayRows.filter((x) => x.isToday);
 
-  const saveUrl = () => {
-    setLeagueTableUrl(urlDraft.trim());
-  };
-
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    try {
-      await refreshLeagueTable();
-    } finally {
-      setRefreshing(false);
-    }
-  };
-
-  const handleImportFromPastedHtml = async () => {
-    setRefreshing(true);
-    try {
-      await refreshLeagueTable({ html: fpfHtmlDraft });
-    } finally {
-      setRefreshing(false);
-    }
-  };
-
   const handleCreateLeagueSetup = () => {
     const teams = Number(setupTeamsDraft);
     const phases = Number(setupPhasesDraft);
@@ -390,10 +333,10 @@ export function CalendarPageClient() {
       <div>
         <h2 className="font-display text-xl font-semibold text-white">Calendar & matchweek</h2>
         <p className="mt-1 text-sm text-zinc-500">
-          <span className="font-semibold text-zinc-300">Next:</span> jogos{" "}
-          <span className="text-zinc-400">sem resultado na FPF</span> e com horário ainda no futuro (ou data em falta).
+          <span className="font-semibold text-zinc-300">Next:</span> jogos sem resultado e com horário ainda no futuro
+          (ou data em falta).
           <span className="font-semibold text-zinc-300"> Previous:</span> jogos já com marcador, ou já disputados no
-          calendário (hora passada) sem marcador. Refresh na tabela para sincronizar.
+          calendário (hora passada) sem marcador.
         </p>
         {resolvedClub && (
           <p className="mt-2 text-xs text-accent">
@@ -449,7 +392,8 @@ export function CalendarPageClient() {
               Your fixtures
             </CardTitle>
             <CardDescription>
-              Import FPF: resultado na página → Previous; resto pela data/hora. Perfil = filtro da equipa.
+              Jogos com resultado aparecem em Previous; sem resultado ficam em Next pela data/hora. Perfil = filtro da
+              equipa.
             </CardDescription>
           </div>
           <Button
@@ -494,9 +438,7 @@ export function CalendarPageClient() {
             {nextSectionOpen &&
               (nextGameRows.length === 0 ? (
               <p className="text-sm text-zinc-500">
-                {leagueMatches.length === 0 && leagueTableUrl.trim()
-                  ? "No fixtures imported yet — use Refresh now on the league table below."
-                  : "No upcoming games yet."}
+                No upcoming games yet.
               </p>
             ) : (
               <ul className="space-y-3">
@@ -617,9 +559,7 @@ export function CalendarPageClient() {
             {previousSectionOpen &&
               (previousGameRows.length === 0 ? (
               <p className="text-sm text-zinc-500">
-                {leagueMatches.length === 0 && leagueTableUrl.trim()
-                  ? "No past games yet — refresh the league import, or your club name may not match the table."
-                  : "No past games yet (kick-offs before now appear here)."}
+                No past games yet (kick-offs before now appear here).
               </p>
             ) : (
               <ul className="space-y-3">
@@ -693,9 +633,8 @@ export function CalendarPageClient() {
             League table
           </CardTitle>
           <CardDescription>
-            Paste the public URL of your league standings page. For FPF (`resultados.fpf.pt`), use the URL only as
-            reference and import via pasted HTML (View Page Source), because direct server refresh is often blocked
-            with HTTP 403. With your club set in Profile, that row is highlighted and labelled in the table.
+            This table is now fully managed in-app (setup + manual edits + OCR result updates). With your club set in
+            Profile, that row is highlighted and labelled in the table.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -935,63 +874,6 @@ export function CalendarPageClient() {
             </div>
           </div>
 
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-            <div className="min-w-0 flex-1">
-              <label className="text-xs font-medium text-zinc-500" htmlFor="league-url">
-                Standings page URL
-              </label>
-              <Input
-                id="league-url"
-                value={urlDraft}
-                onChange={(e) => setUrlDraft(e.target.value)}
-                placeholder="https://…"
-                className="mt-1.5"
-              />
-            </div>
-            <div className="flex gap-2">
-              <Button type="button" variant="secondary" onClick={saveUrl}>
-                Save URL
-              </Button>
-              <Button
-                type="button"
-                variant={leagueUrlIsFpf ? "secondary" : "primary"}
-                onClick={handleRefresh}
-                disabled={refreshing || !leagueTableUrl.trim()}
-              >
-                <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
-                {leagueUrlIsFpf ? "Try direct refresh (optional)" : "Refresh now"}
-              </Button>
-            </div>
-          </div>
-          {leagueUrlIsFpf && (
-            <p className="rounded-xl border border-amber-500/25 bg-amber-500/5 px-4 py-3 text-sm text-amber-200/90">
-              FPF mode active: updates should be done via pasted HTML below. We keep the URL as competition reference,
-              but automatic refresh from the server is disabled for FPF links.
-            </p>
-          )}
-          <div>
-            <label className="text-xs font-medium text-zinc-500" htmlFor="league-html-fallback">
-              Import from pasted HTML {leagueUrlIsFpf ? "(recommended)" : "(FPF fallback)"}
-            </label>
-            <textarea
-              id="league-html-fallback"
-              value={fpfHtmlDraft}
-              onChange={(e) => setFpfHtmlDraft(e.target.value)}
-              placeholder="Open the standings URL in your browser → View Page Source → copy all → paste here"
-              rows={5}
-              className="mt-1.5 min-h-[120px] w-full resize-y rounded-xl border border-surface-border bg-surface-raised/90 px-4 py-3 text-sm text-zinc-100 placeholder:text-zinc-500 focus:border-accent/50 focus:outline-none focus:ring-2 focus:ring-accent/20"
-            />
-            <div className="mt-2 flex justify-end">
-              <Button
-                type="button"
-                variant={leagueUrlIsFpf ? "primary" : "secondary"}
-                onClick={handleImportFromPastedHtml}
-                disabled={refreshing || !leagueTableUrl.trim() || !fpfHtmlDraft.trim()}
-              >
-                {leagueUrlIsFpf ? "Update table from HTML" : "Import from HTML"}
-              </Button>
-            </div>
-          </div>
           {leagueTableFetchError && (
             <p className="rounded-xl border border-amber-500/25 bg-amber-500/5 px-4 py-3 text-sm text-amber-200/90">
               {leagueTableFetchError}
@@ -999,10 +881,8 @@ export function CalendarPageClient() {
           )}
           {leagueTableLastFetched && (
             <p className="text-xs text-zinc-600">
-              Last updated: {new Date(leagueTableLastFetched).toLocaleString("en-GB")} ·{" "}
-              {leagueUrlIsFpf
-                ? "FPF mode: update by pasted HTML."
-                : "Auto-refresh every 6 hours while this page is open (manual refresh anytime)."}
+              Last updated: {new Date(leagueTableLastFetched).toLocaleString("en-GB")} · Updated from in-app table
+              edits or result ingestion.
             </p>
           )}
           {leagueTableRows.length > 0 ? (
@@ -1143,11 +1023,7 @@ export function CalendarPageClient() {
             </div>
           ) : (
             !leagueTableFetchError && (
-              <p className="text-sm text-zinc-500">
-                {leagueTableUrl.trim()
-                  ? "Save the URL and click Refresh to load the table."
-                  : "No table loaded yet. Save a standings URL above."}
-              </p>
+              <p className="text-sm text-zinc-500">No table loaded yet. Run the setup above to create your league.</p>
             )
           )}
         </CardContent>
