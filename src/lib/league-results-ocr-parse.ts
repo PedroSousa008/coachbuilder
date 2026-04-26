@@ -1,14 +1,25 @@
 import type { ParsedMatchEvent } from "@/types";
 
-/** Mesma linha: Equipa A 2-1 Equipa B */
-const RESULT_INLINE_RE =
-  /([A-Za-zÀ-ÿ0-9 .'\-()]+?)\s+(\d{1,2})\s*[-–:xX]\s*(\d{1,2})\s+([A-Za-zÀ-ÿ0-9 .'\-()]+)/g;
+/**
+ * Resultados de jogo usam hífen ou en-dash (4-1, 4 – 1), nunca ":".
+ * ":" é sempre horário (ex. 20:30) → jogo ainda não disputado → não alterar tabela.
+ */
+const GOAL_SEP = String.raw`[-–]`;
 
-/** Linha só com resultado: 4 - 1 */
-const SCORE_ONLY_LINE = /^\s*(\d{1,2})\s*[-–:xX]\s*(\d{1,2})\s*$/;
+/** Mesma linha: Equipa A 2-1 Equipa B */
+const RESULT_INLINE_RE = new RegExp(
+  `([A-Za-zÀ-ÿ0-9 .'\\-()]+?)\\s+(\\d{1,2})\\s*${GOAL_SEP}\\s*(\\d{1,2})\\s+([A-Za-zÀ-ÿ0-9 .'\\-()]+)`,
+  "g"
+);
+
+/** Linha só com resultado: 4 - 1 (nunca 20:30) */
+const SCORE_ONLY_LINE = new RegExp(`^\\s*(\\d{1,2})\\s*${GOAL_SEP}\\s*(\\d{1,2})\\s*$`);
 
 /** Linha com equipa da casa + resultado (visitante noutra linha): Sl Benfica 4 - 1 */
-const HOME_AND_SCORE_LINE = /^(.+?)\s+(\d{1,2})\s*[-–:xX]\s*(\d{1,2})\s*$/;
+const HOME_AND_SCORE_LINE = new RegExp(`^(.+?)\\s+(\\d{1,2})\\s*${GOAL_SEP}\\s*(\\d{1,2})\\s*$`);
+
+/** Máximo plausível por lado (evita OCR a partir horas "20:30" em "20 - 30" golos). */
+const MAX_GOALS_PER_SIDE = 15;
 
 function normalizeOcrBlock(s: string): string {
   return s.replace(/\r/g, "\n").replace(/[\t\f\v]+/g, " ").replace(/ *\n */g, "\n");
@@ -16,6 +27,16 @@ function normalizeOcrBlock(s: string): string {
 
 function collapse(s: string): string {
   return s.replace(/\s+/g, " ").trim();
+}
+
+/** Linha só com hora (20:30) — não é resultado. */
+function isClockOnlyLine(s: string): boolean {
+  return /^\d{1,2}:\d{2}\s*$/.test(collapse(s));
+}
+
+/** Qualquer "n:n" numa linha curta típica de hora (não tratar como golo). */
+function lineContainsClockLikeToken(s: string): boolean {
+  return /\b\d{1,2}:\d{2}\b/.test(collapse(s));
 }
 
 function isProbableDateLine(s: string): boolean {
@@ -34,10 +55,18 @@ function looksLikeTeamName(s: string): boolean {
   const t = collapse(s);
   if (t.length < 2) return false;
   if (!/[a-zà-ÿ]/i.test(t)) return false;
+  if (isClockOnlyLine(t)) return false;
   if (SCORE_ONLY_LINE.test(t)) return false;
   if (isProbableDateLine(t)) return false;
   if (isProbableVenueLine(t)) return false;
   if (/^vs\.?$/i.test(t)) return false;
+  return true;
+}
+
+function isPlausibleScore(homeGoals: number, awayGoals: number): boolean {
+  if (!Number.isFinite(homeGoals) || !Number.isFinite(awayGoals)) return false;
+  if (homeGoals < 0 || awayGoals < 0) return false;
+  if (homeGoals > MAX_GOALS_PER_SIDE || awayGoals > MAX_GOALS_PER_SIDE) return false;
   return true;
 }
 
@@ -52,7 +81,7 @@ function pushEvent(
   const h = collapse(homeTeam);
   const a = collapse(awayTeam);
   if (!h || !a) return;
-  if (!Number.isFinite(homeGoals) || !Number.isFinite(awayGoals)) return;
+  if (!isPlausibleScore(homeGoals, awayGoals)) return;
   const key = `${h.toLowerCase()}|${a.toLowerCase()}|${homeGoals}-${awayGoals}`;
   if (seen.has(key)) return;
   seen.add(key);
@@ -69,16 +98,18 @@ function pushEvent(
 function parseMultilineScoreCard(lines: string[], seen: Set<string>, out: ParsedMatchEvent[]): void {
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i] ?? "";
+    if (lineContainsClockLikeToken(line)) continue;
     const scoreM = line.match(SCORE_ONLY_LINE);
     if (!scoreM) continue;
     const homeGoals = Number(scoreM[1]);
     const awayGoals = Number(scoreM[2]);
-    if (!Number.isFinite(homeGoals) || !Number.isFinite(awayGoals)) continue;
+    if (!isPlausibleScore(homeGoals, awayGoals)) continue;
 
     let homeTeam = "";
     for (let j = i - 1; j >= 0 && j >= i - 10; j--) {
       const L = lines[j] ?? "";
       if (!L) continue;
+      if (lineContainsClockLikeToken(L)) continue;
       if (looksLikeTeamName(L)) {
         homeTeam = L;
         break;
@@ -89,6 +120,7 @@ function parseMultilineScoreCard(lines: string[], seen: Set<string>, out: Parsed
     for (let j = i + 1; j < lines.length && j <= i + 15; j++) {
       const L = lines[j] ?? "";
       if (!L) continue;
+      if (lineContainsClockLikeToken(L)) continue;
       if (looksLikeTeamName(L)) {
         awayTeam = L;
         break;
@@ -105,18 +137,20 @@ function parseMultilineScoreCard(lines: string[], seen: Set<string>, out: Parsed
 function parseHomeScoreThenAwayBelow(lines: string[], seen: Set<string>, out: ParsedMatchEvent[]): void {
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i] ?? "";
+    if (lineContainsClockLikeToken(line)) continue;
     const m = line.match(HOME_AND_SCORE_LINE);
     if (!m) continue;
     const rawHome = (m[1] ?? "").trim();
     const homeGoals = Number(m[2]);
     const awayGoals = Number(m[3]);
     if (!looksLikeTeamName(rawHome)) continue;
-    if (!Number.isFinite(homeGoals) || !Number.isFinite(awayGoals)) continue;
+    if (!isPlausibleScore(homeGoals, awayGoals)) continue;
 
     let awayTeam = "";
     for (let j = i + 1; j < lines.length && j <= i + 12; j++) {
       const L = lines[j] ?? "";
       if (!L) continue;
+      if (lineContainsClockLikeToken(L)) continue;
       if (looksLikeTeamName(L) && collapse(L).toLowerCase() !== collapse(rawHome).toLowerCase()) {
         awayTeam = L;
         break;
