@@ -9,3 +9,32 @@ test("parseMatchEventsFromOcrText extracts score lines", () => {
   assert.equal(events[0]?.awayGoals, 1);
   assert.equal(events[1]?.homeGoals, 0);
 });
+
+test("parseMatchEventsFromOcrText reads scorecard layout (home / score / away)", () => {
+  const ocr = `Sl Benfica
+4 - 1
+25 ABR
+Estádio Sport Lisboa e Benfica
+Moreirense Fc`;
+  const events = parseMatchEventsFromOcrText(ocr);
+  assert.equal(events.length, 1);
+  assert.equal(events[0]?.homeTeam, "Sl Benfica");
+  assert.equal(events[0]?.awayTeam, "Moreirense Fc");
+  assert.equal(events[0]?.homeGoals, 4);
+  assert.equal(events[0]?.awayGoals, 1);
+});
+
+test("parseMatchEventsFromOcrText reads home+score line then away on next line", () => {
+  const ocr = `Sl Benfica 4 - 1
+25 ABR
+Moreirense Fc`;
+  const events = parseMatchEventsFromOcrText(ocr);
+  assert.equal(events.length, 1);
+  assert.equal(events[0]?.homeGoals, 4);
+  assert.equal(events[0]?.awayGoals, 1);
+});
+
+test("parseMatchEventsFromOcrText skips fixtures without a score", () => {
+  const events = parseMatchEventsFromOcrText("AVS Futebol Sad\nSporting CP");
+  assert.equal(events.length, 0);
+});
