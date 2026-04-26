@@ -73,6 +73,18 @@ Estádio Sport Lisboa Benfica`;
   assert.equal(events[0]?.awayGoals, 1);
 });
 
+test("parseMatchEventsFromOcrText parses score-first block and ignores date/stadium lines", () => {
+  const ocr = `: 4-1 :
+SI Benfica 25 ABR Moreirense Fc
+Estádio Sport Lisboa Benfica`;
+  const events = parseMatchEventsFromOcrText(ocr);
+  assert.equal(events.length, 1);
+  assert.equal(events[0]?.homeTeam, "SI Benfica");
+  assert.equal(events[0]?.awayTeam, "Moreirense Fc");
+  assert.equal(events[0]?.homeGoals, 4);
+  assert.equal(events[0]?.awayGoals, 1);
+});
+
 test("parseMatchEventsFromOcrText skips fixtures without a score", () => {
   const events = parseMatchEventsFromOcrText("AVS Futebol Sad\nSporting CP");
   assert.equal(events.length, 0);

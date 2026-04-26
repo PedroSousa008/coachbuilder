@@ -174,7 +174,14 @@ function parseMultilineScoreCard(lines: string[], seen: Set<string>, out: Parsed
           break;
         }
       }
-      awayTeam = findFirstTeamBelow(lines, i + 1, i + 18);
+      const below = findFirstTeamBelow(lines, i + 1, i + 18);
+      const split = splitTeamsAroundDateToken(below);
+      if (split) {
+        homeTeam = split[0];
+        awayTeam = split[1];
+      } else {
+        awayTeam = below;
+      }
     }
 
     if (homeTeam && awayTeam && collapse(homeTeam).toLowerCase() !== collapse(awayTeam).toLowerCase()) {
