@@ -752,7 +752,7 @@ export function CalendarPageClient() {
                     key={phase.id}
                     type="button"
                     size="sm"
-                    variant={leagueSetup.activePhaseId === phase.id ? "default" : "secondary"}
+                    variant={leagueSetup.activePhaseId === phase.id ? "primary" : "secondary"}
                     onClick={() => setActiveLeaguePhase(phase.id)}
                   >
                     {phase.name}
@@ -954,7 +954,7 @@ export function CalendarPageClient() {
               </Button>
               <Button
                 type="button"
-                variant={leagueUrlIsFpf ? "secondary" : "default"}
+                variant={leagueUrlIsFpf ? "secondary" : "primary"}
                 onClick={handleRefresh}
                 disabled={refreshing || !leagueTableUrl.trim()}
               >
@@ -984,7 +984,7 @@ export function CalendarPageClient() {
             <div className="mt-2 flex justify-end">
               <Button
                 type="button"
-                variant={leagueUrlIsFpf ? "default" : "secondary"}
+                variant={leagueUrlIsFpf ? "primary" : "secondary"}
                 onClick={handleImportFromPastedHtml}
                 disabled={refreshing || !leagueTableUrl.trim() || !fpfHtmlDraft.trim()}
               >
