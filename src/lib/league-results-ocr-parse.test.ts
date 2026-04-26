@@ -10,6 +10,15 @@ test("parseMatchEventsFromOcrText extracts score lines (hyphen only, not colon)"
   assert.equal(events[1]?.homeGoals, 0);
 });
 
+test("parseMatchEventsFromOcrText accepts OCR dash variants", () => {
+  const events = parseMatchEventsFromOcrText("Estoril Praia 0—1 Fc Famalicão");
+  assert.equal(events.length, 1);
+  assert.equal(events[0]?.homeTeam, "Estoril Praia");
+  assert.equal(events[0]?.awayTeam, "Fc Famalicão");
+  assert.equal(events[0]?.homeGoals, 0);
+  assert.equal(events[0]?.awayGoals, 1);
+});
+
 test("parseMatchEventsFromOcrText ignores colon as score (kick-off time)", () => {
   const ocr = `Avs
 26 ABR

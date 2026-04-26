@@ -40,6 +40,9 @@ export function sortStandingsRows(rows: StandingsTeamRow[]): StandingsTeamRow[] 
     .map((r) => normalizeStandingsRow(r))
     .sort((a, b) => {
       if (b.points !== a.points) return b.points - a.points;
+      const gdA = a.goalsFor - a.goalsAgainst;
+      const gdB = b.goalsFor - b.goalsAgainst;
+      if (gdB !== gdA) return gdB - gdA;
       if (b.goalsFor !== a.goalsFor) return b.goalsFor - a.goalsFor;
       return a.team.localeCompare(b.team, "pt-PT");
     });

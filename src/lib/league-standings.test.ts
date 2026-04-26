@@ -30,6 +30,35 @@ test("sortStandingsRows orders by points then goalsFor", () => {
   assert.equal(rows[0]?.teamId, "a");
 });
 
+test("sortStandingsRows orders tied points by goal difference", () => {
+  const rows = sortStandingsRows([
+    {
+      teamId: "worse-gd",
+      team: "Worse",
+      played: 1,
+      won: 0,
+      drawn: 0,
+      lost: 1,
+      goalsFor: 0,
+      goalsAgainst: 2,
+      points: 0,
+    },
+    {
+      teamId: "zero-gd",
+      team: "Zero",
+      played: 0,
+      won: 0,
+      drawn: 0,
+      lost: 0,
+      goalsFor: 0,
+      goalsAgainst: 0,
+      points: 0,
+    },
+  ]);
+  assert.equal(rows[0]?.teamId, "zero-gd");
+  assert.equal(rows[1]?.teamId, "worse-gd");
+});
+
 test("applyMatchEventsToStandings updates W/D/L and points", () => {
   const { rows: next } = applyMatchEventsToStandings(
     [
