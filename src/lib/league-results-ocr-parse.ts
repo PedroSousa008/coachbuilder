@@ -12,8 +12,8 @@ const RESULT_INLINE_RE = new RegExp(
   "g"
 );
 
-/** Linha só com resultado: 4 - 1 (nunca 20:30) */
-const SCORE_ONLY_LINE = new RegExp(`^\\s*(\\d{1,2})\\s*${GOAL_SEP}\\s*(\\d{1,2})\\s*$`);
+/** Linha só com resultado: 4 - 1 (aceita decoradores OCR tipo ": 4-1 :"), nunca 20:30. */
+const SCORE_ONLY_LINE = new RegExp(`^\\s*[:|;]?\\s*(\\d{1,2})\\s*${GOAL_SEP}\\s*(\\d{1,2})\\s*[:|;]?\\s*$`);
 
 /** Linha com equipa da casa + resultado (visitante noutra linha): Sl Benfica 4 - 1 */
 const HOME_AND_SCORE_LINE = new RegExp(`^(.+?)\\s+(\\d{1,2})\\s*${GOAL_SEP}\\s*(\\d{1,2})\\s*$`);
@@ -125,6 +125,18 @@ function findFirstTeamBelow(lines: string[], startIdx: number, endIdx: number): 
   return "";
 }
 
+/** OCR line: "SL Benfica 25 ABR Moreirense Fc" -> [home, away]. */
+function splitTeamsAroundDateToken(line: string): [string, string] | null {
+  const t = collapse(line);
+  const m = t.match(/^(.+?)\s+\d{1,2}\s+[A-Za-zÀ-ÿ]{3,12}\s+(.+)$/);
+  if (!m) return null;
+  const left = collapse(m[1] ?? "");
+  const right = collapse(m[2] ?? "");
+  if (!looksLikeTeamName(left) || !looksLikeTeamName(right)) return null;
+  if (left.toLowerCase() === right.toLowerCase()) return null;
+  return [left, right];
+}
+
 /** Cartão jornada: Casa / Fora / 2 - 1 / data / estádio — ou Casa / 2 - 1 / Fora (Benfica). */
 function parseMultilineScoreCard(lines: string[], seen: Set<string>, out: ParsedMatchEvent[]): void {
   for (let i = 0; i < lines.length; i++) {
@@ -144,8 +156,14 @@ function parseMultilineScoreCard(lines: string[], seen: Set<string>, out: Parsed
       homeTeam = above[above.length - 1]!;
       awayTeam = above[above.length - 2]!;
     } else if (above.length === 1) {
-      homeTeam = above[0]!;
-      awayTeam = findFirstTeamBelow(lines, i + 1, i + 18);
+      const split = splitTeamsAroundDateToken(above[0]!);
+      if (split) {
+        homeTeam = split[0];
+        awayTeam = split[1];
+      } else {
+        homeTeam = above[0]!;
+        awayTeam = findFirstTeamBelow(lines, i + 1, i + 18);
+      }
     } else {
       for (let j = i - 1; j >= 0 && j >= i - 10; j--) {
         const L = lines[j] ?? "";

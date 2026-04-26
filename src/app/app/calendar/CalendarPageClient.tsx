@@ -147,7 +147,7 @@ export function CalendarPageClient() {
       const events = parseMatchEventsFromOcrText(trimmed);
       if (!events.length) {
         setOcrError(
-          "Não encontrei jogos no texto. Usa linhas como: Equipa A 2-1 Equipa B (ou 2:1). Confirma que os nomes estão próximos dos golos."
+          "Não encontrei jogos no texto. Usa linhas como: Equipa A 2-1 Equipa B. Se aparecer hora (ex.: 20:30), o jogo é ignorado."
         );
         setOcrBusy(false);
         return;
