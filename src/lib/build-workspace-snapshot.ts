@@ -2,6 +2,7 @@ import type { WorkspaceSnapshotV1 } from "@/lib/workspace-snapshot";
 import type {
   CoachProfileState,
   Conversation,
+  LeagueSetup,
   LeagueImportedMatch,
   LeagueTableRow,
   MatchFixture,
@@ -34,6 +35,7 @@ export function buildWorkspaceSnapshotV1(params: {
   leagueCompetitionName: string | null;
   leagueTableLastFetched: string | null;
   leagueTableFetchError: string | null;
+  leagueSetup: LeagueSetup | null;
   coachProfile: CoachProfileState;
   savedTactics: Tactic[];
   tacticMatches: TacticMatch[];
@@ -59,6 +61,7 @@ export function buildWorkspaceSnapshotV1(params: {
       competitionName: params.leagueCompetitionName,
       lastFetched: params.leagueTableLastFetched,
       lastError: params.leagueTableFetchError,
+      setup: params.leagueSetup,
     },
     coachProfile: params.coachProfile,
     tactics: params.savedTactics,

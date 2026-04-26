@@ -1,6 +1,7 @@
 import type {
   CoachProfileState,
   Conversation,
+  LeagueSetup,
   LeagueImportedMatch,
   LeagueTableRow,
   MatchFixture,
@@ -31,6 +32,7 @@ export type LeaguePersistSnapshot = {
   competitionName: string | null;
   lastFetched: string | null;
   lastError: string | null;
+  setup?: LeagueSetup | null;
 };
 
 /** Payload guardado na BD e enviado pela API (versão explícita para migrações futuras). */
@@ -82,6 +84,7 @@ export function emptyWorkspaceSnapshot(): WorkspaceSnapshotV1 {
       competitionName: null,
       lastFetched: null,
       lastError: null,
+      setup: null,
     },
     coachProfile: { name: "", club: "", role: "Head Coach", email: "" },
     tactics: [],
@@ -172,6 +175,7 @@ export function collectWorkspaceFromLocalStorage(userId: string): WorkspaceSnaps
       competitionName: league.competitionName ?? null,
       lastFetched: league.lastFetched ?? null,
       lastError: league.lastError ?? null,
+      setup: (league.setup as LeagueSetup | null | undefined) ?? null,
     },
     coachProfile: {
       name: "",
@@ -239,6 +243,12 @@ export function parseWorkspacePayload(raw: unknown): WorkspaceSnapshotV1 | null 
       competitionName: typeof L.competitionName === "string" ? L.competitionName : L.competitionName === null ? null : e.league.competitionName,
       lastFetched: typeof L.lastFetched === "string" ? L.lastFetched : L.lastFetched === null ? null : e.league.lastFetched,
       lastError: typeof L.lastError === "string" ? L.lastError : L.lastError === null ? null : e.league.lastError,
+      setup:
+        L.setup && typeof L.setup === "object"
+          ? (L.setup as LeagueSetup)
+          : L.setup === null
+            ? null
+            : e.league.setup,
     },
     coachProfile:
       o.coachProfile && typeof o.coachProfile === "object"

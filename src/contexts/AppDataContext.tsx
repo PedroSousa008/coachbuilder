@@ -16,7 +16,9 @@ import type {
   ChatAttachment,
   CoachProfileState,
   Conversation,
+  LeagueSetup,
   LeagueImportedMatch,
+  ParsedMatchEvent,
   LeagueTableRow,
   MatchFixture,
   Message,
@@ -35,6 +37,7 @@ import type {
   TeamSingleRoleId,
   TeamCallupState,
   TrainingSession,
+  StandingsTeamRow,
 } from "@/types";
 import { tallyForTactic } from "@/lib/tactics-match-stats";
 import { mockCoach } from "@/data/mock";
@@ -73,6 +76,13 @@ import {
   isTrainingAgeGroupId,
   normalizeTrainingExerciseAgeMap,
 } from "@/lib/training-age-groups";
+import {
+  applyMatchEventsToStandings,
+  createEmptyLeagueSetup,
+  normalizeStandingsRow,
+  sortStandingsRows,
+  toLeagueTableRows,
+} from "@/lib/league-standings";
 
 function normalizeCoachProfileState(profile: CoachProfileState): CoachProfileState {
   const normalized = withNormalizedHonorCategories(withNormalizedCareerSeasonsInProfile(profile));
@@ -192,6 +202,7 @@ type LeaguePersist = {
   competitionName: string | null;
   lastFetched: string | null;
   lastError: string | null;
+  setup?: LeagueSetup | null;
 };
 
 type AppDataContextValue = {
@@ -259,6 +270,16 @@ type AppDataContextValue = {
   leagueTableLastFetched: string | null;
   leagueTableFetchError: string | null;
   refreshLeagueTable: (opts?: { html?: string }) => Promise<void>;
+  leagueSetup: LeagueSetup | null;
+  initializeLeagueSetup: (teamCount: number, phaseCount: number) => void;
+  setActiveLeaguePhase: (phaseId: string) => void;
+  updateLeagueTeamName: (teamId: string, name: string, phaseId?: string) => void;
+  updateLeagueTeamStats: (
+    teamId: string,
+    patch: Partial<Omit<StandingsTeamRow, "teamId" | "team">>,
+    phaseId?: string
+  ) => void;
+  applyLeagueMatchEvents: (events: ParsedMatchEvent[], phaseId?: string) => void;
 
   coachProfile: CoachProfileState;
   setCoachProfile: (patch: Partial<CoachProfileState>) => void;
@@ -358,6 +379,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [leagueCompetitionName, setLeagueCompetitionName] = useState<string | null>(null);
   const [leagueTableLastFetched, setLeagueTableLastFetched] = useState<string | null>(null);
   const [leagueTableFetchError, setLeagueTableFetchError] = useState<string | null>(null);
+  const [leagueSetup, setLeagueSetup] = useState<LeagueSetup | null>(null);
   /** After FPF returns HTTP 403 to our server, avoid repeating doomed fetches on a timer until the URL changes or HTML is pasted. */
   const fpfSkipServerFetchRef = useRef(false);
   const fpfSkipServerFetchUrlRef = useRef<string>("");
@@ -412,6 +434,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       setLeagueCompetitionName(null);
       setLeagueTableLastFetched(null);
       setLeagueTableFetchError(null);
+      setLeagueSetup(null);
       fpfSkipServerFetchRef.current = false;
       fpfSkipServerFetchUrlRef.current = "";
       setCoachProfileState(normalizeCoachProfileState(defaultCoachProfile()));
@@ -462,6 +485,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setLeagueCompetitionName(league.competitionName ?? null);
     setLeagueTableLastFetched(league.lastFetched ?? null);
     setLeagueTableFetchError(league.lastError ?? null);
+    setLeagueSetup((league.setup as LeagueSetup | null | undefined) ?? null);
     setSavedTactics(loadJSON<Tactic[]>(ks.tactics, []));
     setTacticMatches(loadJSON<TacticMatch[]>(ks.tacticMatches, []));
     setTacticPlayerNotesState(loadJSON<Record<string, TacticPlayerAnalysisNote>>(ks.tacticPlayerNotes, {}));
@@ -509,6 +533,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           setLeagueCompetitionName(s.league.competitionName ?? null);
           setLeagueTableLastFetched(s.league.lastFetched ?? null);
           setLeagueTableFetchError(s.league.lastError ?? null);
+          setLeagueSetup((s.league.setup as LeagueSetup | null | undefined) ?? null);
           setSavedTactics(s.tactics);
           setTacticMatches(s.tacticMatches);
           setTacticPlayerNotesState(s.tacticPlayerNotes);
@@ -565,6 +590,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       leagueCompetitionName,
       leagueTableLastFetched,
       leagueTableFetchError,
+      leagueSetup,
       coachProfile,
       savedTactics,
       tacticMatches,
@@ -600,6 +626,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     leagueCompetitionName,
     leagueTableLastFetched,
     leagueTableFetchError,
+    leagueSetup,
     coachProfile,
     savedTactics,
     tacticMatches,
@@ -663,6 +690,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       competitionName: leagueCompetitionName,
       lastFetched: leagueTableLastFetched,
       lastError: leagueTableFetchError,
+      setup: leagueSetup,
     } satisfies LeaguePersist);
   }, [
     hydrated,
@@ -673,6 +701,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     leagueCompetitionName,
     leagueTableLastFetched,
     leagueTableFetchError,
+    leagueSetup,
   ]);
 
   useEffect(() => {
@@ -1521,6 +1550,97 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setLeagueTableUrlState(url);
   }, []);
 
+  const initializeLeagueSetup = useCallback((teamCount: number, phaseCount: number) => {
+    const setup = createEmptyLeagueSetup(teamCount, phaseCount);
+    setLeagueSetup(setup);
+    const active = setup.phases.find((p) => p.id === setup.activePhaseId) ?? setup.phases[0];
+    if (active) {
+      setLeagueTableRows(toLeagueTableRows(active.standings.rows));
+      setLeagueCompetitionName(active.name);
+      setLeagueTableLastFetched(new Date().toISOString());
+      setLeagueTableFetchError(null);
+    }
+  }, []);
+
+  const setActiveLeaguePhase = useCallback((phaseId: string) => {
+    setLeagueSetup((prev) => {
+      if (!prev) return prev;
+      const phase = prev.phases.find((p) => p.id === phaseId);
+      if (!phase) return prev;
+      setLeagueTableRows(toLeagueTableRows(phase.standings.rows));
+      setLeagueCompetitionName(phase.name);
+      return { ...prev, activePhaseId: phaseId };
+    });
+  }, []);
+
+  const updateLeagueTeamName = useCallback((teamId: string, name: string, phaseId?: string) => {
+    setLeagueSetup((prev) => {
+      if (!prev) return prev;
+      const targetPhaseId = phaseId ?? prev.activePhaseId;
+      const phases = prev.phases.map((phase) => {
+        if (phase.id !== targetPhaseId) return phase;
+        const rows = phase.standings.rows.map((row) => (row.teamId === teamId ? { ...row, team: name.trim() } : row));
+        const sorted = sortStandingsRows(rows);
+        const updated = { ...phase, standings: { ...phase.standings, rows: sorted, updatedAt: new Date().toISOString() } };
+        if (updated.id === prev.activePhaseId) setLeagueTableRows(toLeagueTableRows(updated.standings.rows));
+        return updated;
+      });
+      return { ...prev, phases };
+    });
+  }, []);
+
+  const updateLeagueTeamStats = useCallback(
+    (teamId: string, patch: Partial<Omit<StandingsTeamRow, "teamId" | "team">>, phaseId?: string) => {
+      setLeagueSetup((prev) => {
+        if (!prev) return prev;
+        const targetPhaseId = phaseId ?? prev.activePhaseId;
+        const phases = prev.phases.map((phase) => {
+          if (phase.id !== targetPhaseId) return phase;
+          const rows = phase.standings.rows.map((row) =>
+            row.teamId === teamId
+              ? normalizeStandingsRow({
+                  ...row,
+                  played: patch.played ?? row.played,
+                  won: patch.won ?? row.won,
+                  drawn: patch.drawn ?? row.drawn,
+                  lost: patch.lost ?? row.lost,
+                  goalsFor: patch.goalsFor ?? row.goalsFor,
+                  goalsAgainst: patch.goalsAgainst ?? row.goalsAgainst,
+                  points: row.points,
+                })
+              : row
+          );
+          const sorted = sortStandingsRows(rows);
+          const updated = { ...phase, standings: { ...phase.standings, rows: sorted, updatedAt: new Date().toISOString() } };
+          if (updated.id === prev.activePhaseId) setLeagueTableRows(toLeagueTableRows(updated.standings.rows));
+          return updated;
+        });
+        return { ...prev, phases };
+      });
+    },
+    []
+  );
+
+  const applyLeagueMatchEvents = useCallback((events: ParsedMatchEvent[], phaseId?: string) => {
+    if (!events.length) return;
+    setLeagueSetup((prev) => {
+      if (!prev) return prev;
+      const targetPhaseId = phaseId ?? prev.activePhaseId;
+      const phases = prev.phases.map((phase) => {
+        if (phase.id !== targetPhaseId) return phase;
+        const rows = applyMatchEventsToStandings(phase.standings.rows, events);
+        const updated = { ...phase, standings: { ...phase.standings, rows, updatedAt: new Date().toISOString() } };
+        if (updated.id === prev.activePhaseId) {
+          setLeagueTableRows(toLeagueTableRows(rows));
+          setLeagueTableLastFetched(new Date().toISOString());
+          setLeagueTableFetchError(null);
+        }
+        return updated;
+      });
+      return { ...prev, phases };
+    });
+  }, []);
+
   const setCoachProfile = useCallback((patch: Partial<CoachProfileState>) => {
     setCoachProfileState((prev) => normalizeCoachProfileState({ ...prev, ...patch }));
   }, []);
@@ -1653,6 +1773,12 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       leagueTableLastFetched,
       leagueTableFetchError,
       refreshLeagueTable,
+      leagueSetup,
+      initializeLeagueSetup,
+      setActiveLeaguePhase,
+      updateLeagueTeamName,
+      updateLeagueTeamStats,
+      applyLeagueMatchEvents,
       coachProfile,
       setCoachProfile,
       savedTactics,
@@ -1717,6 +1843,12 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       leagueTableLastFetched,
       leagueTableFetchError,
       refreshLeagueTable,
+      leagueSetup,
+      initializeLeagueSetup,
+      setActiveLeaguePhase,
+      updateLeagueTeamName,
+      updateLeagueTeamStats,
+      applyLeagueMatchEvents,
       coachProfile,
       setCoachProfile,
       savedTactics,

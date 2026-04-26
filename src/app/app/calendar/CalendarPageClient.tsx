@@ -15,6 +15,8 @@ import { cn } from "@/lib/utils";
 import { inferCompetitionKind, type CompetitionKind } from "@/lib/competition-kind";
 import { useScheduleNow } from "@/hooks/useScheduleNow";
 import { isImportedMatchUpcoming, isKickoffInFuture } from "@/lib/lisbon-date";
+import { buildMonthGrid, isSameLocalDay } from "@/lib/coaching-professionals-calendar";
+import type { ParsedMatchEvent } from "@/types";
 
 function formatKickoffShort(iso: string) {
   const d = new Date(iso);
@@ -124,6 +126,12 @@ export function CalendarPageClient() {
     leagueTableLastFetched,
     leagueTableFetchError,
     refreshLeagueTable,
+    leagueSetup,
+    initializeLeagueSetup,
+    setActiveLeaguePhase,
+    updateLeagueTeamName,
+    updateLeagueTeamStats,
+    applyLeagueMatchEvents,
     coachProfile,
     players,
     staff,
@@ -134,6 +142,12 @@ export function CalendarPageClient() {
   const [editing, setEditing] = useState<MatchFixture | null>(null);
   const [urlDraft, setUrlDraft] = useState("");
   const [fpfHtmlDraft, setFpfHtmlDraft] = useState("");
+  const [setupTeamsDraft, setSetupTeamsDraft] = useState("10");
+  const [setupPhasesDraft, setSetupPhasesDraft] = useState("1");
+  const [resultsOcrText, setResultsOcrText] = useState("");
+  const [ocrBusy, setOcrBusy] = useState(false);
+  const [ocrError, setOcrError] = useState<string | null>(null);
+  const [viewMonth, setViewMonth] = useState(() => new Date(nowMs));
   const [refreshing, setRefreshing] = useState(false);
   const [nextSectionOpen, setNextSectionOpen] = useState(true);
   const [previousSectionOpen, setPreviousSectionOpen] = useState(true);
@@ -269,6 +283,10 @@ export function CalendarPageClient() {
   }, [leagueMatches, fixtures, club, teamLabel, candidates, pageScheduleKind, nowMs]);
 
   const showFullStats = leagueTableRows.some((r) => r.played != null);
+  const monthCells = useMemo(
+    () => buildMonthGrid(viewMonth.getFullYear(), viewMonth.getMonth()),
+    [viewMonth]
+  );
 
   const birthdayRows = useMemo(() => {
     const now = new Date(nowMs);
@@ -327,6 +345,37 @@ export function CalendarPageClient() {
       await refreshLeagueTable({ html: fpfHtmlDraft });
     } finally {
       setRefreshing(false);
+    }
+  };
+
+  const handleCreateLeagueSetup = () => {
+    const teams = Number(setupTeamsDraft);
+    const phases = Number(setupPhasesDraft);
+    initializeLeagueSetup(teams, phases);
+  };
+
+  const handleProcessResultsText = async () => {
+    const text = resultsOcrText.trim();
+    if (!text) return;
+    setOcrBusy(true);
+    setOcrError(null);
+    try {
+      const res = await fetch("/api/league-results-image", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ocrText: text }),
+      });
+      const data = (await res.json()) as { ok?: boolean; error?: string; events?: ParsedMatchEvent[] };
+      if (!data.ok || !Array.isArray(data.events)) {
+        setOcrError(data.error ?? "Could not parse image results.");
+        return;
+      }
+      applyLeagueMatchEvents(data.events);
+      setResultsOcrText("");
+    } catch {
+      setOcrError("Could not process results image.");
+    } finally {
+      setOcrBusy(false);
     }
   };
 
@@ -410,7 +459,7 @@ export function CalendarPageClient() {
               setFixtureModalOpen(true);
             }}
           >
-            Add fixture
+            Adicionar Jogo
           </Button>
         </CardHeader>
         <CardContent className="space-y-10">
@@ -650,6 +699,242 @@ export function CalendarPageClient() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
+          {!leagueSetup && (
+            <div className="rounded-xl border border-surface-border bg-surface-raised/40 p-4">
+              <p className="text-sm font-semibold text-white">Setup inicial da liga</p>
+              <p className="mt-1 text-xs text-zinc-500">
+                Define equipas e fases para criar automaticamente a tabela editável.
+              </p>
+              <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                <div>
+                  <label className="text-xs font-medium text-zinc-500" htmlFor="setup-team-count">
+                    Nº equipas
+                  </label>
+                  <Input
+                    id="setup-team-count"
+                    type="number"
+                    min={2}
+                    max={64}
+                    value={setupTeamsDraft}
+                    onChange={(e) => setSetupTeamsDraft(e.target.value)}
+                    className="mt-1.5"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-zinc-500" htmlFor="setup-phase-count">
+                    Nº fases
+                  </label>
+                  <Input
+                    id="setup-phase-count"
+                    type="number"
+                    min={1}
+                    max={3}
+                    value={setupPhasesDraft}
+                    onChange={(e) => setSetupPhasesDraft(e.target.value)}
+                    className="mt-1.5"
+                  />
+                </div>
+                <div className="flex items-end">
+                  <Button type="button" onClick={handleCreateLeagueSetup} className="w-full">
+                    Criar tabela
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {leagueSetup && (
+            <div className="space-y-4 rounded-xl border border-surface-border bg-surface-raised/30 p-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="text-sm font-semibold text-white">Fase ativa</p>
+                {leagueSetup.phases.map((phase) => (
+                  <Button
+                    key={phase.id}
+                    type="button"
+                    size="sm"
+                    variant={leagueSetup.activePhaseId === phase.id ? "default" : "secondary"}
+                    onClick={() => setActiveLeaguePhase(phase.id)}
+                  >
+                    {phase.name}
+                  </Button>
+                ))}
+              </div>
+              <div className="overflow-x-auto rounded-xl border border-surface-border">
+                <table className="w-full min-w-[760px] text-left text-sm">
+                  <thead>
+                    <tr className="border-b border-surface-border bg-zinc-900/50 text-xs uppercase tracking-wider text-zinc-500">
+                      <th className="px-2 py-2.5 font-medium">POS</th>
+                      <th className="px-2 py-2.5 font-medium">Nome</th>
+                      <th className="px-2 py-2.5 font-medium text-center">JGS</th>
+                      <th className="px-2 py-2.5 font-medium text-center">V</th>
+                      <th className="px-2 py-2.5 font-medium text-center">E</th>
+                      <th className="px-2 py-2.5 font-medium text-center">D</th>
+                      <th className="px-2 py-2.5 font-medium text-center">GM</th>
+                      <th className="px-2 py-2.5 font-medium text-center">GS</th>
+                      <th className="px-2 py-2.5 font-medium text-right">PTS</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {leagueSetup.phases
+                      .find((p) => p.id === leagueSetup.activePhaseId)
+                      ?.standings.rows.map((row, idx) => (
+                        <tr key={row.teamId} className="border-b border-surface-border/60 last:border-0">
+                          <td className="px-2 py-2 text-zinc-300">{idx + 1}</td>
+                          <td className="px-2 py-2">
+                            <Input
+                              value={row.team}
+                              onChange={(e) => updateLeagueTeamName(row.teamId, e.target.value)}
+                              placeholder="Nome da equipa"
+                              className="h-9"
+                            />
+                          </td>
+                          <td className="px-2 py-2 text-center">
+                            <Input
+                              type="number"
+                              min={0}
+                              value={row.played}
+                              onChange={(e) =>
+                                updateLeagueTeamStats(row.teamId, { played: Number(e.target.value || 0) })
+                              }
+                              className="h-9 text-center"
+                            />
+                          </td>
+                          <td className="px-2 py-2 text-center">
+                            <Input
+                              type="number"
+                              min={0}
+                              value={row.won}
+                              onChange={(e) => updateLeagueTeamStats(row.teamId, { won: Number(e.target.value || 0) })}
+                              className="h-9 text-center"
+                            />
+                          </td>
+                          <td className="px-2 py-2 text-center">
+                            <Input
+                              type="number"
+                              min={0}
+                              value={row.drawn}
+                              onChange={(e) =>
+                                updateLeagueTeamStats(row.teamId, { drawn: Number(e.target.value || 0) })
+                              }
+                              className="h-9 text-center"
+                            />
+                          </td>
+                          <td className="px-2 py-2 text-center">
+                            <Input
+                              type="number"
+                              min={0}
+                              value={row.lost}
+                              onChange={(e) => updateLeagueTeamStats(row.teamId, { lost: Number(e.target.value || 0) })}
+                              className="h-9 text-center"
+                            />
+                          </td>
+                          <td className="px-2 py-2 text-center">
+                            <Input
+                              type="number"
+                              min={0}
+                              value={row.goalsFor}
+                              onChange={(e) =>
+                                updateLeagueTeamStats(row.teamId, { goalsFor: Number(e.target.value || 0) })
+                              }
+                              className="h-9 text-center"
+                            />
+                          </td>
+                          <td className="px-2 py-2 text-center">
+                            <Input
+                              type="number"
+                              min={0}
+                              value={row.goalsAgainst}
+                              onChange={(e) =>
+                                updateLeagueTeamStats(row.teamId, { goalsAgainst: Number(e.target.value || 0) })
+                              }
+                              className="h-9 text-center"
+                            />
+                          </td>
+                          <td className="px-2 py-2 text-right font-semibold text-white">{row.points}</td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          <div className="rounded-xl border border-surface-border bg-surface-raised/30 p-4">
+            <p className="text-sm font-semibold text-white">Resultados por print (upload/câmara)</p>
+            <p className="mt-1 text-xs text-zinc-500">
+              Carrega uma imagem ou usa câmara. Nesta versão, cola o texto OCR dos resultados para aplicar atualização
+              automática da tabela.
+            </p>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <Input type="file" accept="image/*" />
+              <Input type="file" accept="image/*" capture="environment" />
+            </div>
+            <textarea
+              value={resultsOcrText}
+              onChange={(e) => setResultsOcrText(e.target.value)}
+              placeholder="Ex.: Equipa A 2-1 Equipa B"
+              rows={4}
+              className="mt-3 min-h-[96px] w-full resize-y rounded-xl border border-surface-border bg-surface-raised/90 px-4 py-3 text-sm text-zinc-100 placeholder:text-zinc-500 focus:border-accent/50 focus:outline-none focus:ring-2 focus:ring-accent/20"
+            />
+            <div className="mt-2 flex items-center justify-between gap-2">
+              {ocrError ? <p className="text-xs text-amber-300">{ocrError}</p> : <span />}
+              <Button type="button" onClick={handleProcessResultsText} disabled={ocrBusy || !resultsOcrText.trim()}>
+                {ocrBusy ? "A processar..." : "Aplicar resultados"}
+              </Button>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-surface-border bg-surface-raised/30 p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <p className="text-sm font-semibold text-white">Calendário mensal</p>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setViewMonth((d) => new Date(d.getFullYear(), d.getMonth() - 1, 1))}
+                >
+                  Mês anterior
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setViewMonth((d) => new Date(d.getFullYear(), d.getMonth() + 1, 1))}
+                >
+                  Próximo mês
+                </Button>
+              </div>
+            </div>
+            <p className="mb-3 text-xs text-zinc-500">
+              {viewMonth.toLocaleString("pt-PT", { month: "long", year: "numeric" })}
+            </p>
+            <div className="grid grid-cols-7 gap-2 text-xs">
+              {["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"].map((d) => (
+                <p key={d} className="px-2 py-1 text-zinc-500">
+                  {d}
+                </p>
+              ))}
+              {monthCells.map((day, idx) => {
+                if (!day) return <div key={`empty-${idx}`} className="h-20 rounded-lg border border-transparent" />;
+                const items = nextGameRows.filter((row) => {
+                  const k = row.kind === "manual" ? row.fixture.kickoff : row.match.kickoff;
+                  return isSameLocalDay(new Date(k), day);
+                });
+                return (
+                  <div key={day.toISOString()} className="h-20 rounded-lg border border-surface-border p-2">
+                    <p className="text-[11px] text-zinc-400">{day.getDate()}</p>
+                    {items.slice(0, 2).map((row, i) => (
+                      <p key={`${day.toISOString()}-${i}`} className="truncate text-[11px] text-zinc-200">
+                        {row.kind === "manual" ? `vs ${row.fixture.opponent}` : `${row.match.homeTeam} x ${row.match.awayTeam}`}
+                      </p>
+                    ))}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
             <div className="min-w-0 flex-1">
               <label className="text-xs font-medium text-zinc-500" htmlFor="league-url">

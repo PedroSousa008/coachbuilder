@@ -499,6 +499,48 @@ export interface LeagueTableRow {
   cells?: string[];
 }
 
+export interface StandingsTeamRow {
+  teamId: string;
+  team: string;
+  played: number;
+  won: number;
+  drawn: number;
+  lost: number;
+  goalsFor: number;
+  goalsAgainst: number;
+  points: number;
+}
+
+export interface StandingsTable {
+  phaseId: string;
+  updatedAt: string;
+  rows: StandingsTeamRow[];
+}
+
+export interface LeaguePhase {
+  id: string;
+  name: string;
+  teamIds: string[];
+  standings: StandingsTable;
+}
+
+export interface LeagueSetup {
+  configured: boolean;
+  teamCount: number;
+  phaseCount: number;
+  activePhaseId: string;
+  phases: LeaguePhase[];
+}
+
+export interface ParsedMatchEvent {
+  homeTeam: string;
+  awayTeam: string;
+  homeGoals: number;
+  awayGoals: number;
+  playedAt?: string;
+  source?: "image" | "manual" | "import";
+}
+
 /** Imported from federation pages (e.g. FPF resultados) — past and future fixtures. */
 export interface LeagueImportedMatch {
   id: string;
