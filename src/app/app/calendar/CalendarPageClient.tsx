@@ -13,6 +13,7 @@ import { buildMonthGrid, isSameLocalDay } from "@/lib/coaching-professionals-cal
 import { cn } from "@/lib/utils";
 import { parseMatchEventsFromOcrText } from "@/lib/league-results-ocr-parse";
 import type { SketchCalendarEventCategory } from "@/types";
+import { teamNamesLikelyMatch } from "@/lib/league-team-name-match";
 
 const cellInputClass =
   "h-8 min-w-0 px-1.5 py-0 text-xs tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none";
@@ -140,6 +141,19 @@ export function CalendarPageClient() {
     }
     return map;
   }, [allCalendarEntries]);
+
+  const monthTopics = useMemo(() => {
+    const y = viewMonth.getFullYear();
+    const m = viewMonth.getMonth();
+    const out: Array<{ date: string; label: string; kind: "fixture" | "birthday" | "sketch_event" | "note" }> = [];
+    for (const [date, list] of entriesByDay.entries()) {
+      const d = new Date(`${date}T00:00:00`);
+      if (Number.isNaN(d.getTime())) continue;
+      if (d.getFullYear() !== y || d.getMonth() !== m) continue;
+      for (const item of list) out.push({ date, ...item });
+    }
+    return out.sort((a, b) => a.date.localeCompare(b.date) || a.label.localeCompare(b.label));
+  }, [entriesByDay, viewMonth]);
 
   const handleCreateLeagueSetup = () => {
     const teams = Number(setupTeamsDraft);
@@ -270,6 +284,161 @@ export function CalendarPageClient() {
 
       <Card>
         <CardHeader>
+          <CardTitle>Calendário mensal</CardTitle>
+          <CardDescription>
+            Eventos automáticos e manuais: jogos, aniversários recorrentes, notas e itens da Sketch Area.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="mb-3 flex items-center justify-between">
+            <p className="text-sm font-semibold text-white">Calendário mensal</p>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => {
+                  setEditing(null);
+                  setFixtureModalOpen(true);
+                }}
+              >
+                Adicionar Jogo
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                onClick={() => {
+                  setNewEventDate(dayIsoLocal(selectedDay ?? new Date(nowMs)));
+                  setEventModalOpen(true);
+                }}
+              >
+                Novo Evento
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => setViewMonth((d) => new Date(d.getFullYear(), d.getMonth() - 1, 1))}
+              >
+                Mês anterior
+              </Button>
+              <Button type="button" variant="secondary" size="sm" onClick={() => setViewMonth(new Date(nowMs))}>
+                Hoje
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => setViewMonth((d) => new Date(d.getFullYear(), d.getMonth() + 1, 1))}
+              >
+                Próximo mês
+              </Button>
+            </div>
+          </div>
+          <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-surface-border/70 bg-zinc-900/35 p-2">
+            <span className="text-xs text-zinc-400">Imprimir</span>
+            <Input type="month" value={printFromMonth} onChange={(e) => setPrintFromMonth(e.target.value)} className="h-9 max-w-[170px]" />
+            <span className="text-xs text-zinc-500">até</span>
+            <Input type="month" value={printToMonth} onChange={(e) => setPrintToMonth(e.target.value)} className="h-9 max-w-[170px]" />
+            <Button type="button" size="sm" variant="secondary" onClick={() => window.print()}>
+              Imprimir
+            </Button>
+          </div>
+          <p className="mb-3 text-xs text-zinc-500">
+            {viewMonth.toLocaleString("pt-PT", { month: "long", year: "numeric" })}
+          </p>
+          <div className="grid grid-cols-7 gap-1.5 text-[10px] sm:gap-2 sm:text-xs">
+            {["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"].map((d) => (
+              <p key={d} className="px-1 py-1 text-zinc-500 sm:px-2">
+                {d}
+              </p>
+            ))}
+            {monthCells.map((day, idx) => {
+              if (!day) return <div key={`empty-${idx}`} className="h-20 rounded-lg border border-transparent" />;
+              const iso = dayIsoLocal(day);
+              const items = entriesByDay.get(iso) ?? [];
+              const isToday = isSameLocalDay(day, today);
+              const isSelected = selectedDay ? isSameLocalDay(day, selectedDay) : false;
+              return (
+                <button
+                  type="button"
+                  key={day.toISOString()}
+                  onClick={() => setSelectedDay(day)}
+                  className={cn(
+                    "h-20 rounded-lg border p-1.5 text-left sm:p-2",
+                    isToday
+                      ? "border-accent/80 bg-accent/15 ring-2 ring-accent/60 ring-offset-2 ring-offset-zinc-950"
+                      : "border-surface-border",
+                    isSelected && "border-emerald-400/80 ring-2 ring-emerald-400/50 ring-offset-2 ring-offset-zinc-950"
+                  )}
+                >
+                  <p
+                    className={cn(
+                      "text-[10px] font-medium tabular-nums sm:text-[11px]",
+                      isToday ? "text-accent" : "text-zinc-400"
+                    )}
+                  >
+                    {day.getDate()}
+                    {isToday ? <span className="ml-1 text-[9px] font-normal text-accent/90">· hoje</span> : null}
+                  </p>
+                  {items.slice(0, 2).map((it, i) => (
+                    <p
+                      key={`${day.toISOString()}-${i}`}
+                      className={cn(
+                        "truncate text-[10px] sm:text-[11px]",
+                        it.kind === "birthday" && "text-emerald-200",
+                        it.kind === "fixture" && "text-zinc-200",
+                        it.kind === "sketch_event" && "text-sky-200",
+                        it.kind === "note" && "text-amber-200"
+                      )}
+                    >
+                      {it.label}
+                    </p>
+                  ))}
+                </button>
+              );
+            })}
+          </div>
+          <div className="rounded-xl border border-surface-border bg-zinc-900/35 p-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+              Tópicos do mês
+            </p>
+            {monthTopics.length === 0 ? (
+              <p className="mt-2 text-xs text-zinc-500">Sem tópicos neste mês.</p>
+            ) : (
+              <ul className="mt-2 space-y-1.5">
+                {monthTopics.map((t, idx) => (
+                  <li key={`${t.date}-${t.label}-${idx}`} className="text-xs text-zinc-200">
+                    <span className="mr-2 text-zinc-500">{new Date(`${t.date}T00:00:00`).getDate()}</span>
+                    {t.label}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+          {selectedDay && (
+            <div className="rounded-xl border border-surface-border bg-zinc-900/40 p-3">
+              <p className="text-sm font-semibold text-white">
+                Detalhe do dia {selectedDay.toLocaleDateString("pt-PT")}
+              </p>
+              {selectedDayEntries.length === 0 ? (
+                <p className="mt-2 text-xs text-zinc-500">Sem eventos para este dia.</p>
+              ) : (
+                <ul className="mt-2 space-y-1.5">
+                  {selectedDayEntries.map((e, idx) => (
+                    <li key={`${e.label}-${idx}`} className="text-xs text-zinc-200">
+                      {e.label}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Table2 className="h-5 w-5 text-accent" strokeWidth={1.75} />
             League table
@@ -395,7 +564,15 @@ export function CalendarPageClient() {
                     {leagueSetup.phases
                       .find((p) => p.id === leagueSetup.activePhaseId)
                       ?.standings.rows.map((row, idx) => (
-                        <tr key={row.teamId} className="border-b border-surface-border/60 last:border-0">
+                        <tr
+                          key={row.teamId}
+                          className={cn(
+                            "border-b border-surface-border/60 last:border-0",
+                            coachProfile.club.trim() &&
+                              teamNamesLikelyMatch(coachProfile.club, row.team, 0.6) &&
+                              "bg-accent/10"
+                          )}
+                        >
                           <td className="px-0.5 py-1.5 text-center text-zinc-400 tabular-nums sm:px-1">{idx + 1}</td>
                           <td className="min-w-0 px-1 py-1.5">
                             <Input
@@ -623,7 +800,14 @@ export function CalendarPageClient() {
                   </thead>
                   <tbody>
                     {(leagueSetup?.phases.find((p) => p.id === leagueSetup.activePhaseId)?.standings.rows ?? []).map((row, idx) => (
-                      <tr key={`print-row-${row.teamId}`}>
+                      <tr
+                        key={`print-row-${row.teamId}`}
+                        className={cn(
+                          coachProfile.club.trim() && teamNamesLikelyMatch(coachProfile.club, row.team, 0.6)
+                            ? "bg-emerald-100/60"
+                            : ""
+                        )}
+                      >
                         <td className="border border-black/30 px-2 py-1.5">{idx + 1}</td>
                         <td className="border border-black/30 px-2 py-1.5">{row.team || "—"}</td>
                         <td className="border border-black/30 px-2 py-1.5 text-center">{row.played}</td>
@@ -645,6 +829,11 @@ export function CalendarPageClient() {
             <section className="break-before-page">
               {printableMonths.map((m, monthIdx) => {
                 const cells = buildMonthGrid(m.getFullYear(), m.getMonth());
+                const monthKey = `${m.getFullYear()}-${String(m.getMonth() + 1).padStart(2, "0")}`;
+                const monthItems = Array.from(entriesByDay.entries())
+                  .filter(([k]) => k.startsWith(monthKey))
+                  .flatMap(([date, list]) => list.map((item) => ({ date, ...item })))
+                  .sort((a, b) => a.date.localeCompare(b.date) || a.label.localeCompare(b.label));
                 return (
                   <div key={m.toISOString()} className={cn("mb-8 break-inside-avoid", monthIdx > 0 && "break-before-page")}>
                     <p className="mb-3 text-xl font-semibold text-black">
@@ -672,141 +861,27 @@ export function CalendarPageClient() {
                         );
                       })}
                     </div>
+                    <div className="mt-3 rounded-md border border-black/30 p-2">
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-black/75">Tópicos do mês</p>
+                      {monthItems.length === 0 ? (
+                        <p className="mt-1 text-[9px] text-black/70">Sem tópicos neste mês.</p>
+                      ) : (
+                        <ul className="mt-1 space-y-0.5">
+                          {monthItems.map((it, i) => (
+                            <li key={`${monthKey}-${it.date}-${i}`} className="text-[9px] text-black/85">
+                              {new Date(`${it.date}T00:00:00`).getDate()} · {it.label}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
                   </div>
                 );
               })}
             </section>
           </div>
 
-          <div className="rounded-xl border border-surface-border bg-surface-raised/30 p-4">
-            <div className="mb-3 flex items-center justify-between">
-              <p className="text-sm font-semibold text-white">Calendário mensal</p>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={() => {
-                    setEditing(null);
-                    setFixtureModalOpen(true);
-                  }}
-                >
-                  Adicionar Jogo
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => {
-                    setNewEventDate(dayIsoLocal(selectedDay ?? new Date(nowMs)));
-                    setEventModalOpen(true);
-                  }}
-                >
-                  Novo Evento
-                </Button>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => setViewMonth((d) => new Date(d.getFullYear(), d.getMonth() - 1, 1))}
-                >
-                  Mês anterior
-                </Button>
-                <Button type="button" variant="secondary" size="sm" onClick={() => setViewMonth(new Date(nowMs))}>
-                  Hoje
-                </Button>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => setViewMonth((d) => new Date(d.getFullYear(), d.getMonth() + 1, 1))}
-                >
-                  Próximo mês
-                </Button>
-              </div>
-            </div>
-            <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-surface-border/70 bg-zinc-900/35 p-2">
-              <span className="text-xs text-zinc-400">Imprimir</span>
-              <Input type="month" value={printFromMonth} onChange={(e) => setPrintFromMonth(e.target.value)} className="h-9 max-w-[170px]" />
-              <span className="text-xs text-zinc-500">até</span>
-              <Input type="month" value={printToMonth} onChange={(e) => setPrintToMonth(e.target.value)} className="h-9 max-w-[170px]" />
-              <Button type="button" size="sm" variant="secondary" onClick={() => window.print()}>
-                Imprimir
-              </Button>
-            </div>
-            <p className="mb-3 text-xs text-zinc-500">
-              {viewMonth.toLocaleString("pt-PT", { month: "long", year: "numeric" })}
-            </p>
-            <div className="grid grid-cols-7 gap-1.5 text-[10px] sm:gap-2 sm:text-xs">
-              {["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"].map((d) => (
-                <p key={d} className="px-1 py-1 text-zinc-500 sm:px-2">
-                  {d}
-                </p>
-              ))}
-              {monthCells.map((day, idx) => {
-                if (!day) return <div key={`empty-${idx}`} className="h-20 rounded-lg border border-transparent" />;
-                const iso = dayIsoLocal(day);
-                const items = entriesByDay.get(iso) ?? [];
-                const isToday = isSameLocalDay(day, today);
-                const isSelected = selectedDay ? isSameLocalDay(day, selectedDay) : false;
-                return (
-                  <button
-                    type="button"
-                    key={day.toISOString()}
-                    onClick={() => setSelectedDay(day)}
-                    className={cn(
-                      "h-20 rounded-lg border p-1.5 text-left sm:p-2",
-                      isToday
-                        ? "border-accent/80 bg-accent/15 ring-2 ring-accent/60 ring-offset-2 ring-offset-zinc-950"
-                        : "border-surface-border",
-                      isSelected && "border-emerald-400/80 ring-2 ring-emerald-400/50 ring-offset-2 ring-offset-zinc-950"
-                    )}
-                  >
-                    <p
-                      className={cn(
-                        "text-[10px] font-medium tabular-nums sm:text-[11px]",
-                        isToday ? "text-accent" : "text-zinc-400"
-                      )}
-                    >
-                      {day.getDate()}
-                      {isToday ? <span className="ml-1 text-[9px] font-normal text-accent/90">· hoje</span> : null}
-                    </p>
-                    {items.slice(0, 2).map((it, i) => (
-                      <p
-                        key={`${day.toISOString()}-${i}`}
-                        className={cn(
-                          "truncate text-[10px] sm:text-[11px]",
-                          it.kind === "birthday" && "text-emerald-200",
-                          it.kind === "fixture" && "text-zinc-200",
-                          it.kind === "sketch_event" && "text-sky-200",
-                          it.kind === "note" && "text-amber-200"
-                        )}
-                      >
-                        {it.label}
-                      </p>
-                    ))}
-                  </button>
-                );
-              })}
-            </div>
-            {selectedDay && (
-              <div className="mt-4 rounded-xl border border-surface-border bg-zinc-900/40 p-3">
-                <p className="text-sm font-semibold text-white">
-                  Detalhe do dia {selectedDay.toLocaleDateString("pt-PT")}
-                </p>
-                {selectedDayEntries.length === 0 ? (
-                  <p className="mt-2 text-xs text-zinc-500">Sem eventos para este dia.</p>
-                ) : (
-                  <ul className="mt-2 space-y-1.5">
-                    {selectedDayEntries.map((e, idx) => (
-                      <li key={`${e.label}-${idx}`} className="text-xs text-zinc-200">
-                        {e.label}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            )}
-          </div>
+          
 
           <div className="rounded-xl border border-surface-border bg-surface-raised/30 p-4">
             <p className="text-sm font-semibold text-white">Jogos anteriores (Perfil)</p>
