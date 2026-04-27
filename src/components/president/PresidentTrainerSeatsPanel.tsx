@@ -8,7 +8,14 @@ import { shouldUseCloudClientApis } from "@/lib/cloud-config";
 import { useAuth } from "@/contexts/AuthContext";
 
 type SlotEmpty = { index: number; status: "empty" };
-type SlotActive = { index: number; status: "active"; email: string; name: string; userId: string };
+type SlotActive = {
+  index: number;
+  status: "active";
+  email: string;
+  name: string;
+  userId: string;
+  readonlyLinked?: boolean;
+};
 type SlotRevoked = { index: number; status: "revoked"; email: string; name: string; userId: string };
 type Slot = SlotEmpty | SlotActive | SlotRevoked;
 
@@ -209,13 +216,17 @@ export function PresidentTrainerSeatsPanel({ onActiveSeatCount, onMaxSeats, onRo
                 const busy = rowBusy[idx];
                 const isEmpty = slot.status === "empty";
                 const isActive = slot.status === "active";
+                const isReadonlyLinked = isActive ? Boolean((slot as SlotActive).readonlyLinked) : false;
                 return (
                   <tr key={idx} className="border-b border-surface-border/80 last:border-0">
                     <td className="px-3 py-3 text-zinc-300">#{idx + 1}</td>
                     <td className="px-3 py-3 text-zinc-400">
                       {isEmpty ? "Livre" : isActive ? "Activo" : "Revogado"}
                       {!isEmpty ? (
-                        <div className="mt-0.5 text-xs text-zinc-500">{(slot as SlotActive | SlotRevoked).email}</div>
+                        <div className="mt-0.5 text-xs text-zinc-500">
+                          {(slot as SlotActive | SlotRevoked).email}
+                          {isReadonlyLinked ? " · ligado por email" : ""}
+                        </div>
                       ) : null}
                     </td>
                     <td className="px-3 py-2">
@@ -228,7 +239,7 @@ export function PresidentTrainerSeatsPanel({ onActiveSeatCount, onMaxSeats, onRo
                           onChange={(e) => setRowEmail((p) => ({ ...p, [idx]: e.target.value }))}
                           className="min-w-[180px]"
                         />
-                      ) : isActive ? (
+                      ) : isActive && !isReadonlyLinked ? (
                         <Input
                           type="email"
                           autoComplete="off"
@@ -237,19 +248,25 @@ export function PresidentTrainerSeatsPanel({ onActiveSeatCount, onMaxSeats, onRo
                           onChange={(e) => setRowEmail((p) => ({ ...p, [idx]: e.target.value }))}
                           className="min-w-[180px]"
                         />
+                      ) : isReadonlyLinked ? (
+                        <span className="text-zinc-500">Gerido pelo treinador</span>
                       ) : (
                         <span className="text-zinc-500">—</span>
                       )}
                     </td>
                     <td className="px-3 py-2">
-                      <Input
-                        type="password"
-                        autoComplete="new-password"
-                        placeholder={isEmpty ? "mín. 8 caracteres" : "nova palavra-passe (opcional)"}
-                        value={rowPassword[idx] ?? ""}
-                        onChange={(e) => setRowPassword((p) => ({ ...p, [idx]: e.target.value }))}
-                        className="min-w-[140px]"
-                      />
+                      {isReadonlyLinked ? (
+                        <span className="text-zinc-500">Gerido pelo treinador</span>
+                      ) : (
+                        <Input
+                          type="password"
+                          autoComplete="new-password"
+                          placeholder={isEmpty ? "mín. 8 caracteres" : "nova palavra-passe (opcional)"}
+                          value={rowPassword[idx] ?? ""}
+                          onChange={(e) => setRowPassword((p) => ({ ...p, [idx]: e.target.value }))}
+                          className="min-w-[140px]"
+                        />
+                      )}
                     </td>
                     <td className="px-3 py-2 align-top">
                       <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
@@ -257,7 +274,7 @@ export function PresidentTrainerSeatsPanel({ onActiveSeatCount, onMaxSeats, onRo
                           <Button type="button" size="sm" onClick={() => void saveSeat(idx)} disabled={!!busy}>
                             Guardar
                           </Button>
-                        ) : isActive ? (
+                        ) : isActive && !isReadonlyLinked ? (
                           <>
                             <Button
                               type="button"
@@ -272,6 +289,8 @@ export function PresidentTrainerSeatsPanel({ onActiveSeatCount, onMaxSeats, onRo
                               Revogar lugar
                             </Button>
                           </>
+                        ) : isReadonlyLinked ? (
+                          <span className="text-xs text-zinc-500">Associado automaticamente</span>
                         ) : (
                           <Button type="button" size="sm" variant="secondary" onClick={() => void revokeSeat(idx, "free-revoked")} disabled={!!busy}>
                             Libertar lugar

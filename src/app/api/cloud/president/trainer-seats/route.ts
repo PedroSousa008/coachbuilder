@@ -46,15 +46,31 @@ export async function GET() {
   try {
     const maxSeats = await maxSeatsForPresident(gate.president.id);
     const users = await prisma.user.findMany({
-      where: { clubPresidentUserId: gate.president.id, trainerSeatIndex: { not: null } },
+      where: { clubPresidentUserId: gate.president.id, trainerSeatActive: true },
       select: { id: true, email: true, name: true, trainerSeatIndex: true, trainerSeatActive: true },
+      orderBy: { createdAt: "asc" },
     });
-    const byIndex = new Map(users.map((u) => [u.trainerSeatIndex as number, u]));
+    const indexed = users.filter((u) => u.trainerSeatIndex != null);
+    const linkedNoSeat = users.filter((u) => u.trainerSeatIndex == null);
+    const byIndex = new Map(indexed.map((u) => [u.trainerSeatIndex as number, u]));
     const slots = [];
+    const fallbackQueue = [...linkedNoSeat];
     for (let i = 0; i < maxSeats; i += 1) {
       const u = byIndex.get(i);
       if (!u) {
-        slots.push({ index: i, status: "empty" as const });
+        const linked = fallbackQueue.shift();
+        if (!linked) {
+          slots.push({ index: i, status: "empty" as const });
+        } else {
+          slots.push({
+            index: i,
+            status: "active" as const,
+            email: linked.email,
+            name: linked.name,
+            userId: linked.id,
+            readonlyLinked: true,
+          });
+        }
       } else {
         slots.push({
           index: i,
@@ -62,6 +78,7 @@ export async function GET() {
           email: u.email,
           name: u.name,
           userId: u.id,
+          readonlyLinked: false,
         });
       }
     }
@@ -100,6 +117,16 @@ export async function POST(req: Request) {
     const norm = normalizeEmail(email);
     if (norm === normalizeEmail(gate.president.email)) {
       return NextResponse.json({ ok: false, error: "Não podes usar o teu próprio email de presidente." }, { status: 400 });
+    }
+
+    const activeLinkedCount = await prisma.user.count({
+      where: { clubPresidentUserId: gate.president.id, trainerSeatActive: true },
+    });
+    if (activeLinkedCount >= maxSeats) {
+      return NextResponse.json(
+        { ok: false, error: "Já atingiste o limite de lugares ocupados para o teu plano atual." },
+        { status: 409 }
+      );
     }
 
     const occupant = await prisma.user.findFirst({

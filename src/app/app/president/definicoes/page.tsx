@@ -27,7 +27,7 @@ export default function PresidentDefinicoesPage() {
     setClubNotes(state.settings.clubNotes || "");
   }, [state.settings.clubDisplayName, state.settings.clubNotes, coachProfile.club]);
 
-  const seatsUsed = activeSeatCount + state.coaches.length;
+  const seatsUsed = Math.max(activeSeatCount, roster.linkedCoachAccounts);
 
   const startExtraSeatCheckout = async () => {
     setBuyingSeat(true);
@@ -86,7 +86,7 @@ export default function PresidentDefinicoesPage() {
           <CardContent className="space-y-4 text-sm text-zinc-300">
             <p>
               O teu plano inclui <strong className="text-white">{PRESIDENT_INCLUDED_COACH_SEATS} lugares</strong> de
-              treinador na cloud. Lugares em uso (lugares cloud ocupados + registos manuais na lista local):{" "}
+              treinador na cloud. Lugares em uso (treinadores ligados por email/slot):{" "}
               <strong className="text-white">
                 {seatsUsed}/{maxSeats}
               </strong>
