@@ -811,6 +811,20 @@ export const COACHING_LESSON_DEVELOPMENTS: CoachingLessonDevelopmentDef[] = [
       "coach-development-metrics-individual-development-focus",
     ],
   },
+  {
+    lessonId: "day-037",
+    title: "Robert Lewandowski - Lessons learnt from Coaches - High Performance",
+    skillIds: [
+      "mental-attributes-leadership",
+      "mental-attributes-adaptability",
+      "mental-attributes-responsibility",
+      "communication-leadership-calmness-to-team",
+      "coach-development-metrics-individual-development-focus",
+      "coach-development-metrics-leadership-presence-as-coach",
+      "team-culture-through-staff-positive-environment-creation",
+      "team-culture-through-staff-calmness-under-pressure",
+    ],
+  },
 ];
 
 const LESSON_BY_ID: Map<string, CoachingLessonDevelopmentDef> = new Map(
