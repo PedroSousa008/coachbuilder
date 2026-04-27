@@ -278,6 +278,11 @@ export function TacticsBoard() {
   const quickImportMatches = useMemo(() => {
     const club = coachProfile.club.trim();
     if (!club || pastClubResults.length === 0) return [];
+    const usedMatchKeys = new Set(
+      tacticMatches
+        .filter((m) => m.tacticId === active.id)
+        .map((m) => `${new Date(m.date).toISOString().slice(0, 10)}|${m.opponent.toLowerCase()}|${m.teamGoals}-${m.opponentGoals}`)
+    );
     const rows: Array<{
       id: string;
       label: string;
@@ -288,6 +293,8 @@ export function TacticsBoard() {
     }> = [];
     for (const m of pastClubResults) {
       const p = toPastClubPerspective(m, club);
+      const matchKey = `${new Date(p.dateIso).toISOString().slice(0, 10)}|${p.opponent.toLowerCase()}|${p.teamGoals}-${p.opponentGoals}`;
+      if (usedMatchKeys.has(matchKey)) continue;
       const labelText = `${new Date(p.dateIso).toLocaleDateString("pt-PT")} · ${club} ${p.teamGoals}-${p.opponentGoals} ${p.opponent}`;
       rows.push({
         id: m.id,
@@ -300,7 +307,7 @@ export function TacticsBoard() {
     }
     rows.sort((a, b) => new Date(b.dateIso).getTime() - new Date(a.dateIso).getTime());
     return rows;
-  }, [coachProfile.club, pastClubResults]);
+  }, [coachProfile.club, pastClubResults, tacticMatches, active.id]);
   const insightTacticId = !isDraft ? active.id : null;
   const insightNotesInitial =
     insightTacticId && insightSlot?.playerId
