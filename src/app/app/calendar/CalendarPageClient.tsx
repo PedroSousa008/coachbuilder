@@ -93,13 +93,23 @@ export function CalendarPageClient() {
   );
   const today = useMemo(() => new Date(nowMs), [nowMs]);
 
+  type CalendarEntry = {
+    id: string;
+    date: string;
+    label: string;
+    kind: "fixture" | "birthday" | "sketch_event" | "note";
+    deletable: boolean;
+  };
+
   const allCalendarEntries = useMemo(() => {
-    const entries: Array<{ date: string; label: string; kind: "fixture" | "birthday" | "sketch_event" | "note" }> = [];
+    const entries: CalendarEntry[] = [];
     for (const f of fixtures) {
       entries.push({
+        id: f.id,
         date: dayIsoLocal(new Date(f.kickoff)),
         label: `Jogo: vs ${f.opponent}`,
         kind: "fixture",
+        deletable: true,
       });
     }
     const pushBirthday = (name: string, subtitle: string, dob?: string) => {
@@ -112,9 +122,11 @@ export function CalendarPageClient() {
         const d = new Date(y, month - 1, day);
         if (Number.isNaN(d.getTime())) continue;
         entries.push({
+          id: `birthday-${subtitle}-${name}-${y}-${month}-${day}`,
           date: dayIsoLocal(d),
           label: `Aniversário do ${name} (${subtitle})`,
           kind: "birthday",
+          deletable: false,
         });
       }
     };
@@ -122,20 +134,32 @@ export function CalendarPageClient() {
     for (const p of players) pushBirthday(p.name, `Jogador #${p.number}`, p.dateOfBirth);
     for (const s of staff) pushBirthday(s.name, `Staff ${s.role}`, s.dateOfBirth);
     for (const ev of sketchArea.calendarEvents) {
-      entries.push({ date: ev.date, label: `Evento: ${ev.title}`, kind: "sketch_event" });
+      entries.push({
+        id: ev.id,
+        date: ev.date,
+        label: `Evento: ${ev.title}`,
+        kind: "sketch_event",
+        deletable: true,
+      });
     }
     for (const note of sketchArea.notes) {
       if (!note.date) continue;
-      entries.push({ date: note.date, label: `Nota Sketch: ${note.title}`, kind: "note" });
+      entries.push({
+        id: note.id,
+        date: note.date,
+        label: `Nota Sketch: ${note.title}`,
+        kind: "note",
+        deletable: true,
+      });
     }
     return entries;
   }, [coachProfile.dateOfBirth, coachProfile.name, fixtures, players, sketchArea.calendarEvents, sketchArea.notes, staff, viewMonth]);
 
   const entriesByDay = useMemo(() => {
-    const map = new Map<string, Array<{ label: string; kind: "fixture" | "birthday" | "sketch_event" | "note" }>>();
+    const map = new Map<string, CalendarEntry[]>();
     for (const e of allCalendarEntries) {
       const list = map.get(e.date) ?? [];
-      list.push({ label: e.label, kind: e.kind });
+      list.push(e);
       map.set(e.date, list);
     }
     return map;
@@ -237,6 +261,27 @@ export function CalendarPageClient() {
     setEventModalOpen(false);
     setNewEventTitle("");
     setNewEventNotes("");
+  };
+
+  const handleDeleteCalendarEntry = (entry: CalendarEntry) => {
+    if (!entry.deletable) return;
+    if (entry.kind === "fixture") {
+      removeFixture(entry.id);
+      return;
+    }
+    if (entry.kind === "sketch_event") {
+      setSketchArea((prev) => ({
+        ...prev,
+        calendarEvents: prev.calendarEvents.filter((ev) => ev.id !== entry.id),
+      }));
+      return;
+    }
+    if (entry.kind === "note") {
+      setSketchArea((prev) => ({
+        ...prev,
+        notes: prev.notes.filter((note) => note.id !== entry.id),
+      }));
+    }
   };
 
   const selectedDayEntries = useMemo(() => {
@@ -561,8 +606,19 @@ export function CalendarPageClient() {
               ) : (
                 <ul className="mt-2 space-y-1.5">
                   {selectedDayEntries.map((e, idx) => (
-                    <li key={`${e.label}-${idx}`} className="text-xs text-zinc-200">
-                      {e.label}
+                    <li key={`${e.id}-${idx}`} className="flex items-center justify-between gap-2 text-xs text-zinc-200">
+                      <span className="truncate">{e.label}</span>
+                      {e.deletable ? (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="secondary"
+                          className="h-7 px-2 text-[10px]"
+                          onClick={() => handleDeleteCalendarEntry(e)}
+                        >
+                          Apagar
+                        </Button>
+                      ) : null}
                     </li>
                   ))}
                 </ul>
