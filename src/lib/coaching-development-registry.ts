@@ -782,6 +782,19 @@ export const COACHING_LESSON_DEVELOPMENTS: CoachingLessonDevelopmentDef[] = [
       "coach-development-metrics-detail-orientation",
     ],
   },
+  {
+    lessonId: "day-035",
+    title: "Pochettino - Importance of the Assistant Coach - Coaches’ Voice",
+    skillIds: [
+      "assistant-coach-management-trust-in-assistant-coach",
+      "assistant-coach-management-daily-communication-with-assistant",
+      "staff-organisation-weekly-staff-planning",
+      "team-culture-through-staff-shared-responsibility-mindset",
+      "elite-staff-structure-detail-driven-culture",
+      "staff-organisation-staff-time-management",
+      "trusted-right-hand-person-loyalty-confidentiality",
+    ],
+  },
 ];
 
 const LESSON_BY_ID: Map<string, CoachingLessonDevelopmentDef> = new Map(
