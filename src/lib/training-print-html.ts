@@ -1,4 +1,5 @@
 import type { AiFullTrainingSession, AiSingleDrill } from "@/lib/training-ai-types";
+import { encodeLocalPublicPath } from "@/lib/public-asset-url";
 import { trainingExercisePrintImageForTitle } from "@/lib/training-exercise-print-images";
 
 function esc(s: string): string {
@@ -86,8 +87,9 @@ export function buildFullSessionDocumentHtml(params: {
       const phase =
         b.phase === "warmup" ? "Aquecimento" : b.phase === "cooldown" ? "Finalização" : "Bloco principal";
       const imageRelPath = trainingExercisePrintImageForTitle(b.title);
+      const encodedRel = imageRelPath ? encodeLocalPublicPath(imageRelPath) : null;
       const exerciseImageSrc =
-        imageRelPath && assetBaseUrl ? `${assetBaseUrl}${imageRelPath}` : imageRelPath;
+        encodedRel && assetBaseUrl ? `${assetBaseUrl}${encodedRel}` : encodedRel;
       const playerCount = Math.max(playerLines.length, 1);
       const backMetrics = computeBackPageTableMetrics(playerCount);
       return `
@@ -244,7 +246,8 @@ export function buildSingleDrillDocumentHtml(params: {
 }): string {
   const { drill, generatedAt, assetBaseUrl, coachPrintName } = params;
   const imageRelPath = trainingExercisePrintImageForTitle(drill.title);
-  const exerciseImageSrc = imageRelPath && assetBaseUrl ? `${assetBaseUrl}${imageRelPath}` : imageRelPath;
+  const encodedRel = imageRelPath ? encodeLocalPublicPath(imageRelPath) : null;
+  const exerciseImageSrc = encodedRel && assetBaseUrl ? `${assetBaseUrl}${encodedRel}` : encodedRel;
   const drillBackMetrics = computeBackPageTableMetrics(14);
   return `<!DOCTYPE html>
 <html lang="pt">

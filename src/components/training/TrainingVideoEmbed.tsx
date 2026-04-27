@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { encodeLocalPublicPath } from "@/lib/public-asset-url";
 
 function youtubeVideoId(raw: string): string | null {
   const trimmed = raw.trim();
@@ -57,7 +58,11 @@ export function TrainingVideoEmbed({
     );
   }
 
-  const src = videoUrl.startsWith("/") || videoUrl.startsWith("http") ? videoUrl : `/${videoUrl}`;
+  const raw =
+    videoUrl.startsWith("http://") || videoUrl.startsWith("https://")
+      ? videoUrl.trim()
+      : encodeLocalPublicPath(videoUrl.startsWith("/") ? videoUrl.trim() : `/${videoUrl.trim()}`);
+  const src = raw;
 
   return (
     <div className="mt-3 space-y-2 rounded-xl border border-surface-border bg-surface-raised/30 p-3">

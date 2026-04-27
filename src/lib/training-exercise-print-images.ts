@@ -37,7 +37,7 @@ const TRAINING_EXERCISE_PRINT_IMAGE_BY_TITLE: Record<string, string> = {
   "5 Teams 3v3 Attacking": "3v3-5-teams.png",
   "Fixed Position Rondo": "fixed-position-rondo.png",
   "Aquecimento com Bola - Movimentação": "aquecimento-com-movimentação.png",
-  "Variação de Posse de Bola com base na Pressão": "variação-jogo.png",
+  "Variação de Posse de Bola com base na Pressão": "variacao-jogo.png",
   "(2+1)v1 Transition": "2+1v1-transition.png",
   "Short Corner Routine": "short-corner.png",
   "Short Corner by Newcastle": "short-corner-newcastle.png",

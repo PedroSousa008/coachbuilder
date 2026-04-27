@@ -186,9 +186,9 @@ export const WARM_UP_WITH_MOVEMENT_VIDEO_URL = "/videos/training/aquecimento-com
 
 /**
  * Vídeo do exercício "Variação de Posse de Bola com base na Pressão".
- * Coloca o ficheiro em `public/videos/training/variação-jogo.mp4`.
+ * Coloca o ficheiro em `public/videos/training/variacao-jogo.mp4` (ASCII; evita 404 por NFD/NFC no deploy).
  */
-export const VARIACAO_POSSE_PRESSAO_VIDEO_URL = "/videos/training/variação-jogo.mp4";
+export const VARIACAO_POSSE_PRESSAO_VIDEO_URL = "/videos/training/variacao-jogo.mp4";
 
 /**
  * Vídeo do exercício "Short Corner by Newcastle".
