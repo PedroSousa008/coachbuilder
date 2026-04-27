@@ -13,8 +13,11 @@ export function PresidentProSubscriptionPanel() {
   const { user, refreshUserFromCloud } = useAuth();
   const [busy, setBusy] = useState(false);
   const access = user?.subscriptionAccess;
+  const plan = user?.subscriptionPlan?.trim() ?? "";
   const price = access?.displayPriceEur ?? access?.defaultPriceEur ?? 59.99;
   const renews = access?.renewsAt ? new Date(access.renewsAt).toLocaleDateString("pt-PT") : null;
+  const marcadoMensalSemStripe =
+    (plan === "president_pro_monthly" || plan === "pro_monthly") && access?.hasProAccess === false;
 
   const startCheckout = async () => {
     setBusy(true);
@@ -43,6 +46,13 @@ export function PresidentProSubscriptionPanel() {
           com subscrição activa. O pagamento é processado de forma segura pela Stripe; quando a primeira cobrança for
           confirmada, o acesso é restaurado automaticamente até à renovação seguinte.
         </p>
+        {marcadoMensalSemStripe ? (
+          <p className="rounded-lg border border-amber-400/25 bg-black/30 px-3 py-2 text-xs text-amber-100/95">
+            Mesmo que o plano apareça como «PresidentPro mensal» na administração, <strong className="text-amber-50">só
+            após completares o pagamento mensal aqui</strong> (subscrição Stripe activa) é que o painel completo e os
+            lugares de treinador na cloud ficam desbloqueados.
+          </p>
+        ) : null}
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex flex-wrap items-baseline gap-2 rounded-xl border border-surface-border bg-black/25 px-4 py-3">

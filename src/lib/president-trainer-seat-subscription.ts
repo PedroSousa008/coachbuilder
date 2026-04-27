@@ -1,6 +1,5 @@
 import type { PrismaClient, User } from "@prisma/client";
 import { computeSubscriptionAccess } from "@/lib/subscription-access";
-import { coachProDefaultPriceEur } from "@/lib/subscription-env";
 import type { SubscriptionAccessPayload } from "@/types/subscription";
 import { transitionExpiredSubscriptionState } from "@/lib/subscription-transition";
 
@@ -17,9 +16,8 @@ function isClubPresidentAccount(sponsor: Pick<User, "coachingRole">): boolean {
 }
 
 /**
- * Contas criadas num **lugar** do presidente (`trainerSeatIndex`) devem ter sempre Coach Pro completo
- * quando o sponsor é uma conta com função Presidente — mesmo que o Stripe/plano na BD ainda não
- * mostre `pro_monthly` (sincronização atrasada ou preço definido à parte).
+ * Contas num **lugar** do presidente herdam o Pro do sponsor quando o Presidente tem subscrição activa
+ * (Stripe ou comped). Sem Pro pago no presidente, o treinador do lugar fica com o próprio `computeSubscriptionAccess`.
  *
  * Ligações manuais (sem lugar) só herdam Pro se `computeSubscriptionAccess` do sponsor tiver Pro activo.
  */
@@ -43,18 +41,8 @@ export async function resolveSubscriptionAccessForCloudUser(
     if (presAccess.hasProAccess) {
       return { ...presAccess, isComped: true };
     }
-    const listPrice = coachProDefaultPriceEur();
-    return {
-      hasProAccess: true,
-      effectiveMode: "pro_monthly",
-      trialEndsAt: null,
-      graceEndsAt: null,
-      renewsAt: president.subscriptionRenewsAt?.toISOString() ?? null,
-      displayPriceEur: listPrice,
-      defaultPriceEur: listPrice,
-      adminMonthlyPriceEur: presAccess.adminMonthlyPriceEur,
-      isComped: true,
-    };
+    /** Presidente sem Pro pago (Stripe) — o lugar deixa de herdar acesso fictício. */
+    return base;
   }
 
   if (!presAccess.hasProAccess) return base;

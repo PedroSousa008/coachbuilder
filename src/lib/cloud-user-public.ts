@@ -105,11 +105,12 @@ function legacySubscriptionAccess(plan: string, role: string): SubscriptionAcces
       isComped: false,
     };
   }
-  const hasProAccess = plan === "pro_monthly" || plan === "president_pro_monthly";
+  /** Sem payload completo não assumir Pro mensal (no servidor exige Stripe ou comped). */
+  const hasProAccess = false;
   const legacyDefault = plan === "president_pro_monthly" ? 59.99 : 6.99;
   return {
     hasProAccess,
-    effectiveMode: plan === "president_pro_monthly" ? "president_pro_monthly" : hasProAccess ? "pro_monthly" : "free",
+    effectiveMode: "free",
     trialEndsAt: null,
     graceEndsAt: null,
     renewsAt: null,

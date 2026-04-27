@@ -130,6 +130,12 @@ function PresidentDefinicoesPageInner() {
               disponíveis para membros com PresidentPro pago. Completa o pagamento abaixo; quando a Stripe confirmar a
               subscrição, todo o painel volta a ficar acessível até à próxima renovação mensal.
             </p>
+            {user?.subscriptionPlan === "president_pro_monthly" ? (
+              <p className="mt-2 border-t border-amber-400/20 pt-2 text-xs text-amber-200/85">
+                Se o plano foi alterado manualmente no painel de admin, isso <strong>não substitui</strong> o pagamento:
+                é necessária uma <strong>subscrição Stripe activa</strong> (botão abaixo) para desbloquear as features.
+              </p>
+            ) : null}
           </div>
           <PresidentProSubscriptionPanel />
         </div>

@@ -11,6 +11,8 @@ export type UserSubscriptionFields = {
   proTrialEndsAt: Date | null;
   paymentGraceEndsAt: Date | null;
   customMonthlyPriceEur: { toNumber?: () => number } | number | string | null | undefined;
+  /** Preenchido pela Stripe após checkout / webhooks — não basta o Admin mudar o plano na BD. */
+  stripeSubscriptionId?: string | null;
 };
 
 function toNumberPrice(v: UserSubscriptionFields["customMonthlyPriceEur"]): number | null {
@@ -25,6 +27,11 @@ function toNumberPrice(v: UserSubscriptionFields["customMonthlyPriceEur"]): numb
     return Number.isFinite(n) ? n : null;
   }
   return null;
+}
+
+function hasStripeBackedSubscription(u: UserSubscriptionFields): boolean {
+  const id = u.stripeSubscriptionId;
+  return typeof id === "string" && id.trim().length > 0;
 }
 
 export function computeSubscriptionAccess(u: UserSubscriptionFields): SubscriptionAccessPayload {
@@ -82,10 +89,27 @@ export function computeSubscriptionAccess(u: UserSubscriptionFields): Subscripti
     };
   }
 
+  /**
+   * Mensal na BD (ou escolhido no Admin) só dá Pro com subscrição Stripe activa registada,
+   * ou conta comped (0 €/mês). Caso contrário o utilizador fica em «free» para o paywall + checkout.
+   */
   if (plan === "pro_monthly" || plan === "president_pro_monthly") {
+    if (hasStripeBackedSubscription(u) || isComped) {
+      return {
+        hasProAccess: true,
+        effectiveMode: plan === "president_pro_monthly" ? "president_pro_monthly" : "pro_monthly",
+        trialEndsAt: u.proTrialEndsAt?.toISOString() ?? null,
+        graceEndsAt: u.paymentGraceEndsAt?.toISOString() ?? null,
+        renewsAt: u.subscriptionRenewsAt?.toISOString() ?? null,
+        displayPriceEur,
+        defaultPriceEur,
+        adminMonthlyPriceEur,
+        isComped,
+      };
+    }
     return {
-      hasProAccess: true,
-      effectiveMode: plan === "president_pro_monthly" ? "president_pro_monthly" : "pro_monthly",
+      hasProAccess: false,
+      effectiveMode: "free",
       trialEndsAt: u.proTrialEndsAt?.toISOString() ?? null,
       graceEndsAt: u.paymentGraceEndsAt?.toISOString() ?? null,
       renewsAt: u.subscriptionRenewsAt?.toISOString() ?? null,
