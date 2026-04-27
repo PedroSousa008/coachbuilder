@@ -101,6 +101,54 @@ function normalizeCoachProfileState(profile: CoachProfileState): CoachProfileSta
   };
 }
 
+function compactTeamKey(s: string): string {
+  return s
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function compactDayKey(iso: string): string {
+  const d = new Date(iso);
+  if (!Number.isFinite(d.getTime())) return "";
+  return d.toISOString().slice(0, 10);
+}
+
+function mergeResolvedIntoLeagueMatches(
+  existing: LeagueImportedMatch[],
+  resolved: ResolvedLeagueResult[]
+): LeagueImportedMatch[] {
+  if (resolved.length === 0) return existing;
+  const seen = new Set(
+    existing.map(
+      (m) =>
+        `${compactTeamKey(m.homeTeam)}|${compactTeamKey(m.awayTeam)}|${m.homeScore ?? "?"}-${m.awayScore ?? "?"}|${compactDayKey(m.kickoff)}`
+    )
+  );
+  const nowIso = new Date().toISOString();
+  const incoming: LeagueImportedMatch[] = [];
+  for (let i = 0; i < resolved.length; i += 1) {
+    const r = resolved[i];
+    const kickoff = r.playedAt && Number.isFinite(new Date(r.playedAt).getTime()) ? r.playedAt : nowIso;
+    const dedupeKey = `${compactTeamKey(r.homeRow.team)}|${compactTeamKey(r.awayRow.team)}|${r.homeGoals}-${r.awayGoals}|${compactDayKey(kickoff)}`;
+    if (seen.has(dedupeKey)) continue;
+    seen.add(dedupeKey);
+    incoming.push({
+      id: `ocr:${Date.now().toString(36)}:${i}:${Math.random().toString(36).slice(2, 8)}`,
+      homeTeam: r.homeRow.team,
+      awayTeam: r.awayRow.team,
+      kickoff,
+      homeScore: r.homeGoals,
+      awayScore: r.awayGoals,
+      venue: "OCR",
+    });
+  }
+  if (incoming.length === 0) return existing;
+  return [...incoming, ...existing].sort((a, b) => Date.parse(b.kickoff) - Date.parse(a.kickoff));
+}
+
 function tacticPlayerNoteKey(tacticId: string, playerId: string) {
   return `${tacticId}::${playerId}`;
 }
@@ -1689,6 +1737,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       return { ...prev, phases };
     });
     const club = coachProfile.club.trim();
+    if (appliedSnapshot.length) {
+      setLeagueMatches((prev) => mergeResolvedIntoLeagueMatches(prev, appliedSnapshot));
+    }
     if (club && appliedSnapshot.length) {
       setPastClubResults((prev) =>
         mergePastClubResults(prev, buildPastClubResultsFromResolved(club, appliedSnapshot))

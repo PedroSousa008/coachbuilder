@@ -144,6 +144,7 @@ export function applyMatchEventsToStandings(
       awayRow: { ...away },
       homeGoals: event.homeGoals,
       awayGoals: event.awayGoals,
+      playedAt: event.playedAt,
     });
 
     home.played += 1;

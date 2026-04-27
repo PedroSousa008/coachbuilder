@@ -547,6 +547,8 @@ export interface ResolvedLeagueResult {
   awayRow: StandingsTeamRow;
   homeGoals: number;
   awayGoals: number;
+  /** ISO date/time when available from OCR source line. */
+  playedAt?: string;
 }
 
 /** Jogos já disputados envolvendo o clube do Perfil (alimentado por resultados OCR). */
