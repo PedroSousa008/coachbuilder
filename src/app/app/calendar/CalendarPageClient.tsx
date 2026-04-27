@@ -267,6 +267,141 @@ export function CalendarPageClient() {
         </p>
       </div>
 
+      <div id="calendar-print-root" className="hidden print:block">
+        <style jsx global>{`
+          @media print {
+            @page {
+              size: A4 portrait;
+              margin: 0;
+            }
+            body * {
+              visibility: hidden !important;
+            }
+            #calendar-print-root,
+            #calendar-print-root * {
+              visibility: visible !important;
+            }
+            #calendar-print-root {
+              position: fixed;
+              inset: 0;
+              width: 100%;
+              height: 100%;
+              padding: 8mm 12mm;
+              background: #ffffff;
+              color: #0b1220;
+            }
+            #calendar-print-root .print-sheet {
+              height: 281mm;
+              overflow: hidden;
+              page-break-after: always;
+              break-after: page;
+            }
+            #calendar-print-root .print-sheet:last-child {
+              page-break-after: auto;
+              break-after: auto;
+            }
+          }
+        `}</style>
+
+        <section className="print-sheet">
+          <h3 className="text-3xl font-bold text-black">Calendário</h3>
+          <p className="mt-1 text-xs text-black/75">
+            Snapshot da classificação em {new Date(nowMs).toLocaleString("pt-PT")}
+          </p>
+          <div className="mt-4 overflow-hidden rounded-xl border border-black/50">
+            <table className="w-full border-collapse text-left text-[10px] text-black">
+              <thead className="bg-black/[0.06]">
+                <tr>
+                  <th className="border border-black/40 px-1.5 py-1">#</th>
+                  <th className="border border-black/40 px-1.5 py-1">Nome</th>
+                  <th className="border border-black/40 px-1.5 py-1 text-center">J</th>
+                  <th className="border border-black/40 px-1.5 py-1 text-center">V</th>
+                  <th className="border border-black/40 px-1.5 py-1 text-center">E</th>
+                  <th className="border border-black/40 px-1.5 py-1 text-center">D</th>
+                  <th className="border border-black/40 px-1.5 py-1 text-center">GM</th>
+                  <th className="border border-black/40 px-1.5 py-1 text-center">GS</th>
+                  <th className="border border-black/40 px-1.5 py-1 text-right">Pts</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(leagueSetup?.phases.find((p) => p.id === leagueSetup.activePhaseId)?.standings.rows ?? []).map((row, idx) => (
+                  <tr
+                    key={`print-row-${row.teamId}`}
+                    className={cn(
+                      coachProfile.club.trim() && teamNamesLikelyMatch(coachProfile.club, row.team, 0.6)
+                        ? "bg-emerald-100/60"
+                        : ""
+                    )}
+                  >
+                    <td className="border border-black/30 px-1.5 py-1">{idx + 1}</td>
+                    <td className="border border-black/30 px-1.5 py-1">{row.team || "—"}</td>
+                    <td className="border border-black/30 px-1.5 py-1 text-center">{row.played}</td>
+                    <td className="border border-black/30 px-1.5 py-1 text-center">{row.won}</td>
+                    <td className="border border-black/30 px-1.5 py-1 text-center">{row.drawn}</td>
+                    <td className="border border-black/30 px-1.5 py-1 text-center">{row.lost}</td>
+                    <td className="border border-black/30 px-1.5 py-1 text-center">{row.goalsFor}</td>
+                    <td className="border border-black/30 px-1.5 py-1 text-center">{row.goalsAgainst}</td>
+                    <td className="border border-black/30 px-1.5 py-1 text-right font-semibold">{row.points}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section className="print-sheet">
+          {(() => {
+            const m = printableMonth;
+            const cells = buildMonthGrid(m.getFullYear(), m.getMonth());
+            return (
+              <div className="break-inside-avoid">
+                <p className="mb-3 text-xl font-semibold text-black">
+                  {m.toLocaleString("pt-PT", { month: "long", year: "numeric" })}
+                </p>
+                <div className="grid grid-cols-7 gap-1.5 text-[10px]">
+                  {["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"].map((d) => (
+                    <p key={`print-${d}`} className="font-semibold uppercase tracking-wide text-black/80">
+                      {d}
+                    </p>
+                  ))}
+                  {cells.map((day, idx) => {
+                    if (!day) return <div key={`print-empty-${idx}`} className="h-20 border border-transparent" />;
+                    const dayKey = dayIsoLocal(day);
+                    const events = entriesByDay.get(dayKey) ?? [];
+                    return (
+                      <div key={`print-${day.toISOString()}`} className="h-20 rounded-md border border-black/35 p-1.5">
+                        <p className="text-[10px] font-semibold text-black">{day.getDate()}</p>
+                        {events.slice(0, 3).map((ev, i) => (
+                          <p key={`${dayKey}-${i}`} className="truncate text-[9px] text-black/85">
+                            {ev.label}
+                          </p>
+                        ))}
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="mt-3 rounded-md border border-black/30 p-2">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-black/75">Tópicos do mês</p>
+                  {printableMonthItems.length === 0 ? (
+                    <p className="mt-1 text-[9px] text-black/70">Sem tópicos neste mês.</p>
+                  ) : (
+                    <ul className="mt-1 space-y-0.5">
+                      {printableMonthItems.map((it, i) => (
+                        <li key={`${printableMonthKey}-${it.date}-${i}`} className="text-[9px] text-black/85">
+                          {new Date(`${it.date}T00:00:00`).getDate()} · {it.label}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
+        </section>
+      </div>
+
+      <div className="print:hidden">
+
       <FixtureFormModal
         open={fixtureModalOpen}
         onClose={() => {
@@ -751,141 +886,6 @@ export function CalendarPageClient() {
               </div>
             </div>
           )}
-
-          <div id="calendar-print-root" className="hidden print:block">
-            <style jsx global>{`
-              @media print {
-                @page {
-                  size: A4 portrait;
-                  margin: 0;
-                }
-                body * {
-                  visibility: hidden !important;
-                }
-                #calendar-print-root,
-                #calendar-print-root * {
-                  visibility: visible !important;
-                }
-                #calendar-print-root {
-                  position: absolute;
-                  left: 0;
-                  top: 0;
-                  width: 100%;
-                  padding: 8mm 12mm;
-                  background: #ffffff;
-                  color: #0b1220;
-                }
-                #calendar-print-root .print-sheet {
-                  height: 281mm;
-                  overflow: hidden;
-                  page-break-after: always;
-                  break-after: page;
-                }
-                #calendar-print-root .print-sheet:last-child {
-                  page-break-after: auto;
-                  break-after: auto;
-                }
-              }
-            `}</style>
-
-            <section className="print-sheet">
-              <h3 className="text-3xl font-bold text-black">Calendário</h3>
-              <p className="mt-1 text-xs text-black/75">
-                Snapshot da classificação em {new Date(nowMs).toLocaleString("pt-PT")}
-              </p>
-              <div className="mt-4 overflow-hidden rounded-xl border border-black/50">
-                <table className="w-full border-collapse text-left text-[10px] text-black">
-                  <thead className="bg-black/[0.06]">
-                    <tr>
-                      <th className="border border-black/40 px-1.5 py-1">#</th>
-                      <th className="border border-black/40 px-1.5 py-1">Nome</th>
-                      <th className="border border-black/40 px-1.5 py-1 text-center">J</th>
-                      <th className="border border-black/40 px-1.5 py-1 text-center">V</th>
-                      <th className="border border-black/40 px-1.5 py-1 text-center">E</th>
-                      <th className="border border-black/40 px-1.5 py-1 text-center">D</th>
-                      <th className="border border-black/40 px-1.5 py-1 text-center">GM</th>
-                      <th className="border border-black/40 px-1.5 py-1 text-center">GS</th>
-                      <th className="border border-black/40 px-1.5 py-1 text-right">Pts</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(leagueSetup?.phases.find((p) => p.id === leagueSetup.activePhaseId)?.standings.rows ?? []).map((row, idx) => (
-                      <tr
-                        key={`print-row-${row.teamId}`}
-                        className={cn(
-                          coachProfile.club.trim() && teamNamesLikelyMatch(coachProfile.club, row.team, 0.6)
-                            ? "bg-emerald-100/60"
-                            : ""
-                        )}
-                      >
-                        <td className="border border-black/30 px-1.5 py-1">{idx + 1}</td>
-                        <td className="border border-black/30 px-1.5 py-1">{row.team || "—"}</td>
-                        <td className="border border-black/30 px-1.5 py-1 text-center">{row.played}</td>
-                        <td className="border border-black/30 px-1.5 py-1 text-center">{row.won}</td>
-                        <td className="border border-black/30 px-1.5 py-1 text-center">{row.drawn}</td>
-                        <td className="border border-black/30 px-1.5 py-1 text-center">{row.lost}</td>
-                        <td className="border border-black/30 px-1.5 py-1 text-center">{row.goalsFor}</td>
-                        <td className="border border-black/30 px-1.5 py-1 text-center">{row.goalsAgainst}</td>
-                        <td className="border border-black/30 px-1.5 py-1 text-right font-semibold">{row.points}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </section>
-
-            <section className="print-sheet">
-              {(() => {
-                const m = printableMonth;
-                const cells = buildMonthGrid(m.getFullYear(), m.getMonth());
-                return (
-                  <div className="break-inside-avoid">
-                    <p className="mb-3 text-xl font-semibold text-black">
-                      {m.toLocaleString("pt-PT", { month: "long", year: "numeric" })}
-                    </p>
-                    <div className="grid grid-cols-7 gap-1.5 text-[10px]">
-                      {["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"].map((d) => (
-                        <p key={`print-${d}`} className="font-semibold uppercase tracking-wide text-black/80">
-                          {d}
-                        </p>
-                      ))}
-                      {cells.map((day, idx) => {
-                        if (!day) return <div key={`print-empty-${idx}`} className="h-20 border border-transparent" />;
-                        const dayKey = dayIsoLocal(day);
-                        const events = entriesByDay.get(dayKey) ?? [];
-                        return (
-                          <div key={`print-${day.toISOString()}`} className="h-20 rounded-md border border-black/35 p-1.5">
-                            <p className="text-[10px] font-semibold text-black">{day.getDate()}</p>
-                            {events.slice(0, 3).map((ev, i) => (
-                              <p key={`${dayKey}-${i}`} className="truncate text-[9px] text-black/85">
-                                {ev.label}
-                              </p>
-                            ))}
-                          </div>
-                        );
-                      })}
-                    </div>
-                    <div className="mt-3 rounded-md border border-black/30 p-2">
-                      <p className="text-[10px] font-semibold uppercase tracking-wide text-black/75">Tópicos do mês</p>
-                      {printableMonthItems.length === 0 ? (
-                        <p className="mt-1 text-[9px] text-black/70">Sem tópicos neste mês.</p>
-                      ) : (
-                        <ul className="mt-1 space-y-0.5">
-                          {printableMonthItems.map((it, i) => (
-                            <li key={`${printableMonthKey}-${it.date}-${i}`} className="text-[9px] text-black/85">
-                              {new Date(`${it.date}T00:00:00`).getDate()} · {it.label}
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
-                  </div>
-                );
-              })()}
-            </section>
-          </div>
-
-          
 
           <div className="rounded-xl border border-surface-border bg-surface-raised/30 p-4">
             <p className="text-sm font-semibold text-white">Jogos anteriores (Perfil)</p>
