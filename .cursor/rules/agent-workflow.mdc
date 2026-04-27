@@ -17,6 +17,12 @@ alwaysApply: true
 - **Do not** ask the user to run commands in their terminal. **You** run shell commands (`npm`, `git`, etc.) in the environment.
 - Prefer **absolute paths** under the project when running commands, e.g. `/Users/pedrocastrosousa/Desktop/Sousa/CoachBrain`.
 
+## Novos exercícios de treino (vídeo + foto PDF)
+
+- Quando o utilizador pede um **novo exercício** e indica explicitamente o **nome do ficheiro de vídeo** (ex. `passe-rotura.mp4`) e o **nome da foto** para o PDF (ex. `passe-rotura.png`), o objetivo é que **os dois media** entrem no **mesmo commit/push** que o código (registo no catálogo, URLs, `training-exercise-print-images`, idades, etc.).
+- **Caminhos habituais:** `public/videos/training/<nome>.mp4` e `public/images/training-exercises/<nome>.png` — usar **nomes só ASCII** nos ficheiros e no código (evitar NFD/NFC em deploy Linux/Vercel).
+- Antes do commit: `git status` e `git add` dos ficheiros em `public/` **se existirem** no workspace; se ainda não existirem, procurar variantes (untracked, nome parecido) ou pedir ao utilizador que os coloque na pasta e repetir — **não** fechar a tarefa só com código se os ficheiros já estiverem no disco por ele.
+
 ## Git and delivery
 
 - After **meaningful code or config changes** (anything that should ship), run:
