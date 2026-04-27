@@ -795,6 +795,22 @@ export const COACHING_LESSON_DEVELOPMENTS: CoachingLessonDevelopmentDef[] = [
       "trusted-right-hand-person-loyalty-confidentiality",
     ],
   },
+  {
+    lessonId: "day-036",
+    title: "Pochettino - Management of Players - Coaches’ Voice",
+    skillIds: [
+      "mental-attributes-leadership",
+      "mental-attributes-responsibility",
+      "communication-leadership-positive-energy",
+      "communication-leadership-calmness-to-team",
+      "coach-development-metrics-team-motivation-skill",
+      "coach-development-metrics-leadership-presence-as-coach",
+      "mental-attributes-emotional-control",
+      "advanced-mental-confidence-after-mistakes",
+      "trusted-right-hand-person-honest-feedback-source",
+      "coach-development-metrics-individual-development-focus",
+    ],
+  },
 ];
 
 const LESSON_BY_ID: Map<string, CoachingLessonDevelopmentDef> = new Map(
