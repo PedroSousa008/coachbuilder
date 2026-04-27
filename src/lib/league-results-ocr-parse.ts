@@ -9,15 +9,21 @@ const GOAL_SEP = String.raw`[-–—−‐]`;
 
 /** Mesma linha: Equipa A 2-1 Equipa B */
 const RESULT_INLINE_RE = new RegExp(
-  `([A-Za-zÀ-ÿ0-9 .,'\\-()]+?)\\s+(\\d{1,2})\\s*${GOAL_SEP}\\s*(\\d{1,2})\\s+([A-Za-zÀ-ÿ0-9 .,'\\-()]+)`,
+  `([A-Za-zÀ-ÿ0-9 .,'\\-()]+?)\\s+([0-9Oo]{1,2})\\s*${GOAL_SEP}\\s*([0-9Oo]{1,2})\\s+([A-Za-zÀ-ÿ0-9 .,'\\-()]+)`,
+  "g"
+);
+
+/** OCR fallback when dash vanishes: Equipa A 2 1 Equipa B */
+const RESULT_INLINE_NO_DASH_RE = new RegExp(
+  `([A-Za-zÀ-ÿ0-9 .,'\\-()]+?)\\s+([0-9Oo]{1,2})\\s+([0-9Oo]{1,2})\\s+([A-Za-zÀ-ÿ0-9 .,'\\-()]+)`,
   "g"
 );
 
 /** Linha só com resultado: 4 - 1 (aceita decoradores OCR tipo ": 4-1 :"), nunca 20:30. */
-const SCORE_ONLY_LINE = new RegExp(`^\\s*[:|;]?\\s*(\\d{1,2})\\s*${GOAL_SEP}\\s*(\\d{1,2})\\s*[:|;]?\\s*$`);
+const SCORE_ONLY_LINE = new RegExp(`^\\s*[:|;]?\\s*([0-9Oo]{1,2})\\s*${GOAL_SEP}\\s*([0-9Oo]{1,2})\\s*[:|;]?\\s*$`);
 
 /** Linha com equipa da casa + resultado (visitante noutra linha): Sl Benfica 4 - 1 */
-const HOME_AND_SCORE_LINE = new RegExp(`^(.+?)\\s+(\\d{1,2})\\s*${GOAL_SEP}\\s*(\\d{1,2})\\s*$`);
+const HOME_AND_SCORE_LINE = new RegExp(`^(.+?)\\s+([0-9Oo]{1,2})\\s*${GOAL_SEP}\\s*([0-9Oo]{1,2})\\s*$`);
 
 /** Máximo plausível por lado (evita OCR a partir horas "20:30" em "20 - 30" golos). */
 const MAX_GOALS_PER_SIDE = 15;
@@ -69,6 +75,11 @@ function isPlausibleScore(homeGoals: number, awayGoals: number): boolean {
   if (homeGoals < 0 || awayGoals < 0) return false;
   if (homeGoals > MAX_GOALS_PER_SIDE || awayGoals > MAX_GOALS_PER_SIDE) return false;
   return true;
+}
+
+function parseGoalToken(raw: string | undefined): number {
+  const t = (raw ?? "").trim().replace(/[Oo]/g, "0");
+  return Number(t);
 }
 
 function pushEvent(
@@ -145,8 +156,8 @@ function parseMultilineScoreCard(lines: string[], seen: Set<string>, out: Parsed
     if (lineContainsClockLikeToken(line)) continue;
     const scoreM = line.match(SCORE_ONLY_LINE);
     if (!scoreM) continue;
-    const homeGoals = Number(scoreM[1]);
-    const awayGoals = Number(scoreM[2]);
+    const homeGoals = parseGoalToken(scoreM[1]);
+    const awayGoals = parseGoalToken(scoreM[2]);
     if (!isPlausibleScore(homeGoals, awayGoals)) continue;
 
     const above = collectTeamsAboveScore(lines, i);
@@ -199,8 +210,8 @@ function parseHomeScoreThenAwayBelow(lines: string[], seen: Set<string>, out: Pa
     const m = line.match(HOME_AND_SCORE_LINE);
     if (!m) continue;
     const rawHome = (m[1] ?? "").trim();
-    const homeGoals = Number(m[2]);
-    const awayGoals = Number(m[3]);
+    const homeGoals = parseGoalToken(m[2]);
+    const awayGoals = parseGoalToken(m[3]);
     if (!looksLikeTeamName(rawHome)) continue;
     if (!isPlausibleScore(homeGoals, awayGoals)) continue;
 
@@ -226,8 +237,17 @@ function parseInlineMatches(text: string, seen: Set<string>, out: ParsedMatchEve
   while ((m = RESULT_INLINE_RE.exec(text)) !== null) {
     const homeTeam = (m[1] ?? "").replace(/\s+/g, " ").trim();
     const awayTeam = (m[4] ?? "").replace(/\s+/g, " ").trim();
-    const homeGoals = Number(m[2]);
-    const awayGoals = Number(m[3]);
+    const homeGoals = parseGoalToken(m[2]);
+    const awayGoals = parseGoalToken(m[3]);
+    pushEvent(out, seen, homeTeam, awayTeam, homeGoals, awayGoals);
+  }
+
+  RESULT_INLINE_NO_DASH_RE.lastIndex = 0;
+  while ((m = RESULT_INLINE_NO_DASH_RE.exec(text)) !== null) {
+    const homeTeam = (m[1] ?? "").replace(/\s+/g, " ").trim();
+    const awayTeam = (m[4] ?? "").replace(/\s+/g, " ").trim();
+    const homeGoals = parseGoalToken(m[2]);
+    const awayGoals = parseGoalToken(m[3]);
     pushEvent(out, seen, homeTeam, awayTeam, homeGoals, awayGoals);
   }
 }

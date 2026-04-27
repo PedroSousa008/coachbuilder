@@ -19,6 +19,20 @@ test("parseMatchEventsFromOcrText accepts OCR dash variants", () => {
   assert.equal(events[0]?.awayGoals, 1);
 });
 
+test("parseMatchEventsFromOcrText accepts no-dash scores and O/0 OCR confusion", () => {
+  const ocr = "Vitória Sc 2 O Rio Ave Fc\nEstoril Praia O 1 Fc Famalicão";
+  const events = parseMatchEventsFromOcrText(ocr);
+  assert.equal(events.length, 2);
+  assert.equal(events[0]?.homeTeam, "Vitória Sc");
+  assert.equal(events[0]?.awayTeam, "Rio Ave Fc");
+  assert.equal(events[0]?.homeGoals, 2);
+  assert.equal(events[0]?.awayGoals, 0);
+  assert.equal(events[1]?.homeTeam, "Estoril Praia");
+  assert.equal(events[1]?.awayTeam, "Fc Famalicão");
+  assert.equal(events[1]?.homeGoals, 0);
+  assert.equal(events[1]?.awayGoals, 1);
+});
+
 test("parseMatchEventsFromOcrText ignores colon as score (kick-off time)", () => {
   const ocr = `Avs
 26 ABR
