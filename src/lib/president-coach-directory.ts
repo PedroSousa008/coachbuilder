@@ -72,18 +72,8 @@ function teamHistorySummary(cp: CoachProfileState): string {
 }
 
 function currentClubLabel(cp: CoachProfileState): string {
-  const curClub = cp.careerCurrent?.club?.trim();
-  if (curClub) return curClub;
-  const profileClub = (cp.club ?? "").trim();
-  if (profileClub) return profileClub;
-  const seasons = cp.careerSeasons;
-  if (seasons?.length) {
-    for (let i = seasons.length - 1; i >= 0; i -= 1) {
-      const c = seasons[i]?.club?.trim();
-      if (c) return c;
-    }
-  }
-  return "";
+  // Source of truth for President transfer market: club written in coach profile.
+  return (cp.club ?? "").trim();
 }
 
 function lastClubLabel(cp: CoachProfileState): string {

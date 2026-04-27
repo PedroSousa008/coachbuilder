@@ -54,7 +54,7 @@ function norm(s: string) {
 }
 
 function coachCurrentClub(c: CoachDirectoryRow): string {
-  return c.club.trim() || c.lastClub.trim();
+  return c.club.trim();
 }
 
 function weekStartIso(): string {
@@ -438,7 +438,7 @@ export function PresidentMercadoTransferencias() {
                     <span>{c.age != null ? `${c.age} anos` : "Idade —"}</span>
                     <span className="truncate text-right">{c.ageGroupCoached || "Escalão —"}</span>
                     <span className="col-span-2 truncate text-zinc-300">{c.recruitmentStatusLabel}</span>
-                    <span className="col-span-2 truncate">Clube atual: {coachCurrentClub(c) || "—"}</span>
+                    <span className="col-span-2 truncate">Clube Atual: {coachCurrentClub(c) || "Sem Clube"}</span>
                   </div>
                   <div className="mt-3 flex items-center justify-between gap-2 border-t border-surface-border/60 pt-3">
                     <span className="text-xs font-medium text-emerald-200/90">Score {c.performanceScore}</span>
@@ -565,8 +565,8 @@ export function PresidentMercadoTransferencias() {
                 <dd className="text-right text-zinc-200">{selected.recruitmentStatusLabel}</dd>
               </div>
               <div className="flex justify-between gap-2 border-b border-surface-border/50 pb-2">
-                <dt className="text-zinc-500">Clube atual</dt>
-                <dd className="text-right text-zinc-200">{coachCurrentClub(selected) || "—"}</dd>
+                <dt className="text-zinc-500">Clube Atual</dt>
+                <dd className="text-right text-zinc-200">{coachCurrentClub(selected) || "Sem Clube"}</dd>
               </div>
               <div className="flex justify-between gap-2 border-b border-surface-border/50 pb-2">
                 <dt className="text-zinc-500">Região</dt>
