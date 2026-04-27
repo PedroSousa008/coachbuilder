@@ -108,6 +108,18 @@ Estádio Sport Lisboa Benfica`;
   assert.equal(events[0]?.awayGoals, 1);
 });
 
+test("parseMatchEventsFromOcrText handles noisy score token line", () => {
+  const ocr = `e 2-O |
+Vitória Sc 25 ABR Rio Ave Fc
+Estádio D. Afonso Henriques`;
+  const events = parseMatchEventsFromOcrText(ocr);
+  assert.equal(events.length, 1);
+  assert.equal(events[0]?.homeTeam, "Vitória Sc");
+  assert.equal(events[0]?.awayTeam, "Rio Ave Fc");
+  assert.equal(events[0]?.homeGoals, 2);
+  assert.equal(events[0]?.awayGoals, 0);
+});
+
 test("parseMatchEventsFromOcrText skips fixtures without a score", () => {
   const events = parseMatchEventsFromOcrText("AVS Futebol Sad\nSporting CP");
   assert.equal(events.length, 0);

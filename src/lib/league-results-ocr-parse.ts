@@ -21,6 +21,8 @@ const RESULT_INLINE_NO_DASH_RE = new RegExp(
 
 /** Linha só com resultado: 4 - 1 (aceita decoradores OCR tipo ": 4-1 :"), nunca 20:30. */
 const SCORE_ONLY_LINE = new RegExp(`^\\s*[:|;]?\\s*([0-9Oo]{1,2})\\s*${GOAL_SEP}\\s*([0-9Oo]{1,2})\\s*[:|;]?\\s*$`);
+/** Resultado em qualquer parte da linha (ex.: "e 2-O |"). */
+const SCORE_TOKEN_ANYWHERE = new RegExp(`([0-9Oo]{1,2})\\s*${GOAL_SEP}\\s*([0-9Oo]{1,2})`);
 
 /** Linha com equipa da casa + resultado (visitante noutra linha): Sl Benfica 4 - 1 */
 const HOME_AND_SCORE_LINE = new RegExp(`^(.+?)\\s+([0-9Oo]{1,2})\\s*${GOAL_SEP}\\s*([0-9Oo]{1,2})\\s*$`);
@@ -253,10 +255,12 @@ function parseInlineMatches(text: string, seen: Set<string>, out: ParsedMatchEve
 }
 
 function parseScoreTokenLine(line: string): { homeGoals: number; awayGoals: number } | null {
+  if (lineContainsClockLikeToken(line)) return null;
   const m = line.match(SCORE_ONLY_LINE);
-  if (!m) return null;
-  const homeGoals = parseGoalToken(m[1]);
-  const awayGoals = parseGoalToken(m[2]);
+  const mm = m ?? line.match(SCORE_TOKEN_ANYWHERE);
+  if (!mm) return null;
+  const homeGoals = parseGoalToken(mm[1]);
+  const awayGoals = parseGoalToken(mm[2]);
   if (!isPlausibleScore(homeGoals, awayGoals)) return null;
   return { homeGoals, awayGoals };
 }
