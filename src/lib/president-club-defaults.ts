@@ -8,6 +8,9 @@ import type {
   PresidentExpense,
   PresidentFinanceMovement,
   PresidentInjury,
+  PresidentMedicalAppointment,
+  PresidentMedicalInventoryItem,
+  PresidentMedicalStaff,
   PresidentMarketContact,
   PresidentOperationEvent,
   PresidentPayment,
@@ -39,6 +42,9 @@ export function emptyPresidentClubState(): PresidentClubState {
     payments: [],
     sponsors: [],
     injuries: [],
+    medicalStaff: [],
+    medicalAppointments: [],
+    medicalInventory: [],
     disciplineIncidents: [],
     operationsEvents: [],
     reports: [],
@@ -250,6 +256,7 @@ export function mergePresidentClubState(raw: unknown, fallback: PresidentClubSta
         role: str(e.role, ""),
         supplier: str(e.supplier, ""),
         sourceStaffKey: typeof e.sourceStaffKey === "string" ? e.sourceStaffKey : undefined,
+        sourceMedicalStaffId: typeof e.sourceMedicalStaffId === "string" ? e.sourceMedicalStaffId : undefined,
         coachUserId: typeof e.coachUserId === "string" ? e.coachUserId : undefined,
       }))
       .filter((e) => e.id),
@@ -276,15 +283,104 @@ export function mergePresidentClubState(raw: unknown, fallback: PresidentClubSta
         })
       )
       .filter((s) => s.id),
-    injuries: arr<PresidentInjury>(o.injuries).map((i) => ({
-      id: str(i.id, ""),
-      playerName: str(i.playerName, ""),
-      injuryType: str(i.injuryType, ""),
-      expectedReturn: str(i.expectedReturn, ""),
-      recoveryProgress: str(i.recoveryProgress, ""),
-      medicalNotes: str(i.medicalNotes, ""),
-      availabilityPct: num(i.availabilityPct, 0),
-    })).filter((i) => i.id),
+    injuries: arr<PresidentInjury>(o.injuries)
+      .map((i): PresidentInjury | null => {
+        const id = str(i.id, "");
+        if (!id) return null;
+        const sev = str(i.severity, "");
+        const severity: PresidentInjury["severity"] =
+          sev === "leve" || sev === "moderada" || sev === "grave" || sev === "longa_duracao"
+            ? sev
+            : "moderada";
+        const st = str(i.status, "");
+        const status: PresidentInjury["status"] =
+          st === "em_avaliacao" ||
+          st === "em_recuperacao" ||
+          st === "retorno_ao_treino" ||
+          st === "plenas_condicoes" ||
+          st === "cirurgia" ||
+          st === "repouso"
+            ? st
+            : "em_recuperacao";
+        const startDate = str(i.startDate, "").slice(0, 10) || str(i.expectedReturn, "").slice(0, 10) || "";
+        return {
+          id,
+          sourcePlayerId: typeof i.sourcePlayerId === "string" ? i.sourcePlayerId : undefined,
+          syncedFromCoach: typeof i.syncedFromCoach === "boolean" ? i.syncedFromCoach : false,
+          playerName: str(i.playerName, ""),
+          team: str(i.team, ""),
+          position: str(i.position, ""),
+          injuryType: str(i.injuryType, ""),
+          bodyArea: str(i.bodyArea, ""),
+          severity,
+          startDate,
+          expectedReturn: str(i.expectedReturn, "").slice(0, 10),
+          daysOut: num(i.daysOut, 0),
+          status,
+          assignedStaff: str(i.assignedStaff, ""),
+          note: str(i.note, ""),
+          recoveryProgress: str(i.recoveryProgress, ""),
+          medicalNotes: str(i.medicalNotes, ""),
+          availabilityPct: Math.min(100, Math.max(0, num(i.availabilityPct, 0))),
+          rehabSessionsDone: num(i.rehabSessionsDone ?? 0, 0),
+          nextMilestone: str(i.nextMilestone, ""),
+          workloadNotes: str(i.workloadNotes, ""),
+          recurrenceWarning: bool(i.recurrenceWarning, false),
+          medicalCostEUR: num(i.medicalCostEUR ?? 0, 0),
+        };
+      })
+      .filter((x): x is PresidentInjury => x !== null),
+    medicalStaff: arr<PresidentMedicalStaff>(o.medicalStaff)
+      .map(
+        (m): PresidentMedicalStaff => ({
+          id: str(m.id, ""),
+          name: str(m.name, ""),
+          email: str(m.email, ""),
+          phone: str(m.phone, ""),
+          role: (() => {
+            const r = str(m.role, "");
+            if (
+              r === "fisioterapeuta" ||
+              r === "medico" ||
+              r === "preparador_reabilitacao" ||
+              r === "nutricionista" ||
+              r === "psicologo"
+            )
+              return r;
+            return "fisioterapeuta";
+          })(),
+          notes: str(m.notes, ""),
+        })
+      )
+      .filter((m) => m.id),
+    medicalAppointments: arr<PresidentMedicalAppointment>(o.medicalAppointments)
+      .map(
+        (a): PresidentMedicalAppointment => ({
+          id: str(a.id, ""),
+          playerName: str(a.playerName, ""),
+          date: str(a.date, "").slice(0, 16),
+          type: str(a.type, ""),
+          professional: str(a.professional, ""),
+          status: (() => {
+            const s = str(a.status, "");
+            if (s === "concluido" || s === "cancelado") return s;
+            return "agendado";
+          })(),
+          notes: str(a.notes, ""),
+        })
+      )
+      .filter((a) => a.id),
+    medicalInventory: arr<PresidentMedicalInventoryItem>(o.medicalInventory)
+      .map(
+        (x): PresidentMedicalInventoryItem => ({
+          id: str(x.id, ""),
+          item: str(x.item, ""),
+          stock: num(x.stock, 0),
+          minLevel: num(x.minLevel, 0),
+          supplier: str(x.supplier, ""),
+        })
+      )
+      .filter((x) => x.id),
     disciplineIncidents: arr<PresidentDisciplineIncident>(o.disciplineIncidents)
       .map(
         (d): PresidentDisciplineIncident => ({

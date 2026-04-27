@@ -105,7 +105,7 @@ export function computePresidentDashboardKpis(state: PresidentClubState): Presid
     overduePaymentsEUR,
     activeSponsorsEUR,
     potentialSponsorsEUR,
-    injuredPlayers: state.injuries.length,
+    injuredPlayers: state.injuries.filter((i) => i.status !== "plenas_condicoes").length,
     disciplineOpen: state.disciplineIncidents.length,
     operationsThisWeek: state.operationsEvents.filter((e) => e.start >= fromIso).length,
   };

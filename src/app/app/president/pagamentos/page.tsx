@@ -45,7 +45,15 @@ function statusBadge(s: PresidentExpenseStatus) {
 
 export default function PresidentPagamentosPage() {
   const roster = usePresidentLinkedRoster();
-  const { state, addExpense, updateExpense, removeExpense, markExpensePaid, syncExpensesWithLinkedStaff } = usePresidentClub();
+  const {
+    state,
+    addExpense,
+    updateExpense,
+    removeExpense,
+    markExpensePaid,
+    syncExpensesWithLinkedStaff,
+    syncMedicalStaffToExpenses,
+  } = usePresidentClub();
   const [name, setName] = useState("");
   const [category, setCategory] = useState<PresidentExpenseCategory>("treinadores_staff");
   const [description, setDescription] = useState("");
@@ -66,6 +74,10 @@ export default function PresidentPagamentosPage() {
   useEffect(() => {
     syncExpensesWithLinkedStaff(roster.staffRows ?? []);
   }, [roster.staffRows, syncExpensesWithLinkedStaff]);
+
+  useEffect(() => {
+    syncMedicalStaffToExpenses(state.medicalStaff);
+  }, [state.medicalStaff, syncMedicalStaffToExpenses]);
 
   useEffect(() => {
     const now = todayIso();

@@ -121,6 +121,8 @@ export type PresidentExpense = {
   role: string;
   supplier: string;
   sourceStaffKey?: string;
+  /** Centro médico — despesa associada a membro da equipa clínica. */
+  sourceMedicalStaffId?: string;
   coachUserId?: string;
 };
 
@@ -179,14 +181,85 @@ export type PresidentSponsor = {
   pipelineStage: "ativo" | "potencial" | "negociação";
 };
 
+/** Gravidade da lesão (Centro médico). */
+export type PresidentInjurySeverity = "leve" | "moderada" | "grave" | "longa_duracao";
+
+/** Estado clínico / disponibilidade (Centro médico). */
+export type PresidentInjuryStatus =
+  | "em_avaliacao"
+  | "em_recuperacao"
+  | "retorno_ao_treino"
+  | "plenas_condicoes"
+  | "cirurgia"
+  | "repouso";
+
 export type PresidentInjury = {
   id: string;
+  /** Id do jogador no plantel agregado (`linked:…`) quando a linha vem da equipa do treinador. */
+  sourcePlayerId?: string;
+  /** true = linha gerida automaticamente a partir do estado do treinador (lesão/dúvida). */
+  syncedFromCoach?: boolean;
   playerName: string;
+  team: string;
+  position: string;
   injuryType: string;
+  bodyArea: string;
+  severity: PresidentInjurySeverity;
+  /** Data de início ISO YYYY-MM-DD */
+  startDate: string;
+  /** Retorno previsto ISO YYYY-MM-DD */
   expectedReturn: string;
+  /** Dias de baixa (aproximado; recalculável na UI). */
+  daysOut: number;
+  status: PresidentInjuryStatus;
+  assignedStaff: string;
+  note: string;
+  /** Progresso textual / fase (ex.: «60% — fase de reabilitação»). */
   recoveryProgress: string;
+  /** Notas clínicas — acesso restrito no sentido organizacional. */
   medicalNotes: string;
+  /** Prontidão para retorno 0–100%. */
   availabilityPct: number;
+  rehabSessionsDone?: number;
+  nextMilestone?: string;
+  workloadNotes?: string;
+  recurrenceWarning?: boolean;
+  /** Custos médicos associados ao caso (EUR, opcional). */
+  medicalCostEUR?: number;
+};
+
+export type PresidentMedicalStaffRole =
+  | "fisioterapeuta"
+  | "medico"
+  | "preparador_reabilitacao"
+  | "nutricionista"
+  | "psicologo";
+
+export type PresidentMedicalStaff = {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  role: PresidentMedicalStaffRole;
+  notes: string;
+};
+
+export type PresidentMedicalAppointment = {
+  id: string;
+  playerName: string;
+  date: string;
+  type: string;
+  professional: string;
+  status: "agendado" | "concluido" | "cancelado";
+  notes: string;
+};
+
+export type PresidentMedicalInventoryItem = {
+  id: string;
+  item: string;
+  stock: number;
+  minLevel: number;
+  supplier: string;
 };
 
 export type PresidentDisciplineIncident = {
@@ -258,6 +331,10 @@ export type PresidentClubState = {
   payments: PresidentPayment[];
   sponsors: PresidentSponsor[];
   injuries: PresidentInjury[];
+  /** Equipa clínica do clube (aparece também em Pagamentos / despesas). */
+  medicalStaff: PresidentMedicalStaff[];
+  medicalAppointments: PresidentMedicalAppointment[];
+  medicalInventory: PresidentMedicalInventoryItem[];
   disciplineIncidents: PresidentDisciplineIncident[];
   operationsEvents: PresidentOperationEvent[];
   reports: PresidentReport[];

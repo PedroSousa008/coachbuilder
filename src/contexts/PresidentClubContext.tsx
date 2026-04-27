@@ -25,6 +25,7 @@ import {
   paymentFromPlayer,
   QUOTA_INCOME_FINANCE_CATEGORY,
 } from "@/lib/president-finance";
+import { mergeLinkedPlayersIntoInjuries } from "@/lib/president-medical-sync";
 import type {
   PresidentClubSettings,
   PresidentClubState,
@@ -38,6 +39,9 @@ import type {
   PresidentPaymentHistoryEntry,
   PresidentInjury,
   PresidentMarketContact,
+  PresidentMedicalAppointment,
+  PresidentMedicalInventoryItem,
+  PresidentMedicalStaff,
   PresidentOperationEvent,
   PresidentPayment,
   PresidentPlayer,
@@ -86,6 +90,17 @@ type PresidentClubContextValue = {
   addInjury: (row: Omit<PresidentInjury, "id">) => string;
   updateInjury: (id: string, patch: Partial<PresidentInjury>) => void;
   removeInjury: (id: string) => void;
+  syncMedicalFromLinkedRoster: (players: PresidentPlayer[]) => void;
+  addMedicalStaff: (row: Omit<PresidentMedicalStaff, "id">) => string;
+  updateMedicalStaff: (id: string, patch: Partial<PresidentMedicalStaff>) => void;
+  removeMedicalStaff: (id: string) => void;
+  addMedicalAppointment: (row: Omit<PresidentMedicalAppointment, "id">) => string;
+  updateMedicalAppointment: (id: string, patch: Partial<PresidentMedicalAppointment>) => void;
+  removeMedicalAppointment: (id: string) => void;
+  addMedicalInventoryItem: (row: Omit<PresidentMedicalInventoryItem, "id">) => string;
+  updateMedicalInventoryItem: (id: string, patch: Partial<PresidentMedicalInventoryItem>) => void;
+  removeMedicalInventoryItem: (id: string) => void;
+  syncMedicalStaffToExpenses: (staff: PresidentMedicalStaff[]) => void;
   addDisciplineIncident: (row: Omit<PresidentDisciplineIncident, "id">) => string;
   removeDisciplineIncident: (id: string) => void;
   addOperationEvent: (row: Omit<PresidentOperationEvent, "id">) => string;
@@ -454,6 +469,122 @@ export function PresidentClubProvider({ children }: { children: ReactNode }) {
     setState((prev) => ({ ...prev, injuries: prev.injuries.filter((i) => i.id !== id) }));
   }, []);
 
+  const syncMedicalFromLinkedRoster = useCallback((players: PresidentPlayer[]) => {
+    setState((prev) => ({
+      ...prev,
+      injuries: mergeLinkedPlayersIntoInjuries(prev.injuries, players),
+    }));
+  }, []);
+
+  const addMedicalStaff = useCallback((row: Omit<PresidentMedicalStaff, "id">) => {
+    const id = presidentUid();
+    setState((prev) => ({ ...prev, medicalStaff: [{ ...row, id }, ...prev.medicalStaff] }));
+    return id;
+  }, []);
+
+  const updateMedicalStaff = useCallback((id: string, patch: Partial<PresidentMedicalStaff>) => {
+    setState((prev) => ({
+      ...prev,
+      medicalStaff: prev.medicalStaff.map((m) => (m.id === id ? { ...m, ...patch, id } : m)),
+    }));
+  }, []);
+
+  const removeMedicalStaff = useCallback((id: string) => {
+    setState((prev) => ({
+      ...prev,
+      medicalStaff: prev.medicalStaff.filter((m) => m.id !== id),
+      expenses: prev.expenses.filter((e) => e.sourceMedicalStaffId !== id),
+    }));
+  }, []);
+
+  const addMedicalAppointment = useCallback((row: Omit<PresidentMedicalAppointment, "id">) => {
+    const id = presidentUid();
+    setState((prev) => ({ ...prev, medicalAppointments: [{ ...row, id }, ...prev.medicalAppointments] }));
+    return id;
+  }, []);
+
+  const updateMedicalAppointment = useCallback((id: string, patch: Partial<PresidentMedicalAppointment>) => {
+    setState((prev) => ({
+      ...prev,
+      medicalAppointments: prev.medicalAppointments.map((a) => (a.id === id ? { ...a, ...patch, id } : a)),
+    }));
+  }, []);
+
+  const removeMedicalAppointment = useCallback((id: string) => {
+    setState((prev) => ({
+      ...prev,
+      medicalAppointments: prev.medicalAppointments.filter((a) => a.id !== id),
+    }));
+  }, []);
+
+  const addMedicalInventoryItem = useCallback((row: Omit<PresidentMedicalInventoryItem, "id">) => {
+    const id = presidentUid();
+    setState((prev) => ({ ...prev, medicalInventory: [{ ...row, id }, ...prev.medicalInventory] }));
+    return id;
+  }, []);
+
+  const updateMedicalInventoryItem = useCallback((id: string, patch: Partial<PresidentMedicalInventoryItem>) => {
+    setState((prev) => ({
+      ...prev,
+      medicalInventory: prev.medicalInventory.map((x) => (x.id === id ? { ...x, ...patch, id } : x)),
+    }));
+  }, []);
+
+  const removeMedicalInventoryItem = useCallback((id: string) => {
+    setState((prev) => ({
+      ...prev,
+      medicalInventory: prev.medicalInventory.filter((x) => x.id !== id),
+    }));
+  }, []);
+
+  const syncMedicalStaffToExpenses = useCallback((staff: PresidentMedicalStaff[]) => {
+    setState((prev) => {
+      if (!staff.length) return prev;
+      const rolePt = (r: PresidentMedicalStaff["role"]) => {
+        if (r === "fisioterapeuta") return "Fisioterapeuta";
+        if (r === "medico") return "Médico";
+        if (r === "preparador_reabilitacao") return "Preparador de reabilitação";
+        if (r === "nutricionista") return "Nutricionista";
+        return "Psicólogo";
+      };
+      const byId = new Map(staff.map((s) => [s.id, s]));
+      const updated = prev.expenses.map((e) => {
+        if (!e.sourceMedicalStaffId) return e;
+        const m = byId.get(e.sourceMedicalStaffId);
+        if (!m) return e;
+        const nextName = m.name.trim() || e.name;
+        const nextDesc = `${rolePt(m.role)} · ${m.email || "sem email"}`;
+        if (e.name === nextName && e.description === nextDesc && e.role === rolePt(m.role)) return e;
+        return { ...e, name: nextName, description: nextDesc, role: rolePt(m.role) };
+      });
+      const additions: PresidentExpense[] = [];
+      for (const m of staff) {
+        const exists = updated.some((e) => e.sourceMedicalStaffId === m.id);
+        if (exists) continue;
+        additions.push({
+          id: presidentUid(),
+          name: m.name.trim() || m.email || "Staff clínico",
+          category: "saude",
+          description: `${rolePt(m.role)} · ${m.email || "sem email"}`,
+          teamOrDepartment: "Centro médico",
+          dueDate: "",
+          valueEUR: 0,
+          status: "pendente",
+          paymentMethod: "transferencia_bancaria",
+          paymentInfo: m.phone || "",
+          note: "Sincronizado a partir do Centro médico (equipa clínica). Aparece em Pagamentos para gestão de honorários.",
+          lastPaidAt: "",
+          recurringMonthly: false,
+          role: rolePt(m.role),
+          supplier: "",
+          sourceMedicalStaffId: m.id,
+        });
+      }
+      if (!additions.length && updated.every((e, i) => e === prev.expenses[i])) return prev;
+      return { ...prev, expenses: [...additions, ...updated] };
+    });
+  }, []);
+
   const addDisciplineIncident = useCallback((row: Omit<PresidentDisciplineIncident, "id">) => {
     const id = presidentUid();
     setState((prev) => ({
@@ -604,6 +735,17 @@ export function PresidentClubProvider({ children }: { children: ReactNode }) {
       addInjury,
       updateInjury,
       removeInjury,
+      syncMedicalFromLinkedRoster,
+      addMedicalStaff,
+      updateMedicalStaff,
+      removeMedicalStaff,
+      addMedicalAppointment,
+      updateMedicalAppointment,
+      removeMedicalAppointment,
+      addMedicalInventoryItem,
+      updateMedicalInventoryItem,
+      removeMedicalInventoryItem,
+      syncMedicalStaffToExpenses,
       addDisciplineIncident,
       removeDisciplineIncident,
       addOperationEvent,
@@ -657,6 +799,17 @@ export function PresidentClubProvider({ children }: { children: ReactNode }) {
       addInjury,
       updateInjury,
       removeInjury,
+      syncMedicalFromLinkedRoster,
+      addMedicalStaff,
+      updateMedicalStaff,
+      removeMedicalStaff,
+      addMedicalAppointment,
+      updateMedicalAppointment,
+      removeMedicalAppointment,
+      addMedicalInventoryItem,
+      updateMedicalInventoryItem,
+      removeMedicalInventoryItem,
+      syncMedicalStaffToExpenses,
       addDisciplineIncident,
       removeDisciplineIncident,
       addOperationEvent,
