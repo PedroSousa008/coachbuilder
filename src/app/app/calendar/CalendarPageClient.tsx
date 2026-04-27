@@ -12,6 +12,7 @@ import { useScheduleNow } from "@/hooks/useScheduleNow";
 import { buildMonthGrid, isSameLocalDay } from "@/lib/coaching-professionals-calendar";
 import { cn } from "@/lib/utils";
 import { parseMatchEventsFromOcrText } from "@/lib/league-results-ocr-parse";
+import type { SketchCalendarEventCategory } from "@/types";
 
 const cellInputClass =
   "h-8 min-w-0 px-1.5 py-0 text-xs tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none";
@@ -23,6 +24,25 @@ function monthDayKey(isoDate: string): string | null {
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
   return `${m}-${day}`;
+}
+
+function dayIsoLocal(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function monthInputFromDate(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function dateFromMonthInput(v: string): Date {
+  const [ys, ms] = v.split("-");
+  const y = Number(ys);
+  const m = Number(ms);
+  if (!Number.isFinite(y) || !Number.isFinite(m)) return new Date();
+  return new Date(y, m - 1, 1);
 }
 
 export function CalendarPageClient() {
@@ -42,6 +62,8 @@ export function CalendarPageClient() {
     clearLeagueStandingsStatsKeepNames,
     pastClubResults,
     updatePastClubResultNote,
+    sketchArea,
+    setSketchArea,
     coachProfile,
     players,
     staff,
@@ -56,6 +78,14 @@ export function CalendarPageClient() {
   const [ocrError, setOcrError] = useState<string | null>(null);
   const resultsImageInputRef = useRef<HTMLInputElement>(null);
   const [viewMonth, setViewMonth] = useState(() => new Date());
+  const [selectedDay, setSelectedDay] = useState<Date | null>(null);
+  const [eventModalOpen, setEventModalOpen] = useState(false);
+  const [newEventTitle, setNewEventTitle] = useState("");
+  const [newEventTopic, setNewEventTopic] = useState<SketchCalendarEventCategory>("other");
+  const [newEventDate, setNewEventDate] = useState(() => dayIsoLocal(new Date()));
+  const [newEventNotes, setNewEventNotes] = useState("");
+  const [printFromMonth, setPrintFromMonth] = useState(() => monthInputFromDate(new Date()));
+  const [printToMonth, setPrintToMonth] = useState(() => monthInputFromDate(new Date()));
   const nowMs = useScheduleNow();
   const monthCells = useMemo(
     () => buildMonthGrid(viewMonth.getFullYear(), viewMonth.getMonth()),
@@ -63,43 +93,53 @@ export function CalendarPageClient() {
   );
   const today = useMemo(() => new Date(nowMs), [nowMs]);
 
-  const birthdayRows = useMemo(() => {
-    const now = new Date(nowMs);
-    const today = `${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-    const list: { id: string; label: string; subtitle: string; isToday: boolean }[] = [];
-    const coachBirth = monthDayKey(coachProfile.dateOfBirth ?? "");
-    if (coachBirth) {
-      list.push({
-        id: "coach",
-        label: coachProfile.name.trim() || "Treinador",
-        subtitle: "Treinador",
-        isToday: coachBirth === today,
+  const allCalendarEntries = useMemo(() => {
+    const entries: Array<{ date: string; label: string; kind: "fixture" | "birthday" | "sketch_event" | "note" }> = [];
+    for (const f of fixtures) {
+      entries.push({
+        date: dayIsoLocal(new Date(f.kickoff)),
+        label: `Jogo: vs ${f.opponent}`,
+        kind: "fixture",
       });
     }
-    for (const p of players) {
-      const key = monthDayKey(p.dateOfBirth ?? "");
-      if (!key) continue;
-      list.push({
-        id: `player-${p.id}`,
-        label: p.name,
-        subtitle: `Jogador · #${p.number}`,
-        isToday: key === today,
-      });
+    const pushBirthday = (name: string, subtitle: string, dob?: string) => {
+      const k = monthDayKey(dob ?? "");
+      if (!k) return;
+      const [mm, dd] = k.split("-");
+      const month = Number(mm);
+      const day = Number(dd);
+      for (let y = viewMonth.getFullYear() - 2; y <= viewMonth.getFullYear() + 4; y++) {
+        const d = new Date(y, month - 1, day);
+        if (Number.isNaN(d.getTime())) continue;
+        entries.push({
+          date: dayIsoLocal(d),
+          label: `Aniversário do ${name} (${subtitle})`,
+          kind: "birthday",
+        });
+      }
+    };
+    pushBirthday(coachProfile.name.trim() || "Treinador", "Treinador", coachProfile.dateOfBirth);
+    for (const p of players) pushBirthday(p.name, `Jogador #${p.number}`, p.dateOfBirth);
+    for (const s of staff) pushBirthday(s.name, `Staff ${s.role}`, s.dateOfBirth);
+    for (const ev of sketchArea.calendarEvents) {
+      entries.push({ date: ev.date, label: `Evento: ${ev.title}`, kind: "sketch_event" });
     }
-    for (const s of staff) {
-      const key = monthDayKey(s.dateOfBirth ?? "");
-      if (!key) continue;
-      list.push({
-        id: `staff-${s.id}`,
-        label: s.name,
-        subtitle: `Staff · ${s.role}`,
-        isToday: key === today,
-      });
+    for (const note of sketchArea.notes) {
+      if (!note.date) continue;
+      entries.push({ date: note.date, label: `Nota Sketch: ${note.title}`, kind: "note" });
     }
-    return list;
-  }, [coachProfile.dateOfBirth, coachProfile.name, nowMs, players, staff]);
+    return entries;
+  }, [coachProfile.dateOfBirth, coachProfile.name, fixtures, players, sketchArea.calendarEvents, sketchArea.notes, staff, viewMonth]);
 
-  const birthdaysToday = birthdayRows.filter((x) => x.isToday);
+  const entriesByDay = useMemo(() => {
+    const map = new Map<string, Array<{ label: string; kind: "fixture" | "birthday" | "sketch_event" | "note" }>>();
+    for (const e of allCalendarEntries) {
+      const list = map.get(e.date) ?? [];
+      list.push({ label: e.label, kind: e.kind });
+      map.set(e.date, list);
+    }
+    return map;
+  }, [allCalendarEntries]);
 
   const handleCreateLeagueSetup = () => {
     const teams = Number(setupTeamsDraft);
@@ -162,6 +202,50 @@ export function CalendarPageClient() {
     }
   };
 
+  const handleCreateCustomEvent = () => {
+    const title = newEventTitle.trim();
+    if (!title || !newEventDate) return;
+    const nowIso = new Date().toISOString();
+    setSketchArea((prev) => ({
+      ...prev,
+      calendarEvents: [
+        {
+          id: `cal-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+          title,
+          category: newEventTopic,
+          date: newEventDate,
+          notes: newEventNotes.trim() || undefined,
+          createdAt: nowIso,
+          updatedAt: nowIso,
+        },
+        ...prev.calendarEvents,
+      ],
+    }));
+    setEventModalOpen(false);
+    setNewEventTitle("");
+    setNewEventNotes("");
+  };
+
+  const selectedDayEntries = useMemo(() => {
+    if (!selectedDay) return [];
+    return entriesByDay.get(dayIsoLocal(selectedDay)) ?? [];
+  }, [entriesByDay, selectedDay]);
+
+  const printableMonths = useMemo(() => {
+    const from = dateFromMonthInput(printFromMonth);
+    const to = dateFromMonthInput(printToMonth);
+    const start = from <= to ? from : to;
+    const end = from <= to ? to : from;
+    const out: Date[] = [];
+    let cursor = new Date(start.getFullYear(), start.getMonth(), 1);
+    const cap = 24;
+    while (cursor <= end && out.length < cap) {
+      out.push(new Date(cursor));
+      cursor = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
+    }
+    return out;
+  }, [printFromMonth, printToMonth]);
+
   return (
     <div className="mx-auto max-w-6xl space-y-10">
       <div>
@@ -170,32 +254,6 @@ export function CalendarPageClient() {
           Configura a liga, preenche a classificação por fase, atualiza por OCR e gere jogos futuros no calendário.
         </p>
       </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Aniversários automáticos</CardTitle>
-          <CardDescription>
-            Quando a data coincide, o calendário assinala automaticamente com mensagem de parabéns.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {birthdaysToday.length > 0 ? (
-            birthdaysToday.map((row) => (
-              <div key={row.id} className="rounded-xl border border-emerald-500/35 bg-emerald-500/10 px-4 py-3">
-                <p className="font-semibold text-emerald-200">Parabéns, {row.label}!</p>
-                <p className="text-xs text-emerald-100/90">{row.subtitle}</p>
-              </div>
-            ))
-          ) : (
-            <p className="text-sm text-zinc-400">Hoje não há aniversários registados.</p>
-          )}
-          {birthdayRows.length === 0 && (
-            <p className="text-xs text-zinc-500">
-              Para ativar, adiciona data de nascimento no Perfil, Jogadores e Staff.
-            </p>
-          )}
-        </CardContent>
-      </Card>
 
       <FixtureFormModal
         open={fixtureModalOpen}
@@ -477,10 +535,90 @@ export function CalendarPageClient() {
             </div>
           </div>
 
+          {eventModalOpen && (
+            <div className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-4">
+              <div className="w-full max-w-md rounded-2xl border border-surface-border bg-zinc-950 p-4">
+                <p className="text-base font-semibold text-white">Novo Evento</p>
+                <p className="mt-1 text-xs text-zinc-500">Escolhe tópico, data e descrição.</p>
+                <div className="mt-3 space-y-3">
+                  <Input value={newEventTitle} onChange={(e) => setNewEventTitle(e.target.value)} placeholder="Título" />
+                  <label className="block text-xs text-zinc-500">
+                    Tópico
+                    <select
+                      value={newEventTopic}
+                      onChange={(e) => setNewEventTopic(e.target.value as SketchCalendarEventCategory)}
+                      className="mt-1 h-10 w-full rounded-xl border border-surface-border bg-surface-raised/90 px-3 text-sm text-zinc-100"
+                    >
+                      <option value="training">Treino</option>
+                      <option value="match">Jogo</option>
+                      <option value="meeting">Reunião</option>
+                      <option value="opponent_analysis">Análise adversário</option>
+                      <option value="player_review">Revisão jogador</option>
+                      <option value="task_deadline">Prazo</option>
+                      <option value="other">Outro</option>
+                    </select>
+                  </label>
+                  <Input type="date" value={newEventDate} onChange={(e) => setNewEventDate(e.target.value)} />
+                  <textarea
+                    value={newEventNotes}
+                    onChange={(e) => setNewEventNotes(e.target.value)}
+                    rows={3}
+                    placeholder="Observações"
+                    className="min-h-[84px] w-full resize-y rounded-xl border border-surface-border bg-surface-raised/90 px-3 py-2 text-sm text-zinc-100"
+                  />
+                </div>
+                <div className="mt-4 flex justify-end gap-2">
+                  <Button type="button" variant="secondary" onClick={() => setEventModalOpen(false)}>
+                    Cancelar
+                  </Button>
+                  <Button type="button" onClick={handleCreateCustomEvent} disabled={!newEventTitle.trim() || !newEventDate}>
+                    Guardar evento
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="hidden print:block">
+            <h3 className="mb-3 text-lg font-semibold text-black">Calendário para impressão</h3>
+            {printableMonths.map((m) => {
+              const cells = buildMonthGrid(m.getFullYear(), m.getMonth());
+              return (
+                <div key={m.toISOString()} className="mb-6 break-inside-avoid">
+                  <p className="mb-2 text-sm font-semibold text-black">
+                    {m.toLocaleString("pt-PT", { month: "long", year: "numeric" })}
+                  </p>
+                  <div className="grid grid-cols-7 gap-1 text-[10px]">
+                    {["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"].map((d) => (
+                      <p key={`${m.toISOString()}-${d}`} className="font-semibold text-black">
+                        {d}
+                      </p>
+                    ))}
+                    {cells.map((day, idx) => {
+                      if (!day) return <div key={`${m.toISOString()}-empty-${idx}`} className="h-16 border border-transparent" />;
+                      const dayKey = dayIsoLocal(day);
+                      const events = entriesByDay.get(dayKey) ?? [];
+                      return (
+                        <div key={`${m.toISOString()}-${day.toISOString()}`} className="h-16 border border-zinc-400 p-1">
+                          <p className="text-[10px] font-semibold text-black">{day.getDate()}</p>
+                          {events.slice(0, 2).map((ev, i) => (
+                            <p key={`${dayKey}-${i}`} className="truncate text-[9px] text-black">
+                              {ev.label}
+                            </p>
+                          ))}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
           <div className="rounded-xl border border-surface-border bg-surface-raised/30 p-4">
             <div className="mb-3 flex items-center justify-between">
               <p className="text-sm font-semibold text-white">Calendário mensal</p>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <Button
                   type="button"
                   size="sm"
@@ -490,6 +628,17 @@ export function CalendarPageClient() {
                   }}
                 >
                   Adicionar Jogo
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => {
+                    setNewEventDate(dayIsoLocal(selectedDay ?? new Date(nowMs)));
+                    setEventModalOpen(true);
+                  }}
+                >
+                  Novo Evento
                 </Button>
                 <Button
                   type="button"
@@ -512,6 +661,15 @@ export function CalendarPageClient() {
                 </Button>
               </div>
             </div>
+            <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-surface-border/70 bg-zinc-900/35 p-2">
+              <span className="text-xs text-zinc-400">Imprimir</span>
+              <Input type="month" value={printFromMonth} onChange={(e) => setPrintFromMonth(e.target.value)} className="h-9 max-w-[170px]" />
+              <span className="text-xs text-zinc-500">até</span>
+              <Input type="month" value={printToMonth} onChange={(e) => setPrintToMonth(e.target.value)} className="h-9 max-w-[170px]" />
+              <Button type="button" size="sm" variant="secondary" onClick={() => window.print()}>
+                Imprimir
+              </Button>
+            </div>
             <p className="mb-3 text-xs text-zinc-500">
               {viewMonth.toLocaleString("pt-PT", { month: "long", year: "numeric" })}
             </p>
@@ -523,16 +681,21 @@ export function CalendarPageClient() {
               ))}
               {monthCells.map((day, idx) => {
                 if (!day) return <div key={`empty-${idx}`} className="h-20 rounded-lg border border-transparent" />;
-                const items = fixtures.filter((f) => isSameLocalDay(new Date(f.kickoff), day));
+                const iso = dayIsoLocal(day);
+                const items = entriesByDay.get(iso) ?? [];
                 const isToday = isSameLocalDay(day, today);
+                const isSelected = selectedDay ? isSameLocalDay(day, selectedDay) : false;
                 return (
-                  <div
+                  <button
+                    type="button"
                     key={day.toISOString()}
+                    onClick={() => setSelectedDay(day)}
                     className={cn(
-                      "h-20 rounded-lg border p-1.5 sm:p-2",
+                      "h-20 rounded-lg border p-1.5 text-left sm:p-2",
                       isToday
                         ? "border-accent/80 bg-accent/15 ring-2 ring-accent/60 ring-offset-2 ring-offset-zinc-950"
-                        : "border-surface-border"
+                        : "border-surface-border",
+                      isSelected && "border-emerald-400/80 ring-2 ring-emerald-400/50 ring-offset-2 ring-offset-zinc-950"
                     )}
                   >
                     <p
@@ -544,15 +707,42 @@ export function CalendarPageClient() {
                       {day.getDate()}
                       {isToday ? <span className="ml-1 text-[9px] font-normal text-accent/90">· hoje</span> : null}
                     </p>
-                    {items.slice(0, 2).map((f, i) => (
-                      <p key={`${day.toISOString()}-${i}`} className="truncate text-[10px] text-zinc-200 sm:text-[11px]">
-                        vs {f.opponent}
+                    {items.slice(0, 2).map((it, i) => (
+                      <p
+                        key={`${day.toISOString()}-${i}`}
+                        className={cn(
+                          "truncate text-[10px] sm:text-[11px]",
+                          it.kind === "birthday" && "text-emerald-200",
+                          it.kind === "fixture" && "text-zinc-200",
+                          it.kind === "sketch_event" && "text-sky-200",
+                          it.kind === "note" && "text-amber-200"
+                        )}
+                      >
+                        {it.label}
                       </p>
                     ))}
-                  </div>
+                  </button>
                 );
               })}
             </div>
+            {selectedDay && (
+              <div className="mt-4 rounded-xl border border-surface-border bg-zinc-900/40 p-3">
+                <p className="text-sm font-semibold text-white">
+                  Detalhe do dia {selectedDay.toLocaleDateString("pt-PT")}
+                </p>
+                {selectedDayEntries.length === 0 ? (
+                  <p className="mt-2 text-xs text-zinc-500">Sem eventos para este dia.</p>
+                ) : (
+                  <ul className="mt-2 space-y-1.5">
+                    {selectedDayEntries.map((e, idx) => (
+                      <li key={`${e.label}-${idx}`} className="text-xs text-zinc-200">
+                        {e.label}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="rounded-xl border border-surface-border bg-surface-raised/30 p-4">
