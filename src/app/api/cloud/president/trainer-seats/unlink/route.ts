@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { isCloudSyncEnabledServer } from "@/lib/cloud-config";
-import { getCloudUserFromSessionCookies } from "@/lib/cloud-session-user";
+import { requirePresidentPremiumAccess } from "@/lib/require-president-premium-server";
 
 export const dynamic = "force-dynamic";
 
@@ -14,13 +14,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "Cloud inativo." }, { status: 503 });
   }
 
-  const session = await getCloudUserFromSessionCookies();
-  if (!session?.user.id) {
-    return NextResponse.json({ ok: false, error: "Não autorizado." }, { status: 401 });
-  }
-  if (session.user.coachingRole !== "club-president") {
-    return NextResponse.json({ ok: false, error: "Apenas contas Presidente." }, { status: 403 });
-  }
+  const premium = await requirePresidentPremiumAccess();
+  if (!premium.ok) return premium.response;
 
   try {
     const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
@@ -36,7 +31,7 @@ export async function POST(req: Request) {
     if (!coach) {
       return NextResponse.json({ ok: false, error: "Treinador não encontrado." }, { status: 404 });
     }
-    if (coach.clubPresidentUserId !== session.user.id) {
+    if (coach.clubPresidentUserId !== premium.user.id) {
       return NextResponse.json({ ok: false, error: "Sem permissão para este treinador." }, { status: 403 });
     }
 

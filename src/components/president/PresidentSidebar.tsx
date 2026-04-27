@@ -10,6 +10,8 @@ import { cn } from "@/lib/utils";
 import { PRESIDENT_NAV } from "@/lib/president-nav";
 import { PRESIDENT_EXTRA_SEAT_PRICE_EUR, PRESIDENT_INCLUDED_COACH_SEATS } from "@/lib/president-constants";
 import { shouldUseCloudClientApis } from "@/lib/cloud-config";
+import { clientEmailShowsAdminNav } from "@/lib/bootstrap-admin-client";
+import { isPresidentPremiumLocked } from "@/lib/president-premium-client";
 
 export function PresidentSidebar() {
   const pathname = usePathname();
@@ -45,6 +47,9 @@ export function PresidentSidebar() {
 
   const displayName = coachProfile.name.trim() || user?.name.trim() || user?.email || "";
   const showEmailUnderName = Boolean(user?.email && displayName !== user.email);
+  const ownerListed = Boolean(user?.email && clientEmailShowsAdminNav(user.email));
+  const premiumLocked = isPresidentPremiumLocked(user, ownerListed);
+  const navItems = premiumLocked ? PRESIDENT_NAV.filter((i) => i.href === "/app/president/definicoes") : PRESIDENT_NAV;
 
   return (
     <aside className="fixed left-0 top-0 z-40 hidden h-screen w-[280px] flex-col border-r border-surface-border bg-[#0c1014]/95 backdrop-blur-xl lg:flex">
@@ -59,7 +64,7 @@ export function PresidentSidebar() {
       </div>
 
       <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto p-3">
-        {PRESIDENT_NAV.map((item) => {
+        {navItems.map((item) => {
           const active =
             item.href === "/app/president"
               ? pathname === "/app/president" || pathname === "/app/president/"
@@ -84,19 +89,28 @@ export function PresidentSidebar() {
       </nav>
 
       <div className="border-t border-surface-border p-4">
-        <Link
-          href="/app/president/definicoes#lugares-treinador"
-          className="block rounded-xl border border-surface-border bg-surface-raised/40 px-3 py-2 transition-colors hover:border-zinc-600 hover:bg-surface-raised/60"
-        >
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">Lugares de treinador</p>
-          <p className="mt-1 text-sm font-medium text-white">
-            {cloudSeatsUsed === null ? "—" : cloudSeatsUsed} / {PRESIDENT_INCLUDED_COACH_SEATS} lugares cloud ocupados
-          </p>
-          <p className="mt-1 text-[11px] leading-snug text-zinc-500">
-            Cada lugar extra: {PRESIDENT_EXTRA_SEAT_PRICE_EUR}€ (pagamento único, sem mensalidade adicional por
-            treinador).
-          </p>
-        </Link>
+        {premiumLocked ? (
+          <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2.5">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-amber-200/90">Subscrição</p>
+            <p className="mt-1 text-xs leading-snug text-amber-100/90">
+              Modo clube bloqueado até activares o PresidentPro em Definições.
+            </p>
+          </div>
+        ) : (
+          <Link
+            href="/app/president/definicoes#lugares-treinador"
+            className="block rounded-xl border border-surface-border bg-surface-raised/40 px-3 py-2 transition-colors hover:border-zinc-600 hover:bg-surface-raised/60"
+          >
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">Lugares de treinador</p>
+            <p className="mt-1 text-sm font-medium text-white">
+              {cloudSeatsUsed === null ? "—" : cloudSeatsUsed} / {PRESIDENT_INCLUDED_COACH_SEATS} lugares cloud ocupados
+            </p>
+            <p className="mt-1 text-[11px] leading-snug text-zinc-500">
+              Cada lugar extra: {PRESIDENT_EXTRA_SEAT_PRICE_EUR}€ (pagamento único, sem mensalidade adicional por
+              treinador).
+            </p>
+          </Link>
+        )}
         {user ? (
           <div className="mt-3 min-w-0">
             <p className="truncate text-xs font-medium text-zinc-200" title={displayName}>

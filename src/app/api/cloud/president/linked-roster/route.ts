@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { isCloudSyncEnabledServer } from "@/lib/cloud-config";
-import { getCloudUserFromSessionCookies } from "@/lib/cloud-session-user";
 import { emptyWorkspaceSnapshot, parseWorkspacePayload } from "@/lib/workspace-snapshot";
 import {
   mapWorkspaceToPresidentCoach,
@@ -9,14 +8,9 @@ import {
   mapWorkspaceToPresidentPlayers,
 } from "@/lib/president-linked-roster";
 import type { PresidentCoach, PresidentLinkedStaff, PresidentPlayer } from "@/types/president-club";
+import { requirePresidentPremiumAccess } from "@/lib/require-president-premium-server";
 
 export const dynamic = "force-dynamic";
-
-async function requirePresidentUserId(): Promise<string | null> {
-  const session = await getCloudUserFromSessionCookies();
-  if (!session || session.user.coachingRole !== "club-president") return null;
-  return session.user.id;
-}
 
 export async function GET() {
   if (!isCloudSyncEnabledServer()) {
@@ -24,10 +18,9 @@ export async function GET() {
   }
 
   try {
-    const presidentId = await requirePresidentUserId();
-    if (!presidentId) {
-      return NextResponse.json({ ok: false, error: "Apenas contas com função Presidente." }, { status: 403 });
-    }
+    const premium = await requirePresidentPremiumAccess();
+    if (!premium.ok) return premium.response;
+    const presidentId = premium.user.id;
 
     const me = await prisma.user.findUnique({
       where: { id: presidentId },

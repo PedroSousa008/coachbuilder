@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
-import { getCloudUserFromSessionCookies } from "@/lib/cloud-session-user";
 import { isCloudSyncEnabledServer } from "@/lib/cloud-config";
 import { getStripe } from "@/lib/stripe-server";
 import { getAppBaseUrl, presidentExtraSeatStripePriceId } from "@/lib/stripe-env";
 import { prisma } from "@/lib/prisma";
+import { requirePresidentPremiumAccess } from "@/lib/require-president-premium-server";
 import { PRESIDENT_EXTRA_SEAT_PRICE_EUR } from "@/lib/president-constants";
 
 export const runtime = "nodejs";
@@ -12,19 +12,14 @@ export async function POST() {
   if (!isCloudSyncEnabledServer()) {
     return NextResponse.json({ ok: false, error: "Cloud não configurada." }, { status: 503 });
   }
-  const auth = await getCloudUserFromSessionCookies();
-  if (!auth?.user.id) {
-    return NextResponse.json({ ok: false, error: "Inicia sessão para continuar." }, { status: 401 });
-  }
-  if (auth.user.coachingRole !== "club-president") {
-    return NextResponse.json({ ok: false, error: "Apenas contas Presidente." }, { status: 403 });
-  }
+  const premium = await requirePresidentPremiumAccess();
+  if (!premium.ok) return premium.response;
 
   const stripe = getStripe();
   if (!stripe) {
     return NextResponse.json({ ok: false, error: "Stripe não configurado no servidor." }, { status: 501 });
   }
-  const u = auth.user;
+  const u = premium.user;
   let customerId = u.stripeCustomerId;
   if (!customerId) {
     const customer = await stripe.customers.create({

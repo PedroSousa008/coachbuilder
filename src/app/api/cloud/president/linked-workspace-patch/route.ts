@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { isCloudSyncEnabledServer } from "@/lib/cloud-config";
-import { getCloudUserFromSessionCookies } from "@/lib/cloud-session-user";
+import { requirePresidentPremiumAccess } from "@/lib/require-president-premium-server";
 import { presidentCanAccessCoachWorkspace } from "@/lib/president-cloud-server";
 import { emptyWorkspaceSnapshot, parseWorkspacePayload, type WorkspaceSnapshotV1 } from "@/lib/workspace-snapshot";
 import { patchSnapshotForPresident } from "@/lib/president-workspace-patch";
@@ -15,11 +15,9 @@ export async function POST(req: Request) {
   }
 
   try {
-    const session = await getCloudUserFromSessionCookies();
-    if (!session?.user.id || session.user.coachingRole !== "club-president") {
-      return NextResponse.json({ ok: false, error: "Apenas contas com função Presidente." }, { status: 403 });
-    }
-    const presidentId = session.user.id;
+    const premium = await requirePresidentPremiumAccess();
+    if (!premium.ok) return premium.response;
+    const presidentId = premium.user.id;
 
     const body = (await req.json()) as {
       coachUserId?: string;

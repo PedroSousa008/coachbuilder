@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { isCloudSyncEnabledServer } from "@/lib/cloud-config";
-import { getCloudUserFromSessionCookies } from "@/lib/cloud-session-user";
+import { requirePresidentPremiumAccess } from "@/lib/require-president-premium-server";
 import { buildCoachDirectoryRow } from "@/lib/president-coach-directory";
 
 export const dynamic = "force-dynamic";
@@ -11,10 +11,8 @@ export async function GET() {
     return NextResponse.json({ ok: false, error: "Cloud inativo." }, { status: 503 });
   }
 
-  const session = await getCloudUserFromSessionCookies();
-  if (!session?.user.id || session.user.coachingRole !== "club-president") {
-    return NextResponse.json({ ok: false, error: "Apenas contas com função Presidente." }, { status: 403 });
-  }
+  const premium = await requirePresidentPremiumAccess();
+  if (!premium.ok) return premium.response;
 
   try {
     const users = await prisma.user.findMany({

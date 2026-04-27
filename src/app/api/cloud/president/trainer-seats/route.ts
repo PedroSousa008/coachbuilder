@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { isCloudSyncEnabledServer } from "@/lib/cloud-config";
-import { getCloudUserFromSessionCookies } from "@/lib/cloud-session-user";
+import { requirePresidentPremiumAccess } from "@/lib/require-president-premium-server";
 import { hashPasswordNode } from "@/lib/password-node";
 import { recordAccountCreatedSafe } from "@/lib/server-analytics";
 import { PRESIDENT_INCLUDED_COACH_SEATS } from "@/lib/president-constants";
@@ -19,12 +19,9 @@ function isValidEmail(email: string): boolean {
 }
 
 async function requirePresident() {
-  const session = await getCloudUserFromSessionCookies();
-  if (!session) return { response: NextResponse.json({ ok: false, error: "Não autorizado." }, { status: 401 }) };
-  if (session.user.coachingRole !== "club-president") {
-    return { response: NextResponse.json({ ok: false, error: "Apenas contas Presidente." }, { status: 403 }) };
-  }
-  return { president: session.user };
+  const premium = await requirePresidentPremiumAccess();
+  if (!premium.ok) return { response: premium.response };
+  return { president: premium.user };
 }
 
 async function maxSeatsForPresident(presidentId: string): Promise<number> {

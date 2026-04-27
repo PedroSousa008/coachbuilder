@@ -67,6 +67,12 @@ export async function POST() {
   }
 
   const base = getAppBaseUrl();
+  const successPath = isPresident
+    ? "/app/president/definicoes?subscricao=sucesso"
+    : "/app/settings?subscription=success";
+  const cancelPath = isPresident
+    ? "/app/president/definicoes?subscricao=cancelada"
+    : "/app/settings?subscription=cancelled";
   const session = await stripe.checkout.sessions.create({
     mode: "subscription",
     customer: customerId,
@@ -76,8 +82,8 @@ export async function POST() {
     subscription_data: {
       metadata: { userId: u.id, planKind: isPresident ? "president_pro_monthly" : "pro_monthly" },
     },
-    success_url: `${base}/app/settings?subscription=success`,
-    cancel_url: `${base}/app/settings?subscription=cancelled`,
+    success_url: `${base}${successPath}`,
+    cancel_url: `${base}${cancelPath}`,
   });
 
   if (!session.url) {

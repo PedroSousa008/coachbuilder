@@ -6,12 +6,21 @@ import { useState, useMemo } from "react";
 import { Bell, Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PRESIDENT_NAV } from "@/lib/president-nav";
+import { useAuth } from "@/contexts/AuthContext";
+import { clientEmailShowsAdminNav } from "@/lib/bootstrap-admin-client";
+import { isPresidentPremiumLocked } from "@/lib/president-premium-client";
 
 export function PresidentHeader({ title }: { title: string }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
+  const { user } = useAuth();
+  const ownerListed = Boolean(user?.email && clientEmailShowsAdminNav(user.email));
+  const premiumLocked = isPresidentPremiumLocked(user, ownerListed);
 
-  const mobileLinks = useMemo(() => PRESIDENT_NAV.map((n) => ({ href: n.href, label: n.label })), []);
+  const mobileLinks = useMemo(() => {
+    const items = premiumLocked ? PRESIDENT_NAV.filter((i) => i.href === "/app/president/definicoes") : PRESIDENT_NAV;
+    return items.map((n) => ({ href: n.href, label: n.label }));
+  }, [premiumLocked]);
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-4 border-b border-surface-border bg-[#0a0d10]/85 px-4 backdrop-blur-xl lg:px-8">
@@ -38,12 +47,14 @@ export function PresidentHeader({ title }: { title: string }) {
             <Bell className="h-[18px] w-[18px]" strokeWidth={1.75} />
           </button>
         </div>
-        <Link
-          href="/app/president/comunicacao"
-          className="hidden h-9 items-center justify-center rounded-xl border border-surface-border bg-surface-raised px-4 text-sm font-medium text-zinc-100 transition-colors hover:border-zinc-600 hover:bg-zinc-800/50 sm:inline-flex"
-        >
-          Comunicação
-        </Link>
+        {!premiumLocked ? (
+          <Link
+            href="/app/president/comunicacao"
+            className="hidden h-9 items-center justify-center rounded-xl border border-surface-border bg-surface-raised px-4 text-sm font-medium text-zinc-100 transition-colors hover:border-zinc-600 hover:bg-zinc-800/50 sm:inline-flex"
+          >
+            Comunicação
+          </Link>
+        ) : null}
       </div>
 
       <div
