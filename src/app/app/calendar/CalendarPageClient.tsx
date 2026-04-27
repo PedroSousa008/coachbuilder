@@ -173,7 +173,7 @@ export function CalendarPageClient() {
       const d = new Date(`${date}T00:00:00`);
       if (Number.isNaN(d.getTime())) continue;
       if (d.getFullYear() !== y || d.getMonth() !== m) continue;
-      for (const item of list) out.push({ date, ...item });
+      for (const item of list) out.push({ date: item.date, label: item.label, kind: item.kind });
     }
     return out.sort((a, b) => a.date.localeCompare(b.date) || a.label.localeCompare(b.label));
   }, [entriesByDay, viewMonth]);
