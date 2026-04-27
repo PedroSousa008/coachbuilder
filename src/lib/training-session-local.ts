@@ -191,6 +191,12 @@ export const WARM_UP_WITH_MOVEMENT_VIDEO_URL = "/videos/training/aquecimento-com
 export const VARIACAO_POSSE_PRESSAO_VIDEO_URL = "/videos/training/variacao-jogo.mp4";
 
 /**
+ * Vídeo do exercício "Combinações e Passe de Rotura".
+ * Coloca o ficheiro em `public/videos/training/passe-rotura.mp4`.
+ */
+export const PASSE_ROTURA_COMBINACOES_VIDEO_URL = "/videos/training/passe-rotura.mp4";
+
+/**
  * Vídeo do exercício "Short Corner by Newcastle".
  * Coloca o ficheiro em `public/videos/training/short-corner-newcastle.mp4`.
  */
@@ -1275,6 +1281,26 @@ const MAIN_DRILLS: MainDrillDef[] = [
     }),
   },
   {
+    themes: ["physical", "possession", "transition", "balanced"],
+    title: "Combinações e Passe de Rotura",
+    describe: (pl, m) => ({
+      description: `O exercício realiza-se em 2 lados em simultâneo, cada um com a sua bola, utilizando 5 posições ou cones: CB, CDM, RB/LB, CM e RW/LW. A jogada começa no CB, que passa ao CDM. Este joga de primeira no lateral (RB/LB) e sobe ligeiramente para voltar a dar linha de passe. O lateral toca de primeira no CM, que recebe de costas e deixa também de primeira no CDM, agora de frente para o jogo. No momento em que o CM solta a bola, o extremo inicia a rotura nas costas da defesa, acelerando para receber no espaço. O CDM coloca a bola em profundidade e, após receber, o extremo faz passe para o início do circuito do lado oposto. Após a ação, cada jogador roda para a posição onde realizou o primeiro passe. O foco está no jogo a um toque, timing da desmarcação, apoio frontal e passe de rotura. (${m} min)`,
+      coachingPoints:
+        "CB e CDM com corpo aberto e passe tenso na hora; lateral em 1 toque com apoio curto para voltar a oferecer linha; CM de costas a orientar o primeiro toque para o CDM já virado; extremo a arrancar no timing do último toque do CM (sem partir cedo); passe de rotura na medida (altura e força) para correr à bola; após a combinação, passe rasteiro firme ao início do outro lado; comunicação curta nas rotações de posição.",
+      setup:
+        "Dois meios-campos espelhados (ou dois corredores paralelos), cada um com 5 cones/marcas para CB, CDM, lateral, CM e extremo; 2 bolas (uma por lado); distâncias ajustáveis à idade.",
+      groupSplit:
+        pl.length >= 14
+          ? "Dois grupos completos (5+5) em paralelo com rotação de funções a cada 3–4 minutos."
+          : pl.length >= 10
+            ? "Um lado completo e o segundo lado com funções duplas (treinador como CB ou extremo) para manter o padrão."
+            : "Um só corredor com bola única e rotação mais lenta; foco em qualidade de timing e passe de rotura.",
+      diagramHint:
+        "CB → CDM → lateral (1 toque) → CM de costas → CDM virado → rotura do extremo → profundidade do CDM → passe ao CB do lado oposto; rotação: cada um avança para a posição do primeiro passe que deu.",
+      videoUrl: PASSE_ROTURA_COMBINACOES_VIDEO_URL,
+    }),
+  },
+  {
     themes: ["transition", "physical"],
     title: "Jogo 4+4 vs 4+4 com transição imediata",
     describe: (pl, m) => ({
@@ -2153,6 +2179,7 @@ const SINGLE_DRILL_15_MIN_TITLES = new Set<string>([
   "Short Corner Routine",
   "Reação e Finalização",
   "Posse de Bola com Transição",
+  "Combinações e Passe de Rotura",
 ]);
 const SINGLE_DRILL_10_MIN_TITLES = new Set<string>([
   "Passing Activation",
@@ -2247,6 +2274,15 @@ function singleDrillProgressionVariationsForTitle(title: string): {
         "Aumenta a exigência dos pressores (contacto leve permitido) ou reduz o espaço entre cones; ou obriga decisão interior/exterior em ≤2 s após a receção do jogador aberto.",
       variations:
         "Alternar regra de toques (2 toques só na fase inicial, depois só 1.º); ou trocar o número de pressores (2 vs 4) por blocos de 90 s; ou impor que a condução final termine sempre numa mini-baliza ou linha de fim.",
+    };
+  }
+
+  if (title === "Combinações e Passe de Rotura") {
+    return {
+      progression:
+        "Encurta distâncias para acelerar o pensamento e o passe de rotura; ou acrescenta defensor leve a seguir o extremo na rotura (sombra); ou exige que o passe ao outro lado seja sempre com o pé não dominante numa série.",
+      variations:
+        "Espelhar pelo lado canhoto; ou trocar o arranque (começar pelo lateral); ou após a profundidade obrigar 1-2 com o CM antes do passe ao outro lado; ou meta de X combinações limpas em 2 minutos por grupo.",
     };
   }
 
@@ -2577,6 +2613,7 @@ export function getTrainingCatalogItems(players: Player[]): TrainingCatalogItem[
     "1v1 Situations": ["warmup", "transition", "physical"],
     "Passe e Movimentação": ["warmup", "possession"],
     "Variação de Posse de Bola com base na Pressão": ["warmup", "possession"],
+    "Combinações e Passe de Rotura": ["warmup", "possession", "transition"],
     "Drible Rápido e Passe": ["possession"],
     "Reação e Finalização": ["possession", "finishing"],
     "Posse de Bola com Transição": ["possession", "transition", "pressing", "physical"],
