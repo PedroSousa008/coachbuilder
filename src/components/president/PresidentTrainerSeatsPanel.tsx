@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
+import { Badge } from "@/components/ui/Badge";
 import { shouldUseCloudClientApis } from "@/lib/cloud-config";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -221,7 +222,17 @@ export function PresidentTrainerSeatsPanel({ onActiveSeatCount, onMaxSeats, onRo
                   <tr key={idx} className="border-b border-surface-border/80 last:border-0">
                     <td className="px-3 py-3 text-zinc-300">#{idx + 1}</td>
                     <td className="px-3 py-3 text-zinc-400">
-                      {isEmpty ? "Livre" : isActive ? "Activo" : "Revogado"}
+                      {isEmpty ? (
+                        <Badge variant="muted">Livre</Badge>
+                      ) : isActive ? (
+                        isReadonlyLinked ? (
+                          <Badge className="border border-sky-500/40 bg-sky-500/10 text-sky-100">Email-linked</Badge>
+                        ) : (
+                          <Badge className="border border-emerald-500/35 bg-emerald-500/10 text-emerald-100">Manual slot</Badge>
+                        )
+                      ) : (
+                        <Badge className="border border-zinc-500/35 bg-zinc-500/10 text-zinc-300">Revogado</Badge>
+                      )}
                       {!isEmpty ? (
                         <div className="mt-0.5 text-xs text-zinc-500">
                           {(slot as SlotActive | SlotRevoked).email}
