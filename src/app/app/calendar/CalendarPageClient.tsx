@@ -580,39 +580,77 @@ export function CalendarPageClient() {
           )}
 
           <div className="hidden print:block">
-            <h3 className="mb-3 text-lg font-semibold text-black">Calendário para impressão</h3>
-            {printableMonths.map((m) => {
-              const cells = buildMonthGrid(m.getFullYear(), m.getMonth());
-              return (
-                <div key={m.toISOString()} className="mb-6 break-inside-avoid">
-                  <p className="mb-2 text-sm font-semibold text-black">
-                    {m.toLocaleString("pt-PT", { month: "long", year: "numeric" })}
-                  </p>
-                  <div className="grid grid-cols-7 gap-1 text-[10px]">
-                    {["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"].map((d) => (
-                      <p key={`${m.toISOString()}-${d}`} className="font-semibold text-black">
-                        {d}
-                      </p>
-                    ))}
-                    {cells.map((day, idx) => {
-                      if (!day) return <div key={`${m.toISOString()}-empty-${idx}`} className="h-16 border border-transparent" />;
-                      const dayKey = dayIsoLocal(day);
-                      const events = entriesByDay.get(dayKey) ?? [];
-                      return (
-                        <div key={`${m.toISOString()}-${day.toISOString()}`} className="h-16 border border-zinc-400 p-1">
-                          <p className="text-[10px] font-semibold text-black">{day.getDate()}</p>
-                          {events.slice(0, 2).map((ev, i) => (
-                            <p key={`${dayKey}-${i}`} className="truncate text-[9px] text-black">
-                              {ev.label}
-                            </p>
-                          ))}
-                        </div>
-                      );
-                    })}
+            <div className="break-after-page">
+              <h3 className="mb-4 text-2xl font-semibold text-black">Calendário</h3>
+              <p className="mb-3 text-xs text-black/80">
+                Classificação completa da fase ativa.
+              </p>
+              <table className="w-full border-collapse text-left text-[11px] text-black">
+                <thead>
+                  <tr>
+                    <th className="border border-black px-1.5 py-1">#</th>
+                    <th className="border border-black px-1.5 py-1">Nome</th>
+                    <th className="border border-black px-1.5 py-1 text-center">J</th>
+                    <th className="border border-black px-1.5 py-1 text-center">V</th>
+                    <th className="border border-black px-1.5 py-1 text-center">E</th>
+                    <th className="border border-black px-1.5 py-1 text-center">D</th>
+                    <th className="border border-black px-1.5 py-1 text-center">GM</th>
+                    <th className="border border-black px-1.5 py-1 text-center">GS</th>
+                    <th className="border border-black px-1.5 py-1 text-right">Pts</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(leagueSetup?.phases.find((p) => p.id === leagueSetup.activePhaseId)?.standings.rows ?? []).map((row, idx) => (
+                    <tr key={`print-row-${row.teamId}`}>
+                      <td className="border border-black px-1.5 py-1">{idx + 1}</td>
+                      <td className="border border-black px-1.5 py-1">{row.team || "—"}</td>
+                      <td className="border border-black px-1.5 py-1 text-center">{row.played}</td>
+                      <td className="border border-black px-1.5 py-1 text-center">{row.won}</td>
+                      <td className="border border-black px-1.5 py-1 text-center">{row.drawn}</td>
+                      <td className="border border-black px-1.5 py-1 text-center">{row.lost}</td>
+                      <td className="border border-black px-1.5 py-1 text-center">{row.goalsFor}</td>
+                      <td className="border border-black px-1.5 py-1 text-center">{row.goalsAgainst}</td>
+                      <td className="border border-black px-1.5 py-1 text-right">{row.points}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="break-before-page">
+              {printableMonths.map((m) => {
+                const cells = buildMonthGrid(m.getFullYear(), m.getMonth());
+                return (
+                  <div key={m.toISOString()} className="mb-6 break-inside-avoid">
+                    <p className="mb-2 text-sm font-semibold text-black">
+                      {m.toLocaleString("pt-PT", { month: "long", year: "numeric" })}
+                    </p>
+                    <div className="grid grid-cols-7 gap-1 text-[10px]">
+                      {["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"].map((d) => (
+                        <p key={`${m.toISOString()}-${d}`} className="font-semibold text-black">
+                          {d}
+                        </p>
+                      ))}
+                      {cells.map((day, idx) => {
+                        if (!day) return <div key={`${m.toISOString()}-empty-${idx}`} className="h-16 border border-transparent" />;
+                        const dayKey = dayIsoLocal(day);
+                        const events = entriesByDay.get(dayKey) ?? [];
+                        return (
+                          <div key={`${m.toISOString()}-${day.toISOString()}`} className="h-16 border border-zinc-400 p-1">
+                            <p className="text-[10px] font-semibold text-black">{day.getDate()}</p>
+                            {events.slice(0, 2).map((ev, i) => (
+                              <p key={`${dayKey}-${i}`} className="truncate text-[9px] text-black">
+                                {ev.label}
+                              </p>
+                            ))}
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
 
           <div className="rounded-xl border border-surface-border bg-surface-raised/30 p-4">
