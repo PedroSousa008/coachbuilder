@@ -298,7 +298,7 @@ export function CalendarPageClient() {
     () =>
       Array.from(entriesByDay.entries())
         .filter(([k]) => k.startsWith(printableMonthKey))
-        .flatMap(([date, list]) => list.map((item) => ({ date, ...item })))
+        .flatMap(([, list]) => list.map((item) => ({ date: item.date, label: item.label, kind: item.kind })))
         .sort((a, b) => a.date.localeCompare(b.date) || a.label.localeCompare(b.label)),
     [entriesByDay, printableMonthKey]
   );
