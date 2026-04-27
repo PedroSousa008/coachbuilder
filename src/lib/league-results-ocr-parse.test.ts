@@ -136,3 +136,26 @@ Estádio Aves`;
   assert.equal(events[1]?.homeTeam, "Cd Tondela, Sad");
   assert.equal(events[1]?.awayTeam, "Cd Nacional");
 });
+
+test("parseMatchEventsFromOcrText parses block cards with accents/no-accents consistently", () => {
+  const ocr = `Vitória Sc
+Rio Ave Fc
+2 - 0
+25 ABR
+Estádio D. Afonso Henriques
+Estoril Praia
+Fc Famalicao
+0 - 1
+26 ABR
+Estádio Antonio Coimbra Mota`;
+  const events = parseMatchEventsFromOcrText(ocr);
+  assert.equal(events.length, 2);
+  assert.equal(events[0]?.homeTeam, "Vitória Sc");
+  assert.equal(events[0]?.awayTeam, "Rio Ave Fc");
+  assert.equal(events[0]?.homeGoals, 2);
+  assert.equal(events[0]?.awayGoals, 0);
+  assert.equal(events[1]?.homeTeam, "Estoril Praia");
+  assert.equal(events[1]?.awayTeam, "Fc Famalicao");
+  assert.equal(events[1]?.homeGoals, 0);
+  assert.equal(events[1]?.awayGoals, 1);
+});

@@ -252,6 +252,62 @@ function parseInlineMatches(text: string, seen: Set<string>, out: ParsedMatchEve
   }
 }
 
+function parseScoreTokenLine(line: string): { homeGoals: number; awayGoals: number } | null {
+  const m = line.match(SCORE_ONLY_LINE);
+  if (!m) return null;
+  const homeGoals = parseGoalToken(m[1]);
+  const awayGoals = parseGoalToken(m[2]);
+  if (!isPlausibleScore(homeGoals, awayGoals)) return null;
+  return { homeGoals, awayGoals };
+}
+
+function parseBlockByCardLayout(block: string[], seen: Set<string>, out: ParsedMatchEvent[]): void {
+  if (block.length === 0) return;
+  let score: { homeGoals: number; awayGoals: number } | null = null;
+  for (const line of block) {
+    score = parseScoreTokenLine(line);
+    if (score) break;
+  }
+  if (!score) return;
+
+  const teams: string[] = [];
+  for (const line of block) {
+    if (parseScoreTokenLine(line)) continue;
+    if (isProbableDateLine(line)) continue;
+    if (isProbableVenueLine(line)) continue;
+    if (isClockOnlyLine(line) || lineContainsClockLikeToken(line)) continue;
+    const split = splitTeamsAroundDateToken(line);
+    if (split) {
+      for (const t of split) {
+        if (!teams.some((x) => x.toLowerCase() === t.toLowerCase())) teams.push(t);
+      }
+      continue;
+    }
+    if (looksLikeTeamName(line) && !teams.some((x) => x.toLowerCase() === line.toLowerCase())) {
+      teams.push(line);
+    }
+  }
+
+  if (teams.length < 2) return;
+  pushEvent(out, seen, teams[0]!, teams[1]!, score.homeGoals, score.awayGoals);
+}
+
+function parseByVenueBlocks(lines: string[], seen: Set<string>, out: ParsedMatchEvent[]): void {
+  let block: string[] = [];
+  const flush = () => {
+    parseBlockByCardLayout(block, seen, out);
+    block = [];
+  };
+
+  for (const line of lines) {
+    block.push(line);
+    if (isProbableVenueLine(line)) {
+      flush();
+    }
+  }
+  flush();
+}
+
 export function parseMatchEventsFromOcrText(ocrText: string): ParsedMatchEvent[] {
   const text = normalizeOcrBlock(ocrText);
   const lines = text
@@ -262,6 +318,8 @@ export function parseMatchEventsFromOcrText(ocrText: string): ParsedMatchEvent[]
   const seen = new Set<string>();
   const out: ParsedMatchEvent[] = [];
 
+  // Prefer card-like parsing first; fallback parsers below cover mixed/raw OCR shapes.
+  parseByVenueBlocks(lines, seen, out);
   parseInlineMatches(text, seen, out);
   parseMultilineScoreCard(lines, seen, out);
   parseHomeScoreThenAwayBelow(lines, seen, out);
