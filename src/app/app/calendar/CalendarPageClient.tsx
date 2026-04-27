@@ -755,6 +755,10 @@ export function CalendarPageClient() {
           <div id="calendar-print-root" className="hidden print:block">
             <style jsx global>{`
               @media print {
+                @page {
+                  size: A4 portrait;
+                  margin: 0;
+                }
                 body * {
                   visibility: hidden !important;
                 }
@@ -771,27 +775,37 @@ export function CalendarPageClient() {
                   background: #ffffff;
                   color: #0b1220;
                 }
+                #calendar-print-root .print-sheet {
+                  height: 281mm;
+                  overflow: hidden;
+                  page-break-after: always;
+                  break-after: page;
+                }
+                #calendar-print-root .print-sheet:last-child {
+                  page-break-after: auto;
+                  break-after: auto;
+                }
               }
             `}</style>
 
-            <section className="break-after-page">
+            <section className="print-sheet">
               <h3 className="text-3xl font-bold text-black">Calendário</h3>
               <p className="mt-1 text-xs text-black/75">
                 Snapshot da classificação em {new Date(nowMs).toLocaleString("pt-PT")}
               </p>
               <div className="mt-4 overflow-hidden rounded-xl border border-black/50">
-                <table className="w-full border-collapse text-left text-[11px] text-black">
+                <table className="w-full border-collapse text-left text-[10px] text-black">
                   <thead className="bg-black/[0.06]">
                     <tr>
-                      <th className="border border-black/40 px-2 py-1.5">#</th>
-                      <th className="border border-black/40 px-2 py-1.5">Nome</th>
-                      <th className="border border-black/40 px-2 py-1.5 text-center">J</th>
-                      <th className="border border-black/40 px-2 py-1.5 text-center">V</th>
-                      <th className="border border-black/40 px-2 py-1.5 text-center">E</th>
-                      <th className="border border-black/40 px-2 py-1.5 text-center">D</th>
-                      <th className="border border-black/40 px-2 py-1.5 text-center">GM</th>
-                      <th className="border border-black/40 px-2 py-1.5 text-center">GS</th>
-                      <th className="border border-black/40 px-2 py-1.5 text-right">Pts</th>
+                      <th className="border border-black/40 px-1.5 py-1">#</th>
+                      <th className="border border-black/40 px-1.5 py-1">Nome</th>
+                      <th className="border border-black/40 px-1.5 py-1 text-center">J</th>
+                      <th className="border border-black/40 px-1.5 py-1 text-center">V</th>
+                      <th className="border border-black/40 px-1.5 py-1 text-center">E</th>
+                      <th className="border border-black/40 px-1.5 py-1 text-center">D</th>
+                      <th className="border border-black/40 px-1.5 py-1 text-center">GM</th>
+                      <th className="border border-black/40 px-1.5 py-1 text-center">GS</th>
+                      <th className="border border-black/40 px-1.5 py-1 text-right">Pts</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -804,15 +818,15 @@ export function CalendarPageClient() {
                             : ""
                         )}
                       >
-                        <td className="border border-black/30 px-2 py-1.5">{idx + 1}</td>
-                        <td className="border border-black/30 px-2 py-1.5">{row.team || "—"}</td>
-                        <td className="border border-black/30 px-2 py-1.5 text-center">{row.played}</td>
-                        <td className="border border-black/30 px-2 py-1.5 text-center">{row.won}</td>
-                        <td className="border border-black/30 px-2 py-1.5 text-center">{row.drawn}</td>
-                        <td className="border border-black/30 px-2 py-1.5 text-center">{row.lost}</td>
-                        <td className="border border-black/30 px-2 py-1.5 text-center">{row.goalsFor}</td>
-                        <td className="border border-black/30 px-2 py-1.5 text-center">{row.goalsAgainst}</td>
-                        <td className="border border-black/30 px-2 py-1.5 text-right font-semibold">{row.points}</td>
+                        <td className="border border-black/30 px-1.5 py-1">{idx + 1}</td>
+                        <td className="border border-black/30 px-1.5 py-1">{row.team || "—"}</td>
+                        <td className="border border-black/30 px-1.5 py-1 text-center">{row.played}</td>
+                        <td className="border border-black/30 px-1.5 py-1 text-center">{row.won}</td>
+                        <td className="border border-black/30 px-1.5 py-1 text-center">{row.drawn}</td>
+                        <td className="border border-black/30 px-1.5 py-1 text-center">{row.lost}</td>
+                        <td className="border border-black/30 px-1.5 py-1 text-center">{row.goalsFor}</td>
+                        <td className="border border-black/30 px-1.5 py-1 text-center">{row.goalsAgainst}</td>
+                        <td className="border border-black/30 px-1.5 py-1 text-right font-semibold">{row.points}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -820,12 +834,12 @@ export function CalendarPageClient() {
               </div>
             </section>
 
-            <section className="break-before-page">
+            <section className="print-sheet">
               {(() => {
                 const m = printableMonth;
                 const cells = buildMonthGrid(m.getFullYear(), m.getMonth());
                 return (
-                  <div className="mb-8 break-inside-avoid">
+                  <div className="break-inside-avoid">
                     <p className="mb-3 text-xl font-semibold text-black">
                       {m.toLocaleString("pt-PT", { month: "long", year: "numeric" })}
                     </p>
