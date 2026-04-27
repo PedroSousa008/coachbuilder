@@ -53,6 +53,10 @@ function norm(s: string) {
   return s.trim().toLowerCase();
 }
 
+function coachCurrentClub(c: CoachDirectoryRow): string {
+  return c.club.trim() || c.lastClub.trim();
+}
+
 function weekStartIso(): string {
   const d = new Date();
   d.setDate(d.getDate() - 7);
@@ -189,8 +193,9 @@ export function PresidentMercadoTransferencias() {
       }
       if (region.trim() && norm(c.location) !== norm(region)) return false;
       if (statusF.trim() && !c.recruitmentStatusLabel.toLowerCase().includes(statusF.toLowerCase())) return false;
-      if (clubF === "sem" && (c.lastClub.trim() || c.club.trim())) return false;
-      if (clubF === "com" && !(c.lastClub.trim() || c.club.trim())) return false;
+      const currentClub = coachCurrentClub(c);
+      if (clubF === "sem" && currentClub) return false;
+      if (clubF === "com" && !currentClub) return false;
       if (clubF === "president" && !c.linkedToPresident) return false;
       if (expF.trim() && c.experienceLevelLabel !== expF) return false;
       if (salaryF.trim() && !c.salaryExpectationNote.toLowerCase().includes(salaryF.toLowerCase())) return false;
@@ -433,7 +438,7 @@ export function PresidentMercadoTransferencias() {
                     <span>{c.age != null ? `${c.age} anos` : "Idade —"}</span>
                     <span className="truncate text-right">{c.ageGroupCoached || "Escalão —"}</span>
                     <span className="col-span-2 truncate text-zinc-300">{c.recruitmentStatusLabel}</span>
-                    <span className="col-span-2 truncate">Último clube: {c.lastClub || "—"}</span>
+                    <span className="col-span-2 truncate">Clube atual: {coachCurrentClub(c) || "—"}</span>
                   </div>
                   <div className="mt-3 flex items-center justify-between gap-2 border-t border-surface-border/60 pt-3">
                     <span className="text-xs font-medium text-emerald-200/90">Score {c.performanceScore}</span>
@@ -560,8 +565,8 @@ export function PresidentMercadoTransferencias() {
                 <dd className="text-right text-zinc-200">{selected.recruitmentStatusLabel}</dd>
               </div>
               <div className="flex justify-between gap-2 border-b border-surface-border/50 pb-2">
-                <dt className="text-zinc-500">Último clube</dt>
-                <dd className="text-right text-zinc-200">{selected.lastClub || "—"}</dd>
+                <dt className="text-zinc-500">Clube atual</dt>
+                <dd className="text-right text-zinc-200">{coachCurrentClub(selected) || "—"}</dd>
               </div>
               <div className="flex justify-between gap-2 border-b border-surface-border/50 pb-2">
                 <dt className="text-zinc-500">Região</dt>

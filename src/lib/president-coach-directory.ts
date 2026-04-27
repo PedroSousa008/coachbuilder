@@ -72,6 +72,8 @@ function teamHistorySummary(cp: CoachProfileState): string {
 }
 
 function lastClubLabel(cp: CoachProfileState): string {
+  const profileClub = (cp.club ?? "").trim();
+  if (profileClub) return profileClub;
   const curClub = cp.careerCurrent?.club?.trim();
   if (curClub) return curClub;
   const seasons = cp.careerSeasons;
@@ -81,7 +83,7 @@ function lastClubLabel(cp: CoachProfileState): string {
       if (c) return c;
     }
   }
-  return (cp.club ?? "").trim();
+  return "";
 }
 
 function recruitmentStatusLabelPt(args: {
