@@ -197,6 +197,12 @@ export const VARIACAO_POSSE_PRESSAO_VIDEO_URL = "/videos/training/variacao-jogo.
 export const PASSE_ROTURA_COMBINACOES_VIDEO_URL = "/videos/training/passe-rotura.mp4";
 
 /**
+ * Vídeo do exercício "Combinações sob Pressão".
+ * Coloca o ficheiro em `public/videos/training/combinacoes-pressao.mp4`.
+ */
+export const COMBINACOES_SOB_PRESSAO_VIDEO_URL = "/videos/training/combinacoes-pressao.mp4";
+
+/**
  * Vídeo do exercício "Short Corner by Newcastle".
  * Coloca o ficheiro em `public/videos/training/short-corner-newcastle.mp4`.
  */
@@ -1301,6 +1307,26 @@ const MAIN_DRILLS: MainDrillDef[] = [
     }),
   },
   {
+    themes: ["physical", "possession", "pressing", "balanced"],
+    title: "Combinações sob Pressão",
+    describe: (pl, m) => ({
+      description: `Utilizam-se os dois lados do campo, com 7 cones em cada lado, permitindo trabalho em simultâneo. O objetivo é criar triangulações constantes, circulação rápida e decisões em poucos segundos conforme a pressão do treinador. Os jogadores devem ler o estímulo: se o treinador fecha por dentro, explorar a largura; se fecha por fora, jogar pelo meio-campo. O exercício inclui movimentações verticais, passes longos e desmarcações para receber, mantendo dinâmica contínua. Regra técnica: máximo de 2 toques por jogador. O foco está na tomada de decisão, perceção espacial, qualidade de passe e mobilidade ofensiva. (${m} min)`,
+      coachingPoints:
+        "Cabeça levantada antes da receção para ver o treinador e o espaço; decisão rápida largura vs meio; passes firmes e orientados (pé de apoio); apoios em triângulo sempre disponíveis; respeitar o limite de 2 toques sem sacrificar segurança; ritmo alto com comunicação curta.",
+      setup:
+        "Dois meios-campos ou dois rectângulos paralelos; 7 cones por lado (marcar triangulações e corredores); 2 bolas (uma por lado); treinadores/staff como referência de pressão entre linhas.",
+      groupSplit:
+        pl.length >= 16
+          ? "Dois grupos completos em paralelo com rotação de função ou de lado a cada 3 minutos."
+          : pl.length >= 10
+            ? "Um lado a ritmo pleno e o segundo com elenco reduzido ou treinador a completar uma posição."
+            : "Um só lado com uma bola; aumentar pausa entre séries para manter qualidade técnica.",
+      diagramHint:
+        "Dois lados espelhados com 7 cones cada; triangulações; setas de circulação rápida; treinador a fechar dentro vs fora → resposta largura ou meio; máximo 2 toques.",
+      videoUrl: COMBINACOES_SOB_PRESSAO_VIDEO_URL,
+    }),
+  },
+  {
     themes: ["transition", "physical"],
     title: "Jogo 4+4 vs 4+4 com transição imediata",
     describe: (pl, m) => ({
@@ -2180,6 +2206,7 @@ const SINGLE_DRILL_15_MIN_TITLES = new Set<string>([
   "Reação e Finalização",
   "Posse de Bola com Transição",
   "Combinações e Passe de Rotura",
+  "Combinações sob Pressão",
 ]);
 const SINGLE_DRILL_10_MIN_TITLES = new Set<string>([
   "Passing Activation",
@@ -2283,6 +2310,15 @@ function singleDrillProgressionVariationsForTitle(title: string): {
         "Encurta distâncias para acelerar o pensamento e o passe de rotura; ou acrescenta defensor leve a seguir o extremo na rotura (sombra); ou exige que o passe ao outro lado seja sempre com o pé não dominante numa série.",
       variations:
         "Espelhar pelo lado canhoto; ou trocar o arranque (começar pelo lateral); ou após a profundidade obrigar 1-2 com o CM antes do passe ao outro lado; ou meta de X combinações limpas em 2 minutos por grupo.",
+    };
+  }
+
+  if (title === "Combinações sob Pressão") {
+    return {
+      progression:
+        "Reduz o espaço entre cones para forçar decisão ainda mais rápida; ou acrescenta segundo treinador a pressionar o portador após o 2.º passe; ou alterna 2 toques com uma série de só 1 toque na zona final.",
+      variations:
+        "Comando verbal a cada 20 s (obrigatório jogar só pela banda ou só pelo eixo); ou passe longo obrigatório após cada triangulação fechada; ou pontuação interna por combinações limpas em 60 s.",
     };
   }
 
@@ -2614,6 +2650,7 @@ export function getTrainingCatalogItems(players: Player[]): TrainingCatalogItem[
     "Passe e Movimentação": ["warmup", "possession"],
     "Variação de Posse de Bola com base na Pressão": ["warmup", "possession"],
     "Combinações e Passe de Rotura": ["warmup", "possession", "transition"],
+    "Combinações sob Pressão": ["warmup", "possession"],
     "Drible Rápido e Passe": ["possession"],
     "Reação e Finalização": ["possession", "finishing"],
     "Posse de Bola com Transição": ["possession", "transition", "pressing", "physical"],
