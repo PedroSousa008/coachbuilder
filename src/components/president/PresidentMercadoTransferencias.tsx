@@ -29,6 +29,8 @@ import { isClubPresident } from "@/lib/president-mode";
 import type { CoachDirectoryRow } from "@/lib/president-coach-directory";
 import { cn } from "@/lib/utils";
 
+const PRESIDENT_MARKET_REFRESH_MS = 30_000;
+
 function roleLabelPt(role: string): string {
   const m: Record<string, string> = {
     "head-coach": "Treinador principal",
@@ -105,6 +107,30 @@ export function PresidentMercadoTransferencias() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (!canCloud) return;
+    const id = window.setInterval(() => {
+      void load();
+    }, PRESIDENT_MARKET_REFRESH_MS);
+    return () => window.clearInterval(id);
+  }, [canCloud, load]);
+
+  useEffect(() => {
+    if (!canCloud) return;
+    const onVisible = () => {
+      if (document.visibilityState === "visible") {
+        void load();
+      }
+    };
+    const onFocus = () => void load();
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", onFocus);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [canCloud, load]);
 
   const myRegionToken = useMemo(() => {
     const loc = (coachProfile.location ?? "").trim();
