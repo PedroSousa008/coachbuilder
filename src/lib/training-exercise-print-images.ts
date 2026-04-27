@@ -75,6 +75,9 @@ const NORMALIZED_TITLE_TO_IMAGE: Record<string, string> = Object.fromEntries(
 const TITLE_ALIASES_TO_IMAGE: Record<string, string> = {
   "full back overlap winger": "full-back-overlap-winger.png",
   "full back overlap striker": "full-back-overlap-striker.png",
+  "circuito de aquecimento com bola": "aquecimento.png",
+  "circuito aquecimento com bola": "aquecimento.png",
+  "circuito de aquecimento bola": "aquecimento.png",
 };
 
 export function trainingExercisePrintImageForTitle(title: string): string | null {
