@@ -185,6 +185,12 @@ export const FIXED_POSITION_RONDO_VIDEO_URL = "/videos/training/fixed-position-r
 export const WARM_UP_WITH_MOVEMENT_VIDEO_URL = "/videos/training/aquecimento-com-movimentação.mp4";
 
 /**
+ * Vídeo do exercício "Variação de Posse de Bola com base na Pressão".
+ * Coloca o ficheiro em `public/videos/training/variacao-jogo.mp4`.
+ */
+export const VARIACAO_POSSE_PRESSAO_VIDEO_URL = "/videos/training/variacao-jogo.mp4";
+
+/**
  * Vídeo do exercício "Short Corner by Newcastle".
  * Coloca o ficheiro em `public/videos/training/short-corner-newcastle.mp4`.
  */
@@ -1249,6 +1255,26 @@ const MAIN_DRILLS: MainDrillDef[] = [
     }),
   },
   {
+    themes: ["physical", "possession", "pressing", "balanced"],
+    title: "Variação de Posse de Bola com base na Pressão",
+    describe: (pl, m) => ({
+      description: `O exercício utiliza 5 cones distribuídos desde a área até à linha de meio-campo. Idealmente participam 4 treinadores como elementos de pressão (mínimo 2). No primeiro cone colocam-se 3 jogadores com bola, nos restantes fica 1 jogador por cone. A jogada inicia com passe para um colega que vem receber sob pressão de um treinador. Esse jogador devolve de primeira e movimenta-se para a frente. A bola segue para o jogador mais aberto, que também toca de primeira para o jogador do meio. Depois disso, o jogador aberto contorna por fora e prepara-se para receber novamente, tendo de analisar a posição do treinador e decidir: se o treinador pressiona o jogador aberto, explorar o espaço pelo meio; se o treinador fecha o meio, jogar no jogador aberto. Se a opção for exterior, o jogador no meio-campo recebe orientado, vira o jogo e aproxima-se para fazer 1-2, conduzindo depois até ao final. Se a opção for interior, o jogador do lado oposto aproxima-se, joga de primeira para o jogador do meio-campo, e cria-se uma combinação com movimento nas costas da pressão e overlap, terminando também em condução final. Após cada passe, os jogadores deslocam-se sempre para o cone seguinte. O foco está na tomada de decisão, perceção da pressão, qualidade técnica e mobilidade constante. (${m} min)`,
+      coachingPoints:
+        "Antes da bola chegar, ler o corpo do treinador-pressor e o espaço livre; máximo 1–2 toques com receção orientada; decisão clara interior vs exterior sem hesitar; após a combinação, condução firme até ao fim do percurso; após cada passe, sprint curto ao cone seguinte para manter fluidez e ritmo.",
+      setup:
+        "Cinco cones em linha desde a grande área até à linha de meio-campo; bolas suficientes; 2 a 4 treinadores (ou staff) como pressores activos; distâncias ajustáveis à idade e ao espaço disponível.",
+      groupSplit:
+        pl.length >= 12
+          ? "Dois circuitos paralelos (mesma lógica), com pressores a alternarem de lado a cada bloco de 2–3 minutos."
+          : pl.length >= 8
+            ? "Um circuito completo; rotação de quem inicia com bola nos 3 do primeiro cone; pressores com intensidade escalonada (sombra → pressão activa)."
+            : "Reduzir a 4 cones ou usar 2 pressores com pausas curtas; treinador pode ser parede de passe no arranque se faltarem jogadores.",
+      diagramHint:
+        "Linha de 5 cones (área → meio); 3 jogadores no 1.º cone com bola + 1 em cada cone seguinte; pressores entre linhas; fluxo: passe sob pressão → devolução de primeira → jogador aberto decide meio vs exterior → 1-2 e condução final; rotação ao cone seguinte.",
+      videoUrl: VARIACAO_POSSE_PRESSAO_VIDEO_URL,
+    }),
+  },
+  {
     themes: ["transition", "physical"],
     title: "Jogo 4+4 vs 4+4 com transição imediata",
     describe: (pl, m) => ({
@@ -2153,6 +2179,7 @@ const SINGLE_DRILL_10_MIN_TITLES = new Set<string>([
   "Drible Rápido e Passe",
   "Sair a Jogar da Defesa com Pressão",
   "Jogo do Galo",
+  "Variação de Posse de Bola com base na Pressão",
 ]);
 const SINGLE_DRILL_8_MIN_TITLES = new Set<string>(["Dual Passing"]);
 const SINGLE_DRILL_5_MIN_TITLES = new Set<string>([
@@ -2213,6 +2240,15 @@ function singleDrillProgressionVariationsForTitle(title: string): {
   const isPassingActivation = title === "Passing Activation";
   const isDualPassing = title === "Dual Passing";
   const isPressingExercise = title === "Pressing Exercise";
+
+  if (title === "Variação de Posse de Bola com base na Pressão") {
+    return {
+      progression:
+        "Aumenta a exigência dos pressores (contacto leve permitido) ou reduz o espaço entre cones; ou obriga decisão interior/exterior em ≤2 s após a receção do jogador aberto.",
+      variations:
+        "Alternar regra de toques (2 toques só na fase inicial, depois só 1.º); ou trocar o número de pressores (2 vs 4) por blocos de 90 s; ou impor que a condução final termine sempre numa mini-baliza ou linha de fim.",
+    };
+  }
 
   if (title === "Sair a Jogar da Defesa com Pressão") {
     return {
@@ -2540,6 +2576,7 @@ export function getTrainingCatalogItems(players: Player[]): TrainingCatalogItem[
     "Aquecimento com Bola - Movimentação": ["warmup"],
     "1v1 Situations": ["warmup", "transition", "physical"],
     "Passe e Movimentação": ["warmup", "possession"],
+    "Variação de Posse de Bola com base na Pressão": ["warmup", "possession"],
     "Drible Rápido e Passe": ["possession"],
     "Reação e Finalização": ["possession", "finishing"],
     "Posse de Bola com Transição": ["possession", "transition", "pressing", "physical"],
