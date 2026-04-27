@@ -169,6 +169,36 @@ export function PresidentTrainerSeatsPanel({ onActiveSeatCount, onMaxSeats, onRo
     }
   };
 
+  const unlinkLinkedCoach = async (slot: SlotActive) => {
+    if (!slot.readonlyLinked) return;
+    if (
+      !globalThis.confirm(
+        "Retirar este treinador da conta de presidente? A conta do treinador mantém-se, mas deixa de estar associada ao clube."
+      )
+    ) {
+      return;
+    }
+    setBusy(slot.index, "A desassociar…");
+    try {
+      const res = await fetch("/api/cloud/president/trainer-seats/unlink", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ coachUserId: slot.userId }),
+      });
+      const data = (await res.json()) as { ok?: boolean; error?: string };
+      if (!res.ok || !data.ok) {
+        setBusy(slot.index, typeof data.error === "string" ? data.error : "Erro.");
+        return;
+      }
+      await load();
+      onRosterChanged?.();
+      setBusy(slot.index, null);
+    } catch {
+      setBusy(slot.index, "Falha de rede.");
+    }
+  };
+
   if (!cloud) {
     return (
       <Card id="lugares-treinador" className="scroll-mt-24 border-surface-border bg-surface-raised/30 lg:col-span-2">
@@ -301,7 +331,15 @@ export function PresidentTrainerSeatsPanel({ onActiveSeatCount, onMaxSeats, onRo
                             </Button>
                           </>
                         ) : isReadonlyLinked ? (
-                          <span className="text-xs text-zinc-500">Associado automaticamente</span>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => void unlinkLinkedCoach(slot as SlotActive)}
+                            disabled={!!busy}
+                          >
+                            Retirar treinador
+                          </Button>
                         ) : (
                           <Button type="button" size="sm" variant="secondary" onClick={() => void revokeSeat(idx, "free-revoked")} disabled={!!busy}>
                             Libertar lugar
