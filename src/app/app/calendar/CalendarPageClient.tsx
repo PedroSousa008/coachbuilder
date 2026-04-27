@@ -282,19 +282,23 @@ export function CalendarPageClient() {
               visibility: visible !important;
             }
             #calendar-print-root {
-              position: fixed;
-              inset: 0;
+              position: absolute;
+              left: 0;
+              top: 0;
               width: 100%;
-              height: 100%;
               padding: 8mm 12mm;
               background: #ffffff;
               color: #0b1220;
             }
             #calendar-print-root .print-sheet {
-              height: 281mm;
+              min-height: 279mm;
               overflow: hidden;
               page-break-after: always;
               break-after: page;
+            }
+            #calendar-print-root .print-sheet + .print-sheet {
+              page-break-before: always;
+              break-before: page;
             }
             #calendar-print-root .print-sheet:last-child {
               page-break-after: auto;
