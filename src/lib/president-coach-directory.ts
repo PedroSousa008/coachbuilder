@@ -71,11 +71,11 @@ function teamHistorySummary(cp: CoachProfileState): string {
     .join(" | ");
 }
 
-function lastClubLabel(cp: CoachProfileState): string {
-  const profileClub = (cp.club ?? "").trim();
-  if (profileClub) return profileClub;
+function currentClubLabel(cp: CoachProfileState): string {
   const curClub = cp.careerCurrent?.club?.trim();
   if (curClub) return curClub;
+  const profileClub = (cp.club ?? "").trim();
+  if (profileClub) return profileClub;
   const seasons = cp.careerSeasons;
   if (seasons?.length) {
     for (let i = seasons.length - 1; i >= 0; i -= 1) {
@@ -84,6 +84,19 @@ function lastClubLabel(cp: CoachProfileState): string {
     }
   }
   return "";
+}
+
+function lastClubLabel(cp: CoachProfileState): string {
+  const seasons = cp.careerSeasons;
+  if (seasons?.length) {
+    for (let i = seasons.length - 1; i >= 0; i -= 1) {
+      const c = seasons[i]?.club?.trim();
+      if (c) return c;
+    }
+  }
+  const profileClub = (cp.club ?? "").trim();
+  if (profileClub) return profileClub;
+  return cp.careerCurrent?.club?.trim() ?? "";
 }
 
 function recruitmentStatusLabelPt(args: {
@@ -140,7 +153,7 @@ export function buildCoachDirectoryRow(args: {
   const dob = (cp.dateOfBirth ?? "").trim();
   const linkedToPresident = Boolean(args.clubPresidentUserId);
   const emp = (cp.careerCurrent?.status ?? "").trim() || "unattached";
-  const clubField = (cp.club ?? "").trim();
+  const clubField = currentClubLabel(cp);
 
   return {
     userId: args.userId,
