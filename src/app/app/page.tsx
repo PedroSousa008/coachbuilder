@@ -14,15 +14,20 @@ import { formatRelativeDay } from "@/lib/format";
 import { useAppData } from "@/contexts/AppDataContext";
 import { computeCoachPerformance, tallyForTactic, winRatePercent } from "@/lib/tactics-match-stats";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { summarizePastClubResults } from "@/lib/past-club-results-utils";
 
 export default function DashboardPage() {
-  const { coachProfile, savedTactics, tacticMatches, trainingSessions, players } = useAppData();
+  const { coachProfile, savedTactics, tacticMatches, trainingSessions, players, pastClubResults } = useAppData();
   const { language } = useLanguage();
   const isPt = language === "pt-PT";
 
   const coachPerf = useMemo(
     () => computeCoachPerformance(savedTactics, tacticMatches, players),
     [savedTactics, tacticMatches, players]
+  );
+  const calendarPerf = useMemo(
+    () => summarizePastClubResults(pastClubResults, coachProfile.club),
+    [pastClubResults, coachProfile.club]
   );
 
   const featuredTactic = coachPerf.mostUsedTactic?.tactic ?? savedTactics[0];
@@ -46,15 +51,15 @@ export default function DashboardPage() {
     return future[0] ?? trainingSessions[0] ?? null;
   }, [trainingSessions]);
 
-  const formStr = coachPerf.formLast5.length > 0 ? coachPerf.formLast5.join(" · ") : "—";
+  const formStr = calendarPerf.formLast5.length > 0 ? calendarPerf.formLast5.join(" · ") : "—";
   const formHint =
-    coachPerf.matchesLogged > 0
+    calendarPerf.matchesLogged > 0
       ? isPt
-        ? `${coachPerf.goalsFor} marcados · ${coachPerf.goalsAgainst} sofridos · SG ${coachPerf.cleanSheets}`
-        : `${coachPerf.goalsFor} scored · ${coachPerf.goalsAgainst} conceded · CS ${coachPerf.cleanSheets}`
+        ? `${calendarPerf.goalsFor} marcados · ${calendarPerf.goalsAgainst} sofridos · SG ${calendarPerf.cleanSheets}`
+        : `${calendarPerf.goalsFor} scored · ${calendarPerf.goalsAgainst} conceded · CS ${calendarPerf.cleanSheets}`
       : isPt
-        ? "Regista jogos nas Táticas para ver forma e golos"
-        : "Log matches in Tactics to view form and goals";
+        ? "Aplica resultados no Calendário para ver forma e golos"
+        : "Apply calendar results to view form and goals";
 
   return (
     <div className="mx-auto max-w-6xl space-y-8">
@@ -68,7 +73,7 @@ export default function DashboardPage() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label={isPt ? "Táticas guardadas" : "Tactics saved"} value={savedTactics.length} icon={GitBranch} />
         <StatCard label={isPt ? "Sessões planeadas" : "Sessions planned"} value={trainingSessions.length} icon={CalendarDays} />
-        <StatCard label={isPt ? "Jogos registados" : "Matches logged"} value={tacticMatches.length} icon={Target} />
+        <StatCard label={isPt ? "Jogos registados" : "Matches logged"} value={calendarPerf.matchesLogged} icon={Target} />
         <StatCard label={isPt ? "Forma (últimos 5)" : "Form (last 5)"} value={formStr} hint={formHint} icon={TrendingUp} />
       </div>
 
