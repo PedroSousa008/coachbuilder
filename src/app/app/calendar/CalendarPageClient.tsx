@@ -86,7 +86,6 @@ export function CalendarPageClient() {
   const [newEventDate, setNewEventDate] = useState(() => dayIsoLocal(new Date()));
   const [newEventNotes, setNewEventNotes] = useState("");
   const [printFromMonth, setPrintFromMonth] = useState(() => monthInputFromDate(new Date()));
-  const [printToMonth, setPrintToMonth] = useState(() => monthInputFromDate(new Date()));
   const nowMs = useScheduleNow();
   const monthCells = useMemo(
     () => buildMonthGrid(viewMonth.getFullYear(), viewMonth.getMonth()),
@@ -245,20 +244,19 @@ export function CalendarPageClient() {
     return entriesByDay.get(dayIsoLocal(selectedDay)) ?? [];
   }, [entriesByDay, selectedDay]);
 
-  const printableMonths = useMemo(() => {
-    const from = dateFromMonthInput(printFromMonth);
-    const to = dateFromMonthInput(printToMonth);
-    const start = from <= to ? from : to;
-    const end = from <= to ? to : from;
-    const out: Date[] = [];
-    let cursor = new Date(start.getFullYear(), start.getMonth(), 1);
-    const cap = 24;
-    while (cursor <= end && out.length < cap) {
-      out.push(new Date(cursor));
-      cursor = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
-    }
-    return out;
-  }, [printFromMonth, printToMonth]);
+  const printableMonth = useMemo(() => dateFromMonthInput(printFromMonth), [printFromMonth]);
+  const printableMonthKey = useMemo(
+    () => `${printableMonth.getFullYear()}-${String(printableMonth.getMonth() + 1).padStart(2, "0")}`,
+    [printableMonth]
+  );
+  const printableMonthItems = useMemo(
+    () =>
+      Array.from(entriesByDay.entries())
+        .filter(([k]) => k.startsWith(printableMonthKey))
+        .flatMap(([date, list]) => list.map((item) => ({ date, ...item })))
+        .sort((a, b) => a.date.localeCompare(b.date) || a.label.localeCompare(b.label)),
+    [entriesByDay, printableMonthKey]
+  );
 
   return (
     <div className="mx-auto max-w-6xl space-y-10">
@@ -338,8 +336,6 @@ export function CalendarPageClient() {
           <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-surface-border/70 bg-zinc-900/35 p-2">
             <span className="text-xs text-zinc-400">Imprimir</span>
             <Input type="month" value={printFromMonth} onChange={(e) => setPrintFromMonth(e.target.value)} className="h-9 max-w-[170px]" />
-            <span className="text-xs text-zinc-500">até</span>
-            <Input type="month" value={printToMonth} onChange={(e) => setPrintToMonth(e.target.value)} className="h-9 max-w-[170px]" />
             <Button type="button" size="sm" variant="secondary" onClick={() => window.print()}>
               Imprimir
             </Button>
@@ -771,7 +767,7 @@ export function CalendarPageClient() {
                   left: 0;
                   top: 0;
                   width: 100%;
-                  padding: 18mm 14mm;
+                  padding: 8mm 12mm;
                   background: #ffffff;
                   color: #0b1220;
                 }
@@ -824,33 +820,27 @@ export function CalendarPageClient() {
               </div>
             </section>
 
-            {printableMonths.length > 1 ? <section className="break-after-page h-[2mm]" /> : null}
-
             <section className="break-before-page">
-              {printableMonths.map((m, monthIdx) => {
+              {(() => {
+                const m = printableMonth;
                 const cells = buildMonthGrid(m.getFullYear(), m.getMonth());
-                const monthKey = `${m.getFullYear()}-${String(m.getMonth() + 1).padStart(2, "0")}`;
-                const monthItems = Array.from(entriesByDay.entries())
-                  .filter(([k]) => k.startsWith(monthKey))
-                  .flatMap(([date, list]) => list.map((item) => ({ date, ...item })))
-                  .sort((a, b) => a.date.localeCompare(b.date) || a.label.localeCompare(b.label));
                 return (
-                  <div key={m.toISOString()} className={cn("mb-8 break-inside-avoid", monthIdx > 0 && "break-before-page")}>
+                  <div className="mb-8 break-inside-avoid">
                     <p className="mb-3 text-xl font-semibold text-black">
                       {m.toLocaleString("pt-PT", { month: "long", year: "numeric" })}
                     </p>
                     <div className="grid grid-cols-7 gap-1.5 text-[10px]">
                       {["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"].map((d) => (
-                        <p key={`${m.toISOString()}-${d}`} className="font-semibold uppercase tracking-wide text-black/80">
+                        <p key={`print-${d}`} className="font-semibold uppercase tracking-wide text-black/80">
                           {d}
                         </p>
                       ))}
                       {cells.map((day, idx) => {
-                        if (!day) return <div key={`${m.toISOString()}-empty-${idx}`} className="h-20 border border-transparent" />;
+                        if (!day) return <div key={`print-empty-${idx}`} className="h-20 border border-transparent" />;
                         const dayKey = dayIsoLocal(day);
                         const events = entriesByDay.get(dayKey) ?? [];
                         return (
-                          <div key={`${m.toISOString()}-${day.toISOString()}`} className="h-20 rounded-md border border-black/35 p-1.5">
+                          <div key={`print-${day.toISOString()}`} className="h-20 rounded-md border border-black/35 p-1.5">
                             <p className="text-[10px] font-semibold text-black">{day.getDate()}</p>
                             {events.slice(0, 3).map((ev, i) => (
                               <p key={`${dayKey}-${i}`} className="truncate text-[9px] text-black/85">
@@ -863,12 +853,12 @@ export function CalendarPageClient() {
                     </div>
                     <div className="mt-3 rounded-md border border-black/30 p-2">
                       <p className="text-[10px] font-semibold uppercase tracking-wide text-black/75">Tópicos do mês</p>
-                      {monthItems.length === 0 ? (
+                      {printableMonthItems.length === 0 ? (
                         <p className="mt-1 text-[9px] text-black/70">Sem tópicos neste mês.</p>
                       ) : (
                         <ul className="mt-1 space-y-0.5">
-                          {monthItems.map((it, i) => (
-                            <li key={`${monthKey}-${it.date}-${i}`} className="text-[9px] text-black/85">
+                          {printableMonthItems.map((it, i) => (
+                            <li key={`${printableMonthKey}-${it.date}-${i}`} className="text-[9px] text-black/85">
                               {new Date(`${it.date}T00:00:00`).getDate()} · {it.label}
                             </li>
                           ))}
@@ -877,7 +867,7 @@ export function CalendarPageClient() {
                     </div>
                   </div>
                 );
-              })}
+              })()}
             </section>
           </div>
 
