@@ -951,6 +951,7 @@ export function CalendarPageClient() {
           )}
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 }
