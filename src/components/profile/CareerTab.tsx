@@ -162,6 +162,7 @@ export function CareerTab({ coachProfile, hydrated, onCommit }: Props) {
     onCommit({
       careerSeasons: seasons,
       careerCurrent: current,
+      club: current.club.trim(),
       certifications: certs,
       certificationGoal: goal,
       careerDocuments: documents,
@@ -187,6 +188,7 @@ export function CareerTab({ coachProfile, hydrated, onCommit }: Props) {
     }
     onCommit({
       ...pendingCommit,
+      club: current.club.trim(),
       honors,
     });
     setPendingCommit(null);
