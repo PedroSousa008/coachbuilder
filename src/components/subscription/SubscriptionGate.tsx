@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { clientEmailShowsAdminNav } from "@/lib/bootstrap-admin-client";
+import { isClubPresident } from "@/lib/president-mode";
 import { hasFullWorkspaceAccess } from "@/lib/subscription-client";
 
 function pathAllowedInFreeMode(pathname: string): boolean {
@@ -23,6 +24,8 @@ export function SubscriptionGate({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!authReady || !user) return;
     if (full) return;
+    /** Modo Presidente: o paywall Coach Pro não aplica; só Definições + subscrição (PresidenteNavRedirect). */
+    if (isClubPresident(user) && pathname.startsWith("/app/president")) return;
     if (pathAllowedInFreeMode(pathname)) return;
     router.replace("/app/settings?subscription=locked");
   }, [authReady, user, full, pathname, router]);
@@ -32,6 +35,10 @@ export function SubscriptionGate({ children }: { children: React.ReactNode }) {
   if (full) return <>{children}</>;
 
   if (pathAllowedInFreeMode(pathname)) return <>{children}</>;
+
+  if (isClubPresident(user) && pathname.startsWith("/app/president")) {
+    return <>{children}</>;
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-[var(--background)]">

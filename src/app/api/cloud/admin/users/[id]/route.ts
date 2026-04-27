@@ -49,6 +49,12 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
         );
       }
       data.subscriptionPlan = plan;
+      /** Evita estado incoerente (ex.: plano `free` com trial ainda no futuro → acesso Pro fantasma). */
+      if (plan === "free") {
+        data.proTrialEndsAt = null;
+        data.paymentGraceEndsAt = null;
+        data.lastPaymentFailedAt = null;
+      }
     }
 
     if (body.subscriptionRenewsAt !== undefined) {
