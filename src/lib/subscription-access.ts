@@ -41,7 +41,8 @@ export function computeSubscriptionAccess(u: UserSubscriptionFields): Subscripti
   const custom = toNumberPrice(u.customMonthlyPriceEur);
   const adminMonthlyPriceEur = custom;
   const displayPriceEur = custom != null ? custom : defaultPriceEur;
-  const isComped = custom === 0;
+  /** 0 € explícito na BD (Prisma Decimal / string) — oferta Admin. */
+  const isComped = custom !== null && Number.isFinite(custom) && Math.abs(custom) < 1e-9;
 
   const role = u.role?.trim().toLowerCase() ?? "user";
   if (role === "admin") {

@@ -196,6 +196,24 @@ function parseMaybeNumber(v: unknown): number | null {
   return null;
 }
 
+/** Preço personalizado 0 € na BD (oferta Admin / comped). */
+function isZeroCompedCustom(raw: unknown): boolean {
+  const n = parseMaybeNumber(raw);
+  return n !== null && n === 0;
+}
+
+/**
+ * Presidente em «Grátis» na UI mas ainda sem `customMonthlyPriceEur = 0` na BD — é preciso carregar em
+ * «Guardar plano» para o servidor aplicar a oferta (senão o botão ficava desactivado quando o plano já era free).
+ */
+function presidentFreeNeedsCompSave(u: ListedUser, draftPlan: string): boolean {
+  return (
+    u.coachingRole === "club-president" &&
+    draftPlan === "free" &&
+    !isZeroCompedCustom(u.customMonthlyPriceEur)
+  );
+}
+
 function currentPriceInfo(u: ListedUser, coachPriceEur: number): { amount: number; reason: string } {
   const presidentPriceEur = 59.99;
   if (u.role === "admin") return { amount: 0, reason: "Conta Admin" };
@@ -873,8 +891,16 @@ function OverviewTabContent({
                       <Button
                         type="button"
                         className="text-xs"
+                        title={
+                          presidentFreeNeedsCompSave(u, planDraft[u.id] ?? u.subscriptionPlan)
+                            ? "Grava para activar o PresidentPro oferecido (0 €/mês) nesta conta."
+                            : undefined
+                        }
                         onClick={() => void savePlan(u.id)}
-                        disabled={(planDraft[u.id] ?? u.subscriptionPlan) === u.subscriptionPlan}
+                        disabled={
+                          (planDraft[u.id] ?? u.subscriptionPlan) === u.subscriptionPlan &&
+                          !presidentFreeNeedsCompSave(u, planDraft[u.id] ?? u.subscriptionPlan)
+                        }
                       >
                         Guardar plano
                       </Button>
