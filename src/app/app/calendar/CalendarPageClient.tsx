@@ -295,13 +295,13 @@ export function CalendarPageClient() {
             combined = combined.trim() ? `${combined.trim()}\n${extracted}` : extracted;
             setResultsOcrText(combined);
           }
-          if (layoutEvents.length) {
-            const fallbackEvents = parseMatchEventsFromOcrText(combined.trim());
-            const merged = dedupeEvents([...layoutEvents, ...fallbackEvents]);
-            const summary = applyLeagueMatchEvents(merged, undefined, { requireFullApply: true });
+          // Se o parser por layout já encontrou jogos, não misturamos com o texto corrido:
+          // o texto OCR inclui lixo dos símbolos/logos e pode inflacionar o número de jogos.
+          if (layoutEvents.length >= 2) {
+            const summary = applyLeagueMatchEvents(layoutEvents, undefined, { requireFullApply: true });
             if (summary.skippedCount > 0) {
               setOcrError(
-                `Detetei ${merged.length} jogos, mas só consegui mapear ${summary.appliedCount} à League Table. ` +
+                `Detetei ${layoutEvents.length} jogos, mas só consegui mapear ${summary.appliedCount} à League Table. ` +
                   "Não apliquei alterações parciais. Confirma os nomes das equipas na tabela e tenta novamente."
               );
               setOcrBusy(false);
