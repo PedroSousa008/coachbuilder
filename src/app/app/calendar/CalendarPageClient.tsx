@@ -495,11 +495,13 @@ function scoreRowsCoverage(rows: MatchRow[]): { games: number; uniqueTeams: numb
   return { games: rows.length, uniqueTeams: unique.size };
 }
 
-function chooseBestCandidate(candidates: Array<{ rows: MatchRow[]; scoreCount: number }>): { rows: MatchRow[]; scoreCount: number } {
-  if (!candidates.length) return { rows: [], scoreCount: 0 };
+function chooseBestCandidate(
+  candidates: Array<{ rows: MatchRow[]; anchors: OcrScoreAnchor[] }>
+): { rows: MatchRow[]; anchors: OcrScoreAnchor[] } {
+  if (!candidates.length) return { rows: [], anchors: [] };
   const sorted = [...candidates].sort((a, b) => {
     if (b.rows.length !== a.rows.length) return b.rows.length - a.rows.length;
-    if (b.scoreCount !== a.scoreCount) return b.scoreCount - a.scoreCount;
+    if (b.anchors.length !== a.anchors.length) return b.anchors.length - a.anchors.length;
     const sa = scoreRowsCoverage(a.rows);
     const sb = scoreRowsCoverage(b.rows);
     return sb.uniqueTeams - sa.uniqueTeams;
@@ -700,40 +702,43 @@ export function CalendarPageClient() {
         const worker = await tess.createWorker("por+eng");
         const psmSingle = tess.PSM?.SINGLE_BLOCK ?? "6";
         const psmSparse = tess.PSM?.SPARSE_TEXT ?? "11";
-        const candidates: Array<{ rows: MatchRow[]; scoreCount: number }> = [];
+        const candidates: Array<{ rows: MatchRow[]; anchors: OcrScoreAnchor[] }> = [];
         await worker.setParameters({ tessedit_pageseg_mode: psmSingle });
         const recSingle = await worker.recognize(file);
+        const anchorsSingle = extractScoreAnchorsFromRecognizedData(recSingle.data);
         const rowsSingle = dedupeMatchRows([
           ...rowsFromRecognizedData(recSingle.data),
           ...parseMatchRowsFromRawTextBlock(recSingle.data?.text ?? ""),
         ]);
         candidates.push({
           rows: rowsSingle,
-          scoreCount: extractScoreAnchorsFromRecognizedData(recSingle.data).length,
+          anchors: anchorsSingle,
         });
 
         await worker.setParameters({ tessedit_pageseg_mode: psmSparse });
         const recSparse = await worker.recognize(file);
+        const anchorsSparse = extractScoreAnchorsFromRecognizedData(recSparse.data);
         const rowsSparse = dedupeMatchRows([
           ...rowsFromRecognizedData(recSparse.data),
           ...parseMatchRowsFromRawTextBlock(recSparse.data?.text ?? ""),
         ]);
         candidates.push({
           rows: rowsSparse,
-          scoreCount: extractScoreAnchorsFromRecognizedData(recSparse.data).length,
+          anchors: anchorsSparse,
         });
 
         try {
           const hi = await buildHighContrastImageBlob(file);
           await worker.setParameters({ tessedit_pageseg_mode: psmSingle });
           const recHi = await worker.recognize(hi);
+          const anchorsHi = extractScoreAnchorsFromRecognizedData(recHi.data);
           const rowsHi = dedupeMatchRows([
             ...rowsFromRecognizedData(recHi.data),
             ...parseMatchRowsFromRawTextBlock(recHi.data?.text ?? ""),
           ]);
           candidates.push({
             rows: rowsHi,
-            scoreCount: extractScoreAnchorsFromRecognizedData(recHi.data).length,
+            anchors: anchorsHi,
           });
         } catch {
           // Preprocess is best-effort.
@@ -746,15 +751,24 @@ export function CalendarPageClient() {
           setOcrError("Não consegui montar a tabela Casa/Resultado/Fora a partir da imagem.");
           return;
         }
-        if (best.scoreCount > 0 && strictRows.length < best.scoreCount) {
+        const anchorsSorted = [...best.anchors].sort((a, b) => a.yMid - b.yMid);
+        const draft = toDraftRows(strictRows);
+        if (anchorsSorted.length > draft.length) {
+          // Nunca esconder linhas: adiciona as que faltam com score preenchido para correção manual.
+          for (let i = draft.length; i < anchorsSorted.length; i++) {
+            const a = anchorsSorted[i]!;
+            draft.push({
+              homeTeam: "",
+              result: `${a.homeGoals}-${a.awayGoals}`,
+              awayTeam: "",
+            });
+          }
           setOcrError(
-            `A imagem parece ter ${best.scoreCount} linhas de resultado, mas só consegui montar ${strictRows.length}. ` +
-              "Não vou avançar com dados incompletos."
+            `Detetei ${anchorsSorted.length} linhas de resultado mas só consegui preencher ${strictRows.length} automaticamente. ` +
+              "Completa as linhas em falta e clica em 'Para a Tabela'."
           );
-          setResultsRowsDraft(toDraftRows(strictRows));
-          return;
         }
-        setResultsRowsDraft(toDraftRows(strictRows));
+        setResultsRowsDraft(draft);
       } catch {
         setOcrError("Não foi possível ler a imagem (OCR).");
         return;
