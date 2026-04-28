@@ -61,15 +61,11 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
 
       /**
        * Presidente «Grátis» pelo Admin = oferta total (comped 0 €), sem Stripe.
-       * Só ao mudar de outro plano para `free` e sem `customMonthlyPriceEur` no body — não afecta contas
-       * que já estavam em `free` após trial (permanecem com paywall até pagarem).
+       * Sempre que o plano `free` é gravado neste PATCH e o Admin não envia `customMonthlyPriceEur`
+       * (inclui re-gravar «Grátis» em contas que já estavam em `free` após trial).
+       * Para retirar a oferta: envia `customMonthlyPriceEur: null` no mesmo PATCH.
        */
-      if (
-        isPresident &&
-        plan === "free" &&
-        prevPlan !== "free" &&
-        !("customMonthlyPriceEur" in body)
-      ) {
+      if (isPresident && plan === "free" && !("customMonthlyPriceEur" in body)) {
         data.customMonthlyPriceEur = new Prisma.Decimal("0");
       }
 
