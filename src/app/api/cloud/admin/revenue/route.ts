@@ -46,9 +46,9 @@ function subscriberStatus(
   return "gratuito";
 }
 
-const stripeBackedMonthlyWhere = {
+const stripeBackedMonthlyWhere: Prisma.UserWhereInput = {
   AND: [{ stripeSubscriptionId: { not: null } }, { NOT: { stripeSubscriptionId: "" } }],
-} as const;
+};
 
 export async function GET() {
   if (!isCloudSyncEnabledServer()) {

@@ -7,9 +7,9 @@ import { coachProDefaultPriceEur, presidentProDefaultPriceEur } from "@/lib/subs
 
 export const dynamic = "force-dynamic";
 
-const stripeBackedMonthlyWhere = {
+const stripeBackedMonthlyWhere: Prisma.UserWhereInput = {
   AND: [{ stripeSubscriptionId: { not: null } }, { NOT: { stripeSubscriptionId: "" } }],
-} as const;
+};
 
 export async function GET() {
   if (!isCloudSyncEnabledServer()) {
