@@ -1,11 +1,12 @@
 "use client";
 
 import { useMemo } from "react";
-import type { CoachCareerSeason, Tactic, TacticMatch } from "@/types";
+import type { CoachCareerSeason, PastClubResult, Tactic, TacticMatch } from "@/types";
 import type { Player } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { computeCoachPerformance, tacticLabel } from "@/lib/tactics-match-stats";
 import {
+  aggregatePastClubResults,
   aggregateCareerSeasons,
   combineTacticsAndCareer,
   sortSeasonsChronologically,
@@ -41,15 +42,20 @@ type Props = {
   tacticMatches: TacticMatch[];
   players: Player[];
   careerSeasons: CoachCareerSeason[] | undefined;
+  pastClubResults: PastClubResult[];
 };
 
-export function PerformanceTab({ savedTactics, tacticMatches, players, careerSeasons }: Props) {
+export function PerformanceTab({ savedTactics, tacticMatches, players, careerSeasons, pastClubResults }: Props) {
   const coachPerf = useMemo(
     () => computeCoachPerformance(savedTactics, tacticMatches, players),
     [savedTactics, tacticMatches, players]
   );
   const careerAgg = useMemo(() => aggregateCareerSeasons(careerSeasons), [careerSeasons]);
-  const combined = useMemo(() => combineTacticsAndCareer(coachPerf, careerAgg), [coachPerf, careerAgg]);
+  const calendarAgg = useMemo(() => aggregatePastClubResults(pastClubResults), [pastClubResults]);
+  const combined = useMemo(
+    () => combineTacticsAndCareer(coachPerf, careerAgg, calendarAgg),
+    [coachPerf, careerAgg, calendarAgg]
+  );
   const sortedSeasons = useMemo(
     () => sortSeasonsChronologically(careerSeasons ?? []),
     [careerSeasons]
@@ -147,6 +153,37 @@ export function PerformanceTab({ savedTactics, tacticMatches, players, careerSea
                 : "Ainda sem golos registados"}
             </p>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card className="border-white/10 bg-gradient-to-br from-sky-900/20 to-zinc-950/90">
+        <CardHeader>
+          <CardTitle className="text-white">Do calendário (Resultados por print)</CardTitle>
+          <p className="text-sm text-zinc-500">
+            Jogos que entram automaticamente via Calendário e aparecem em "Jogos anteriores (Perfil)".
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {calendarAgg.matches === 0 ? (
+            <p className="text-sm text-zinc-500">
+              Ainda sem jogos vindos do Calendário. Quando adicionares resultados no print, esta secção atualiza
+              automaticamente.
+            </p>
+          ) : (
+            <>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <PerfCell label="Jogos" value={calendarAgg.matches} accent />
+                <PerfCell label="Vitórias" value={calendarAgg.wins} accent />
+                <PerfCell label="Empates" value={calendarAgg.draws} />
+                <PerfCell label="Derrotas" value={calendarAgg.losses} danger />
+              </div>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <PerfCell label="Golos marcados" value={calendarAgg.goalsFor} />
+                <PerfCell label="Golos sofridos" value={calendarAgg.goalsAgainst} />
+                <PerfCell label="% vitórias" value={`${calendarAgg.winRate}%`} accent />
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
 

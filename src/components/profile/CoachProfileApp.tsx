@@ -47,7 +47,7 @@ export function CoachProfileApp() {
   );
 
   const { user } = useAuth();
-  const { coachProfile, setCoachProfile, hydrated, savedTactics, tacticMatches, trainingSessions, players } =
+  const { coachProfile, setCoachProfile, hydrated, savedTactics, tacticMatches, trainingSessions, players, pastClubResults } =
     useAppData();
 
   const commitProfile = useCallback(
@@ -149,7 +149,8 @@ export function CoachProfileApp() {
                     {mockCoach.plan === "pro" ? "Coach Pro" : "Plano Free"}
                   </Badge>
                   <span className="text-xs text-zinc-600">
-                    {savedTactics.length} táticas · {trainingSessions.length} sessões · {tacticMatches.length} jogos
+                    {savedTactics.length} táticas · {trainingSessions.length} sessões ·{" "}
+                    {tacticMatches.length + pastClubResults.length} jogos
                   </span>
                 </div>
               </div>
@@ -158,7 +159,7 @@ export function CoachProfileApp() {
               {[
                 { label: "Táticas", value: savedTactics.length },
                 { label: "Sessões", value: trainingSessions.length },
-                { label: "Jogos", value: tacticMatches.length },
+                { label: "Jogos", value: tacticMatches.length + pastClubResults.length },
               ].map((s) => (
                 <div
                   key={s.label}
@@ -181,6 +182,7 @@ export function CoachProfileApp() {
             tacticMatches={tacticMatches}
             players={players}
             careerSeasons={coachProfile.careerSeasons}
+            pastClubResults={pastClubResults}
           />
         ) : null}
         {tab === "personal" ? (

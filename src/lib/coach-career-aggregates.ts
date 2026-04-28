@@ -1,4 +1,4 @@
-import type { CoachCareerSeason, CoachHonorEntry } from "@/types";
+import type { CoachCareerSeason, CoachHonorEntry, PastClubResult } from "@/types";
 import { winRatePercent, type CoachPerformanceSummary } from "@/lib/tactics-match-stats";
 
 export type CareerSeasonAggregate = {
@@ -84,16 +84,64 @@ export type CombinedCoachStats = {
   };
 };
 
+export type CalendarResultsAggregate = {
+  matches: number;
+  wins: number;
+  draws: number;
+  losses: number;
+  goalsFor: number;
+  goalsAgainst: number;
+  winRate: number;
+};
+
+export function aggregatePastClubResults(results: PastClubResult[] | undefined): CalendarResultsAggregate {
+  if (!results?.length) {
+    return {
+      matches: 0,
+      wins: 0,
+      draws: 0,
+      losses: 0,
+      goalsFor: 0,
+      goalsAgainst: 0,
+      winRate: 0,
+    };
+  }
+  let wins = 0;
+  let draws = 0;
+  let losses = 0;
+  let goalsFor = 0;
+  let goalsAgainst = 0;
+  for (const r of results) {
+    if (r.outcome === "W") wins += 1;
+    else if (r.outcome === "D") draws += 1;
+    else losses += 1;
+    // PastClubResult outcome is from profile club perspective; keep this direction for aggregate.
+    goalsFor += r.outcome === "L" ? Math.min(r.homeGoals, r.awayGoals) : Math.max(r.homeGoals, r.awayGoals);
+    goalsAgainst += r.outcome === "L" ? Math.max(r.homeGoals, r.awayGoals) : Math.min(r.homeGoals, r.awayGoals);
+  }
+  const matches = results.length;
+  return {
+    matches,
+    wins,
+    draws,
+    losses,
+    goalsFor,
+    goalsAgainst,
+    winRate: winRatePercent(wins, matches),
+  };
+}
+
 export function combineTacticsAndCareer(
   tacticsPerf: CoachPerformanceSummary,
-  career: CareerSeasonAggregate
+  career: CareerSeasonAggregate,
+  calendar: CalendarResultsAggregate
 ): CombinedCoachStats["combined"] {
-  const matches = tacticsPerf.matchesLogged + career.played;
-  const wins = tacticsPerf.wins + career.wins;
-  const draws = tacticsPerf.draws + career.draws;
-  const losses = tacticsPerf.losses + career.losses;
-  const goalsFor = tacticsPerf.goalsFor + career.goalsFor;
-  const goalsAgainst = tacticsPerf.goalsAgainst + career.goalsAgainst;
+  const matches = tacticsPerf.matchesLogged + career.played + calendar.matches;
+  const wins = tacticsPerf.wins + career.wins + calendar.wins;
+  const draws = tacticsPerf.draws + career.draws + calendar.draws;
+  const losses = tacticsPerf.losses + career.losses + calendar.losses;
+  const goalsFor = tacticsPerf.goalsFor + career.goalsFor + calendar.goalsFor;
+  const goalsAgainst = tacticsPerf.goalsAgainst + career.goalsAgainst + calendar.goalsAgainst;
   return {
     matches,
     wins,
