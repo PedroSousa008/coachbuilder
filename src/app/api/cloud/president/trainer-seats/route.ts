@@ -166,7 +166,7 @@ export async function POST(req: Request) {
             passwordHash: hash,
             salt,
             role: "user",
-            subscriptionPlan: "free",
+            subscriptionPlan: "pro_monthly",
             clubPresidentUserId: gate.president.id,
             trainerSeatIndex: seatIndex,
             trainerSeatActive: true,

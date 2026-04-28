@@ -16,6 +16,7 @@ import { COACHING_ROLES } from "@/types/auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { clsx } from "clsx";
+import { unpaidMonthlyPlanForCoachingRole } from "@/lib/subscription-access";
 
 type Stats = {
   generatedAt: string;
@@ -31,6 +32,7 @@ type Stats = {
   coachesWithActivePro: number;
   proMonthlyUsersAll: number;
   freePlanUsers: number;
+  unpaidMonthlyUsers?: number;
   estimatedMonthlyRevenueEur: number;
   proPriceEur: number;
   cancellationsRecentCount: number;
@@ -89,10 +91,11 @@ type RevenueSubscriber = {
   id: string;
   email: string;
   name: string;
+  coachingRole: string;
   subscriptionPlan: string;
   subscriptionRenewsAt: string | null;
   createdAt: string;
-  status: "ativo" | "gratuito" | "em_atraso";
+  status: "ativo" | "gratuito" | "em_atraso" | "sem_pagamento";
   totalLifetimePaidEur: number | null;
 };
 
@@ -267,6 +270,7 @@ function formatEurValue(n: number | null | undefined, empty = "—"): string {
 function subscriberStatusLabel(s: RevenueSubscriber["status"]): string {
   if (s === "ativo") return "Ativo";
   if (s === "em_atraso") return "Em atraso";
+  if (s === "sem_pagamento") return "Sem pagamento";
   return "Gratuito";
 }
 
@@ -567,9 +571,9 @@ export function AdminPanel() {
           planDraft={planDraft}
           setPlanDraft={setPlanDraft}
           onApplyPlan={(id) => void savePlan(id)}
-          onCancelSubscription={(id) =>
-            void patchSubscription(id, {
-              subscriptionPlan: "free",
+          onCancelSubscription={(row) =>
+            void patchSubscription(row.id, {
+              subscriptionPlan: unpaidMonthlyPlanForCoachingRole(row.coachingRole),
               subscriptionRenewsAt: null,
               proTrialEndsAt: null,
               paymentGraceEndsAt: null,
@@ -702,13 +706,22 @@ function OverviewTabContent({
           <StatCard
             title="Subscrição Pro ativa"
             value={stats.coachesWithActivePro}
-            hint="Pro mensal sem data de fim ou renovação ≥ hoje"
+            hint="Pro mensal com Stripe activo (renovação ≥ hoje ou sem data)"
           />
-          <StatCard title="Utilizadores grátis" value={stats.freePlanUsers} hint="Plano free (não admin)" />
+          <StatCard
+            title="Utilizadores grátis"
+            value={stats.freePlanUsers}
+            hint="Plano Grátis na BD — decisão Admin (acesso total)"
+          />
+          <StatCard
+            title="Mensal sem Stripe"
+            value={stats.unpaidMonthlyUsers ?? "—"}
+            hint="Coach/President mensal sem subscrição Stripe nem 0 € oferta"
+          />
           <StatCardEuro
             title="Receita mensal estimada"
             amount={stats.estimatedMonthlyRevenueEur}
-            hint={`${stats.coachesWithActivePro} × ${stats.proPriceEur} € (ADMIN_PRO_MONTHLY_PRICE_EUR; sem Stripe)`}
+            hint={`CoachPro + PresidentPro com Stripe (${stats.coachesWithActivePro} contas)`}
           />
           <StatCard
             title="Cancelamentos recentes"
@@ -930,7 +943,7 @@ function RevenueTabContent({
   planDraft: Record<string, string>;
   setPlanDraft: Dispatch<SetStateAction<Record<string, string>>>;
   onApplyPlan: (id: string) => void;
-  onCancelSubscription: (id: string) => void;
+  onCancelSubscription: (row: RevenueSubscriber) => void;
   onGrantCompPro: (id: string) => void;
   onRefresh: () => void;
 }) {
@@ -1008,7 +1021,7 @@ function RevenueTabContent({
           <StatCard
             title="Subscrições ativas"
             value={o.activeSubscriptionsCount}
-            hint="Pro mensal com renovação válida ou sem data de fim"
+            hint="Pro mensal com Stripe activo (renovação válida ou sem data)"
           />
           <StatCard
             title="Conversão free → paid"
@@ -1112,7 +1125,7 @@ function RevenueTabContent({
                       <td className="px-3 py-3 text-xs text-zinc-500">
                         {row.subscriptionRenewsAt
                           ? new Date(row.subscriptionRenewsAt).toLocaleString("pt-PT")
-                          : draft === "pro_monthly"
+                          : draft === "pro_monthly" || draft === "president_pro_monthly"
                             ? "— (sem data)"
                             : "—"}
                       </td>
@@ -1124,7 +1137,9 @@ function RevenueTabContent({
                               ? "bg-emerald-500/15 text-emerald-300"
                               : row.status === "em_atraso"
                                 ? "bg-amber-500/15 text-amber-200"
-                                : "bg-zinc-500/15 text-zinc-400"
+                                : row.status === "sem_pagamento"
+                                  ? "bg-sky-500/15 text-sky-200"
+                                  : "bg-zinc-500/15 text-zinc-400"
                           )}
                         >
                           {subscriberStatusLabel(row.status)}
@@ -1150,7 +1165,7 @@ function RevenueTabContent({
                             type="button"
                             variant="secondary"
                             className="px-2 py-1 text-[10px]"
-                            onClick={() => onCancelSubscription(row.id)}
+                            onClick={() => onCancelSubscription(row)}
                           >
                             Cancelar
                           </Button>

@@ -1,7 +1,7 @@
 import Stripe from "stripe";
 import { prisma } from "@/lib/prisma";
 import { coachProStripePriceId, presidentProStripePriceId } from "@/lib/stripe-env";
-import { graceEndsAtFromNow } from "@/lib/subscription-access";
+import { graceEndsAtFromNow, unpaidMonthlyPlanForCoachingRole } from "@/lib/subscription-access";
 
 /** Plano mensal pago: Stripe (price ID) > metadata explícita > função na conta. */
 function resolvePaidMonthlyPlanFromStripe(
@@ -122,10 +122,11 @@ export async function clearSubscriptionAfterStripeEnd(sub: Stripe.Subscription) 
   const user = await userByStripeSubscription(sub);
   if (!user) return;
 
+  const plan = unpaidMonthlyPlanForCoachingRole(user.coachingRole);
   await prisma.user.update({
     where: { id: user.id },
     data: {
-      subscriptionPlan: "free",
+      subscriptionPlan: plan,
       stripeSubscriptionId: null,
       subscriptionRenewsAt: null,
       paymentGraceEndsAt: null,

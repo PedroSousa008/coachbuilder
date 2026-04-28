@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { CLOUD_SERVER_UNAVAILABLE_MESSAGE, isCloudSyncEnabledServer } from "@/lib/cloud-config";
 import { requireAdminSession } from "@/lib/admin-guard";
@@ -6,21 +7,48 @@ import { coachProDefaultPriceEur, presidentProDefaultPriceEur } from "@/lib/subs
 
 export const dynamic = "force-dynamic";
 
-type SubscriberStatus = "ativo" | "gratuito" | "em_atraso";
+type SubscriberStatus = "ativo" | "gratuito" | "em_atraso" | "sem_pagamento";
+
+function hasStripeSubscriptionId(id: string | null | undefined): boolean {
+  return typeof id === "string" && id.trim().length > 0;
+}
+
+function customIsCompedZero(v: Prisma.Decimal | null): boolean {
+  if (v == null) return false;
+  const n = v.toNumber();
+  return Number.isFinite(n) && Math.abs(n) < 1e-9;
+}
 
 function subscriberStatus(
   plan: string,
   renews: Date | null,
   graceEnds: Date | null,
-  now: Date
+  proTrialEndsAt: Date | null,
+  now: Date,
+  stripeSubscriptionId: string | null,
+  customMonthlyPriceEur: Prisma.Decimal | null
 ): SubscriberStatus {
   if (plan === "free") return "gratuito";
   if (plan === "grace" && graceEnds && graceEnds > now) return "em_atraso";
-  if (plan === "pro_trial") return "ativo";
-  if (plan !== "pro_monthly" && plan !== "president_pro_monthly") return "gratuito";
-  if (!renews) return "ativo";
-  return renews >= now ? "ativo" : "em_atraso";
+  if (plan === "pro_trial") {
+    if (proTrialEndsAt && proTrialEndsAt > now) return "ativo";
+    return "sem_pagamento";
+  }
+  if (plan === "pro_monthly" || plan === "president_pro_monthly") {
+    const hasStripe = hasStripeSubscriptionId(stripeSubscriptionId);
+    const comped = customIsCompedZero(customMonthlyPriceEur);
+    if (hasStripe || comped) {
+      if (!renews) return "ativo";
+      return renews >= now ? "ativo" : "em_atraso";
+    }
+    return "sem_pagamento";
+  }
+  return "gratuito";
 }
+
+const stripeBackedMonthlyWhere = {
+  AND: [{ stripeSubscriptionId: { not: null } }, { NOT: { stripeSubscriptionId: "" } } }],
+} as const;
 
 export async function GET() {
   if (!isCloudSyncEnabledServer()) {
@@ -40,6 +68,7 @@ export async function GET() {
       where: {
         role: { not: "admin" },
         subscriptionPlan: { in: ["pro_monthly", "president_pro_monthly"] },
+        ...stripeBackedMonthlyWhere,
         OR: [{ subscriptionRenewsAt: null }, { subscriptionRenewsAt: { gte: nowDate } }],
       },
     });
@@ -47,6 +76,7 @@ export async function GET() {
       where: {
         role: { not: "admin" },
         subscriptionPlan: "pro_monthly",
+        ...stripeBackedMonthlyWhere,
         OR: [{ subscriptionRenewsAt: null }, { subscriptionRenewsAt: { gte: nowDate } }],
       },
     });
@@ -54,6 +84,7 @@ export async function GET() {
       where: {
         role: { not: "admin" },
         subscriptionPlan: "president_pro_monthly",
+        ...stripeBackedMonthlyWhere,
         OR: [{ subscriptionRenewsAt: null }, { subscriptionRenewsAt: { gte: nowDate } }],
       },
     });
@@ -62,9 +93,25 @@ export async function GET() {
       where: { subscriptionPlan: "free", role: { not: "admin" } },
     });
 
+    const unpaidMonthlyUsers = await prisma.user.count({
+      where: {
+        role: { not: "admin" },
+        subscriptionPlan: { in: ["pro_monthly", "president_pro_monthly"] },
+        AND: [
+          { OR: [{ stripeSubscriptionId: null }, { stripeSubscriptionId: "" }] },
+          {
+            OR: [
+              { customMonthlyPriceEur: null },
+              { NOT: { customMonthlyPriceEur: new Prisma.Decimal(0) } },
+            ],
+          },
+        ],
+      },
+    });
+
     const mrrEur = Math.round((activeCoachPro * coachPriceEur + activePresidentPro * presidentPriceEur) * 100) / 100;
 
-    const conversionDenom = coachesWithActivePro + freePlanUsers;
+    const conversionDenom = coachesWithActivePro + freePlanUsers + unpaidMonthlyUsers;
     const freeToPaidConversionPct =
       conversionDenom === 0 ? 0 : Math.round((coachesWithActivePro / conversionDenom) * 10000) / 100;
 
@@ -93,7 +140,11 @@ export async function GET() {
         subscriptionPlan: true,
         subscriptionRenewsAt: true,
         paymentGraceEndsAt: true,
+        proTrialEndsAt: true,
         createdAt: true,
+        coachingRole: true,
+        stripeSubscriptionId: true,
+        customMonthlyPriceEur: true,
       },
     });
 
@@ -101,10 +152,19 @@ export async function GET() {
       id: u.id,
       email: u.email,
       name: u.name,
+      coachingRole: u.coachingRole ?? "",
       subscriptionPlan: u.subscriptionPlan,
       subscriptionRenewsAt: u.subscriptionRenewsAt?.toISOString() ?? null,
       createdAt: u.createdAt.toISOString(),
-      status: subscriberStatus(u.subscriptionPlan, u.subscriptionRenewsAt, u.paymentGraceEndsAt, nowDate),
+      status: subscriberStatus(
+        u.subscriptionPlan,
+        u.subscriptionRenewsAt,
+        u.paymentGraceEndsAt,
+        u.proTrialEndsAt,
+        nowDate,
+        u.stripeSubscriptionId,
+        u.customMonthlyPriceEur
+      ),
       totalLifetimePaidEur: null as number | null,
     }));
 
@@ -125,7 +185,7 @@ export async function GET() {
         activeSubscriptionsCount: coachesWithActivePro,
         freeToPaidConversionPct,
         freeToPaidConversionNote:
-          "% de coaches com Pro ativo entre (Pro ativo + plano grátis). Histórico de upgrades não está na BD.",
+          "% com Stripe activo entre (Stripe + plano Grátis Admin + mensal sem pagamento). Histórico de upgrades não está na BD.",
         newCoachesLast7d,
         newCoachesPrev7d,
         newCoachesGrowthVsPrevWeekPct,

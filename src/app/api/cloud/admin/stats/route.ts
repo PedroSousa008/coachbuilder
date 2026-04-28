@@ -1,10 +1,15 @@
 import { NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { CLOUD_SERVER_UNAVAILABLE_MESSAGE, isCloudSyncEnabledServer } from "@/lib/cloud-config";
 import { requireAdminSession } from "@/lib/admin-guard";
 import { coachProDefaultPriceEur, presidentProDefaultPriceEur } from "@/lib/subscription-env";
 
 export const dynamic = "force-dynamic";
+
+const stripeBackedMonthlyWhere = {
+  AND: [{ stripeSubscriptionId: { not: null } }, { NOT: { stripeSubscriptionId: "" } }],
+} as const;
 
 export async function GET() {
   if (!isCloudSyncEnabledServer()) {
@@ -80,17 +85,34 @@ export async function GET() {
       },
     });
 
-    /** Pro “ativo”: sem data de fim ou renovação ainda no futuro. */
+    /** Pro com cobrança Stripe (renovação válida ou sem data — MVP). */
     const coachesWithActivePro = await prisma.user.count({
       where: {
         role: { not: "admin" },
         subscriptionPlan: { in: ["pro_monthly", "president_pro_monthly"] },
+        ...stripeBackedMonthlyWhere,
         OR: [{ subscriptionRenewsAt: null }, { subscriptionRenewsAt: { gte: nowDate } }],
       },
     });
 
     const freePlanUsers = await prisma.user.count({
       where: { subscriptionPlan: "free", role: { not: "admin" } },
+    });
+
+    const unpaidMonthlyUsers = await prisma.user.count({
+      where: {
+        role: { not: "admin" },
+        subscriptionPlan: { in: ["pro_monthly", "president_pro_monthly"] },
+        AND: [
+          { OR: [{ stripeSubscriptionId: null }, { stripeSubscriptionId: "" }] },
+          {
+            OR: [
+              { customMonthlyPriceEur: null },
+              { NOT: { customMonthlyPriceEur: new Prisma.Decimal(0) } },
+            ],
+          },
+        ],
+      },
     });
 
     /** Novos registos hoje (UTC), pela data de criação do utilizador. */
@@ -116,6 +138,7 @@ export async function GET() {
       where: {
         role: { not: "admin" },
         subscriptionPlan: "pro_monthly",
+        ...stripeBackedMonthlyWhere,
         OR: [{ subscriptionRenewsAt: null }, { subscriptionRenewsAt: { gte: nowDate } }],
       },
     });
@@ -123,6 +146,7 @@ export async function GET() {
       where: {
         role: { not: "admin" },
         subscriptionPlan: "president_pro_monthly",
+        ...stripeBackedMonthlyWhere,
         OR: [{ subscriptionRenewsAt: null }, { subscriptionRenewsAt: { gte: nowDate } }],
       },
     });
@@ -146,6 +170,7 @@ export async function GET() {
         coachesWithActivePro,
         proMonthlyUsersAll: proMonthlyUsersAll + presidentProUsersAll,
         freePlanUsers,
+        unpaidMonthlyUsers,
         estimatedMonthlyRevenueEur,
         proPriceEur: coachProPriceEur,
         /** Sem modelo de cancelamento na BD até integrares billing. */

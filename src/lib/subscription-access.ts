@@ -34,6 +34,15 @@ function hasStripeBackedSubscription(u: UserSubscriptionFields): boolean {
   return typeof id === "string" && id.trim().length > 0;
 }
 
+/** Plano mensal na BD para quem não tem Stripe (trial expirado, cancelamento, etc.). */
+export function unpaidMonthlyPlanForCoachingRole(
+  coachingRole: string | null | undefined
+): "pro_monthly" | "president_pro_monthly" {
+  return (coachingRole ?? "").trim().toLowerCase() === "club-president"
+    ? "president_pro_monthly"
+    : "pro_monthly";
+}
+
 export function computeSubscriptionAccess(u: UserSubscriptionFields): SubscriptionAccessPayload {
   const isPresidentRole = (u.coachingRole ?? "").trim().toLowerCase() === "club-president";
   const isPresidentPlan = u.subscriptionPlan.trim() === "president_pro_monthly" || isPresidentRole;
@@ -87,6 +96,25 @@ export function computeSubscriptionAccess(u: UserSubscriptionFields): Subscripti
       defaultPriceEur,
       adminMonthlyPriceEur,
       isComped,
+    };
+  }
+
+  /**
+   * Plano `free` na BD = decisão explícita do Admin («Grátis»): acesso Pro completo, sem depender de Stripe
+   * nem de `customMonthlyPriceEur`. Não confundir com trial/grace expirados (esses passam a `*_monthly` sem Stripe).
+   */
+  if (plan === "free") {
+    const effectiveMode = isPresidentRole ? "president_pro_monthly" : "pro_monthly";
+    return {
+      hasProAccess: true,
+      effectiveMode,
+      trialEndsAt: u.proTrialEndsAt?.toISOString() ?? null,
+      graceEndsAt: u.paymentGraceEndsAt?.toISOString() ?? null,
+      renewsAt: u.subscriptionRenewsAt?.toISOString() ?? null,
+      displayPriceEur: 0,
+      defaultPriceEur,
+      adminMonthlyPriceEur: custom,
+      isComped: true,
     };
   }
 

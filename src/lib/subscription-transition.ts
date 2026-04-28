@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import type { User } from "@prisma/client";
+import { unpaidMonthlyPlanForCoachingRole } from "@/lib/subscription-access";
 
 /**
  * Expira trial e período de graça; deve ser chamado antes de expor o estado ao cliente (ex.: GET /me).
@@ -20,13 +21,12 @@ export async function transitionExpiredSubscriptionState(userId: string): Promis
     u.subscriptionPlan === "pro_trial" &&
     (!u.proTrialEndsAt || u.proTrialEndsAt <= now)
   ) {
-    data.subscriptionPlan = "free";
+    data.subscriptionPlan = unpaidMonthlyPlanForCoachingRole(u.coachingRole);
     data.proTrialEndsAt = null;
   }
 
   if (u.subscriptionPlan === "grace" && u.paymentGraceEndsAt && u.paymentGraceEndsAt <= now) {
-    // Grace expired — account returns to Free (no stray vars; must typecheck on Vercel).
-    data.subscriptionPlan = "free";
+    data.subscriptionPlan = unpaidMonthlyPlanForCoachingRole(u.coachingRole);
     data.paymentGraceEndsAt = null;
     data.lastPaymentFailedAt = null;
   }
