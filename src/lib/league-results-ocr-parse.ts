@@ -4,8 +4,8 @@ import type { ParsedMatchEvent } from "@/types";
  * Resultados de jogo usam hífen ou en-dash (4-1, 4 – 1), nunca ":".
  * ":" é sempre horário (ex. 20:30) → jogo ainda não disputado → não alterar tabela.
  */
-// OCR can emit different dash glyphs: -, –, —, −, ‐.
-const GOAL_SEP = String.raw`[-–—−‐]`;
+// OCR can emit different dash glyphs: -, –, —, −, ‐, or "/" mistaken for "-".
+const GOAL_SEP = String.raw`[-–—−‐\/]`;
 
 /** Mesma linha: Equipa A 2-1 Equipa B */
 const RESULT_INLINE_RE = new RegExp(
@@ -31,7 +31,11 @@ const HOME_AND_SCORE_LINE = new RegExp(`^(.+?)\\s+([0-9Oo]{1,2})\\s*${GOAL_SEP}\
 const MAX_GOALS_PER_SIDE = 15;
 
 function normalizeOcrBlock(s: string): string {
-  return s.replace(/\r/g, "\n").replace(/[\t\f\v]+/g, " ").replace(/ *\n */g, "\n");
+  return s
+    .replace(/\u00a0/g, " ")
+    .replace(/\r/g, "\n")
+    .replace(/[\t\f\v]+/g, " ")
+    .replace(/ *\n */g, "\n");
 }
 
 function collapse(s: string): string {

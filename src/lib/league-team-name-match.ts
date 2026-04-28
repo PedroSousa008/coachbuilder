@@ -83,13 +83,22 @@ export function findBestStandingsRowMatchForOcr(
   if (exactSeq) return { row: exactSeq, score: 1 };
 
   // If OCR name includes prefixes/suffixes but core letters match a row exactly (or vice-versa), trust it.
-  const seqContain = rows.find((r) => {
+  const seqCandidates = rows.filter((r) => {
     const rowLetters = letterSequence(r.team);
     if (!rowLetters || !queryLetters) return false;
     if (queryLetters.length < 5 || rowLetters.length < 5) return false;
     return queryLetters.includes(rowLetters) || rowLetters.includes(queryLetters);
   });
-  if (seqContain) return { row: seqContain, score: 0.96 };
+  if (seqCandidates.length === 1) return { row: seqCandidates[0]!, score: 0.96 };
+  if (seqCandidates.length > 1) {
+    seqCandidates.sort((a, b) => {
+      const la = letterSequence(a.team).length;
+      const lb = letterSequence(b.team).length;
+      if (lb !== la) return lb - la;
+      return scoreTeamMatch(ocrName, b.team) - scoreTeamMatch(ocrName, a.team);
+    });
+    return { row: seqCandidates[0]!, score: 0.96 };
+  }
 
   if (query.length <= 3) {
     const exactShort = rows.find((r) => compactTeamName(r.team) === query);

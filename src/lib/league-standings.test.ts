@@ -129,3 +129,33 @@ test("applyMatchEventsToStandings matches OCR club names to table rows (fuzzy)",
   assert.equal(benfica?.drawn, 1);
   assert.equal(porto?.drawn, 1);
 });
+
+test("applyMatchEventsToStandings applies all jornada fixtures (each row used at most once)", () => {
+  const row = (teamId: string, team: string) => ({
+    teamId,
+    team,
+    played: 0,
+    won: 0,
+    drawn: 0,
+    lost: 0,
+    goalsFor: 0,
+    goalsAgainst: 0,
+    points: 0,
+  });
+  const { applied, rows: next } = applyMatchEventsToStandings(
+    [
+      row("a", "Pevidém SC"),
+      row("b", "U. Torcatense"),
+      row("c", "GD Figueiredo"),
+      row("d", "GD Selho"),
+    ],
+    [
+      { homeTeam: "Pevidém SC", awayTeam: "U. Torcatense", homeGoals: 1, awayGoals: 3, source: "image" },
+      { homeTeam: "GD Figueiredo", awayTeam: "GD Selho", homeGoals: 0, awayGoals: 1, source: "image" },
+    ]
+  );
+  assert.equal(applied.length, 2);
+  assert.equal(next.find((x) => x.teamId === "a")?.lost, 1);
+  assert.equal(next.find((x) => x.teamId === "b")?.won, 1);
+  assert.equal(next.find((x) => x.teamId === "d")?.won, 1);
+});

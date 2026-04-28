@@ -113,31 +113,33 @@ export function applyMatchEventsToStandings(
 ): { rows: StandingsTeamRow[]; applied: ResolvedLeagueResult[] } {
   const rowsCopy = rows.map((r) => ({ ...normalizeStandingsRow(r) }));
   const applied: ResolvedLeagueResult[] = [];
-  const resolved = events
-    .map((event) => {
-      const homeMatch = findBestStandingsRowMatchForOcr(event.homeTeam, rowsCopy);
-      const awayMatch = findBestStandingsRowMatchForOcr(event.awayTeam, rowsCopy);
-      if (!homeMatch || !awayMatch || homeMatch.row.teamId === awayMatch.row.teamId) return null;
-      return {
-        event,
-        homeTeamId: homeMatch.row.teamId,
-        awayTeamId: awayMatch.row.teamId,
-        confidence: homeMatch.score + awayMatch.score,
-      };
-    })
-    .filter((x): x is NonNullable<typeof x> => x != null)
-    .sort((a, b) => b.confidence - a.confidence);
 
-  // OCR guardrail: in one import batch, a team should not appear in multiple fixtures.
+  /**
+   * Resolver cada jogo só contra linhas ainda livres. Antes, todos os eventos
+   * competiam pela mesma tabela: vários nomes OCR podiam escolher a mesma linha
+   * como “melhor match”; o guardrail de `usedTeamIds` descartava depois jogos
+   * válidos (ex.: lista inteira de resultados de uma jornada).
+   */
+  const sortMeta = events.map((event) => {
+    const homeMatch = findBestStandingsRowMatchForOcr(event.homeTeam, rowsCopy);
+    const awayMatch = findBestStandingsRowMatchForOcr(event.awayTeam, rowsCopy);
+    const sortKey = (homeMatch?.score ?? 0) + (awayMatch?.score ?? 0);
+    return { event, sortKey };
+  });
+  sortMeta.sort((a, b) => b.sortKey - a.sortKey);
+
   const usedTeamIds = new Set<string>();
-  for (const candidate of resolved) {
-    if (usedTeamIds.has(candidate.homeTeamId) || usedTeamIds.has(candidate.awayTeamId)) continue;
-    usedTeamIds.add(candidate.homeTeamId);
-    usedTeamIds.add(candidate.awayTeamId);
-    const home = rowsCopy.find((r) => r.teamId === candidate.homeTeamId);
-    const away = rowsCopy.find((r) => r.teamId === candidate.awayTeamId);
+  for (const { event } of sortMeta) {
+    const pool = rowsCopy.filter((r) => !usedTeamIds.has(r.teamId));
+    const homeMatch = findBestStandingsRowMatchForOcr(event.homeTeam, pool);
+    const awayMatch = findBestStandingsRowMatchForOcr(event.awayTeam, pool);
+    if (!homeMatch || !awayMatch || homeMatch.row.teamId === awayMatch.row.teamId) continue;
+
+    usedTeamIds.add(homeMatch.row.teamId);
+    usedTeamIds.add(awayMatch.row.teamId);
+    const home = rowsCopy.find((r) => r.teamId === homeMatch.row.teamId);
+    const away = rowsCopy.find((r) => r.teamId === awayMatch.row.teamId);
     if (!home || !away) continue;
-    const event = candidate.event;
 
     applied.push({
       homeRow: { ...home },
