@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Position, TeamDoubleRoleId, TeamSingleRoleId } from "@/types";
 import { PlayerCard } from "@/components/team/PlayerCard";
 import { AddPlayerModal } from "@/components/players/AddPlayerModal";
@@ -70,6 +70,23 @@ export default function TeamPage() {
   const [pos, setPos] = useState<Position | "all">("all");
   const [sortBy, setSortBy] = useState<SquadSortBy>("number");
   const [tab, setTab] = useState<"players" | "staff" | "roles" | "data" | "callup">("players");
+  const [dataSort, setDataSort] = useState<{
+    key:
+      | "name"
+      | "games"
+      | "goals"
+      | "assists"
+      | "yellowCards"
+      | "redCards"
+      | "minutes"
+      | "wins"
+      | "draws"
+      | "losses"
+      | "winRate";
+    dir: "asc" | "desc";
+  }>({ key: "games", dir: "desc" });
+  const [cellColors, setCellColors] = useState<Record<string, "white" | "red" | "yellow" | "green">>({});
+  const [colorPickerCell, setColorPickerCell] = useState<{ playerId: string; statKey: string } | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [detailStaffId, setDetailStaffId] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
@@ -89,6 +106,25 @@ export default function TeamPage() {
 
   const sortedFiltered = useMemo(() => sortSquadRoster(filtered, sortBy), [filtered, sortBy]);
   const sortedAllPlayers = useMemo(() => sortSquadRoster(players, "position"), [players]);
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem("team-data-cell-colors-v1");
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as Record<string, "white" | "red" | "yellow" | "green">;
+      if (parsed && typeof parsed === "object") setCellColors(parsed);
+    } catch {
+      // ignore invalid stored colors
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem("team-data-cell-colors-v1", JSON.stringify(cellColors));
+    } catch {
+      // ignore save errors
+    }
+  }, [cellColors]);
+
   const playerDataRows = useMemo(() => {
     const byId = new Map<
       string,
@@ -129,7 +165,7 @@ export default function TeamPage() {
         byId.set(line.playerId, row);
       }
     }
-    return sortSquadRoster(players, "number").map((p) => ({
+    const baseRows = sortSquadRoster(players, "number").map((p) => ({
       player: p,
       stats: byId.get(p.id) ?? {
         games: 0,
@@ -143,7 +179,40 @@ export default function TeamPage() {
         losses: 0,
       },
     }));
-  }, [players, tacticMatches]);
+    const sorted = [...baseRows].sort((a, b) => {
+      const mult = dataSort.dir === "asc" ? 1 : -1;
+      if (dataSort.key === "name") {
+        return a.player.name.localeCompare(b.player.name, "pt") * mult;
+      }
+      if (dataSort.key === "winRate") {
+        const av = a.stats.games > 0 ? Math.round((a.stats.wins / a.stats.games) * 100) : 0;
+        const bv = b.stats.games > 0 ? Math.round((b.stats.wins / b.stats.games) * 100) : 0;
+        if (av !== bv) return (av - bv) * mult;
+        return a.player.name.localeCompare(b.player.name, "pt");
+      }
+      const av = a.stats[dataSort.key];
+      const bv = b.stats[dataSort.key];
+      if (av !== bv) return (av - bv) * mult;
+      return a.player.name.localeCompare(b.player.name, "pt");
+    });
+    return sorted;
+  }, [players, tacticMatches, dataSort]);
+
+  const headerButtonClass =
+    "inline-flex items-center gap-1 rounded px-1 py-0.5 transition-colors hover:bg-white/5";
+
+  const colorClass = (color: "white" | "red" | "yellow" | "green" | undefined) => {
+    if (color === "red") return "text-red-400";
+    if (color === "yellow") return "text-amber-300";
+    if (color === "green") return "text-emerald-300";
+    return "text-zinc-300";
+  };
+
+  const setSortKey = (key: typeof dataSort.key) => {
+    setDataSort((prev) =>
+      prev.key === key ? { key, dir: prev.dir === "asc" ? "desc" : "asc" } : { key, dir: key === "name" ? "asc" : "desc" }
+    );
+  };
 
   const handleAddPlayer = (input: Parameters<typeof addPlayer>[0]) => {
     addPlayer(input);
@@ -408,16 +477,61 @@ export default function TeamPage() {
               <table className="w-full min-w-[980px] text-left text-xs">
                 <thead>
                   <tr className="border-b border-surface-border bg-zinc-900/50 text-[10px] uppercase tracking-wide text-zinc-500">
-                    <th className="px-2 py-2 font-medium">Jogador</th>
-                    <th className="px-2 py-2 font-medium text-center">Jogos</th>
-                    <th className="px-2 py-2 font-medium text-center">Golos</th>
-                    <th className="px-2 py-2 font-medium text-center">Assist.</th>
-                    <th className="px-2 py-2 font-medium text-center">Amarelos</th>
-                    <th className="px-2 py-2 font-medium text-center">Vermelhos</th>
-                    <th className="px-2 py-2 font-medium text-center">Minutos</th>
-                    <th className="px-2 py-2 font-medium text-center">Vitórias</th>
-                    <th className="px-2 py-2 font-medium text-center">Empates</th>
-                    <th className="px-2 py-2 font-medium text-center">Derrotas</th>
+                    <th className="px-2 py-2 font-medium">
+                      <button type="button" className={headerButtonClass} onClick={() => setSortKey("name")}>
+                        Jogador
+                      </button>
+                    </th>
+                    <th className="px-2 py-2 font-medium text-center">
+                      <button type="button" className={headerButtonClass} onClick={() => setSortKey("games")}>
+                        Jogos
+                      </button>
+                    </th>
+                    <th className="px-2 py-2 font-medium text-center">
+                      <button type="button" className={headerButtonClass} onClick={() => setSortKey("goals")}>
+                        Golos
+                      </button>
+                    </th>
+                    <th className="px-2 py-2 font-medium text-center">
+                      <button type="button" className={headerButtonClass} onClick={() => setSortKey("assists")}>
+                        Assist.
+                      </button>
+                    </th>
+                    <th className="px-2 py-2 font-medium text-center">
+                      <button type="button" className={headerButtonClass} onClick={() => setSortKey("yellowCards")}>
+                        Amarelos
+                      </button>
+                    </th>
+                    <th className="px-2 py-2 font-medium text-center">
+                      <button type="button" className={headerButtonClass} onClick={() => setSortKey("redCards")}>
+                        Vermelhos
+                      </button>
+                    </th>
+                    <th className="px-2 py-2 font-medium text-center">
+                      <button type="button" className={headerButtonClass} onClick={() => setSortKey("minutes")}>
+                        Minutos
+                      </button>
+                    </th>
+                    <th className="px-2 py-2 font-medium text-center">
+                      <button type="button" className={headerButtonClass} onClick={() => setSortKey("wins")}>
+                        Vitórias
+                      </button>
+                    </th>
+                    <th className="px-2 py-2 font-medium text-center">
+                      <button type="button" className={headerButtonClass} onClick={() => setSortKey("draws")}>
+                        Empates
+                      </button>
+                    </th>
+                    <th className="px-2 py-2 font-medium text-center">
+                      <button type="button" className={headerButtonClass} onClick={() => setSortKey("losses")}>
+                        Derrotas
+                      </button>
+                    </th>
+                    <th className="px-2 py-2 font-medium text-center">
+                      <button type="button" className={headerButtonClass} onClick={() => setSortKey("winRate")}>
+                        % Vitória
+                      </button>
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -426,15 +540,64 @@ export default function TeamPage() {
                       <td className="px-2 py-2 text-zinc-200">
                         #{player.number} {player.name}
                       </td>
-                      <td className="px-2 py-2 text-center tabular-nums text-zinc-300">{stats.games}</td>
-                      <td className="px-2 py-2 text-center tabular-nums text-zinc-300">{stats.goals}</td>
-                      <td className="px-2 py-2 text-center tabular-nums text-zinc-300">{stats.assists}</td>
-                      <td className="px-2 py-2 text-center tabular-nums text-zinc-300">{stats.yellowCards}</td>
-                      <td className="px-2 py-2 text-center tabular-nums text-zinc-300">{stats.redCards}</td>
-                      <td className="px-2 py-2 text-center tabular-nums text-zinc-300">{stats.minutes}</td>
-                      <td className="px-2 py-2 text-center tabular-nums text-emerald-300">{stats.wins}</td>
-                      <td className="px-2 py-2 text-center tabular-nums text-zinc-300">{stats.draws}</td>
-                      <td className="px-2 py-2 text-center tabular-nums text-red-400/90">{stats.losses}</td>
+                      {(
+                        [
+                          ["games", stats.games],
+                          ["goals", stats.goals],
+                          ["assists", stats.assists],
+                          ["yellowCards", stats.yellowCards],
+                          ["redCards", stats.redCards],
+                          ["minutes", stats.minutes],
+                          ["wins", stats.wins],
+                          ["draws", stats.draws],
+                          ["losses", stats.losses],
+                          ["winRate", stats.games > 0 ? Math.round((stats.wins / stats.games) * 100) : 0],
+                        ] as const
+                      ).map(([statKey, value]) => {
+                        const color = cellColors[`${player.id}:${statKey}`];
+                        return (
+                          <td key={`${player.id}-${statKey}`} className="relative px-2 py-2 text-center tabular-nums">
+                            <button
+                              type="button"
+                              onClick={() => setColorPickerCell({ playerId: player.id, statKey })}
+                              className={`rounded px-1 ${colorClass(color)}`}
+                            >
+                              {statKey === "winRate" ? `${value}%` : value}
+                            </button>
+                            {colorPickerCell?.playerId === player.id && colorPickerCell.statKey === statKey ? (
+                              <div className="absolute right-1 top-full z-20 mt-1 flex gap-1 rounded-lg border border-surface-border bg-zinc-950 p-1">
+                                {(
+                                  [
+                                    ["white", "Branco"],
+                                    ["red", "Vermelho"],
+                                    ["yellow", "Amarelo"],
+                                    ["green", "Verde"],
+                                  ] as const
+                                ).map(([c, label]) => (
+                                  <button
+                                    key={`${player.id}-${statKey}-${c}`}
+                                    type="button"
+                                    title={label}
+                                    className={`h-5 w-5 rounded-full border ${
+                                      c === "white"
+                                        ? "border-zinc-400 bg-white"
+                                        : c === "red"
+                                          ? "border-red-500 bg-red-500"
+                                          : c === "yellow"
+                                            ? "border-amber-400 bg-amber-400"
+                                            : "border-emerald-500 bg-emerald-500"
+                                    }`}
+                                    onClick={() => {
+                                      setCellColors((prev) => ({ ...prev, [`${player.id}:${statKey}`]: c }));
+                                      setColorPickerCell(null);
+                                    }}
+                                  />
+                                ))}
+                              </div>
+                            ) : null}
+                          </td>
+                        );
+                      })}
                     </tr>
                   ))}
                 </tbody>
