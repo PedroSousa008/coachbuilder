@@ -54,8 +54,8 @@ export function teamNamesLikelyMatch(a: string, b: string, minScore = 0.42): boo
   return scoreTeamMatch(a, b) >= minScore;
 }
 
-const ROW_MATCH_MIN = 0.46;
-const ROW_MATCH_GAP_MIN = 0.06;
+const ROW_MATCH_MIN = 0.34;
+const ROW_MATCH_GAP_MIN = 0.03;
 const STRONG_MATCH = 0.9;
 
 export type StandingsRowMatch = {

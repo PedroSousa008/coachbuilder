@@ -48,6 +48,8 @@ function dateFromMonthInput(v: string): Date {
 
 type OcrWordBox = { x0: number; y0: number; x1: number; y1: number };
 type OcrWordLike = { text?: string; bbox?: OcrWordBox };
+type OcrLineLike = { text?: string };
+type MatchRow = { homeTeam: string; homeGoals: number; awayGoals: number; awayTeam: string };
 
 function parseScorePair(raw: string): { homeGoals: number; awayGoals: number } | null {
   const t = raw.replace(/\s+/g, "").replace(/[Oo]/g, "0");
@@ -90,6 +92,53 @@ function dedupeEvents(events: ParsedMatchEvent[]): ParsedMatchEvent[] {
     out.push(e);
   }
   return out;
+}
+
+function cleanTeamCell(raw: string): string {
+  return raw
+    .replace(/[|;:_~`´^*+=<>[\]{}\\/]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/^[^A-Za-zÀ-ÿ0-9]+/, "")
+    .replace(/[^A-Za-zÀ-ÿ0-9)]+$/, "")
+    .trim();
+}
+
+function matchRowFromLineText(raw: string): MatchRow | null {
+  const line = raw.replace(/\s+/g, " ").trim();
+  if (!line) return null;
+  const m = line.match(/^(.+?)\s+([0-9Oo]{1,2})\s*[-–—−‐\/]\s*([0-9Oo]{1,2})\s+(.+)$/);
+  if (!m) return null;
+  const hg = Number((m[2] ?? "").replace(/[Oo]/g, "0"));
+  const ag = Number((m[3] ?? "").replace(/[Oo]/g, "0"));
+  if (!Number.isFinite(hg) || !Number.isFinite(ag) || hg < 0 || ag < 0 || hg > 15 || ag > 15) return null;
+  const homeTeam = cleanTeamCell(m[1] ?? "");
+  const awayTeam = cleanTeamCell(m[4] ?? "");
+  if (!homeTeam || !awayTeam) return null;
+  if (homeTeam.toLowerCase() === awayTeam.toLowerCase()) return null;
+  return { homeTeam, homeGoals: hg, awayGoals: ag, awayTeam };
+}
+
+function rowsToEvents(rows: MatchRow[]): ParsedMatchEvent[] {
+  return rows.map((r) => ({
+    homeTeam: r.homeTeam,
+    awayTeam: r.awayTeam,
+    homeGoals: r.homeGoals,
+    awayGoals: r.awayGoals,
+    source: "image" as const,
+  }));
+}
+
+function parseMatchRowsFromOcrLines(data: unknown): MatchRow[] {
+  const lines = ((data as { lines?: OcrLineLike[] } | null)?.lines ?? [])
+    .map((l) => matchRowFromLineText(l?.text ?? ""))
+    .filter((x): x is MatchRow => x != null);
+  const unique = new Map<string, MatchRow>();
+  for (const r of lines) {
+    const key = `${r.homeTeam.toLowerCase()}|${r.awayTeam.toLowerCase()}|${r.homeGoals}-${r.awayGoals}`;
+    if (!unique.has(key)) unique.set(key, r);
+  }
+  return [...unique.values()];
 }
 
 function parseIntToken(raw: string): number | null {
@@ -335,6 +384,8 @@ export function CalendarPageClient() {
           await worker.setParameters({ tessedit_pageseg_mode: pageSegMode });
           const recognized = await worker.recognize(file);
           const text = recognized.data?.text ?? "";
+          const lineRows = parseMatchRowsFromOcrLines(recognized.data);
+          const lineEvents = rowsToEvents(lineRows);
           const layoutEvents = parseMatchEventsFromOcrWordLayout(recognized.data);
           await worker.terminate();
           const extracted = (text ?? "").trim();
@@ -342,13 +393,14 @@ export function CalendarPageClient() {
             combined = combined.trim() ? `${combined.trim()}\n${extracted}` : extracted;
             setResultsOcrText(combined);
           }
-          // Se o parser por layout já encontrou jogos, não misturamos com o texto corrido:
-          // o texto OCR inclui lixo dos símbolos/logos e pode inflacionar o número de jogos.
-          if (layoutEvents.length >= 1) {
-            const summary = applyLeagueMatchEvents(layoutEvents, undefined, { requireFullApply: true });
+          // Pipeline estrito: primeiro tenta tabela por linha (home | score | away).
+          // Só se vier vazio é que tenta o parser por palavras/bbox.
+          const strictEvents = lineEvents.length > 0 ? lineEvents : layoutEvents;
+          if (strictEvents.length >= 1) {
+            const summary = applyLeagueMatchEvents(strictEvents, undefined, { requireFullApply: true });
             if (summary.skippedCount > 0) {
               setOcrError(
-                `Detetei ${layoutEvents.length} jogos, mas só consegui mapear ${summary.appliedCount} à League Table. ` +
+                `Detetei ${strictEvents.length} jogos, mas só consegui mapear ${summary.appliedCount} à League Table. ` +
                   "Não apliquei alterações parciais. Confirma os nomes das equipas na tabela e tenta novamente."
               );
               setOcrBusy(false);
