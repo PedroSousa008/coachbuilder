@@ -64,7 +64,9 @@ function looksLikeTeamToken(raw: string): boolean {
   const t = raw.trim();
   if (!t) return false;
   if (!/[A-Za-zÀ-ÿ]/.test(t)) return false;
+  if (!/^[A-Za-zÀ-ÿ0-9 .,'\-()]+$/.test(t)) return false;
   if (/^[|:;.,'"()\-\u2013\u2014]+$/.test(t)) return false;
+  if (t.length <= 1 && !/^[A-Za-zÀ-ÿ]\.$/.test(t)) return false;
   return parseScorePair(t) == null;
 }
 
@@ -342,7 +344,7 @@ export function CalendarPageClient() {
           }
           // Se o parser por layout já encontrou jogos, não misturamos com o texto corrido:
           // o texto OCR inclui lixo dos símbolos/logos e pode inflacionar o número de jogos.
-          if (layoutEvents.length >= 2) {
+          if (layoutEvents.length >= 1) {
             const summary = applyLeagueMatchEvents(layoutEvents, undefined, { requireFullApply: true });
             if (summary.skippedCount > 0) {
               setOcrError(
