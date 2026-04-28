@@ -48,6 +48,7 @@ function dateFromMonthInput(v: string): Date {
 type OcrWordBox = { x0: number; y0: number; x1: number; y1: number };
 type OcrWordLike = { text?: string; bbox?: OcrWordBox };
 type OcrLineLike = { text?: string };
+type OcrScoreAnchor = { homeGoals: number; awayGoals: number; yMid: number };
 type MatchRow = { homeTeam: string; homeGoals: number; awayGoals: number; awayTeam: string };
 type MatchRowDraft = { homeTeam: string; result: string; awayTeam: string };
 type RowsValidation =
@@ -248,6 +249,45 @@ function parseMatchRowsFromOcrLines(data: unknown): MatchRow[] {
   return [...unique.values()];
 }
 
+function extractScoreAnchorsFromRecognizedData(data: unknown): OcrScoreAnchor[] {
+  const lines = ((data as { lines?: OcrLineLike[] } | null)?.lines ?? [])
+    .map((l) => parseScorePair(l?.text ?? ""))
+    .filter((x): x is { homeGoals: number; awayGoals: number } => x != null)
+    .map((s, idx) => ({ homeGoals: s.homeGoals, awayGoals: s.awayGoals, yMid: idx * 1000 }));
+  if (lines.length) return lines;
+
+  const words = ((data as { words?: OcrWordLike[] } | null)?.words ?? []).filter(
+    (w): w is OcrWordLike => !!w?.bbox && typeof w?.text === "string"
+  );
+  const out: OcrScoreAnchor[] = [];
+  for (const w of words) {
+    const s = parseScorePair(w.text ?? "");
+    if (!s) continue;
+    const b = w.bbox!;
+    out.push({ homeGoals: s.homeGoals, awayGoals: s.awayGoals, yMid: (b.y0 + b.y1) / 2 });
+  }
+  for (let i = 0; i <= words.length - 3; i++) {
+    const a = words[i]!;
+    const b = words[i + 1]!;
+    const c = words[i + 2]!;
+    const hg = parseIntToken(a.text ?? "");
+    const ag = parseIntToken(c.text ?? "");
+    if (hg == null || ag == null || !isDashToken(b.text ?? "")) continue;
+    const y = ((a.bbox!.y0 + a.bbox!.y1) / 2 + (b.bbox!.y0 + b.bbox!.y1) / 2 + (c.bbox!.y0 + c.bbox!.y1) / 2) / 3;
+    out.push({ homeGoals: hg, awayGoals: ag, yMid: y });
+  }
+  const sorted = out.sort((x, y) => x.yMid - y.yMid);
+  const dedup: OcrScoreAnchor[] = [];
+  for (const s of sorted) {
+    const prev = dedup[dedup.length - 1];
+    if (prev && Math.abs(prev.yMid - s.yMid) < 8 && prev.homeGoals === s.homeGoals && prev.awayGoals === s.awayGoals) {
+      continue;
+    }
+    dedup.push(s);
+  }
+  return dedup;
+}
+
 function parseIntToken(raw: string): number | null {
   const t = raw.trim().replace(/[Oo]/g, "0");
   if (!/^\d{1,2}$/.test(t)) return null;
@@ -389,15 +429,16 @@ function scoreRowsCoverage(rows: MatchRow[]): { games: number; uniqueTeams: numb
   return { games: rows.length, uniqueTeams: unique.size };
 }
 
-function chooseBestRows(candidates: MatchRow[][]): MatchRow[] {
-  if (!candidates.length) return [];
+function chooseBestCandidate(candidates: Array<{ rows: MatchRow[]; scoreCount: number }>): { rows: MatchRow[]; scoreCount: number } {
+  if (!candidates.length) return { rows: [], scoreCount: 0 };
   const sorted = [...candidates].sort((a, b) => {
-    const sa = scoreRowsCoverage(a);
-    const sb = scoreRowsCoverage(b);
-    if (sb.games !== sa.games) return sb.games - sa.games;
+    if (b.rows.length !== a.rows.length) return b.rows.length - a.rows.length;
+    if (b.scoreCount !== a.scoreCount) return b.scoreCount - a.scoreCount;
+    const sa = scoreRowsCoverage(a.rows);
+    const sb = scoreRowsCoverage(b.rows);
     return sb.uniqueTeams - sa.uniqueTeams;
   });
-  return sorted[0] ?? [];
+  return sorted[0]!;
 }
 
 async function buildHighContrastImageBlob(file: File): Promise<Blob> {
@@ -593,28 +634,46 @@ export function CalendarPageClient() {
         const worker = await tess.createWorker("por+eng");
         const psmSingle = tess.PSM?.SINGLE_BLOCK ?? "6";
         const psmSparse = tess.PSM?.SPARSE_TEXT ?? "11";
-        const candidates: MatchRow[][] = [];
+        const candidates: Array<{ rows: MatchRow[]; scoreCount: number }> = [];
         await worker.setParameters({ tessedit_pageseg_mode: psmSingle });
         const recSingle = await worker.recognize(file);
-        candidates.push(rowsFromRecognizedData(recSingle.data));
+        candidates.push({
+          rows: rowsFromRecognizedData(recSingle.data),
+          scoreCount: extractScoreAnchorsFromRecognizedData(recSingle.data).length,
+        });
 
         await worker.setParameters({ tessedit_pageseg_mode: psmSparse });
         const recSparse = await worker.recognize(file);
-        candidates.push(rowsFromRecognizedData(recSparse.data));
+        candidates.push({
+          rows: rowsFromRecognizedData(recSparse.data),
+          scoreCount: extractScoreAnchorsFromRecognizedData(recSparse.data).length,
+        });
 
         try {
           const hi = await buildHighContrastImageBlob(file);
           await worker.setParameters({ tessedit_pageseg_mode: psmSingle });
           const recHi = await worker.recognize(hi);
-          candidates.push(rowsFromRecognizedData(recHi.data));
+          candidates.push({
+            rows: rowsFromRecognizedData(recHi.data),
+            scoreCount: extractScoreAnchorsFromRecognizedData(recHi.data).length,
+          });
         } catch {
           // Preprocess is best-effort.
         }
         await worker.terminate();
 
-        const strictRows = chooseBestRows(candidates);
+        const best = chooseBestCandidate(candidates);
+        const strictRows = best.rows;
         if (!strictRows.length) {
           setOcrError("Não consegui montar a tabela Casa/Resultado/Fora a partir da imagem.");
+          return;
+        }
+        if (best.scoreCount > 0 && strictRows.length < best.scoreCount) {
+          setOcrError(
+            `A imagem parece ter ${best.scoreCount} linhas de resultado, mas só consegui montar ${strictRows.length}. ` +
+              "Não vou avançar com dados incompletos."
+          );
+          setResultsRowsDraft(toDraftRows(strictRows));
           return;
         }
         setResultsRowsDraft(toDraftRows(strictRows));
