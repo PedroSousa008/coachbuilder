@@ -96,7 +96,7 @@ function dedupeEvents(events: ParsedMatchEvent[]): ParsedMatchEvent[] {
 
 function cleanTeamCell(raw: string): string {
   return raw
-    .replace(/[|;:_~`´^*+=<>[\]{}\\/]+/g, " ")
+    .replace(/[^\p{L}\p{N} .,'\-()]/gu, " ")
     .replace(/\s+/g, " ")
     .trim()
     .replace(/^[^A-Za-zÀ-ÿ0-9]+/, "")
@@ -107,13 +107,15 @@ function cleanTeamCell(raw: string): string {
 function matchRowFromLineText(raw: string): MatchRow | null {
   const line = raw.replace(/\s+/g, " ").trim();
   if (!line) return null;
-  const m = line.match(/^(.+?)\s+([0-9Oo]{1,2})\s*[-–—−‐\/]\s*([0-9Oo]{1,2})\s+(.+)$/);
-  if (!m) return null;
-  const hg = Number((m[2] ?? "").replace(/[Oo]/g, "0"));
-  const ag = Number((m[3] ?? "").replace(/[Oo]/g, "0"));
+  const score = line.match(/([0-9Oo]{1,2})\s*[-–—−‐\/]\s*([0-9Oo]{1,2})/);
+  if (!score || score.index == null) return null;
+  const hg = Number((score[1] ?? "").replace(/[Oo]/g, "0"));
+  const ag = Number((score[2] ?? "").replace(/[Oo]/g, "0"));
   if (!Number.isFinite(hg) || !Number.isFinite(ag) || hg < 0 || ag < 0 || hg > 15 || ag > 15) return null;
-  const homeTeam = cleanTeamCell(m[1] ?? "");
-  const awayTeam = cleanTeamCell(m[4] ?? "");
+  const left = line.slice(0, score.index);
+  const right = line.slice(score.index + score[0].length);
+  const homeTeam = cleanTeamCell(left);
+  const awayTeam = cleanTeamCell(right);
   if (!homeTeam || !awayTeam) return null;
   if (homeTeam.toLowerCase() === awayTeam.toLowerCase()) return null;
   return { homeTeam, homeGoals: hg, awayGoals: ag, awayTeam };
