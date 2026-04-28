@@ -4,7 +4,12 @@ export const dynamic = "force-dynamic";
 import { prisma } from "@/lib/prisma";
 import { isCloudSyncEnabledServer } from "@/lib/cloud-config";
 import { getCloudUserFromSessionCookies } from "@/lib/cloud-session-user";
-import { emptyWorkspaceSnapshot, parseWorkspacePayload, type WorkspaceSnapshotV1 } from "@/lib/workspace-snapshot";
+import {
+  emptyWorkspaceSnapshot,
+  parseWorkspacePayload,
+  snapshotHasMeaningfulData,
+  type WorkspaceSnapshotV1,
+} from "@/lib/workspace-snapshot";
 import type { Conversation, Message } from "@/types";
 
 function timeMs(iso: string | undefined): number {
@@ -164,6 +169,22 @@ export async function PUT(req: Request) {
     const incomingPayload: WorkspaceSnapshotV1 = { ...parsed, version: 1 };
     const existingRow = await prisma.workspace.findUnique({ where: { userId } });
     const existingPayload = parseWorkspacePayload(existingRow?.payload) ?? emptyWorkspaceSnapshot();
+
+    // Safety net: never allow accidental wipe from an empty/near-empty payload over existing rich workspace.
+    // Destructive reset should only happen through explicit admin/user tooling, not silent sync races.
+    const incomingMeaningful = snapshotHasMeaningfulData(incomingPayload);
+    const existingMeaningful = snapshotHasMeaningfulData(existingPayload);
+    if (!incomingMeaningful && existingMeaningful) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error:
+            "Proteção anti-perda: payload recebido sem dados relevantes. Workspace existente foi preservado sem alterações.",
+        },
+        { status: 409 }
+      );
+    }
+
     const payload = mergeWorkspacePayload(incomingPayload, existingPayload, userId);
 
     await prisma.workspace.upsert({
