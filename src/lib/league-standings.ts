@@ -6,7 +6,7 @@ import type {
   ResolvedLeagueResult,
   StandingsTeamRow,
 } from "@/types";
-import { findBestStandingsRowMatchForOcr, scoreTeamMatch } from "@/lib/league-team-name-match";
+import { compactTeamName, findBestStandingsRowMatchForOcr } from "@/lib/league-team-name-match";
 
 function toNonNegativeInt(v: unknown): number {
   const n = typeof v === "number" ? v : typeof v === "string" ? Number(v) : NaN;
@@ -107,35 +107,13 @@ export function createEmptyLeagueSetup(teamCount: number, phaseCount: number): L
   };
 }
 
-function resolveUniqueOcrTeamIds(
-  events: ParsedMatchEvent[],
-  rows: StandingsTeamRow[]
-): Map<string, string> {
-  const names = new Set<string>();
-  for (const e of events) {
-    const h = e.homeTeam.trim();
-    const a = e.awayTeam.trim();
-    if (h) names.add(h);
-    if (a) names.add(a);
+function resolveRowForEventTeam(pool: StandingsTeamRow[], ocrName: string): StandingsTeamRow | null {
+  const q = compactTeamName(ocrName);
+  if (q) {
+    const exact = pool.find((r) => compactTeamName(r.team) === q);
+    if (exact) return exact;
   }
-  const pairs: Array<{ ocrName: string; teamId: string; score: number }> = [];
-  for (const ocrName of names) {
-    for (const row of rows) {
-      const s = scoreTeamMatch(ocrName, row.team);
-      if (s >= 0.35) pairs.push({ ocrName, teamId: row.teamId, score: s });
-    }
-  }
-  pairs.sort((a, b) => b.score - a.score);
-  const takenNames = new Set<string>();
-  const takenTeamIds = new Set<string>();
-  const map = new Map<string, string>();
-  for (const p of pairs) {
-    if (takenNames.has(p.ocrName) || takenTeamIds.has(p.teamId)) continue;
-    takenNames.add(p.ocrName);
-    takenTeamIds.add(p.teamId);
-    map.set(p.ocrName, p.teamId);
-  }
-  return map;
+  return findBestStandingsRowMatchForOcr(ocrName, pool)?.row ?? null;
 }
 
 export function applyMatchEventsToStandings(
@@ -144,7 +122,6 @@ export function applyMatchEventsToStandings(
 ): { rows: StandingsTeamRow[]; applied: ResolvedLeagueResult[] } {
   const rowsCopy = rows.map((r) => ({ ...normalizeStandingsRow(r) }));
   const applied: ResolvedLeagueResult[] = [];
-  const uniqueOcrTeamMap = resolveUniqueOcrTeamIds(events, rowsCopy);
 
   /**
    * Resolver cada jogo só contra linhas ainda livres (evita colisões de fuzzy match).
@@ -153,16 +130,8 @@ export function applyMatchEventsToStandings(
   const usedTeamIds = new Set<string>();
   for (const event of events) {
     const pool = rowsCopy.filter((r) => !usedTeamIds.has(r.teamId));
-    const mappedHomeId = uniqueOcrTeamMap.get(event.homeTeam.trim());
-    const mappedAwayId = uniqueOcrTeamMap.get(event.awayTeam.trim());
-    const homeMatch =
-      (mappedHomeId ? pool.find((r) => r.teamId === mappedHomeId) : null) ??
-      findBestStandingsRowMatchForOcr(event.homeTeam, pool)?.row ??
-      null;
-    const awayMatch =
-      (mappedAwayId ? pool.find((r) => r.teamId === mappedAwayId) : null) ??
-      findBestStandingsRowMatchForOcr(event.awayTeam, pool)?.row ??
-      null;
+    const homeMatch = resolveRowForEventTeam(pool, event.homeTeam);
+    const awayMatch = resolveRowForEventTeam(pool, event.awayTeam);
     if (!homeMatch || !awayMatch || homeMatch.teamId === awayMatch.teamId) continue;
 
     usedTeamIds.add(homeMatch.teamId);
