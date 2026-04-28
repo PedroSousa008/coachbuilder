@@ -275,6 +275,13 @@ export const PLAYING_OUT_FROM_BACK_UNDER_PRESSURE_VIDEO_URL = "/videos/training/
 export const TIC_TAC_TOE_GAME_VIDEO_URL = "/videos/training/jogo-galo.mp4";
 
 /**
+ * Vídeo do exercício "Movimentação dentro de Área em Cruzamentos".
+ * Coloca o ficheiro em `public/videos/training/movimentação-cruzamento.mp4`.
+ */
+export const MOVIMENTACAO_AREA_CRUZAMENTOS_VIDEO_URL =
+  "/videos/training/movimentação-cruzamento.mp4";
+
+/**
  * Vídeo do exercício "Full Back Overlap - Striker".
  * Coloca o ficheiro em `public/videos/training/full-back-overlap-2.mp4` ou substitui por um link YouTube.
  */
@@ -630,6 +637,10 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
     "segunda bola",
     "primeiro lance cruzamento",
     "virar o jogo",
+    "movimentacao dentro de area em cruzamentos",
+    "3 atacantes contra 1",
+    "bola aerea nas costas",
+    "cruzamento overlap",
   ],
   pressing: [
     "pressão",
@@ -712,6 +723,10 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
     "dupla finalizacao",
     "movimentação na área",
     "movimentacao na area",
+    "movimentacao dentro de area em cruzamentos",
+    "cruzamento em 2 toques",
+    "timming",
+    "timing do cruzamento",
     "overlap",
     "overlap lateral",
     "finishing transition",
@@ -1486,6 +1501,26 @@ const MAIN_DRILLS: MainDrillDef[] = [
     }),
   },
   {
+    themes: ["transition", "finishing", "wide"],
+    title: "Movimentação dentro de Área em Cruzamentos",
+    describe: (pl, m) => ({
+      description: `O exercício trabalha movimentações ofensivas na área e precisão no cruzamento. O médio inicia a jogada colocando uma bola aérea nas costas da defesa para o lateral. O lateral deve receber e, em no máximo 2 toques, preparar e executar o cruzamento rapidamente. Na área existe uma situação de 3 atacantes contra 1 defesa: os avançados coordenam movimentos para atacar zonas de finalização e criar espaço. Após cada jogada, trocam os atacantes e o defensor; após ~10 minutos num corredor, repete-se no lado oposto. O foco está na qualidade do cruzamento, no timing das movimentações e na eficácia na finalização. (${m} min)`,
+      coachingPoints:
+        "Cruzamento com pé de apoio orientado à área e cabeça levantada; lateral a decidir em ≤2 toques. Avançados com rotas distintas (1.º/2.º poste, zona do penalty) sem colarem na mesma linha; overlap e desmarques para puxar o defensor. Defesa activa mas controlada; repor rápido após remate para manter ritmo.",
+      setup:
+        "Corredor lateral + grande área ou zona final (~½ campo ajustável); baliza ou GR; cones opcionais para linha de cruzamento; bolas junto ao médio que serve; coletes.",
+      groupSplit:
+        pl.length >= 12
+          ? "Rotação: após cada repetição entram novo trio de ataque e outro defensor; dois corredores activos em espelho após o bloco de 10 min."
+          : pl.length >= 8
+            ? "Mesma lógica com menos filas: médio e lateral a rodar; defensor fixo 3–4 repetições antes de trocar."
+            : "Reduzir a 2 atacantes vs 1 ou acrescentar neutro de apoio ao cruzamento; coach como servidor se faltar médio.",
+      diagramHint:
+        "Médio → bola aérea nas costas da linha → lateral recebe → cruzamento em ≤2 toques → 3 atacantes vs 1 defesa na área; seta para espelhar na outra banda.",
+      videoUrl: MOVIMENTACAO_AREA_CRUZAMENTOS_VIDEO_URL,
+    }),
+  },
+  {
     themes: ["finishing", "transition", "physical"],
     title: "4 Finishing Drills",
     describe: (pl, m) => ({
@@ -2207,6 +2242,7 @@ const SINGLE_DRILL_15_MIN_TITLES = new Set<string>([
   "Posse de Bola com Transição",
   "Combinações e Passe de Rotura",
   "Combinações sob Pressão",
+  "Movimentação dentro de Área em Cruzamentos",
 ]);
 const SINGLE_DRILL_10_MIN_TITLES = new Set<string>([
   "Passing Activation",
@@ -2294,6 +2330,15 @@ function singleDrillProgressionVariationsForTitle(title: string): {
   const isPassingActivation = title === "Passing Activation";
   const isDualPassing = title === "Dual Passing";
   const isPressingExercise = title === "Pressing Exercise";
+
+  if (title === "Movimentação dentro de Área em Cruzamentos") {
+    return {
+      progression:
+        "Reduz a largura útil na área para exigir cruzamentos mais precisos; ou o lateral só cruza após comando verbal do médio; ou acrescenta segundo defensor a fechar o primeiro poste (sombra).",
+      variations:
+        "Séries alternadas de cruzamento rasteiro e pendulado; ou dois remates de primeira obrigatórios antes de rodar papéis; ou médio e lateral a trocar de função a cada 4 entradas.",
+    };
+  }
 
   if (title === "Variação de Posse de Bola com base na Pressão") {
     return {
@@ -2684,6 +2729,7 @@ export function getTrainingCatalogItems(players: Player[]): TrainingCatalogItem[
     "Build up into Counter Attack": ["finishing", "transition"],
     "Fitness Rondo into Finishing": ["finishing", "pressing", "physical"],
     "Midfielder Run Behind Defense": ["finishing"],
+    "Movimentação dentro de Área em Cruzamentos": ["finishing", "transition"],
     "Full Back Overlap - Winger": ["finishing"],
     "Full Back Overlap - Striker": ["finishing"],
     "3v2 Fast Break": ["finishing", "defensive", "transition", "physical"],
