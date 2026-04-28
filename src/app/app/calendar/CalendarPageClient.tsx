@@ -252,6 +252,16 @@ function parseMatchRowsFromOcrLines(data: unknown): MatchRow[] {
   return [...unique.values()];
 }
 
+function parseMatchRowsFromRawTextBlock(text: string): MatchRow[] {
+  const rawLines = text
+    .replace(/\r/g, "\n")
+    .split("\n")
+    .map((l) => l.replace(/\s+/g, " ").trim())
+    .filter((l) => l.length > 0);
+  const rows = rawLines.map((l) => matchRowFromLineText(l)).filter((x): x is MatchRow => x != null);
+  return dedupeMatchRows(rows);
+}
+
 function extractScoreAnchorsFromRecognizedData(data: unknown): OcrScoreAnchor[] {
   const lines = ((data as { lines?: OcrLineLike[] } | null)?.lines ?? [])
     .map((l) => parseScorePair(l?.text ?? ""))
@@ -690,15 +700,23 @@ export function CalendarPageClient() {
         const candidates: Array<{ rows: MatchRow[]; scoreCount: number }> = [];
         await worker.setParameters({ tessedit_pageseg_mode: psmSingle });
         const recSingle = await worker.recognize(file);
+        const rowsSingle = dedupeMatchRows([
+          ...rowsFromRecognizedData(recSingle.data),
+          ...parseMatchRowsFromRawTextBlock(recSingle.data?.text ?? ""),
+        ]);
         candidates.push({
-          rows: rowsFromRecognizedData(recSingle.data),
+          rows: rowsSingle,
           scoreCount: extractScoreAnchorsFromRecognizedData(recSingle.data).length,
         });
 
         await worker.setParameters({ tessedit_pageseg_mode: psmSparse });
         const recSparse = await worker.recognize(file);
+        const rowsSparse = dedupeMatchRows([
+          ...rowsFromRecognizedData(recSparse.data),
+          ...parseMatchRowsFromRawTextBlock(recSparse.data?.text ?? ""),
+        ]);
         candidates.push({
-          rows: rowsFromRecognizedData(recSparse.data),
+          rows: rowsSparse,
           scoreCount: extractScoreAnchorsFromRecognizedData(recSparse.data).length,
         });
 
@@ -706,8 +724,12 @@ export function CalendarPageClient() {
           const hi = await buildHighContrastImageBlob(file);
           await worker.setParameters({ tessedit_pageseg_mode: psmSingle });
           const recHi = await worker.recognize(hi);
+          const rowsHi = dedupeMatchRows([
+            ...rowsFromRecognizedData(recHi.data),
+            ...parseMatchRowsFromRawTextBlock(recHi.data?.text ?? ""),
+          ]);
           candidates.push({
-            rows: rowsFromRecognizedData(recHi.data),
+            rows: rowsHi,
             scoreCount: extractScoreAnchorsFromRecognizedData(recHi.data).length,
           });
         } catch {
