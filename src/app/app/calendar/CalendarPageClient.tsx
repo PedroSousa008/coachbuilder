@@ -143,6 +143,18 @@ function toDraftRows(rows: MatchRow[]): MatchRowDraft[] {
   }));
 }
 
+function dedupeMatchRows(rows: MatchRow[]): MatchRow[] {
+  const seen = new Set<string>();
+  const out: MatchRow[] = [];
+  for (const r of rows) {
+    const key = `${r.homeTeam.toLowerCase()}|${r.awayTeam.toLowerCase()}|${r.homeGoals}-${r.awayGoals}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(r);
+  }
+  return out;
+}
+
 function draftRowsToRows(rows: MatchRowDraft[]): { rows: MatchRow[]; invalidRow: number | null } {
   const out: MatchRow[] = [];
   for (let i = 0; i < rows.length; i++) {
@@ -483,15 +495,15 @@ export function CalendarPageClient() {
         const layoutEvents = parseMatchEventsFromOcrWordLayout(recognized.data);
         await worker.terminate();
 
-        const strictRows =
-          lineRows.length > 0
-            ? lineRows
-            : layoutEvents.map((e) => ({
-                homeTeam: e.homeTeam,
-                homeGoals: e.homeGoals,
-                awayGoals: e.awayGoals,
-                awayTeam: e.awayTeam,
-              }));
+        const layoutRows = layoutEvents.map((e) => ({
+          homeTeam: e.homeTeam,
+          homeGoals: e.homeGoals,
+          awayGoals: e.awayGoals,
+          awayTeam: e.awayTeam,
+        }));
+        // Alguns OCR devolvem `data.lines` truncado (ex.: 3 jogos) mas `data.words` consegue mais.
+        // Escolhemos sempre a extração com maior cobertura de jogos.
+        const strictRows = dedupeMatchRows(layoutRows.length > lineRows.length ? layoutRows : lineRows);
         if (!strictRows.length) {
           setOcrError("Não consegui montar a tabela Casa/Resultado/Fora a partir da imagem.");
           return;
