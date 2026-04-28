@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { getTrainingCatalogExerciseCount } from "@/lib/training-session-local";
 import {
   GitBranch,
   CalendarDays,
@@ -15,6 +16,8 @@ import { FeatureCard } from "@/components/marketing/FeatureCard";
 import { PricingCard } from "@/components/marketing/PricingCard";
 
 export default function LandingPage() {
+  const trainingCatalogExerciseCount = getTrainingCatalogExerciseCount();
+
   return (
     <>
       <LandingNav />
@@ -53,7 +56,10 @@ export default function LandingPage() {
             </div>
             <div className="mt-16 grid gap-4 sm:grid-cols-3">
               {[
-                { label: "Session plans drafted", value: "34+" },
+                {
+                  label: "Session plans drafted",
+                  value: String(trainingCatalogExerciseCount),
+                },
                 { label: "Tactics on file", value: "12" },
                 { label: "Avg. time to share a lineup", value: "< 2 min" },
               ].map((s) => (

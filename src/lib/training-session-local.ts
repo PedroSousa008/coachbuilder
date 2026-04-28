@@ -2814,3 +2814,12 @@ export function getTrainingCatalogItems(players: Player[]): TrainingCatalogItem[
 
   return [warmup, ...mains, cooldown];
 }
+
+/**
+ * Total de entradas no catálogo local (Planos de treino → «Todos os exercícios»):
+ * aquecimento em template + todos os exercícios principais + volta à calma.
+ * Igual a `getTrainingCatalogItems(players).length` para qualquer plantel.
+ */
+export function getTrainingCatalogExerciseCount(): number {
+  return MAIN_DRILLS.length + 1;
+}
