@@ -177,6 +177,20 @@ async function requireUserId(): Promise<string | null> {
   return session?.user.id ?? null;
 }
 
+async function saveWorkspaceVersion(userId: string, payload: WorkspaceSnapshotV1, source = "autosave") {
+  try {
+    await prisma.workspaceVersion.create({
+      data: {
+        userId,
+        payload: payload as object,
+        source,
+      },
+    });
+  } catch (e) {
+    console.error("[cloud/workspace saveWorkspaceVersion]", e);
+  }
+}
+
 export async function GET() {
   if (!isCloudSyncEnabledServer()) {
     return NextResponse.json({ ok: false, error: "Cloud inativo." }, { status: 503 });
@@ -247,11 +261,17 @@ export async function PUT(req: Request) {
 
     const payload = mergeWorkspacePayload(incomingPayload, existingPayload, userId);
 
+    if (existingRow) {
+      await saveWorkspaceVersion(userId, existingPayload, "pre_update");
+    }
+
     await prisma.workspace.upsert({
       where: { userId },
       create: { userId, payload: payload as object },
       update: { payload: payload as object },
     });
+
+    await saveWorkspaceVersion(userId, payload, "post_update");
 
     const row = await prisma.workspace.findUnique({ where: { userId } });
     return NextResponse.json({

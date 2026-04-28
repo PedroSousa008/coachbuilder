@@ -44,6 +44,7 @@ model User {
   sessionInvalidatedAt    DateTime?
 
   workspace                     Workspace?
+  workspaceVersions             WorkspaceVersion[]
   appEvents                     AppEvent[]
   fullPersonalizationRequests   FullPersonalizationRequest[]
 
@@ -56,6 +57,17 @@ model Workspace {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   payload   Json
   updatedAt DateTime @updatedAt
+}
+
+model WorkspaceVersion {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payload   Json
+  source    String   @default("autosave")
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
 }
 
 model AppEvent {

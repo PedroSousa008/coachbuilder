@@ -39,6 +39,12 @@ export async function GET(_req: Request, ctx: RouteCtx) {
 
     const w = row.workspace;
     const payload: WorkspaceSnapshotV1 = w ? parseWorkspacePayload(w.payload) ?? emptyWorkspaceSnapshot() : emptyWorkspaceSnapshot();
+    const recentVersions = await prisma.workspaceVersion.findMany({
+      where: { userId: row.id },
+      orderBy: { createdAt: "desc" },
+      take: 20,
+      select: { id: true, createdAt: true, source: true },
+    });
 
     return NextResponse.json({
       ok: true,
@@ -51,6 +57,11 @@ export async function GET(_req: Request, ctx: RouteCtx) {
       workspaceUpdatedAt: w?.updatedAt.toISOString() ?? null,
       hasWorkspace: Boolean(w),
       counts: workspaceDataCounts(payload),
+      recentVersions: recentVersions.map((v) => ({
+        id: v.id,
+        source: v.source,
+        createdAt: v.createdAt.toISOString(),
+      })),
       payload,
     });
   } catch (e) {
