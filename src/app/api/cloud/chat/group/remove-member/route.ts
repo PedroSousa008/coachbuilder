@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { CLOUD_SERVER_UNAVAILABLE_MESSAGE, isCloudSyncEnabledServer } from "@/lib/cloud-config";
 import { getCloudUserFromSessionCookies } from "@/lib/cloud-session-user";
 import { emptyWorkspaceSnapshot, parseWorkspacePayload } from "@/lib/workspace-snapshot";
+import { upsertWorkspaceSafely } from "@/lib/workspace-write-safety";
 import type { Conversation, Message } from "@/types";
 import {
   ptMemberCountSubtitle,
@@ -127,10 +128,10 @@ export async function POST(req: Request) {
           conversations: nextConversations,
           messages: nextMessages,
         };
-        await prisma.workspace.upsert({
-          where: { userId: id },
-          create: { userId: id, payload: next as object },
-          update: { payload: next as object },
+        await upsertWorkspaceSafely({
+          userId: id,
+          incomingPayload: next,
+          actorUserId: claims.sub,
         });
       })
     );

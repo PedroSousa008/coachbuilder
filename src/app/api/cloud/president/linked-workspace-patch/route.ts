@@ -4,6 +4,7 @@ import { isCloudSyncEnabledServer } from "@/lib/cloud-config";
 import { requirePresidentPremiumAccess } from "@/lib/require-president-premium-server";
 import { presidentCanAccessCoachWorkspace } from "@/lib/president-cloud-server";
 import { emptyWorkspaceSnapshot, parseWorkspacePayload, type WorkspaceSnapshotV1 } from "@/lib/workspace-snapshot";
+import { upsertWorkspaceSafely } from "@/lib/workspace-write-safety";
 import { patchSnapshotForPresident } from "@/lib/president-workspace-patch";
 import type { PresidentLinkedCoachProfilePatchInput, PresidentLinkedPlayerPatchInput } from "@/lib/president-workspace-patch";
 
@@ -62,10 +63,10 @@ export async function POST(req: Request) {
       });
     }
 
-    await prisma.workspace.upsert({
-      where: { userId: coachUserId },
-      create: { userId: coachUserId, payload: next as object },
-      update: { payload: next as object },
+    await upsertWorkspaceSafely({
+      userId: coachUserId,
+      incomingPayload: next,
+      actorUserId: presidentId,
     });
 
     return NextResponse.json({ ok: true });
