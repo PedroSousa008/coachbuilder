@@ -825,6 +825,23 @@ export const COACHING_LESSON_DEVELOPMENTS: CoachingLessonDevelopmentDef[] = [
       "team-culture-through-staff-calmness-under-pressure",
     ],
   },
+  {
+    lessonId: "day-038",
+    title: "Vincent Kompany - Motivation for Players - TNT Sports",
+    skillIds: [
+      "mental-attributes-competitive-mentality",
+      "mental-attributes-winning-mentality",
+      "mental-attributes-determination",
+      "advanced-mental-hunger-to-improve",
+      "advanced-mental-obsession-with-winning",
+      "team-culture-through-staff-positive-environment-creation",
+      "elite-staff-structure-elite-preparation-mentality",
+      "elite-staff-structure-winning-environment-creation",
+      "mental-attributes-leadership",
+      "mental-attributes-motivation",
+      "advanced-mental-calm-under-chaos",
+    ],
+  },
 ];
 
 const LESSON_BY_ID: Map<string, CoachingLessonDevelopmentDef> = new Map(
