@@ -369,6 +369,73 @@ function parseMatchEventsFromOcrWordLayout(data: unknown): ParsedMatchEvent[] {
   return dedupeEvents(out);
 }
 
+function rowsFromRecognizedData(data: unknown): MatchRow[] {
+  const lineRows = parseMatchRowsFromOcrLines(data);
+  const layoutRows = parseMatchEventsFromOcrWordLayout(data).map((e) => ({
+    homeTeam: e.homeTeam,
+    homeGoals: e.homeGoals,
+    awayGoals: e.awayGoals,
+    awayTeam: e.awayTeam,
+  }));
+  return dedupeMatchRows(layoutRows.length > lineRows.length ? layoutRows : lineRows);
+}
+
+function scoreRowsCoverage(rows: MatchRow[]): { games: number; uniqueTeams: number } {
+  const unique = new Set<string>();
+  for (const r of rows) {
+    unique.add(r.homeTeam.toLowerCase());
+    unique.add(r.awayTeam.toLowerCase());
+  }
+  return { games: rows.length, uniqueTeams: unique.size };
+}
+
+function chooseBestRows(candidates: MatchRow[][]): MatchRow[] {
+  if (!candidates.length) return [];
+  const sorted = [...candidates].sort((a, b) => {
+    const sa = scoreRowsCoverage(a);
+    const sb = scoreRowsCoverage(b);
+    if (sb.games !== sa.games) return sb.games - sa.games;
+    return sb.uniqueTeams - sa.uniqueTeams;
+  });
+  return sorted[0] ?? [];
+}
+
+async function buildHighContrastImageBlob(file: File): Promise<Blob> {
+  const bitmap = await createImageBitmap(file);
+  try {
+    const maxW = 2200;
+    const scale = Math.max(1, maxW / Math.max(1, bitmap.width));
+    const w = Math.max(1, Math.round(bitmap.width * scale));
+    const h = Math.max(1, Math.round(bitmap.height * scale));
+    const canvas = document.createElement("canvas");
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("ctx");
+    ctx.drawImage(bitmap, 0, 0, w, h);
+    const img = ctx.getImageData(0, 0, w, h);
+    const d = img.data;
+    for (let i = 0; i < d.length; i += 4) {
+      const r = d[i] ?? 0;
+      const g = d[i + 1] ?? 0;
+      const b = d[i + 2] ?? 0;
+      const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+      const v = lum > 175 ? 255 : 0;
+      d[i] = v;
+      d[i + 1] = v;
+      d[i + 2] = v;
+      d[i + 3] = 255;
+    }
+    ctx.putImageData(img, 0, 0);
+    const blob = await new Promise<Blob>((resolve, reject) =>
+      canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("toBlob"))), "image/png")
+    );
+    return blob;
+  } finally {
+    bitmap.close();
+  }
+}
+
 export function CalendarPageClient() {
   const {
     fixtures,
@@ -524,22 +591,28 @@ export function CalendarPageClient() {
       try {
         const tess = await import("tesseract.js");
         const worker = await tess.createWorker("por+eng");
-        const pageSegMode = tess.PSM?.SINGLE_BLOCK ?? "6";
-        await worker.setParameters({ tessedit_pageseg_mode: pageSegMode });
-        const recognized = await worker.recognize(file);
-        const lineRows = parseMatchRowsFromOcrLines(recognized.data);
-        const layoutEvents = parseMatchEventsFromOcrWordLayout(recognized.data);
+        const psmSingle = tess.PSM?.SINGLE_BLOCK ?? "6";
+        const psmSparse = tess.PSM?.SPARSE_TEXT ?? "11";
+        const candidates: MatchRow[][] = [];
+        await worker.setParameters({ tessedit_pageseg_mode: psmSingle });
+        const recSingle = await worker.recognize(file);
+        candidates.push(rowsFromRecognizedData(recSingle.data));
+
+        await worker.setParameters({ tessedit_pageseg_mode: psmSparse });
+        const recSparse = await worker.recognize(file);
+        candidates.push(rowsFromRecognizedData(recSparse.data));
+
+        try {
+          const hi = await buildHighContrastImageBlob(file);
+          await worker.setParameters({ tessedit_pageseg_mode: psmSingle });
+          const recHi = await worker.recognize(hi);
+          candidates.push(rowsFromRecognizedData(recHi.data));
+        } catch {
+          // Preprocess is best-effort.
+        }
         await worker.terminate();
 
-        const layoutRows = layoutEvents.map((e) => ({
-          homeTeam: e.homeTeam,
-          homeGoals: e.homeGoals,
-          awayGoals: e.awayGoals,
-          awayTeam: e.awayTeam,
-        }));
-        // Alguns OCR devolvem `data.lines` truncado (ex.: 3 jogos) mas `data.words` consegue mais.
-        // Escolhemos sempre a extração com maior cobertura de jogos.
-        const strictRows = dedupeMatchRows(layoutRows.length > lineRows.length ? layoutRows : lineRows);
+        const strictRows = chooseBestRows(candidates);
         if (!strictRows.length) {
           setOcrError("Não consegui montar a tabela Casa/Resultado/Fora a partir da imagem.");
           return;
