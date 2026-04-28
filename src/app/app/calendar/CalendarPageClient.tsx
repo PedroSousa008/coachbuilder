@@ -692,33 +692,6 @@ export function CalendarPageClient() {
         setOcrError("Carrega uma imagem primeiro.");
         return;
       }
-      // 1) Server vision fallback (chat-like multimodal extraction).
-      try {
-        const fd = new FormData();
-        fd.set("image", file);
-        const visionRes = await fetch("/api/league-results-vision", {
-          method: "POST",
-          body: fd,
-        });
-        if (visionRes.ok) {
-          const visionJson = (await visionRes.json()) as {
-            ok?: boolean;
-            rows?: Array<{ homeTeam?: string; result?: string; awayTeam?: string }>;
-          };
-          const visionDraft = (visionJson.rows ?? []).map((r) => ({
-            homeTeam: String(r.homeTeam ?? "").trim(),
-            result: String(r.result ?? "").trim(),
-            awayTeam: String(r.awayTeam ?? "").trim(),
-          }));
-          const parsedVision = draftRowsToRows(visionDraft);
-          if (parsedVision.invalidRow == null && parsedVision.rows.length > 0) {
-            setResultsRowsDraft(toDraftRows(parsedVision.rows));
-            return;
-          }
-        }
-      } catch {
-        // Keep local OCR path as fallback.
-      }
       try {
         const tess = await import("tesseract.js");
         const worker = await tess.createWorker("por+eng");
