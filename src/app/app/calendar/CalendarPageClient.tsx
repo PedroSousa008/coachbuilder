@@ -13,7 +13,7 @@ import { buildMonthGrid, isSameLocalDay } from "@/lib/coaching-professionals-cal
 import { cn } from "@/lib/utils";
 import { parseMatchEventsFromOcrText } from "@/lib/league-results-ocr-parse";
 import type { SketchCalendarEventCategory } from "@/types";
-import { teamNamesLikelyMatch } from "@/lib/league-team-name-match";
+import { scoreTeamMatch, teamNamesLikelyMatch } from "@/lib/league-team-name-match";
 
 const cellInputClass =
   "h-8 min-w-0 px-1.5 py-0 text-xs tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none";
@@ -50,6 +50,10 @@ type OcrWordBox = { x0: number; y0: number; x1: number; y1: number };
 type OcrWordLike = { text?: string; bbox?: OcrWordBox };
 type OcrLineLike = { text?: string };
 type MatchRow = { homeTeam: string; homeGoals: number; awayGoals: number; awayTeam: string };
+type RowsValidation =
+  | { ok: true; mappedTeams: number }
+  | { ok: false; kind: "parse"; message: string }
+  | { ok: false; kind: "mapping"; message: string };
 
 function parseScorePair(raw: string): { homeGoals: number; awayGoals: number } | null {
   const t = raw.replace(/\s+/g, "").replace(/[Oo]/g, "0");
@@ -129,6 +133,69 @@ function rowsToEvents(rows: MatchRow[]): ParsedMatchEvent[] {
     awayGoals: r.awayGoals,
     source: "image" as const,
   }));
+}
+
+function validateMatchRowsBeforeApply(rows: MatchRow[], tableTeamNames: string[]): RowsValidation {
+  if (!rows.length) return { ok: false, kind: "parse", message: "Não consegui extrair linhas de jogo da imagem." };
+  const uniqueNames = new Set<string>();
+  for (const r of rows) {
+    const h = r.homeTeam.trim();
+    const a = r.awayTeam.trim();
+    if (!h || !a) {
+      return { ok: false, kind: "parse", message: "Há linhas sem equipa da casa/fora completa." };
+    }
+    if (h.toLowerCase() === a.toLowerCase()) {
+      return { ok: false, kind: "parse", message: `Linha inválida: ${h} aparece dos dois lados.` };
+    }
+    uniqueNames.add(h);
+    uniqueNames.add(a);
+  }
+  const expectedTeams = rows.length * 2;
+  if (uniqueNames.size !== expectedTeams) {
+    return {
+      ok: false,
+      kind: "parse",
+      message:
+        `Foram detetados ${rows.length} jogos, mas só ${uniqueNames.size} equipas únicas (esperado ${expectedTeams}). ` +
+        "Isto indica parsing incompleto dos Resultados por print.",
+    };
+  }
+
+  const tableNames = tableTeamNames.map((t) => t.trim()).filter(Boolean);
+  if (!tableNames.length) {
+    return {
+      ok: false,
+      kind: "mapping",
+      message: "A League Table ainda não tem nomes de equipa preenchidos na fase ativa.",
+    };
+  }
+
+  const pairs: Array<{ ocrName: string; tableName: string; score: number }> = [];
+  for (const ocrName of uniqueNames) {
+    for (const tableName of tableNames) {
+      const s = scoreTeamMatch(ocrName, tableName);
+      if (s >= 0.34) pairs.push({ ocrName, tableName, score: s });
+    }
+  }
+  pairs.sort((a, b) => b.score - a.score);
+  const usedOcr = new Set<string>();
+  const usedTable = new Set<string>();
+  for (const p of pairs) {
+    if (usedOcr.has(p.ocrName) || usedTable.has(p.tableName)) continue;
+    usedOcr.add(p.ocrName);
+    usedTable.add(p.tableName);
+  }
+  if (usedOcr.size !== uniqueNames.size) {
+    const missing = [...uniqueNames].filter((n) => !usedOcr.has(n)).slice(0, 4);
+    return {
+      ok: false,
+      kind: "mapping",
+      message:
+        `Falha no mapeamento para a League Table: ${usedOcr.size}/${uniqueNames.size} equipas. ` +
+        `Não encontrei correspondência segura para: ${missing.join(", ")}.`,
+    };
+  }
+  return { ok: true, mappedTeams: usedOcr.size };
 }
 
 function parseMatchRowsFromOcrLines(data: unknown): MatchRow[] {
@@ -375,6 +442,9 @@ export function CalendarPageClient() {
     setOcrBusy(true);
     setOcrError(null);
     try {
+      const activeRows =
+        leagueSetup.phases.find((p) => p.id === leagueSetup.activePhaseId)?.standings.rows ?? [];
+      const activeTableTeamNames = activeRows.map((r) => r.team);
       let combined = resultsOcrText;
       const file = resultsImageInputRef.current?.files?.[0];
       if (file) {
@@ -399,6 +469,18 @@ export function CalendarPageClient() {
           // Só se vier vazio é que tenta o parser por palavras/bbox.
           const strictEvents = lineEvents.length > 0 ? lineEvents : layoutEvents;
           if (strictEvents.length >= 1) {
+            const strictRows = strictEvents.map((e) => ({
+              homeTeam: e.homeTeam,
+              homeGoals: e.homeGoals,
+              awayGoals: e.awayGoals,
+              awayTeam: e.awayTeam,
+            }));
+            const validation = validateMatchRowsBeforeApply(strictRows, activeTableTeamNames);
+            if (!validation.ok) {
+              setOcrError(validation.message);
+              setOcrBusy(false);
+              return;
+            }
             const summary = applyLeagueMatchEvents(strictEvents, undefined, { requireFullApply: true });
             if (summary.skippedCount > 0) {
               setOcrError(
@@ -432,6 +514,18 @@ export function CalendarPageClient() {
         setOcrError(
           "Não encontrei jogos no texto. Usa linhas como: Equipa A 2-1 Equipa B. Se aparecer hora (ex.: 20:30), o jogo é ignorado."
         );
+        setOcrBusy(false);
+        return;
+      }
+      const rows = events.map((e) => ({
+        homeTeam: e.homeTeam,
+        homeGoals: e.homeGoals,
+        awayGoals: e.awayGoals,
+        awayTeam: e.awayTeam,
+      }));
+      const validation = validateMatchRowsBeforeApply(rows, activeTableTeamNames);
+      if (!validation.ok) {
+        setOcrError(validation.message);
         setOcrBusy(false);
         return;
       }
