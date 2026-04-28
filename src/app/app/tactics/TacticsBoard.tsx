@@ -251,6 +251,12 @@ export function TacticsBoard() {
     syncFromTactic(tactic);
   };
 
+  const handleNewTacticDraft = useCallback(() => {
+    const fresh = buildDraftTactic();
+    setActiveId(DRAFT_ID);
+    syncFromTactic(fresh);
+  }, [syncFromTactic]);
+
   const handleDeleteTactic = (id: string) => {
     deleteTactic(id);
     if (activeId === id) {
@@ -413,6 +419,11 @@ export function TacticsBoard() {
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            {!isDraft && (
+              <Button type="button" variant="secondary" size="sm" onClick={handleNewTacticDraft}>
+                Nova tática
+              </Button>
+            )}
             {PRIMARY_FORMATION_IDS.map((f) => (
               <Button
                 key={f}
