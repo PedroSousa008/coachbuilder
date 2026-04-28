@@ -90,40 +90,85 @@ function dedupeEvents(events: ParsedMatchEvent[]): ParsedMatchEvent[] {
   return out;
 }
 
+function parseIntToken(raw: string): number | null {
+  const t = raw.trim().replace(/[Oo]/g, "0");
+  if (!/^\d{1,2}$/.test(t)) return null;
+  const n = Number(t);
+  if (!Number.isFinite(n) || n < 0 || n > 15) return null;
+  return n;
+}
+
+function isDashToken(raw: string): boolean {
+  return /^[-–—−‐\/]$/.test(raw.trim());
+}
+
+function findScoreSpanInRow(wordsSorted: OcrWordLike[]): { homeGoals: number; awayGoals: number; leftX: number; rightX: number } | null {
+  for (const w of wordsSorted) {
+    const s = parseScorePair(w.text ?? "");
+    if (!s) continue;
+    return {
+      homeGoals: s.homeGoals,
+      awayGoals: s.awayGoals,
+      leftX: w.bbox!.x0,
+      rightX: w.bbox!.x1,
+    };
+  }
+  for (let i = 0; i <= wordsSorted.length - 3; i++) {
+    const a = wordsSorted[i]!;
+    const b = wordsSorted[i + 1]!;
+    const c = wordsSorted[i + 2]!;
+    const ag = parseIntToken(a.text ?? "");
+    const bg = parseIntToken(c.text ?? "");
+    if (ag == null || bg == null || !isDashToken(b.text ?? "")) continue;
+    return {
+      homeGoals: ag,
+      awayGoals: bg,
+      leftX: a.bbox!.x0,
+      rightX: c.bbox!.x1,
+    };
+  }
+  return null;
+}
+
+function groupWordsByVisualRows(words: OcrWordLike[]): OcrWordLike[][] {
+  const sorted = [...words].sort((a, b) => (a.bbox!.y0 - b.bbox!.y0) || (a.bbox!.x0 - b.bbox!.x0));
+  const rows: OcrWordLike[][] = [];
+  for (const w of sorted) {
+    const wy = (w.bbox!.y0 + w.bbox!.y1) / 2;
+    const last = rows[rows.length - 1];
+    if (!last) {
+      rows.push([w]);
+      continue;
+    }
+    const avgY = last.reduce((acc, cur) => acc + (cur.bbox!.y0 + cur.bbox!.y1) / 2, 0) / last.length;
+    const tol = 14;
+    if (Math.abs(wy - avgY) <= tol) last.push(w);
+    else rows.push([w]);
+  }
+  return rows.map((r) => r.sort((a, b) => a.bbox!.x0 - b.bbox!.x0));
+}
+
 function parseMatchEventsFromOcrWordLayout(data: unknown): ParsedMatchEvent[] {
   const words = ((data as { words?: OcrWordLike[] } | null)?.words ?? []).filter(
     (w): w is OcrWordLike => !!w?.bbox && typeof w?.text === "string"
   );
   if (!words.length) return [];
-
-  const scoreAnchors = words
-    .map((w) => ({ word: w, score: parseScorePair(w.text ?? "") }))
-    .filter((x): x is { word: OcrWordLike; score: { homeGoals: number; awayGoals: number } } => x.score != null);
-
   const out: ParsedMatchEvent[] = [];
-  for (const anchor of scoreAnchors) {
-    const b = anchor.word.bbox!;
-    const yMid = (b.y0 + b.y1) / 2;
-    const yTol = Math.max(12, (b.y1 - b.y0) * 1.3);
-
-    const rowWords = words.filter((w) => {
-      const wb = w.bbox!;
-      const wy = (wb.y0 + wb.y1) / 2;
-      return Math.abs(wy - yMid) <= yTol;
-    });
-    const homeWords = rowWords.filter((w) => (w.bbox?.x1 ?? 0) < b.x0 - 4);
-    const awayWords = rowWords.filter((w) => (w.bbox?.x0 ?? 0) > b.x1 + 4);
-
+  const rows = groupWordsByVisualRows(words);
+  for (const rowWords of rows) {
+    const score = findScoreSpanInRow(rowWords);
+    if (!score) continue;
+    const homeWords = rowWords.filter((w) => (w.bbox?.x1 ?? 0) < score.leftX - 4);
+    const awayWords = rowWords.filter((w) => (w.bbox?.x0 ?? 0) > score.rightX + 4);
     const homeTeam = buildTeamNameFromWords(homeWords);
     const awayTeam = buildTeamNameFromWords(awayWords);
     if (!homeTeam || !awayTeam) continue;
     if (homeTeam.toLowerCase() === awayTeam.toLowerCase()) continue;
-
     out.push({
       homeTeam,
       awayTeam,
-      homeGoals: anchor.score.homeGoals,
-      awayGoals: anchor.score.awayGoals,
+      homeGoals: score.homeGoals,
+      awayGoals: score.awayGoals,
       source: "image",
     });
   }
