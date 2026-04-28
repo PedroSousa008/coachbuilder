@@ -97,6 +97,11 @@ function mergeWorkspacePayload(
   existing: WorkspaceSnapshotV1,
   actorUserId: string
 ): WorkspaceSnapshotV1 {
+  const pickNonEmptyArray = <T>(inc: T[], ex: T[]): T[] => (inc.length > 0 || ex.length === 0 ? inc : ex);
+  const pickNonEmptyObject = <T extends object>(inc: T, ex: T): T =>
+    Object.keys(inc ?? {}).length > 0 || Object.keys(ex ?? {}).length === 0 ? inc : ex;
+  const pickNonEmptyString = (inc: string, ex: string): string => (inc.trim() !== "" || ex.trim() === "" ? inc : ex);
+
   const mergedConversations = mergeConversationLists(incoming.conversations, existing.conversations, actorUserId);
   const mergedMessages = { ...existing.messages, ...incoming.messages };
   for (const group of mergedConversations.filter((c) => c.type === "group")) {
@@ -105,8 +110,63 @@ function mergeWorkspacePayload(
       existing.messages[group.id] ?? []
     );
   }
+
+  const incomingLeague = incoming.league ?? existing.league;
+  const existingLeague = existing.league;
+  const mergedLeague = {
+    ...incomingLeague,
+    url: pickNonEmptyString(incomingLeague.url ?? "", existingLeague.url ?? ""),
+    rows: pickNonEmptyArray(incomingLeague.rows ?? [], existingLeague.rows ?? []),
+    matches: pickNonEmptyArray(incomingLeague.matches ?? [], existingLeague.matches ?? []),
+    pastClubResults: pickNonEmptyArray(incomingLeague.pastClubResults ?? [], existingLeague.pastClubResults ?? []),
+    setup: incomingLeague.setup ?? existingLeague.setup ?? null,
+    competitionName: incomingLeague.competitionName ?? existingLeague.competitionName ?? null,
+    lastFetched: incomingLeague.lastFetched ?? existingLeague.lastFetched ?? null,
+    lastError: incomingLeague.lastError ?? existingLeague.lastError ?? null,
+  };
+
+  const mergedCoachProfile = {
+    ...existing.coachProfile,
+    ...incoming.coachProfile,
+    name: pickNonEmptyString(incoming.coachProfile.name ?? "", existing.coachProfile.name ?? ""),
+    club: pickNonEmptyString(incoming.coachProfile.club ?? "", existing.coachProfile.club ?? ""),
+    email: pickNonEmptyString(incoming.coachProfile.email ?? "", existing.coachProfile.email ?? ""),
+  };
+
+  const mergedTeamCallup =
+    Object.values(incoming.teamCallup?.form ?? {}).some((v) => String(v).trim() !== "") ||
+    (incoming.teamCallup?.selectedPlayerIds?.length ?? 0) > 0 ||
+    Boolean(incoming.teamCallup?.clubLogoDataUrl)
+      ? incoming.teamCallup
+      : existing.teamCallup;
+
+  const mergedSketchArea =
+    (incoming.sketchArea?.calendarEvents?.length ?? 0) > 0 ||
+    (incoming.sketchArea?.notes?.length ?? 0) > 0 ||
+    (incoming.sketchArea?.tasks?.length ?? 0) > 0 ||
+    (incoming.sketchArea?.files?.length ?? 0) > 0 ||
+    (incoming.sketchArea?.boardDrafts?.length ?? 0) > 0 ||
+    (incoming.sketchArea?.watchlist?.length ?? 0) > 0
+      ? incoming.sketchArea
+      : existing.sketchArea;
+
   return {
+    ...existing,
     ...incoming,
+    players: pickNonEmptyArray(incoming.players, existing.players),
+    staff: pickNonEmptyArray(incoming.staff, existing.staff),
+    teamRoles: pickNonEmptyObject(incoming.teamRoles, existing.teamRoles),
+    trainingSessions: pickNonEmptyArray(incoming.trainingSessions, existing.trainingSessions),
+    trainingPlayers: pickNonEmptyObject(incoming.trainingPlayers, existing.trainingPlayers),
+    fixtures: pickNonEmptyArray(incoming.fixtures, existing.fixtures),
+    tactics: pickNonEmptyArray(incoming.tactics, existing.tactics),
+    tacticMatches: pickNonEmptyArray(incoming.tacticMatches, existing.tacticMatches),
+    tacticPlayerNotes: pickNonEmptyObject(incoming.tacticPlayerNotes, existing.tacticPlayerNotes),
+    savedTrainingExercises: pickNonEmptyArray(incoming.savedTrainingExercises, existing.savedTrainingExercises),
+    coachProfile: mergedCoachProfile,
+    league: mergedLeague,
+    sketchArea: mergedSketchArea,
+    teamCallup: mergedTeamCallup,
     conversations: mergedConversations,
     messages: mergedMessages,
   };
