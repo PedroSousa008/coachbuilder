@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import { Table2 } from "lucide-react";
-import type { MatchFixture } from "@/types";
+import type { MatchFixture, ParsedMatchEvent } from "@/types";
 import { useAppData } from "@/contexts/AppDataContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -44,6 +44,90 @@ function dateFromMonthInput(v: string): Date {
   const m = Number(ms);
   if (!Number.isFinite(y) || !Number.isFinite(m)) return new Date();
   return new Date(y, m - 1, 1);
+}
+
+type OcrWordBox = { x0: number; y0: number; x1: number; y1: number };
+type OcrWordLike = { text?: string; bbox?: OcrWordBox };
+
+function parseScorePair(raw: string): { homeGoals: number; awayGoals: number } | null {
+  const t = raw.replace(/\s+/g, "").replace(/[Oo]/g, "0");
+  const m = t.match(/^([0-9]{1,2})[-–—−‐\/]([0-9]{1,2})$/);
+  if (!m) return null;
+  const hg = Number(m[1]);
+  const ag = Number(m[2]);
+  if (!Number.isFinite(hg) || !Number.isFinite(ag)) return null;
+  if (hg < 0 || ag < 0 || hg > 15 || ag > 15) return null;
+  return { homeGoals: hg, awayGoals: ag };
+}
+
+function looksLikeTeamToken(raw: string): boolean {
+  const t = raw.trim();
+  if (!t) return false;
+  if (!/[A-Za-zÀ-ÿ]/.test(t)) return false;
+  if (/^[|:;.,'"()\-\u2013\u2014]+$/.test(t)) return false;
+  return parseScorePair(t) == null;
+}
+
+function buildTeamNameFromWords(words: OcrWordLike[]): string {
+  return words
+    .filter((w) => looksLikeTeamToken(w.text ?? ""))
+    .sort((a, b) => (a.bbox?.x0 ?? 0) - (b.bbox?.x0 ?? 0))
+    .map((w) => (w.text ?? "").trim())
+    .join(" ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function dedupeEvents(events: ParsedMatchEvent[]): ParsedMatchEvent[] {
+  const seen = new Set<string>();
+  const out: ParsedMatchEvent[] = [];
+  for (const e of events) {
+    const k = `${e.homeTeam.toLowerCase()}|${e.awayTeam.toLowerCase()}|${e.homeGoals}-${e.awayGoals}`;
+    if (seen.has(k)) continue;
+    seen.add(k);
+    out.push(e);
+  }
+  return out;
+}
+
+function parseMatchEventsFromOcrWordLayout(data: unknown): ParsedMatchEvent[] {
+  const words = ((data as { words?: OcrWordLike[] } | null)?.words ?? []).filter(
+    (w): w is OcrWordLike => !!w?.bbox && typeof w?.text === "string"
+  );
+  if (!words.length) return [];
+
+  const scoreAnchors = words
+    .map((w) => ({ word: w, score: parseScorePair(w.text ?? "") }))
+    .filter((x): x is { word: OcrWordLike; score: { homeGoals: number; awayGoals: number } } => x.score != null);
+
+  const out: ParsedMatchEvent[] = [];
+  for (const anchor of scoreAnchors) {
+    const b = anchor.word.bbox!;
+    const yMid = (b.y0 + b.y1) / 2;
+    const yTol = Math.max(12, (b.y1 - b.y0) * 1.3);
+
+    const rowWords = words.filter((w) => {
+      const wb = w.bbox!;
+      const wy = (wb.y0 + wb.y1) / 2;
+      return Math.abs(wy - yMid) <= yTol;
+    });
+    const homeWords = rowWords.filter((w) => (w.bbox?.x1 ?? 0) < b.x0 - 4);
+    const awayWords = rowWords.filter((w) => (w.bbox?.x0 ?? 0) > b.x1 + 4);
+
+    const homeTeam = buildTeamNameFromWords(homeWords);
+    const awayTeam = buildTeamNameFromWords(awayWords);
+    if (!homeTeam || !awayTeam) continue;
+    if (homeTeam.toLowerCase() === awayTeam.toLowerCase()) continue;
+
+    out.push({
+      homeTeam,
+      awayTeam,
+      homeGoals: anchor.score.homeGoals,
+      awayGoals: anchor.score.awayGoals,
+      source: "image",
+    });
+  }
+  return dedupeEvents(out);
 }
 
 export function CalendarPageClient() {
@@ -202,14 +286,31 @@ export function CalendarPageClient() {
           /** PSM é enum de strings (ex. SINGLE_BLOCK = '6'); número quebra o tipo em `setParameters`. */
           const pageSegMode = tess.PSM?.SINGLE_BLOCK ?? "6";
           await worker.setParameters({ tessedit_pageseg_mode: pageSegMode });
-          const {
-            data: { text },
-          } = await worker.recognize(file);
+          const recognized = await worker.recognize(file);
+          const text = recognized.data?.text ?? "";
+          const layoutEvents = parseMatchEventsFromOcrWordLayout(recognized.data);
           await worker.terminate();
           const extracted = (text ?? "").trim();
           if (extracted) {
             combined = combined.trim() ? `${combined.trim()}\n${extracted}` : extracted;
             setResultsOcrText(combined);
+          }
+          if (layoutEvents.length) {
+            const fallbackEvents = parseMatchEventsFromOcrText(combined.trim());
+            const merged = dedupeEvents([...layoutEvents, ...fallbackEvents]);
+            const summary = applyLeagueMatchEvents(merged, undefined, { requireFullApply: true });
+            if (summary.skippedCount > 0) {
+              setOcrError(
+                `Detetei ${merged.length} jogos, mas só consegui mapear ${summary.appliedCount} à League Table. ` +
+                  "Não apliquei alterações parciais. Confirma os nomes das equipas na tabela e tenta novamente."
+              );
+              setOcrBusy(false);
+              return;
+            }
+            setResultsOcrText("");
+            if (resultsImageInputRef.current) resultsImageInputRef.current.value = "";
+            setOcrBusy(false);
+            return;
           }
         } catch {
           setOcrError(

@@ -122,7 +122,7 @@ function resolveUniqueOcrTeamIds(
   for (const ocrName of names) {
     for (const row of rows) {
       const s = scoreTeamMatch(ocrName, row.team);
-      if (s >= 0.5) pairs.push({ ocrName, teamId: row.teamId, score: s });
+      if (s >= 0.35) pairs.push({ ocrName, teamId: row.teamId, score: s });
     }
   }
   pairs.sort((a, b) => b.score - a.score);
