@@ -11,7 +11,6 @@ import { FixtureFormModal } from "@/components/calendar/FixtureFormModal";
 import { useScheduleNow } from "@/hooks/useScheduleNow";
 import { buildMonthGrid, isSameLocalDay } from "@/lib/coaching-professionals-calendar";
 import { cn } from "@/lib/utils";
-import { parseMatchEventsFromOcrText } from "@/lib/league-results-ocr-parse";
 import type { SketchCalendarEventCategory } from "@/types";
 import { scoreTeamMatch, teamNamesLikelyMatch } from "@/lib/league-team-name-match";
 
@@ -50,6 +49,7 @@ type OcrWordBox = { x0: number; y0: number; x1: number; y1: number };
 type OcrWordLike = { text?: string; bbox?: OcrWordBox };
 type OcrLineLike = { text?: string };
 type MatchRow = { homeTeam: string; homeGoals: number; awayGoals: number; awayTeam: string };
+type MatchRowDraft = { homeTeam: string; result: string; awayTeam: string };
 type RowsValidation =
   | { ok: true; mappedTeams: number }
   | { ok: false; kind: "parse"; message: string }
@@ -133,6 +133,32 @@ function rowsToEvents(rows: MatchRow[]): ParsedMatchEvent[] {
     awayGoals: r.awayGoals,
     source: "image" as const,
   }));
+}
+
+function toDraftRows(rows: MatchRow[]): MatchRowDraft[] {
+  return rows.map((r) => ({
+    homeTeam: r.homeTeam,
+    result: `${r.homeGoals}-${r.awayGoals}`,
+    awayTeam: r.awayTeam,
+  }));
+}
+
+function draftRowsToRows(rows: MatchRowDraft[]): { rows: MatchRow[]; invalidRow: number | null } {
+  const out: MatchRow[] = [];
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i]!;
+    const homeTeam = cleanTeamCell(row.homeTeam);
+    const awayTeam = cleanTeamCell(row.awayTeam);
+    const score = parseScorePair(row.result);
+    if (!homeTeam || !awayTeam || !score) return { rows: [], invalidRow: i + 1 };
+    out.push({
+      homeTeam,
+      awayTeam,
+      homeGoals: score.homeGoals,
+      awayGoals: score.awayGoals,
+    });
+  }
+  return { rows: out, invalidRow: null };
 }
 
 function validateMatchRowsBeforeApply(rows: MatchRow[], tableTeamNames: string[]): RowsValidation {
@@ -324,7 +350,7 @@ export function CalendarPageClient() {
   const [editing, setEditing] = useState<MatchFixture | null>(null);
   const [setupTeamsDraft, setSetupTeamsDraft] = useState("10");
   const [setupPhasesDraft, setSetupPhasesDraft] = useState("1");
-  const [resultsOcrText, setResultsOcrText] = useState("");
+  const [resultsRowsDraft, setResultsRowsDraft] = useState<MatchRowDraft[]>([]);
   const [ocrBusy, setOcrBusy] = useState(false);
   const [ocrError, setOcrError] = useState<string | null>(null);
   const resultsImageInputRef = useRef<HTMLInputElement>(null);
@@ -442,109 +468,79 @@ export function CalendarPageClient() {
     setOcrBusy(true);
     setOcrError(null);
     try {
-      const activeRows =
-        leagueSetup.phases.find((p) => p.id === leagueSetup.activePhaseId)?.standings.rows ?? [];
-      const activeTableTeamNames = activeRows.map((r) => r.team);
-      let combined = resultsOcrText;
       const file = resultsImageInputRef.current?.files?.[0];
-      if (file) {
-        try {
-          const tess = await import("tesseract.js");
-          const worker = await tess.createWorker("por+eng");
-          /** PSM é enum de strings (ex. SINGLE_BLOCK = '6'); número quebra o tipo em `setParameters`. */
-          const pageSegMode = tess.PSM?.SINGLE_BLOCK ?? "6";
-          await worker.setParameters({ tessedit_pageseg_mode: pageSegMode });
-          const recognized = await worker.recognize(file);
-          const text = recognized.data?.text ?? "";
-          const lineRows = parseMatchRowsFromOcrLines(recognized.data);
-          const lineEvents = rowsToEvents(lineRows);
-          const layoutEvents = parseMatchEventsFromOcrWordLayout(recognized.data);
-          await worker.terminate();
-          const extracted = (text ?? "").trim();
-          if (extracted) {
-            combined = combined.trim() ? `${combined.trim()}\n${extracted}` : extracted;
-            setResultsOcrText(combined);
-          }
-          // Pipeline estrito: primeiro tenta tabela por linha (home | score | away).
-          // Só se vier vazio é que tenta o parser por palavras/bbox.
-          const strictEvents = lineEvents.length > 0 ? lineEvents : layoutEvents;
-          if (strictEvents.length >= 1) {
-            const strictRows = strictEvents.map((e) => ({
-              homeTeam: e.homeTeam,
-              homeGoals: e.homeGoals,
-              awayGoals: e.awayGoals,
-              awayTeam: e.awayTeam,
-            }));
-            const validation = validateMatchRowsBeforeApply(strictRows, activeTableTeamNames);
-            if (!validation.ok) {
-              setOcrError(validation.message);
-              setOcrBusy(false);
-              return;
-            }
-            const summary = applyLeagueMatchEvents(strictEvents, undefined, { requireFullApply: true });
-            if (summary.skippedCount > 0) {
-              setOcrError(
-                `Detetei ${strictEvents.length} jogos, mas só consegui mapear ${summary.appliedCount} à League Table. ` +
-                  "Não apliquei alterações parciais. Confirma os nomes das equipas na tabela e tenta novamente."
-              );
-              setOcrBusy(false);
-              return;
-            }
-            setResultsOcrText("");
-            if (resultsImageInputRef.current) resultsImageInputRef.current.value = "";
-            setOcrBusy(false);
-            return;
-          }
-        } catch {
-          setOcrError(
-            "Não foi possível ler a imagem (OCR). Corre `npm install` no projeto e tenta de novo, ou cola o texto reconhecido abaixo."
-          );
-          setOcrBusy(false);
+      if (!file) {
+        setOcrError("Carrega uma imagem primeiro.");
+        return;
+      }
+      try {
+        const tess = await import("tesseract.js");
+        const worker = await tess.createWorker("por+eng");
+        const pageSegMode = tess.PSM?.SINGLE_BLOCK ?? "6";
+        await worker.setParameters({ tessedit_pageseg_mode: pageSegMode });
+        const recognized = await worker.recognize(file);
+        const lineRows = parseMatchRowsFromOcrLines(recognized.data);
+        const layoutEvents = parseMatchEventsFromOcrWordLayout(recognized.data);
+        await worker.terminate();
+
+        const strictRows =
+          lineRows.length > 0
+            ? lineRows
+            : layoutEvents.map((e) => ({
+                homeTeam: e.homeTeam,
+                homeGoals: e.homeGoals,
+                awayGoals: e.awayGoals,
+                awayTeam: e.awayTeam,
+              }));
+        if (!strictRows.length) {
+          setOcrError("Não consegui montar a tabela Casa/Resultado/Fora a partir da imagem.");
           return;
         }
-      }
-      const trimmed = combined.trim();
-      if (!trimmed) {
-        setOcrError("Carrega uma imagem com a grelha de resultados ou cola o texto (ex.: SL Benfica 2-1 FC Porto).");
-        setOcrBusy(false);
+        setResultsRowsDraft(toDraftRows(strictRows));
+      } catch {
+        setOcrError("Não foi possível ler a imagem (OCR).");
         return;
       }
-      const events = parseMatchEventsFromOcrText(trimmed);
-      if (!events.length) {
-        setOcrError(
-          "Não encontrei jogos no texto. Usa linhas como: Equipa A 2-1 Equipa B. Se aparecer hora (ex.: 20:30), o jogo é ignorado."
-        );
-        setOcrBusy(false);
-        return;
-      }
-      const rows = events.map((e) => ({
-        homeTeam: e.homeTeam,
-        homeGoals: e.homeGoals,
-        awayGoals: e.awayGoals,
-        awayTeam: e.awayTeam,
-      }));
-      const validation = validateMatchRowsBeforeApply(rows, activeTableTeamNames);
-      if (!validation.ok) {
-        setOcrError(validation.message);
-        setOcrBusy(false);
-        return;
-      }
-      const summary = applyLeagueMatchEvents(events, undefined, { requireFullApply: true });
-      if (summary.skippedCount > 0) {
-        setOcrError(
-          `Detetei ${events.length} jogos, mas só consegui mapear ${summary.appliedCount} à League Table. ` +
-            "Não apliquei alterações parciais. Confirma os nomes das equipas na tabela e tenta novamente."
-        );
-        setOcrBusy(false);
-        return;
-      }
-      setResultsOcrText("");
-      if (resultsImageInputRef.current) resultsImageInputRef.current.value = "";
     } catch {
-      setOcrError("Erro ao aplicar resultados.");
+      setOcrError("Erro ao processar imagem.");
     } finally {
       setOcrBusy(false);
     }
+  };
+
+  const handleSendRowsToTable = () => {
+    if (!leagueSetup) {
+      setOcrError("Cria primeiro a tabela da liga (setup).");
+      return;
+    }
+    if (!resultsRowsDraft.length) {
+      setOcrError("Sem linhas para enviar. Carrega a imagem e gera a tabela primeiro.");
+      return;
+    }
+    const activeRows =
+      leagueSetup.phases.find((p) => p.id === leagueSetup.activePhaseId)?.standings.rows ?? [];
+    const activeTableTeamNames = activeRows.map((r) => r.team);
+    const parsed = draftRowsToRows(resultsRowsDraft);
+    if (parsed.invalidRow != null) {
+      setOcrError(`Linha ${parsed.invalidRow} inválida. Confirma Casa, Resultado (ex.: 2-1) e Fora.`);
+      return;
+    }
+    const validation = validateMatchRowsBeforeApply(parsed.rows, activeTableTeamNames);
+    if (!validation.ok) {
+      setOcrError(validation.message);
+      return;
+    }
+    const events = rowsToEvents(parsed.rows);
+    const summary = applyLeagueMatchEvents(events, undefined, { requireFullApply: true });
+    if (summary.skippedCount > 0) {
+      setOcrError(
+        `Detetei ${events.length} jogos, mas só consegui mapear ${summary.appliedCount} à League Table. ` +
+          "Não apliquei alterações parciais. Confirma os nomes das equipas na tabela."
+      );
+      return;
+    }
+    setOcrError(null);
+    if (resultsImageInputRef.current) resultsImageInputRef.current.value = "";
   };
 
   const handleCreateCustomEvent = () => {
@@ -1177,10 +1173,8 @@ export function CalendarPageClient() {
           <div className="rounded-xl border border-surface-border bg-surface-raised/30 p-4">
             <p className="text-sm font-semibold text-white">Resultados por print</p>
             <p className="mt-1 text-xs text-zinc-500">
-              Um único upload de imagem (galeria ou câmara). Ao carregar em <strong>Aplicar resultados</strong> lemos o
-              texto na app, encontramos jogos (casa golos fora), cruzamos nomes com a tabela (ex.: FC Porto ≈ Porto) e
-              atualizamos J, V, E, D, golos e pontos. Define o <strong>clube</strong> no Perfil para guardar jogos
-              passados só dessa equipa.
+              Fluxo: <strong>imagem → tabela (Casa/Resultado/Fora) → Para a Tabela</strong>. Confirma/edita as linhas e
+              só depois enviamos para a League Table.
             </p>
             <div className="mt-3">
               <label className="text-xs font-medium text-zinc-500" htmlFor="results-image">
@@ -1195,19 +1189,80 @@ export function CalendarPageClient() {
                 className="mt-1.5 cursor-pointer"
               />
             </div>
-            <p className="mt-3 text-xs font-medium text-zinc-500">Texto (opcional — junta-se ao OCR da imagem)</p>
-            <textarea
-              value={resultsOcrText}
-              onChange={(e) => setResultsOcrText(e.target.value)}
-              placeholder="Ex.: SL Benfica 2-1 FC Porto"
-              rows={4}
-              className="mt-1.5 min-h-[96px] w-full resize-y rounded-xl border border-surface-border bg-surface-raised/90 px-4 py-3 text-sm text-zinc-100 placeholder:text-zinc-500 focus:border-accent/50 focus:outline-none focus:ring-2 focus:ring-accent/20"
-            />
+            <div className="mt-3 overflow-x-auto rounded-xl border border-surface-border">
+              <table className="w-full min-w-[540px] text-left text-xs">
+                <thead>
+                  <tr className="border-b border-surface-border bg-zinc-900/50 text-[10px] uppercase tracking-wide text-zinc-500">
+                    <th className="px-2 py-2 font-medium">Casa</th>
+                    <th className="px-2 py-2 font-medium">Resultado</th>
+                    <th className="px-2 py-2 font-medium">Fora</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {resultsRowsDraft.length === 0 ? (
+                    <tr>
+                      <td className="px-2 py-3 text-zinc-500" colSpan={3}>
+                        Carrega imagem e clica em <strong>Aplicar resultados</strong> para gerar a tabela.
+                      </td>
+                    </tr>
+                  ) : (
+                    resultsRowsDraft.map((row, idx) => (
+                      <tr key={`ocr-row-${idx}`} className="border-b border-surface-border/60 last:border-0">
+                        <td className="px-2 py-2">
+                          <Input
+                            value={row.homeTeam}
+                            onChange={(e) =>
+                              setResultsRowsDraft((prev) =>
+                                prev.map((r, i) => (i === idx ? { ...r, homeTeam: e.target.value } : r))
+                              )
+                            }
+                            className="h-8 text-xs"
+                          />
+                        </td>
+                        <td className="px-2 py-2">
+                          <Input
+                            value={row.result}
+                            onChange={(e) =>
+                              setResultsRowsDraft((prev) =>
+                                prev.map((r, i) => (i === idx ? { ...r, result: e.target.value } : r))
+                              )
+                            }
+                            placeholder="Ex.: 2-1"
+                            className="h-8 text-xs"
+                          />
+                        </td>
+                        <td className="px-2 py-2">
+                          <Input
+                            value={row.awayTeam}
+                            onChange={(e) =>
+                              setResultsRowsDraft((prev) =>
+                                prev.map((r, i) => (i === idx ? { ...r, awayTeam: e.target.value } : r))
+                              )
+                            }
+                            className="h-8 text-xs"
+                          />
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
             <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
               {ocrError ? <p className="text-xs text-amber-300">{ocrError}</p> : <span />}
-              <Button type="button" onClick={() => void handleApplyResults()} disabled={ocrBusy}>
-                {ocrBusy ? "A processar..." : "Aplicar resultados"}
-              </Button>
+              <div className="flex gap-2">
+                <Button type="button" onClick={() => void handleApplyResults()} disabled={ocrBusy}>
+                  {ocrBusy ? "A processar..." : "Aplicar resultados"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={handleSendRowsToTable}
+                  disabled={ocrBusy || resultsRowsDraft.length === 0}
+                >
+                  Para a Tabela
+                </Button>
+              </div>
             </div>
           </div>
 
