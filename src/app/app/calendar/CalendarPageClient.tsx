@@ -261,6 +261,7 @@ function isDashToken(raw: string): boolean {
 }
 
 function findScoreSpanInRow(wordsSorted: OcrWordLike[]): { homeGoals: number; awayGoals: number; leftX: number; rightX: number } | null {
+  // Best case: score token already recognized as "x-y".
   for (const w of wordsSorted) {
     const s = parseScorePair(w.text ?? "");
     if (!s) continue;
@@ -271,6 +272,7 @@ function findScoreSpanInRow(wordsSorted: OcrWordLike[]): { homeGoals: number; aw
       rightX: w.bbox!.x1,
     };
   }
+  // Common OCR case: split as three adjacent tokens ("1", "-", "2").
   for (let i = 0; i <= wordsSorted.length - 3; i++) {
     const a = wordsSorted[i]!;
     const b = wordsSorted[i + 1]!;
@@ -285,12 +287,46 @@ function findScoreSpanInRow(wordsSorted: OcrWordLike[]): { homeGoals: number; aw
       rightX: c.bbox!.x1,
     };
   }
+  // Noisy OCR case: find a dash token and nearest numeric tokens around it.
+  for (let i = 0; i < wordsSorted.length; i++) {
+    const mid = wordsSorted[i]!;
+    if (!isDashToken(mid.text ?? "")) continue;
+    let leftNumIdx: number | null = null;
+    let rightNumIdx: number | null = null;
+    for (let j = i - 1; j >= Math.max(0, i - 4); j--) {
+      if (parseIntToken(wordsSorted[j]!.text ?? "") != null) {
+        leftNumIdx = j;
+        break;
+      }
+    }
+    for (let j = i + 1; j <= Math.min(wordsSorted.length - 1, i + 4); j++) {
+      if (parseIntToken(wordsSorted[j]!.text ?? "") != null) {
+        rightNumIdx = j;
+        break;
+      }
+    }
+    if (leftNumIdx == null || rightNumIdx == null) continue;
+    const leftWord = wordsSorted[leftNumIdx]!;
+    const rightWord = wordsSorted[rightNumIdx]!;
+    const homeGoals = parseIntToken(leftWord.text ?? "");
+    const awayGoals = parseIntToken(rightWord.text ?? "");
+    if (homeGoals == null || awayGoals == null) continue;
+    return {
+      homeGoals,
+      awayGoals,
+      leftX: leftWord.bbox!.x0,
+      rightX: rightWord.bbox!.x1,
+    };
+  }
   return null;
 }
 
 function groupWordsByVisualRows(words: OcrWordLike[]): OcrWordLike[][] {
   const sorted = [...words].sort((a, b) => (a.bbox!.y0 - b.bbox!.y0) || (a.bbox!.x0 - b.bbox!.x0));
   const rows: OcrWordLike[][] = [];
+  const heights = sorted.map((w) => Math.max(1, (w.bbox!.y1 - w.bbox!.y0)));
+  const avgHeight = heights.length ? heights.reduce((a, b) => a + b, 0) / heights.length : 12;
+  const tolBase = Math.max(12, avgHeight * 1.25);
   for (const w of sorted) {
     const wy = (w.bbox!.y0 + w.bbox!.y1) / 2;
     const last = rows[rows.length - 1];
@@ -299,7 +335,7 @@ function groupWordsByVisualRows(words: OcrWordLike[]): OcrWordLike[][] {
       continue;
     }
     const avgY = last.reduce((acc, cur) => acc + (cur.bbox!.y0 + cur.bbox!.y1) / 2, 0) / last.length;
-    const tol = 14;
+    const tol = tolBase;
     if (Math.abs(wy - avgY) <= tol) last.push(w);
     else rows.push([w]);
   }
