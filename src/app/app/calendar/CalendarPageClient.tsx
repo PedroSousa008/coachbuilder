@@ -48,7 +48,7 @@ function dateFromMonthInput(v: string): Date {
 type OcrWordBox = { x0: number; y0: number; x1: number; y1: number };
 type OcrWordLike = { text?: string; bbox?: OcrWordBox };
 type OcrLineLike = { text?: string };
-type OcrScoreAnchor = { homeGoals: number; awayGoals: number; yMid: number };
+type OcrScoreAnchor = { homeGoals: number; awayGoals: number; yMid: number; leftX: number; rightX: number };
 type MatchRow = { homeTeam: string; homeGoals: number; awayGoals: number; awayTeam: string };
 type MatchRowDraft = { homeTeam: string; result: string; awayTeam: string };
 type RowsValidation =
@@ -256,7 +256,7 @@ function extractScoreAnchorsFromRecognizedData(data: unknown): OcrScoreAnchor[] 
   const lines = ((data as { lines?: OcrLineLike[] } | null)?.lines ?? [])
     .map((l) => parseScorePair(l?.text ?? ""))
     .filter((x): x is { homeGoals: number; awayGoals: number } => x != null)
-    .map((s, idx) => ({ homeGoals: s.homeGoals, awayGoals: s.awayGoals, yMid: idx * 1000 }));
+    .map((s, idx) => ({ homeGoals: s.homeGoals, awayGoals: s.awayGoals, yMid: idx * 1000, leftX: -1, rightX: -1 }));
   if (lines.length) return lines;
 
   const words = ((data as { words?: OcrWordLike[] } | null)?.words ?? []).filter(
@@ -267,7 +267,7 @@ function extractScoreAnchorsFromRecognizedData(data: unknown): OcrScoreAnchor[] 
     const s = parseScorePair(w.text ?? "");
     if (!s) continue;
     const b = w.bbox!;
-    out.push({ homeGoals: s.homeGoals, awayGoals: s.awayGoals, yMid: (b.y0 + b.y1) / 2 });
+    out.push({ homeGoals: s.homeGoals, awayGoals: s.awayGoals, yMid: (b.y0 + b.y1) / 2, leftX: b.x0, rightX: b.x1 });
   }
   for (let i = 0; i <= words.length - 3; i++) {
     const a = words[i]!;
@@ -277,18 +277,65 @@ function extractScoreAnchorsFromRecognizedData(data: unknown): OcrScoreAnchor[] 
     const ag = parseIntToken(c.text ?? "");
     if (hg == null || ag == null || !isDashToken(b.text ?? "")) continue;
     const y = ((a.bbox!.y0 + a.bbox!.y1) / 2 + (b.bbox!.y0 + b.bbox!.y1) / 2 + (c.bbox!.y0 + c.bbox!.y1) / 2) / 3;
-    out.push({ homeGoals: hg, awayGoals: ag, yMid: y });
+    out.push({ homeGoals: hg, awayGoals: ag, yMid: y, leftX: a.bbox!.x0, rightX: c.bbox!.x1 });
   }
   const sorted = out.sort((x, y) => x.yMid - y.yMid);
   const dedup: OcrScoreAnchor[] = [];
   for (const s of sorted) {
     const prev = dedup[dedup.length - 1];
-    if (prev && Math.abs(prev.yMid - s.yMid) < 8 && prev.homeGoals === s.homeGoals && prev.awayGoals === s.awayGoals) {
+    if (
+      prev &&
+      Math.abs(prev.yMid - s.yMid) < 8 &&
+      prev.homeGoals === s.homeGoals &&
+      prev.awayGoals === s.awayGoals
+    ) {
       continue;
     }
     dedup.push(s);
   }
   return dedup;
+}
+
+function parseMatchRowsFromScoreAnchors(data: unknown): MatchRow[] {
+  const words = ((data as { words?: OcrWordLike[] } | null)?.words ?? []).filter(
+    (w): w is OcrWordLike => !!w?.bbox && typeof w?.text === "string"
+  );
+  if (!words.length) return [];
+  const teamWords = words.filter((w) => looksLikeTeamToken(w.text ?? ""));
+  if (!teamWords.length) return [];
+  const anchors = extractScoreAnchorsFromRecognizedData(data)
+    .filter((a) => a.leftX >= 0 && a.rightX >= 0)
+    .sort((a, b) => a.yMid - b.yMid);
+  if (!anchors.length) return [];
+
+  const heights = teamWords.map((w) => Math.max(1, (w.bbox!.y1 - w.bbox!.y0)));
+  const avgHeight = heights.length ? heights.reduce((a, b) => a + b, 0) / heights.length : 12;
+  const yTol = Math.max(12, avgHeight * 1.4);
+
+  const rows: MatchRow[] = [];
+  for (const a of anchors) {
+    const homeWords = teamWords.filter((w) => {
+      const b = w.bbox!;
+      const y = (b.y0 + b.y1) / 2;
+      return Math.abs(y - a.yMid) <= yTol && b.x1 < a.leftX - 4;
+    });
+    const awayWords = teamWords.filter((w) => {
+      const b = w.bbox!;
+      const y = (b.y0 + b.y1) / 2;
+      return Math.abs(y - a.yMid) <= yTol && b.x0 > a.rightX + 4;
+    });
+    const homeTeam = buildTeamNameFromWords(homeWords);
+    const awayTeam = buildTeamNameFromWords(awayWords);
+    if (!homeTeam || !awayTeam) continue;
+    if (homeTeam.toLowerCase() === awayTeam.toLowerCase()) continue;
+    rows.push({
+      homeTeam,
+      awayTeam,
+      homeGoals: a.homeGoals,
+      awayGoals: a.awayGoals,
+    });
+  }
+  return dedupeMatchRows(rows);
 }
 
 function parseIntToken(raw: string): number | null {
@@ -414,13 +461,16 @@ function parseMatchEventsFromOcrWordLayout(data: unknown): ParsedMatchEvent[] {
 
 function rowsFromRecognizedData(data: unknown): MatchRow[] {
   const lineRows = parseMatchRowsFromOcrLines(data);
+  const anchorRows = parseMatchRowsFromScoreAnchors(data);
   const layoutRows = parseMatchEventsFromOcrWordLayout(data).map((e) => ({
     homeTeam: e.homeTeam,
     homeGoals: e.homeGoals,
     awayGoals: e.awayGoals,
     awayTeam: e.awayTeam,
   }));
-  return dedupeMatchRows(layoutRows.length > lineRows.length ? layoutRows : lineRows);
+  const candidates = [lineRows, anchorRows, layoutRows].map((r) => dedupeMatchRows(r));
+  candidates.sort((a, b) => b.length - a.length);
+  return candidates[0] ?? [];
 }
 
 function scoreRowsCoverage(rows: MatchRow[]): { games: number; uniqueTeams: number } {
