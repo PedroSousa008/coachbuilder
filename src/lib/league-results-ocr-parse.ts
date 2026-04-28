@@ -419,8 +419,11 @@ export function parseMatchEventsFromOcrText(ocrText: string): ParsedMatchEvent[]
 
   // Grelhas tipo app: colunas casa | resultados | fora (Tesseract lê por coluna).
   parseColumnarStackedResults(lines, seen, out, handledScoreLineIndices);
-  // Prefer card-like parsing first; fallback parsers below cover mixed/raw OCR shapes.
-  parseByVenueBlocks(lines, seen, out);
+  // Só blocos delimitados por estádio — sem isso, um único bloco seria o ficheiro
+  // inteiro e emparelhava mal a 1.ª classificação com as duas primeiras equipas.
+  if (lines.some((l) => isProbableVenueLine(l))) {
+    parseByVenueBlocks(lines, seen, out);
+  }
   parseInlineMatches(text, seen, out);
   parseMultilineScoreCard(lines, seen, out, handledScoreLineIndices);
   parseHomeScoreThenAwayBelow(lines, seen, out);
