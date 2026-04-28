@@ -62,13 +62,14 @@ export default function TeamPage() {
     addStaff,
     updateStaff,
     removeStaff,
+    tacticMatches,
   } = useAppData();
   const { language } = useLanguage();
   const isPt = language === "pt-PT";
   const [q, setQ] = useState("");
   const [pos, setPos] = useState<Position | "all">("all");
   const [sortBy, setSortBy] = useState<SquadSortBy>("number");
-  const [tab, setTab] = useState<"players" | "staff" | "roles" | "callup">("players");
+  const [tab, setTab] = useState<"players" | "staff" | "roles" | "data" | "callup">("players");
   const [detailId, setDetailId] = useState<string | null>(null);
   const [detailStaffId, setDetailStaffId] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
@@ -88,6 +89,61 @@ export default function TeamPage() {
 
   const sortedFiltered = useMemo(() => sortSquadRoster(filtered, sortBy), [filtered, sortBy]);
   const sortedAllPlayers = useMemo(() => sortSquadRoster(players, "position"), [players]);
+  const playerDataRows = useMemo(() => {
+    const byId = new Map<
+      string,
+      {
+        games: number;
+        goals: number;
+        assists: number;
+        yellowCards: number;
+        redCards: number;
+        minutes: number;
+        wins: number;
+        draws: number;
+        losses: number;
+      }
+    >();
+    for (const m of tacticMatches) {
+      for (const line of m.playerStats) {
+        const row = byId.get(line.playerId) ?? {
+          games: 0,
+          goals: 0,
+          assists: 0,
+          yellowCards: 0,
+          redCards: 0,
+          minutes: 0,
+          wins: 0,
+          draws: 0,
+          losses: 0,
+        };
+        row.games += 1;
+        row.goals += line.goals;
+        row.assists += line.assists;
+        row.yellowCards += line.yellowCards;
+        row.redCards += line.redCards;
+        row.minutes += line.minutesPlayed;
+        if (m.outcome === "win") row.wins += 1;
+        else if (m.outcome === "draw") row.draws += 1;
+        else row.losses += 1;
+        byId.set(line.playerId, row);
+      }
+    }
+    return sortSquadRoster(players, "number").map((p) => ({
+      player: p,
+      stats: byId.get(p.id) ?? {
+        games: 0,
+        goals: 0,
+        assists: 0,
+        yellowCards: 0,
+        redCards: 0,
+        minutes: 0,
+        wins: 0,
+        draws: 0,
+        losses: 0,
+      },
+    }));
+  }, [players, tacticMatches]);
 
   const handleAddPlayer = (input: Parameters<typeof addPlayer>[0]) => {
     addPlayer(input);
@@ -178,6 +234,15 @@ export default function TeamPage() {
           }`}
         >
           Funções
+        </button>
+        <button
+          type="button"
+          onClick={() => setTab("data")}
+          className={`-mb-px border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
+            tab === "data" ? "border-accent text-white" : "border-transparent text-zinc-500 hover:text-zinc-300"
+          }`}
+        >
+          Dados
         </button>
         <button
           type="button"
@@ -325,6 +390,59 @@ export default function TeamPage() {
       ) : null}
 
       {tab === "callup" ? <TeamCallupPanel /> : null}
+
+      {tab === "data" ? (
+        <section className="space-y-4 print:hidden">
+          <div>
+            <h3 className="font-display text-base font-semibold text-white">Dados dos jogadores</h3>
+            <p className="mt-1 text-sm text-zinc-500">
+              Tracking automático por jogador a partir dos jogos registados nas Táticas.
+            </p>
+          </div>
+          {players.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-surface-border p-8 text-center text-zinc-500">
+              {isPt ? "Ainda sem jogadores para mostrar dados." : "No players yet to display data."}
+            </div>
+          ) : (
+            <div className="overflow-x-auto rounded-2xl border border-surface-border">
+              <table className="w-full min-w-[980px] text-left text-xs">
+                <thead>
+                  <tr className="border-b border-surface-border bg-zinc-900/50 text-[10px] uppercase tracking-wide text-zinc-500">
+                    <th className="px-2 py-2 font-medium">Jogador</th>
+                    <th className="px-2 py-2 font-medium text-center">Jogos</th>
+                    <th className="px-2 py-2 font-medium text-center">Golos</th>
+                    <th className="px-2 py-2 font-medium text-center">Assist.</th>
+                    <th className="px-2 py-2 font-medium text-center">Amarelos</th>
+                    <th className="px-2 py-2 font-medium text-center">Vermelhos</th>
+                    <th className="px-2 py-2 font-medium text-center">Minutos</th>
+                    <th className="px-2 py-2 font-medium text-center">Vitórias</th>
+                    <th className="px-2 py-2 font-medium text-center">Empates</th>
+                    <th className="px-2 py-2 font-medium text-center">Derrotas</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {playerDataRows.map(({ player, stats }) => (
+                    <tr key={player.id} className="border-b border-surface-border/60 last:border-0">
+                      <td className="px-2 py-2 text-zinc-200">
+                        #{player.number} {player.name}
+                      </td>
+                      <td className="px-2 py-2 text-center tabular-nums text-zinc-300">{stats.games}</td>
+                      <td className="px-2 py-2 text-center tabular-nums text-zinc-300">{stats.goals}</td>
+                      <td className="px-2 py-2 text-center tabular-nums text-zinc-300">{stats.assists}</td>
+                      <td className="px-2 py-2 text-center tabular-nums text-zinc-300">{stats.yellowCards}</td>
+                      <td className="px-2 py-2 text-center tabular-nums text-zinc-300">{stats.redCards}</td>
+                      <td className="px-2 py-2 text-center tabular-nums text-zinc-300">{stats.minutes}</td>
+                      <td className="px-2 py-2 text-center tabular-nums text-emerald-300">{stats.wins}</td>
+                      <td className="px-2 py-2 text-center tabular-nums text-zinc-300">{stats.draws}</td>
+                      <td className="px-2 py-2 text-center tabular-nums text-red-400/90">{stats.losses}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      ) : null}
 
       {tab === "roles" ? (
         <section className="space-y-6 print:hidden">
