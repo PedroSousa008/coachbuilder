@@ -57,7 +57,10 @@ type RowsValidation =
   | { ok: false; kind: "mapping"; message: string };
 
 function parseScorePair(raw: string): { homeGoals: number; awayGoals: number } | null {
-  const t = raw.replace(/\s+/g, "").replace(/[Oo]/g, "0");
+  const t = raw
+    .replace(/\s+/g, "")
+    .replace(/[Oo]/g, "0")
+    .replace(/[Il|]/g, "1");
   const m = t.match(/^([0-9]{1,2})([-–—−‐\/:])([0-9]{1,2})$/);
   if (!m) return null;
   const hg = Number(m[1]);
@@ -115,7 +118,7 @@ function cleanTeamCell(raw: string): string {
 function matchRowFromLineText(raw: string): MatchRow | null {
   const line = raw.replace(/\s+/g, " ").trim();
   if (!line) return null;
-  const score = line.match(/([0-9Oo]{1,2})\s*[-–—−‐\/:]\s*([0-9Oo]{1,2})/);
+  const score = line.match(/([0-9OoIl|]{1,2})\s*[-–—−‐\/:]\s*([0-9OoIl|]{1,2})/);
   if (!score || score.index == null) return null;
   const hg = Number((score[1] ?? "").replace(/[Oo]/g, "0"));
   const ag = Number((score[2] ?? "").replace(/[Oo]/g, "0"));
@@ -349,7 +352,7 @@ function parseMatchRowsFromScoreAnchors(data: unknown): MatchRow[] {
 }
 
 function parseIntToken(raw: string): number | null {
-  const t = raw.trim().replace(/[Oo]/g, "0");
+  const t = raw.trim().replace(/[Oo]/g, "0").replace(/[Il|]/g, "1");
   if (!/^\d{1,2}$/.test(t)) return null;
   const n = Number(t);
   if (!Number.isFinite(n) || n < 0 || n > 15) return null;
