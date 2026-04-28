@@ -149,6 +149,71 @@ function mergeResolvedIntoLeagueMatches(
   return [...incoming, ...existing].sort((a, b) => Date.parse(b.kickoff) - Date.parse(a.kickoff));
 }
 
+function pickNonEmptyArray<T>(incoming: T[], existing: T[]): T[] {
+  return incoming.length > 0 || existing.length === 0 ? incoming : existing;
+}
+
+function pickNonEmptyObject<T extends object>(incoming: T, existing: T): T {
+  return Object.keys(incoming ?? {}).length > 0 || Object.keys(existing ?? {}).length === 0 ? incoming : existing;
+}
+
+function pickNonEmptyString(incoming: string, existing: string): string {
+  return incoming.trim() !== "" || existing.trim() === "" ? incoming : existing;
+}
+
+function mergeWorkspaceSnapshotsClient(cloud: WorkspaceSnapshotV1, local: WorkspaceSnapshotV1): WorkspaceSnapshotV1 {
+  return {
+    ...local,
+    ...cloud,
+    players: pickNonEmptyArray(cloud.players, local.players),
+    staff: pickNonEmptyArray(cloud.staff, local.staff),
+    teamRoles: pickNonEmptyObject(cloud.teamRoles, local.teamRoles),
+    conversations: pickNonEmptyArray(cloud.conversations, local.conversations),
+    messages: pickNonEmptyObject(cloud.messages, local.messages),
+    trainingSessions: pickNonEmptyArray(cloud.trainingSessions, local.trainingSessions),
+    trainingPlayers: pickNonEmptyObject(cloud.trainingPlayers, local.trainingPlayers),
+    fixtures: pickNonEmptyArray(cloud.fixtures, local.fixtures),
+    coachProfile: {
+      ...local.coachProfile,
+      ...cloud.coachProfile,
+      name: pickNonEmptyString(cloud.coachProfile.name ?? "", local.coachProfile.name ?? ""),
+      club: pickNonEmptyString(cloud.coachProfile.club ?? "", local.coachProfile.club ?? ""),
+      email: pickNonEmptyString(cloud.coachProfile.email ?? "", local.coachProfile.email ?? ""),
+    },
+    league: {
+      ...local.league,
+      ...cloud.league,
+      url: pickNonEmptyString(cloud.league.url ?? "", local.league.url ?? ""),
+      rows: pickNonEmptyArray(cloud.league.rows ?? [], local.league.rows ?? []),
+      matches: dedupeMatches([...(cloud.league.matches ?? []), ...(local.league.matches ?? [])]),
+      pastClubResults: pickNonEmptyArray(cloud.league.pastClubResults ?? [], local.league.pastClubResults ?? []),
+      competitionName: cloud.league.competitionName ?? local.league.competitionName ?? null,
+      setup: cloud.league.setup ?? local.league.setup ?? null,
+      lastFetched: cloud.league.lastFetched ?? local.league.lastFetched ?? null,
+      lastError: cloud.league.lastError ?? local.league.lastError ?? null,
+    },
+    tactics: pickNonEmptyArray(cloud.tactics, local.tactics),
+    tacticMatches: pickNonEmptyArray(cloud.tacticMatches, local.tacticMatches),
+    tacticPlayerNotes: pickNonEmptyObject(cloud.tacticPlayerNotes, local.tacticPlayerNotes),
+    savedTrainingExercises: pickNonEmptyArray(cloud.savedTrainingExercises ?? [], local.savedTrainingExercises ?? []),
+    sketchArea:
+      (cloud.sketchArea.calendarEvents.length > 0 ||
+        cloud.sketchArea.notes.length > 0 ||
+        cloud.sketchArea.tasks.length > 0 ||
+        cloud.sketchArea.files.length > 0 ||
+        cloud.sketchArea.boardDrafts.length > 0 ||
+        cloud.sketchArea.watchlist.length > 0)
+        ? mergeSketchArea(cloud.sketchArea, emptySketchAreaState())
+        : mergeSketchArea(local.sketchArea, emptySketchAreaState()),
+    teamCallup:
+      (cloud.teamCallup.selectedPlayerIds.length > 0 ||
+        Boolean(cloud.teamCallup.clubLogoDataUrl) ||
+        Object.values(cloud.teamCallup.form).some((v) => String(v).trim() !== ""))
+        ? mergeTeamCallup(cloud.teamCallup, emptyTeamCallupState())
+        : mergeTeamCallup(local.teamCallup, emptyTeamCallupState()),
+  };
+}
+
 function tacticPlayerNoteKey(tacticId: string, playerId: string) {
   return `${tacticId}::${playerId}`;
 }
@@ -597,7 +662,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         };
         if (cancelled) return;
         if (res.ok && data.ok && data.payload && snapshotHasMeaningfulData(data.payload)) {
-          const s = data.payload;
+          const local = collectWorkspaceFromLocalStorage(user.id);
+          const s =
+            snapshotHasMeaningfulData(local) && local.version === data.payload.version
+              ? mergeWorkspaceSnapshotsClient(data.payload, local)
+              : data.payload;
           const actorIdCloud = user?.id ?? mockCoach.id;
           let loadedConvs = s.conversations;
           if (!loadedConvs.some((c) => c.type === "group")) {
@@ -645,6 +714,14 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
             sketchArea: mergeSketchArea(s.sketchArea, emptySketchAreaState()),
             teamCallup: mergedCallup,
           });
+          if (s !== data.payload) {
+            await fetch("/api/cloud/workspace", {
+              method: "PUT",
+              credentials: "include",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ payload: s }),
+            });
+          }
         } else {
           const local = collectWorkspaceFromLocalStorage(user.id);
           if (snapshotHasMeaningfulData(local)) {
