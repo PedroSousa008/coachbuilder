@@ -196,11 +196,11 @@ export function CalendarPageClient() {
       const file = resultsImageInputRef.current?.files?.[0];
       if (file) {
         try {
-          const T = await import("tesseract.js");
-          const worker = await T.createWorker("por+eng");
-          /** Bloco único — melhor para grelhas de resultados (linhas com casa | resultado | fora). */
-          const psmSingleBlock = (T as { PSM?: { SINGLE_BLOCK?: number } }).PSM?.SINGLE_BLOCK ?? 6;
-          await worker.setParameters({ tessedit_pageseg_mode: psmSingleBlock });
+          const tess = await import("tesseract.js");
+          const worker = await tess.createWorker("por+eng");
+          /** PSM é enum de strings (ex. SINGLE_BLOCK = '6'); número quebra o tipo em `setParameters`. */
+          const pageSegMode = tess.PSM?.SINGLE_BLOCK ?? "6";
+          await worker.setParameters({ tessedit_pageseg_mode: pageSegMode });
           const {
             data: { text },
           } = await worker.recognize(file);
