@@ -47,7 +47,7 @@ function subscriberStatus(
 }
 
 const stripeBackedMonthlyWhere = {
-  AND: [{ stripeSubscriptionId: { not: null } }, { NOT: { stripeSubscriptionId: "" } } }],
+  AND: [{ stripeSubscriptionId: { not: null } }, { NOT: { stripeSubscriptionId: "" } }],
 } as const;
 
 export async function GET() {
