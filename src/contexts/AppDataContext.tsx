@@ -354,13 +354,18 @@ type AppDataContextValue = {
     patch: Partial<Omit<StandingsTeamRow, "teamId" | "team">>,
     phaseId?: string
   ) => void;
-  applyLeagueMatchEvents: (events: ParsedMatchEvent[], phaseId?: string) => void;
+  applyLeagueMatchEvents: (
+    events: ParsedMatchEvent[],
+    phaseId?: string,
+    opts?: { requireFullApply?: boolean }
+  ) => { appliedCount: number; skippedCount: number };
   /** Persist league state to local storage (and cloud when enabled) immediately. */
   saveLeagueTableSnapshot: () => void;
   /** Zera J/V/E/D/GM/GS/P em todas as fases; mantém nomes e ordem das equipas. */
   clearLeagueStandingsStatsKeepNames: () => void;
   pastClubResults: PastClubResult[];
   updatePastClubResultNote: (id: string, notes: string) => void;
+  removePastClubResult: (id: string) => void;
 
   coachProfile: CoachProfileState;
   setCoachProfile: (patch: Partial<CoachProfileState>) => void;
@@ -1713,42 +1718,63 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     []
   );
 
-  const applyLeagueMatchEvents = useCallback((events: ParsedMatchEvent[], phaseId?: string) => {
-    if (!events.length) return;
-    let appliedSnapshot: ResolvedLeagueResult[] = [];
-    setLeagueSetup((prev) => {
-      if (!prev) return prev;
-      const targetPhaseId = phaseId ?? prev.activePhaseId;
-      const phases = prev.phases.map((phase) => {
-        if (phase.id !== targetPhaseId) return phase;
-        const { rows: nextRows, applied } = applyMatchEventsToStandings(phase.standings.rows, events);
-        appliedSnapshot = applied;
-        const updated = {
-          ...phase,
-          standings: { ...phase.standings, rows: nextRows, updatedAt: new Date().toISOString() },
-        };
-        if (updated.id === prev.activePhaseId) {
-          setLeagueTableRows(toLeagueTableRows(nextRows));
-          setLeagueTableLastFetched(new Date().toISOString());
-          setLeagueTableFetchError(null);
-        }
-        return updated;
-      });
-      return { ...prev, phases };
-    });
-    const club = coachProfile.club.trim();
-    if (appliedSnapshot.length) {
-      setLeagueMatches((prev) => mergeResolvedIntoLeagueMatches(prev, appliedSnapshot));
-    }
-    if (club && appliedSnapshot.length) {
-      setPastClubResults((prev) =>
-        mergePastClubResults(prev, buildPastClubResultsFromResolved(club, appliedSnapshot))
-      );
-    }
-  }, [coachProfile.club]);
+  const applyLeagueMatchEvents = useCallback(
+    (
+      events: ParsedMatchEvent[],
+      phaseId?: string,
+      opts?: { requireFullApply?: boolean }
+    ): { appliedCount: number; skippedCount: number } => {
+      if (!events.length) return { appliedCount: 0, skippedCount: 0 };
+      if (!leagueSetup) return { appliedCount: 0, skippedCount: events.length };
+
+      const targetPhaseId = phaseId ?? leagueSetup.activePhaseId;
+      const phase = leagueSetup.phases.find((p) => p.id === targetPhaseId);
+      if (!phase) return { appliedCount: 0, skippedCount: events.length };
+
+      const { rows: nextRows, applied } = applyMatchEventsToStandings(phase.standings.rows, events);
+      const skippedCount = Math.max(0, events.length - applied.length);
+      if (opts?.requireFullApply && skippedCount > 0) {
+        return { appliedCount: applied.length, skippedCount };
+      }
+
+      const nowIso = new Date().toISOString();
+      const nextSetup = {
+        ...leagueSetup,
+        phases: leagueSetup.phases.map((p) =>
+          p.id === targetPhaseId
+            ? {
+                ...p,
+                standings: { ...p.standings, rows: nextRows, updatedAt: nowIso },
+              }
+            : p
+        ),
+      };
+      setLeagueSetup(nextSetup);
+
+      if (targetPhaseId === nextSetup.activePhaseId) {
+        setLeagueTableRows(toLeagueTableRows(nextRows));
+        setLeagueTableLastFetched(nowIso);
+        setLeagueTableFetchError(null);
+      }
+
+      const club = coachProfile.club.trim();
+      if (applied.length) {
+        setLeagueMatches((prev) => mergeResolvedIntoLeagueMatches(prev, applied));
+      }
+      if (club && applied.length) {
+        setPastClubResults((prev) => mergePastClubResults(prev, buildPastClubResultsFromResolved(club, applied)));
+      }
+      return { appliedCount: applied.length, skippedCount };
+    },
+    [coachProfile.club, leagueSetup]
+  );
 
   const updatePastClubResultNote = useCallback((id: string, notes: string) => {
     setPastClubResults((prev) => prev.map((r) => (r.id === id ? { ...r, notes } : r)));
+  }, []);
+
+  const removePastClubResult = useCallback((id: string) => {
+    setPastClubResults((prev) => prev.filter((r) => r.id !== id));
   }, []);
 
   const saveLeagueTableSnapshot = useCallback(() => {
@@ -2000,6 +2026,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       clearLeagueStandingsStatsKeepNames,
       pastClubResults,
       updatePastClubResultNote,
+      removePastClubResult,
       coachProfile,
       setCoachProfile,
       savedTactics,
@@ -2074,6 +2101,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       clearLeagueStandingsStatsKeepNames,
       pastClubResults,
       updatePastClubResultNote,
+      removePastClubResult,
       coachProfile,
       setCoachProfile,
       savedTactics,

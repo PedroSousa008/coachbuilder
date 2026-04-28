@@ -63,6 +63,7 @@ export function CalendarPageClient() {
     clearLeagueStandingsStatsKeepNames,
     pastClubResults,
     updatePastClubResultNote,
+    removePastClubResult,
     sketchArea,
     setSketchArea,
     coachProfile,
@@ -232,7 +233,15 @@ export function CalendarPageClient() {
         setOcrBusy(false);
         return;
       }
-      applyLeagueMatchEvents(events);
+      const summary = applyLeagueMatchEvents(events, undefined, { requireFullApply: true });
+      if (summary.skippedCount > 0) {
+        setOcrError(
+          `Detetei ${events.length} jogos, mas só consegui mapear ${summary.appliedCount} à League Table. ` +
+            "Não apliquei alterações parciais. Confirma os nomes das equipas na tabela e tenta novamente."
+        );
+        setOcrBusy(false);
+        return;
+      }
       setResultsOcrText("");
       if (resultsImageInputRef.current) resultsImageInputRef.current.value = "";
     } catch {
@@ -970,6 +979,7 @@ export function CalendarPageClient() {
                       <th className="px-2 py-2 font-medium">Fora</th>
                       <th className="px-2 py-2 font-medium">Resultado</th>
                       <th className="px-2 py-2 font-medium">Observações</th>
+                      <th className="px-2 py-2 font-medium text-right">Ações</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -994,6 +1004,16 @@ export function CalendarPageClient() {
                             placeholder="Notas"
                             className="h-8 text-xs"
                           />
+                        </td>
+                        <td className="px-2 py-2 text-right">
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            className="h-8 px-2 text-[11px]"
+                            onClick={() => removePastClubResult(row.id)}
+                          >
+                            Apagar
+                          </Button>
                         </td>
                       </tr>
                     ))}
