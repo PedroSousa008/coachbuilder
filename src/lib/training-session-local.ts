@@ -282,6 +282,12 @@ export const MOVIMENTACAO_AREA_CRUZAMENTOS_VIDEO_URL =
   "/videos/training/movimentação-cruzamento.mp4";
 
 /**
+ * Vídeo do exercício "Variação de Cruzamentos".
+ * Coloca o ficheiro em `public/videos/training/variação-cruzamentos.mp4`.
+ */
+export const VARIACAO_CRUZAMENTOS_VIDEO_URL = "/videos/training/variação-cruzamentos.mp4";
+
+/**
  * Vídeo do exercício "Full Back Overlap - Striker".
  * Coloca o ficheiro em `public/videos/training/full-back-overlap-2.mp4` ou substitui por um link YouTube.
  */
@@ -641,6 +647,11 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
     "3 atacantes contra 1",
     "bola aerea nas costas",
     "cruzamento overlap",
+    "variacao de cruzamentos",
+    "tres equipas",
+    "3 equipas",
+    "devolucao interior",
+    "combinacao exterior",
   ],
   pressing: [
     "pressão",
@@ -727,6 +738,8 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
     "cruzamento em 2 toques",
     "timming",
     "timing do cruzamento",
+    "variacao de cruzamentos",
+    "primeiro poste segundo poste",
     "overlap",
     "overlap lateral",
     "finishing transition",
@@ -1521,6 +1534,26 @@ const MAIN_DRILLS: MainDrillDef[] = [
     }),
   },
   {
+    themes: ["transition", "finishing", "wide"],
+    title: "Variação de Cruzamentos",
+    describe: (pl, m) => ({
+      description: `O exercício divide os jogadores em 3 equipas, que competem entre si para marcar mais golos. Em todas as jogadas, os 3 atacantes repetem a mesma estrutura de movimentos: ataque ao primeiro poste, à zona central e ao segundo poste. Variações de arranque: (1) Combinação exterior + cruzamento de primeira — o jogador aberto combina com o colega em apoio interior e cruza de primeira; (2) Cruzamento após devolução interior — médio passa ao extremo ou lateral, recebe a devolução e cruza de imediato (ritmo ao estilo De Bruyne); (3) Um-dois no lado oposto + cruzamento — no corredor contrário, lateral ou extremo faz 1-2 com o treinador e cruza de primeira. As equipas alternam nas execuções e somam pontos por cada golo. O foco está na qualidade do cruzamento, no timing de entrada na área e na eficácia na finalização. (${m} min)`,
+      coachingPoints:
+        "Trio na área disciplinado: um ataca 1.º poste, outro zona do penalty, outro 2.º poste — sem colapsar na mesma linha. Cruzamento com intenção (largura da área, segundo poste ou remate cruzado); apoio interior a receber em aberto para a devolução rápida. Competir com fair-play: repor bola depressa e rodar equipas para volume de repetições.",
+      setup:
+        "Grande área ou zona final com dois corredores largos; baliza e GR (ou mini-balizas); coletes para 3 equipas; bolas junto ao coach e às estações laterais; referências opcionais para linha de cruzamento.",
+      groupSplit:
+        pl.length >= 15
+          ? "Três equipas de 5 (ou 4+1) a alternar: uma ataca com cruzamento, as outras defendem / esperam; rotação a cada X golos ou minutos."
+          : pl.length >= 12
+            ? "Três equipas mais curtas; reduz defensores ou usa neutro de apoio no 1-2 com o treinador."
+            : "Duas equipas + coach como terceira referência; ou reduz a 2 atacantes na área mantendo as mesmas variações de cruzamento.",
+      diagramHint:
+        "3 equipas; setas 1.º poste / central / 2.º poste; três vias de cruzamento (combinação exterior, devolução interior, 1-2 com treinador na banda oposta); pontuação por golo.",
+      videoUrl: VARIACAO_CRUZAMENTOS_VIDEO_URL,
+    }),
+  },
+  {
     themes: ["finishing", "transition", "physical"],
     title: "4 Finishing Drills",
     describe: (pl, m) => ({
@@ -2243,6 +2276,7 @@ const SINGLE_DRILL_15_MIN_TITLES = new Set<string>([
   "Combinações e Passe de Rotura",
   "Combinações sob Pressão",
   "Movimentação dentro de Área em Cruzamentos",
+  "Variação de Cruzamentos",
 ]);
 const SINGLE_DRILL_10_MIN_TITLES = new Set<string>([
   "Passing Activation",
@@ -2337,6 +2371,15 @@ function singleDrillProgressionVariationsForTitle(title: string): {
         "Reduz a largura útil na área para exigir cruzamentos mais precisos; ou o lateral só cruza após comando verbal do médio; ou acrescenta segundo defensor a fechar o primeiro poste (sombra).",
       variations:
         "Séries alternadas de cruzamento rasteiro e pendulado; ou dois remates de primeira obrigatórios antes de rodar papéis; ou médio e lateral a trocar de função a cada 4 entradas.",
+    };
+  }
+
+  if (title === "Variação de Cruzamentos") {
+    return {
+      progression:
+        "Golo vale duplo se sair de cruzamento de primeira após devolução interior; ou limita a 1 toque antes do cruzamento em todas as variantes durante 3 minutos; ou acrescenta segundo defensor na área (sombra).",
+      variations:
+        "Ciclo obrigatório: 2 min em cada uma das 3 variações antes de libertar escolha livre; ou troca o servidor (coach por médio) no 1-2 da banda; ou cruzamento só com o pé não dominante numa ronda.",
     };
   }
 
@@ -2730,6 +2773,7 @@ export function getTrainingCatalogItems(players: Player[]): TrainingCatalogItem[
     "Fitness Rondo into Finishing": ["finishing", "pressing", "physical"],
     "Midfielder Run Behind Defense": ["finishing"],
     "Movimentação dentro de Área em Cruzamentos": ["finishing", "transition"],
+    "Variação de Cruzamentos": ["finishing", "transition"],
     "Full Back Overlap - Winger": ["finishing"],
     "Full Back Overlap - Striker": ["finishing"],
     "3v2 Fast Break": ["finishing", "defensive", "transition", "physical"],
