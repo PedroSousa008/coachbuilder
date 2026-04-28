@@ -48,12 +48,47 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
           { status: 400 }
         );
       }
+      const prevPlan = target.subscriptionPlan.trim();
+      const isPresident = target.coachingRole?.trim().toLowerCase() === "club-president";
+
       data.subscriptionPlan = plan;
       /** Evita estado incoerente (ex.: plano `free` com trial ainda no futuro → acesso Pro fantasma). */
       if (plan === "free") {
         data.proTrialEndsAt = null;
         data.paymentGraceEndsAt = null;
         data.lastPaymentFailedAt = null;
+      }
+
+      /**
+       * Presidente «Grátis» pelo Admin = oferta total (comped 0 €), sem Stripe.
+       * Só ao mudar de outro plano para `free` e sem `customMonthlyPriceEur` no body — não afecta contas
+       * que já estavam em `free` após trial (permanecem com paywall até pagarem).
+       */
+      if (
+        isPresident &&
+        plan === "free" &&
+        prevPlan !== "free" &&
+        !("customMonthlyPriceEur" in body)
+      ) {
+        data.customMonthlyPriceEur = new Prisma.Decimal("0");
+      }
+
+      /**
+       * De «oferta» (0 €) para PresidentPro/CoachPro mensal: limpar comped para voltar a exigir Stripe,
+       * excepto se o Admin enviar `customMonthlyPriceEur` no mesmo PATCH.
+       */
+      if (
+        isPresident &&
+        (plan === "president_pro_monthly" || plan === "pro_monthly") &&
+        !("customMonthlyPriceEur" in body)
+      ) {
+        const prevCustom = target.customMonthlyPriceEur;
+        const wasComped =
+          prevCustom != null && new Prisma.Decimal(prevCustom).equals(new Prisma.Decimal(0));
+        const wasNonMonthly = prevPlan !== "president_pro_monthly" && prevPlan !== "pro_monthly";
+        if (wasComped && wasNonMonthly) {
+          data.customMonthlyPriceEur = null;
+        }
       }
     }
 
