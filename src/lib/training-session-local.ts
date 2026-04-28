@@ -288,6 +288,12 @@ export const MOVIMENTACAO_AREA_CRUZAMENTOS_VIDEO_URL =
 export const VARIACAO_CRUZAMENTOS_VIDEO_URL = "/videos/training/variação-cruzamentos.mp4";
 
 /**
+ * Vídeo do exercício "4v4 mais apoios laterais".
+ * Coloca o ficheiro em `public/videos/training/4v4-4-teams.mp4`.
+ */
+export const FOUR_V_FOUR_FOUR_TEAMS_VIDEO_URL = "/videos/training/4v4-4-teams.mp4";
+
+/**
  * Vídeo do exercício "Full Back Overlap - Striker".
  * Coloca o ficheiro em `public/videos/training/full-back-overlap-2.mp4` ou substitui por um link YouTube.
  */
@@ -647,6 +653,10 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
     "3 atacantes contra 1",
     "bola aerea nas costas",
     "cruzamento overlap",
+    "4v4 mais apoios",
+    "4v4 apoios laterais",
+    "sai imediatamente",
+    "equipa de fora entra",
     "variacao de cruzamentos",
     "tres equipas",
     "3 equipas",
@@ -740,6 +750,11 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
     "timing do cruzamento",
     "variacao de cruzamentos",
     "primeiro poste segundo poste",
+    "4v4 mais apoios",
+    "finalizacoes rapidas",
+    "finalizações rápidas",
+    "jogo interior",
+    "apoios exteriores",
     "overlap",
     "overlap lateral",
     "finishing transition",
@@ -981,6 +996,11 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
     "receção orientada",
     "rececao orientada",
     "qualidade no primeiro toque",
+    "4v4 mais apoios",
+    "apoios exteriores 1 toque",
+    "competitividade",
+    "espaco reduzido",
+    "espaço reduzido",
   ],
   balanced: [],
 };
@@ -1551,6 +1571,26 @@ const MAIN_DRILLS: MainDrillDef[] = [
       diagramHint:
         "3 equipas; setas 1.º poste / central / 2.º poste; três vias de cruzamento (combinação exterior, devolução interior, 1-2 com treinador na banda oposta); pontuação por golo.",
       videoUrl: VARIACAO_CRUZAMENTOS_VIDEO_URL,
+    }),
+  },
+  {
+    themes: ["transition", "finishing", "physical"],
+    title: "4v4 mais apoios laterais",
+    describe: (pl, m) => ({
+      description: `O exercício decorre num campo curto com duas balizas de 11, envolvendo 4 equipas de 4 jogadores. Jogam 2 equipas no interior (4v4), enquanto as outras 2 aguardam fora do campo. A equipa que sofre golo sai de imediato, entrando uma das equipas que está de fora. Os 8 jogadores exteriores funcionam como apoios: 4 nas linhas laterais e 4 junto às balizas (um de cada lado em cada baliza). Os apoios exteriores só podem jogar com 1 toque, acelerando o ritmo. O foco está em finalizações rápidas, decisões em espaço reduzido, uso dos apoios exteriores, velocidade mental e intensidade competitiva. (${m} min)`,
+      coachingPoints:
+        "No interior: primeiro olhar à baliza, apoios curtos e remates decisivos; evitar conduções longas no sítio. Apoios exteriores: corpo aberto, comunicação, passe firme de primeira — se precisarem de 2 toques, repõe-se a bola com fair-play. Transição ao golo: equipa que sofreu sai rápido pela linha lateral; a que entra já posicionada para não atrasar o jogo.",
+      setup:
+        "Campo reduzido proporcional à idade (ex. ~32–40×20–24 m); 2 balizas de 11 com GR ou jogadores nas traves; 4 coletes distintos; bolas extra fora do campo para repor.",
+      groupSplit:
+        pl.length >= 24
+          ? "4×4 jogadores de equipa + 8 apoios fixos (4 laterais + 4 junto às balizas); rotação automática ao golo."
+          : pl.length >= 16
+            ? "4 equipas de 4 sem apoios dedicados: jogadores de fora cumprem 1 toque como 'linha viva' ou reduz para 3 equipas de 4 com 1 neutro em cada lateral."
+            : "3 equipas de 4 ou 4v4 simples com coach + 1–2 jogadores como apoios de 1 toque nas linhas.",
+      diagramHint:
+        "Rectângulo central 4v4; 4 apoios nas linhas laterais; 2+2 junto às balizas (fundo); seta: golo → equipa sai → equipa de fora entra.",
+      videoUrl: FOUR_V_FOUR_FOUR_TEAMS_VIDEO_URL,
     }),
   },
   {
@@ -2261,6 +2301,7 @@ const SINGLE_DRILL_20_MIN_TITLES = new Set<string>([
   "9v9 + 2 Game",
   "Finishing Transition",
   "Fitness Rondo into Finishing",
+  "4v4 mais apoios laterais",
 ]);
 /** Valor médio quando o treinador indica ~15–20 min (ex.: bloco final). */
 const SINGLE_DRILL_18_MIN_TITLES = new Set<string>(["Double Finishing Drill"]);
@@ -2380,6 +2421,15 @@ function singleDrillProgressionVariationsForTitle(title: string): {
         "Golo vale duplo se sair de cruzamento de primeira após devolução interior; ou limita a 1 toque antes do cruzamento em todas as variantes durante 3 minutos; ou acrescenta segundo defensor na área (sombra).",
       variations:
         "Ciclo obrigatório: 2 min em cada uma das 3 variações antes de libertar escolha livre; ou troca o servidor (coach por médio) no 1-2 da banda; ou cruzamento só com o pé não dominante numa ronda.",
+    };
+  }
+
+  if (title === "4v4 mais apoios laterais") {
+    return {
+      progression:
+        "Apoios exteriores com máximo 2 toques num bloco de 3 min antes de voltar a 1 toque; ou campo mais estreito para forçar verticalidade; ou golo de cabeça vale duplo.",
+      variations:
+        "Rotação dos apoios laterais com os da linha de baliza a cada 5 minutos; ou equipa que marca mantém o campo e escolhe qual adversário entra; ou limite de 8 s para remate após recuperação no 4v4.",
     };
   }
 
@@ -2779,6 +2829,7 @@ export function getTrainingCatalogItems(players: Player[]): TrainingCatalogItem[
     "3v2 Fast Break": ["finishing", "defensive", "transition", "physical"],
     "3v2 Finishing Drill": ["finishing", "defensive"],
     "5 Teams 3v3 Attacking": ["finishing", "transition", "physical"],
+    "4v4 mais apoios laterais": ["finishing", "transition", "physical"],
 
     // Organização defensiva
     "Back Four Shifting": ["defensive", "pressing"],
