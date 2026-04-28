@@ -115,21 +115,11 @@ export function applyMatchEventsToStandings(
   const applied: ResolvedLeagueResult[] = [];
 
   /**
-   * Resolver cada jogo só contra linhas ainda livres. Antes, todos os eventos
-   * competiam pela mesma tabela: vários nomes OCR podiam escolher a mesma linha
-   * como “melhor match”; o guardrail de `usedTeamIds` descartava depois jogos
-   * válidos (ex.: lista inteira de resultados de uma jornada).
+   * Resolver cada jogo só contra linhas ainda livres (evita colisões de fuzzy match).
+   * Ordem = ordem do texto/OCR (estrutura da jornada), não por “confiança” agregada.
    */
-  const sortMeta = events.map((event) => {
-    const homeMatch = findBestStandingsRowMatchForOcr(event.homeTeam, rowsCopy);
-    const awayMatch = findBestStandingsRowMatchForOcr(event.awayTeam, rowsCopy);
-    const sortKey = (homeMatch?.score ?? 0) + (awayMatch?.score ?? 0);
-    return { event, sortKey };
-  });
-  sortMeta.sort((a, b) => b.sortKey - a.sortKey);
-
   const usedTeamIds = new Set<string>();
-  for (const { event } of sortMeta) {
+  for (const event of events) {
     const pool = rowsCopy.filter((r) => !usedTeamIds.has(r.teamId));
     const homeMatch = findBestStandingsRowMatchForOcr(event.homeTeam, pool);
     const awayMatch = findBestStandingsRowMatchForOcr(event.awayTeam, pool);

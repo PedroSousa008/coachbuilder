@@ -76,6 +76,20 @@ function looksLikeTeamName(s: string): boolean {
   return true;
 }
 
+function isScoreOnlyLineStr(line: string): boolean {
+  if (lineContainsClockLikeToken(line)) return false;
+  return SCORE_ONLY_LINE.test(line);
+}
+
+/** Linha só com nome de clube (sem resultado embutido) — colunas de OCR. */
+function isPureTeamLine(line: string): boolean {
+  const t = collapse(line);
+  if (/^jornada\b/i.test(t)) return false;
+  if (/^classifica/i.test(t)) return false;
+  if (/^resultad/i.test(t)) return false;
+  return looksLikeTeamName(line) && parseScoreTokenLine(line) === null;
+}
+
 function isPlausibleScore(homeGoals: number, awayGoals: number): boolean {
   if (!Number.isFinite(homeGoals) || !Number.isFinite(awayGoals)) return false;
   if (homeGoals < 0 || awayGoals < 0) return false;
@@ -155,9 +169,85 @@ function splitTeamsAroundDateToken(line: string): [string, string] | null {
   return [left, right];
 }
 
+/**
+ * Screenshots de apps leem muitas vezes em colunas: [todas as casas] [todos os resultados] [todas as foras].
+ * O regex “equipa golos equipa” na mesma linha falha; este parser alinha por índice.
+ */
+function parseColumnarStackedResults(
+  lines: string[],
+  seen: Set<string>,
+  out: ParsedMatchEvent[],
+  handledScoreLineIndices: Set<number>
+): void {
+  let i = 0;
+  while (i < lines.length) {
+    if (!isScoreOnlyLineStr(lines[i] ?? "")) {
+      i++;
+      continue;
+    }
+    const scoreStart = i;
+    const scoreTuples: { hg: number; ag: number }[] = [];
+    while (i < lines.length && isScoreOnlyLineStr(lines[i] ?? "")) {
+      const m = (lines[i] ?? "").match(SCORE_ONLY_LINE);
+      if (m) {
+        const hg = parseGoalToken(m[1]);
+        const ag = parseGoalToken(m[2]);
+        if (isPlausibleScore(hg, ag)) scoreTuples.push({ hg, ag });
+      }
+      i++;
+    }
+    const scoreEnd = i;
+    const n = scoreTuples.length;
+    if (n === 0) {
+      i = scoreEnd;
+      continue;
+    }
+
+    const rawHomes: string[] = [];
+    for (let j = scoreStart - 1; j >= 0 && rawHomes.length < n; j--) {
+      const L = lines[j] ?? "";
+      if (!collapse(L)) continue;
+      if (lineContainsClockLikeToken(L)) break;
+      if (isProbableDateLine(L) || isProbableVenueLine(L)) break;
+      if (isScoreOnlyLineStr(L)) break;
+      if (!isPureTeamLine(L)) continue;
+      rawHomes.push(L);
+    }
+
+    const rawAways: string[] = [];
+    const awayScanEnd = Math.min(lines.length, scoreEnd + n + 24);
+    for (let j = scoreEnd; j < awayScanEnd && rawAways.length < n; j++) {
+      const L = lines[j] ?? "";
+      if (!collapse(L)) continue;
+      if (lineContainsClockLikeToken(L)) break;
+      if (isProbableDateLine(L) || isProbableVenueLine(L)) break;
+      if (isScoreOnlyLineStr(L)) break;
+      if (!isPureTeamLine(L)) continue;
+      rawAways.push(L);
+    }
+
+    if (rawHomes.length < n || rawAways.length < n) {
+      i = scoreEnd;
+      continue;
+    }
+
+    const homesOrdered = [...rawHomes].reverse();
+    for (let k = 0; k < n; k++) {
+      pushEvent(out, seen, homesOrdered[k]!, rawAways[k]!, scoreTuples[k]!.hg, scoreTuples[k]!.ag);
+    }
+    for (let idx = scoreStart; idx < scoreEnd; idx++) handledScoreLineIndices.add(idx);
+  }
+}
+
 /** Cartão jornada: Casa / Fora / 2 - 1 / data / estádio — ou Casa / 2 - 1 / Fora (Benfica). */
-function parseMultilineScoreCard(lines: string[], seen: Set<string>, out: ParsedMatchEvent[]): void {
+function parseMultilineScoreCard(
+  lines: string[],
+  seen: Set<string>,
+  out: ParsedMatchEvent[],
+  handledScoreLineIndices: Set<number>
+): void {
   for (let i = 0; i < lines.length; i++) {
+    if (handledScoreLineIndices.has(i)) continue;
     const line = lines[i] ?? "";
     if (lineContainsClockLikeToken(line)) continue;
     const scoreM = line.match(SCORE_ONLY_LINE);
@@ -325,11 +415,14 @@ export function parseMatchEventsFromOcrText(ocrText: string): ParsedMatchEvent[]
 
   const seen = new Set<string>();
   const out: ParsedMatchEvent[] = [];
+  const handledScoreLineIndices = new Set<number>();
 
+  // Grelhas tipo app: colunas casa | resultados | fora (Tesseract lê por coluna).
+  parseColumnarStackedResults(lines, seen, out, handledScoreLineIndices);
   // Prefer card-like parsing first; fallback parsers below cover mixed/raw OCR shapes.
   parseByVenueBlocks(lines, seen, out);
   parseInlineMatches(text, seen, out);
-  parseMultilineScoreCard(lines, seen, out);
+  parseMultilineScoreCard(lines, seen, out, handledScoreLineIndices);
   parseHomeScoreThenAwayBelow(lines, seen, out);
 
   return out;

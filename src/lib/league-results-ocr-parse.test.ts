@@ -149,6 +149,49 @@ Estádio Aves`;
   assert.equal(events[1]?.awayTeam, "Cd Nacional");
 });
 
+test("parseMatchEventsFromOcrText reads columnar app layout: all homes, all scores, all aways", () => {
+  const ocr = `Pevidém SC
+GD Figueiredo
+Desp. Ronfe
+FC Brufense 1957
+Arsenal da Devesa
+Arões SC
+Maximinense
+1-3
+0-1
+1-2
+4-0
+1-1
+0-1
+0-4
+U. Torcatense
+GD Selho
+Lomarense
+Brito SC
+AD Oliveirense
+Infias
+GD S. Cristovão`;
+  const events = parseMatchEventsFromOcrText(ocr);
+  assert.equal(events.length, 7);
+  const byHome = (h: string) => events.find((e) => e.homeTeam === h);
+  assert.deepEqual(byHome("Pevidém SC"), {
+    homeTeam: "Pevidém SC",
+    awayTeam: "U. Torcatense",
+    homeGoals: 1,
+    awayGoals: 3,
+    source: "image",
+  });
+  assert.deepEqual(byHome("GD Figueiredo"), {
+    homeTeam: "GD Figueiredo",
+    awayTeam: "GD Selho",
+    homeGoals: 0,
+    awayGoals: 1,
+    source: "image",
+  });
+  assert.equal(byHome("Arsenal da Devesa")?.awayGoals, 1);
+  assert.equal(byHome("FC Brufense 1957")?.homeGoals, 4);
+});
+
 test("parseMatchEventsFromOcrText parses block cards with accents/no-accents consistently", () => {
   const ocr = `Vitória Sc
 Rio Ave Fc
