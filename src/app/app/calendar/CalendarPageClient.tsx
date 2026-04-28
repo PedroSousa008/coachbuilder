@@ -58,12 +58,15 @@ type RowsValidation =
 
 function parseScorePair(raw: string): { homeGoals: number; awayGoals: number } | null {
   const t = raw.replace(/\s+/g, "").replace(/[Oo]/g, "0");
-  const m = t.match(/^([0-9]{1,2})[-–—−‐\/]([0-9]{1,2})$/);
+  const m = t.match(/^([0-9]{1,2})([-–—−‐\/:])([0-9]{1,2})$/);
   if (!m) return null;
   const hg = Number(m[1]);
-  const ag = Number(m[2]);
+  const sep = m[2] ?? "-";
+  const ag = Number(m[3]);
   if (!Number.isFinite(hg) || !Number.isFinite(ag)) return null;
   if (hg < 0 || ag < 0 || hg > 15 || ag > 15) return null;
+  // ":" pode ser score OCR (0:0), mas evita confundir horários.
+  if (sep === ":" && (hg > 9 || ag > 9)) return null;
   return { homeGoals: hg, awayGoals: ag };
 }
 
@@ -112,7 +115,7 @@ function cleanTeamCell(raw: string): string {
 function matchRowFromLineText(raw: string): MatchRow | null {
   const line = raw.replace(/\s+/g, " ").trim();
   if (!line) return null;
-  const score = line.match(/([0-9Oo]{1,2})\s*[-–—−‐\/]\s*([0-9Oo]{1,2})/);
+  const score = line.match(/([0-9Oo]{1,2})\s*[-–—−‐\/:]\s*([0-9Oo]{1,2})/);
   if (!score || score.index == null) return null;
   const hg = Number((score[1] ?? "").replace(/[Oo]/g, "0"));
   const ag = Number((score[2] ?? "").replace(/[Oo]/g, "0"));
