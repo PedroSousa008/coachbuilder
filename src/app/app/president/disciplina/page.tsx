@@ -1,124 +1,295 @@
 "use client";
 
-import { useState } from "react";
-import { Trash2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { usePresidentClub } from "@/contexts/PresidentClubContext";
-import type { PresidentDisciplineIncident } from "@/types/president-club";
 import { cn } from "@/lib/utils";
 
-const ta = cn(
-  "min-h-[80px] w-full rounded-xl border border-surface-border bg-surface-raised/90 px-4 py-3 text-sm text-zinc-100",
-  "focus:border-accent/50 focus:outline-none focus:ring-2 focus:ring-accent/20"
-);
+type DisciplineRow = {
+  subjectType: "jogador" | "staff";
+  sourceKey: string;
+  subjectName: string;
+  team: string;
+  yellowCards: number;
+  redCards: number;
+  minutes: number;
+  gamesSuspended: number;
+  sequenceLast5: string;
+};
+
+const NOTE_CATEGORY = "__nota_disciplina__";
+const YELLOW_CARD_RISK_COUNTS = new Set([4, 7, 10, 13, 16]);
+const DISCIPLINE_REFRESH_MS = 45_000;
+
+function safeRatio(cards: number, minutes: number): string {
+  if (minutes <= 0 || cards <= 0) return "0.000";
+  return (cards / minutes).toFixed(3);
+}
+
+function riskClass(yellowCards: number): string {
+  if (!YELLOW_CARD_RISK_COUNTS.has(yellowCards)) return "text-zinc-200";
+  return "font-semibold text-amber-300";
+}
 
 export default function PresidentDisciplinaPage() {
   const { state, addDisciplineIncident, removeDisciplineIncident } = usePresidentClub();
-  const [subjectType, setSubjectType] = useState<PresidentDisciplineIncident["subjectType"]>("jogador");
-  const [subjectName, setSubjectName] = useState("");
-  const [category, setCategory] = useState("");
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const [details, setDetails] = useState("");
-  const [fineEUR, setFineEUR] = useState("");
+  const [rows, setRows] = useState<DisciplineRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [teamFilter, setTeamFilter] = useState<string>("all");
+  const [editingKey, setEditingKey] = useState<string | null>(null);
+  const [noteDraft, setNoteDraft] = useState("");
 
-  const onSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!subjectName.trim() || !details.trim()) return;
-    const fine = Number(fineEUR.replace(",", "."));
-    addDisciplineIncident({
-      subjectType,
-      subjectName: subjectName.trim(),
-      category: category.trim(),
-      date,
-      details: details.trim(),
-      fineEUR: Number.isFinite(fine) && fine >= 0 ? fine : 0,
+  useEffect(() => {
+    let cancelled = false;
+    let timerId: number | null = null;
+
+    const load = async (silent: boolean) => {
+      if (!silent) setLoading(true);
+      try {
+        const res = await fetch("/api/cloud/president/discipline-summary", { credentials: "include" });
+        const data = (await res.json()) as { ok?: boolean; error?: string; rows?: DisciplineRow[] };
+        if (cancelled) return;
+        if (res.ok && data.ok) {
+          setRows(Array.isArray(data.rows) ? data.rows : []);
+          setError(null);
+        } else if (!silent) {
+          setError(typeof data.error === "string" ? data.error : "Falha ao carregar disciplina.");
+        }
+      } catch {
+        if (!silent) setError("Falha de rede ao carregar disciplina.");
+      } finally {
+        if (!silent && !cancelled) setLoading(false);
+      }
+    };
+
+    void load(false);
+    timerId = window.setInterval(() => {
+      void load(true);
+    }, DISCIPLINE_REFRESH_MS);
+
+    return () => {
+      cancelled = true;
+      if (timerId !== null) window.clearInterval(timerId);
+    };
+  }, []);
+
+  const notesByKey = useMemo(() => {
+    const out = new Map<string, { id: string; details: string }>();
+    state.disciplineIncidents.forEach((x) => {
+      if (x.category !== NOTE_CATEGORY) return;
+      const key = x.subjectName.trim();
+      if (!key) return;
+      out.set(key, { id: x.id, details: x.details });
     });
-    setSubjectName("");
-    setCategory("");
-    setDetails("");
-    setFineEUR("");
+    return out;
+  }, [state.disciplineIncidents]);
+
+  const teams = useMemo(
+    () => ["all", ...new Set(rows.map((r) => r.team.trim()).filter(Boolean))],
+    [rows]
+  );
+
+  const filteredRows = useMemo(
+    () =>
+      rows.filter((r) => {
+        if (teamFilter === "all") return true;
+        return r.team === teamFilter;
+      }),
+    [rows, teamFilter]
+  );
+
+  const topPlayers = useMemo(
+    () =>
+      filteredRows
+        .filter((r) => r.subjectType === "jogador")
+        .map((r) => ({ ...r, totalCards: r.yellowCards + r.redCards }))
+        .sort((a, b) => b.totalCards - a.totalCards || b.redCards - a.redCards || b.yellowCards - a.yellowCards)
+        .slice(0, 10),
+    [filteredRows]
+  );
+
+  const startEdit = (row: DisciplineRow) => {
+    setEditingKey(row.sourceKey);
+    setNoteDraft(notesByKey.get(row.sourceKey)?.details ?? "");
+  };
+
+  const saveNote = (row: DisciplineRow) => {
+    const existing = notesByKey.get(row.sourceKey);
+    if (existing) removeDisciplineIncident(existing.id);
+    if (noteDraft.trim()) {
+      addDisciplineIncident({
+        subjectType: row.subjectType === "staff" ? "treinador" : "jogador",
+        subjectName: row.sourceKey,
+        category: NOTE_CATEGORY,
+        date: new Date().toISOString().slice(0, 10),
+        details: noteDraft.trim(),
+        fineEUR: 0,
+      });
+    }
+    setEditingKey(null);
+    setNoteDraft("");
   };
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
-      <div>
-        <h2 className="font-display text-2xl font-semibold text-white">Disciplina</h2>
-        <p className="mt-1 text-sm text-zinc-500">Incidentes, multas e registo disciplinar interno.</p>
+    <div className="mx-auto max-w-[1600px] space-y-6 pb-16">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h2 className="font-display text-2xl font-semibold text-white">Disciplina</h2>
+          <p className="mt-1 text-sm text-zinc-500">
+            Dados sincronizados automaticamente com os jogos registados pelo treinador (táticas).
+          </p>
+        </div>
+        <div className="min-w-[230px]">
+          <label className="mb-1 block text-xs text-zinc-500">Escalão</label>
+          <select
+            className="h-11 w-full rounded-xl border border-surface-border bg-surface-raised/90 px-3 text-sm text-zinc-100"
+            value={teamFilter}
+            onChange={(e) => setTeamFilter(e.target.value)}
+          >
+            <option value="all">Todos</option>
+            {teams.filter((t) => t !== "all").map((t) => (
+              <option key={t} value={t}>
+                {t}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       <Card className="border-surface-border bg-surface-raised/30">
         <CardHeader>
-          <CardTitle className="text-base text-white">Novo incidente</CardTitle>
+          <CardTitle className="text-base text-white">Top 10 jogadores com mais cartões</CardTitle>
         </CardHeader>
-        <CardContent>
-          <form onSubmit={onSubmit} className="grid gap-3 sm:grid-cols-2">
-            <label className="space-y-1">
-              <span className="text-xs text-zinc-500">Sujeito</span>
-              <select
-                className="h-11 w-full rounded-xl border border-surface-border bg-surface-raised/90 px-3 text-sm text-zinc-100"
-                value={subjectType}
-                onChange={(e) => setSubjectType(e.target.value as PresidentDisciplineIncident["subjectType"])}
-              >
-                <option value="jogador">Jogador</option>
-                <option value="treinador">Treinador</option>
-              </select>
-            </label>
-            <label className="space-y-1">
-              <span className="text-xs text-zinc-500">Nome *</span>
-              <Input value={subjectName} onChange={(e) => setSubjectName(e.target.value)} required />
-            </label>
-            <label className="space-y-1">
-              <span className="text-xs text-zinc-500">Categoria</span>
-              <Input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="Cartão, falta grave…" />
-            </label>
-            <label className="space-y-1">
-              <span className="text-xs text-zinc-500">Data</span>
-              <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-            </label>
-            <label className="space-y-1">
-              <span className="text-xs text-zinc-500">Multa (€)</span>
-              <Input value={fineEUR} onChange={(e) => setFineEUR(e.target.value)} inputMode="decimal" />
-            </label>
-            <label className="space-y-1 sm:col-span-2">
-              <span className="text-xs text-zinc-500">Detalhes *</span>
-              <textarea className={ta} value={details} onChange={(e) => setDetails(e.target.value)} required />
-            </label>
-            <Button type="submit">Registar</Button>
-          </form>
+        <CardContent className="overflow-x-auto p-0">
+          <table className="w-full min-w-[900px] text-sm">
+            <thead className="border-y border-surface-border bg-[#0c1116] text-xs uppercase text-zinc-500">
+              <tr>
+                <th className="px-3 py-2 text-left">Jogador</th>
+                <th className="px-3 py-2 text-left">Escalão</th>
+                <th className="px-3 py-2 text-left">Amarelos</th>
+                <th className="px-3 py-2 text-left">Vermelhos</th>
+                <th className="px-3 py-2 text-left">Total cartões</th>
+                <th className="px-3 py-2 text-left">Jogos suspensos</th>
+              </tr>
+            </thead>
+            <tbody>
+              {topPlayers.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-3 py-8 text-center text-zinc-500">
+                    Sem dados para o filtro selecionado.
+                  </td>
+                </tr>
+              ) : (
+                topPlayers.map((r) => (
+                  <tr key={r.sourceKey} className="border-b border-surface-border/50">
+                    <td className="px-3 py-2 text-zinc-100">{r.subjectName}</td>
+                    <td className="px-3 py-2 text-zinc-400">{r.team || "—"}</td>
+                    <td className={cn("px-3 py-2", riskClass(r.yellowCards))}>{r.yellowCards}</td>
+                    <td className="px-3 py-2 text-zinc-200">{r.redCards}</td>
+                    <td className="px-3 py-2 font-medium text-zinc-100">{r.totalCards}</td>
+                    <td className="px-3 py-2 text-zinc-200">{r.gamesSuspended}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
         </CardContent>
       </Card>
 
       <Card className="border-surface-border bg-surface-raised/30">
         <CardHeader>
-          <CardTitle className="text-base text-white">Histórico</CardTitle>
+          <CardTitle className="text-base text-white">Tabela disciplinar (jogadores e staff)</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3">
-          {state.disciplineIncidents.length === 0 ? (
-            <p className="py-8 text-center text-sm text-zinc-500">Sem incidentes.</p>
-          ) : (
-            state.disciplineIncidents.map((d) => (
-              <div key={d.id} className="flex gap-3 rounded-xl border border-surface-border bg-surface-raised/40 p-4">
-                <div className="min-w-0 flex-1 text-sm">
-                  <p className="font-medium text-zinc-200">
-                    {d.subjectName}{" "}
-                    <span className="text-zinc-500">({d.subjectType})</span>
-                  </p>
-                  <p className="mt-1 text-xs text-zinc-500">
-                    {d.date} {d.category ? `· ${d.category}` : ""}
-                    {d.fineEUR > 0 ? ` · multa ${d.fineEUR.toFixed(2)} €` : ""}
-                  </p>
-                  <p className="mt-2 whitespace-pre-wrap text-zinc-400">{d.details}</p>
-                </div>
-                <Button type="button" variant="ghost" className="h-9 shrink-0 text-red-400" onClick={() => removeDisciplineIncident(d.id)}>
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            ))
-          )}
+        <CardContent className="overflow-x-auto p-0">
+          <table className="w-full min-w-[1500px] text-sm">
+            <thead className="border-y border-surface-border bg-[#0c1116] text-xs uppercase text-zinc-500">
+              <tr>
+                <th className="px-3 py-2 text-left">Nome</th>
+                <th className="px-3 py-2 text-left">Tipo</th>
+                <th className="px-3 py-2 text-left">Escalão</th>
+                <th className="px-3 py-2 text-left">Amarelos</th>
+                <th className="px-3 py-2 text-left">Vermelhos</th>
+                <th className="px-3 py-2 text-left">Minutos</th>
+                <th className="px-3 py-2 text-left">Amarelos por Minutos</th>
+                <th className="px-3 py-2 text-left">Vermelhos por Minutos</th>
+                <th className="px-3 py-2 text-left">Jogos Suspensos</th>
+                <th className="px-3 py-2 text-left">Sequência de Cartões</th>
+                <th className="px-3 py-2 text-left">Notas</th>
+                <th className="px-3 py-2 text-left">Editar</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr>
+                  <td colSpan={12} className="px-3 py-10 text-center text-zinc-500">
+                    A carregar disciplina...
+                  </td>
+                </tr>
+              ) : error ? (
+                <tr>
+                  <td colSpan={12} className="px-3 py-10 text-center text-red-300">
+                    {error}
+                  </td>
+                </tr>
+              ) : filteredRows.length === 0 ? (
+                <tr>
+                  <td colSpan={12} className="px-3 py-10 text-center text-zinc-500">
+                    Sem linhas para o filtro selecionado.
+                  </td>
+                </tr>
+              ) : (
+                filteredRows.map((r) => {
+                  const note = notesByKey.get(r.sourceKey)?.details ?? "";
+                  const isEditing = editingKey === r.sourceKey;
+                  return (
+                    <tr key={r.sourceKey} className="border-b border-surface-border/50 transition-colors hover:bg-white/5">
+                      <td className="px-3 py-2 text-zinc-100">{r.subjectName}</td>
+                      <td className="px-3 py-2 text-zinc-400">{r.subjectType === "staff" ? "Staff" : "Jogador"}</td>
+                      <td className="px-3 py-2 text-zinc-400">{r.team || "—"}</td>
+                      <td className={cn("px-3 py-2", riskClass(r.yellowCards))}>{r.yellowCards}</td>
+                      <td className="px-3 py-2 text-zinc-200">{r.redCards}</td>
+                      <td className="px-3 py-2 tabular-nums text-zinc-200">{r.minutes}</td>
+                      <td className="px-3 py-2 tabular-nums text-zinc-300">{safeRatio(r.yellowCards, r.minutes)}</td>
+                      <td className="px-3 py-2 tabular-nums text-zinc-300">{safeRatio(r.redCards, r.minutes)}</td>
+                      <td className="px-3 py-2 text-zinc-200">{r.gamesSuspended}</td>
+                      <td className="px-3 py-2 font-mono text-xs tracking-wide text-zinc-300">{r.sequenceLast5}</td>
+                      <td className="max-w-[300px] px-3 py-2 text-zinc-300">
+                        {isEditing ? (
+                          <Input value={noteDraft} onChange={(e) => setNoteDraft(e.target.value)} placeholder="Nota disciplinar" />
+                        ) : (
+                          <span>{note || "—"}</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2">
+                        {isEditing ? (
+                          <div className="flex gap-2">
+                            <Button type="button" size="sm" className="h-8 px-2" onClick={() => saveNote(r)}>
+                              Guardar
+                            </Button>
+                            <Button type="button" size="sm" variant="ghost" className="h-8 px-2" onClick={() => setEditingKey(null)}>
+                              Cancelar
+                            </Button>
+                          </div>
+                        ) : (
+                          <Button type="button" size="sm" variant="secondary" className="h-8 px-2" onClick={() => startEdit(r)}>
+                            Editar
+                          </Button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
         </CardContent>
       </Card>
+      <p className="text-xs text-zinc-500">
+        Números a amarelo em <strong>Amarelos</strong> indicam risco de suspensão (4, 7, 10, 13, 16 cartões).
+      </p>
     </div>
   );
 }

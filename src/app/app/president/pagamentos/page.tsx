@@ -70,6 +70,8 @@ export default function PresidentPagamentosPage() {
   const [filterTeam, setFilterTeam] = useState("");
   const [filterThisWeek, setFilterThisWeek] = useState(false);
   const [filterThisMonth, setFilterThisMonth] = useState(false);
+  const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
+  const [editingDraft, setEditingDraft] = useState<PresidentExpense | null>(null);
 
   useEffect(() => {
     syncExpensesWithLinkedStaff(roster.staffRows ?? []);
@@ -196,6 +198,36 @@ export default function PresidentPagamentosPage() {
     a.click();
   };
 
+  const startEditExpense = (expense: PresidentExpense) => {
+    setEditingExpenseId(expense.id);
+    setEditingDraft({ ...expense });
+  };
+
+  const cancelEditExpense = () => {
+    setEditingExpenseId(null);
+    setEditingDraft(null);
+  };
+
+  const saveEditExpense = () => {
+    if (!editingExpenseId || !editingDraft) return;
+    updateExpense(editingExpenseId, {
+      name: editingDraft.name.trim(),
+      category: editingDraft.category,
+      description: editingDraft.description.trim(),
+      teamOrDepartment: editingDraft.teamOrDepartment.trim(),
+      dueDate: editingDraft.dueDate.trim(),
+      valueEUR: Math.max(0, Number.isFinite(editingDraft.valueEUR) ? editingDraft.valueEUR : 0),
+      status: editingDraft.status,
+      paymentMethod: editingDraft.paymentMethod,
+      paymentInfo: editingDraft.paymentInfo.trim(),
+      note: editingDraft.note.trim(),
+      recurringMonthly: Boolean(editingDraft.recurringMonthly),
+      role: editingDraft.role.trim(),
+      supplier: editingDraft.supplier.trim(),
+    });
+    cancelEditExpense();
+  };
+
   return (
     <div className="mx-auto max-w-[1600px] space-y-6 pb-16">
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -303,6 +335,9 @@ export default function PresidentPagamentosPage() {
                     <td className="px-3 py-2">
                       <div className="flex gap-1">
                         <Button type="button" size="sm" className="h-8 px-2" onClick={() => markExpensePaid(e.id)}>Pago</Button>
+                        <Button type="button" size="sm" variant="secondary" className="h-8 px-2" onClick={() => startEditExpense(e)}>
+                          Editar
+                        </Button>
                         <Button type="button" size="sm" variant="ghost" className="h-8 px-2 text-red-400" onClick={() => removeExpense(e.id)}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -315,6 +350,47 @@ export default function PresidentPagamentosPage() {
           </table>
         </CardContent>
       </Card>
+
+      {editingExpenseId && editingDraft ? (
+        <Card className="border-surface-border bg-surface-raised/25">
+          <CardHeader>
+            <CardTitle className="text-base text-white">Editar pagamento/despesa</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+              <Input value={editingDraft.name} onChange={(ev) => setEditingDraft((p) => (p ? { ...p, name: ev.target.value } : p))} placeholder="Nome / entidade" />
+              <select className="h-11 rounded-xl border border-surface-border bg-surface-raised/90 px-3 text-sm" value={editingDraft.category} onChange={(ev) => setEditingDraft((p) => (p ? { ...p, category: ev.target.value as PresidentExpenseCategory } : p))}>
+                {Object.entries(CATEGORY_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+              </select>
+              <Input value={editingDraft.description} onChange={(ev) => setEditingDraft((p) => (p ? { ...p, description: ev.target.value } : p))} placeholder="Descrição" />
+              <Input value={editingDraft.teamOrDepartment} onChange={(ev) => setEditingDraft((p) => (p ? { ...p, teamOrDepartment: ev.target.value } : p))} placeholder="Equipa / Departamento" />
+              <Input type="date" value={editingDraft.dueDate} onChange={(ev) => setEditingDraft((p) => (p ? { ...p, dueDate: ev.target.value } : p))} />
+              <Input value={String(editingDraft.valueEUR)} onChange={(ev) => {
+                const parsed = Number(ev.target.value.replace(",", "."));
+                setEditingDraft((p) => (p ? { ...p, valueEUR: Number.isFinite(parsed) ? parsed : 0 } : p));
+              }} placeholder="Valor €" inputMode="decimal" />
+              <select className="h-11 rounded-xl border border-surface-border bg-surface-raised/90 px-3 text-sm" value={editingDraft.status} onChange={(ev) => setEditingDraft((p) => (p ? { ...p, status: ev.target.value as PresidentExpenseStatus } : p))}>
+                <option value="pago">Pago</option><option value="pendente">Pendente</option><option value="atrasado">Atrasado</option>
+              </select>
+              <select className="h-11 rounded-xl border border-surface-border bg-surface-raised/90 px-3 text-sm" value={editingDraft.paymentMethod} onChange={(ev) => setEditingDraft((p) => (p ? { ...p, paymentMethod: ev.target.value as PresidentExpensePaymentMethod } : p))}>
+                {Object.entries(PAYMENT_METHOD_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+              </select>
+              <Input value={editingDraft.paymentInfo} onChange={(ev) => setEditingDraft((p) => (p ? { ...p, paymentInfo: ev.target.value } : p))} placeholder="Informação pagamento" />
+              <Input value={editingDraft.note} onChange={(ev) => setEditingDraft((p) => (p ? { ...p, note: ev.target.value } : p))} placeholder="Nota" />
+              <Input value={editingDraft.role} onChange={(ev) => setEditingDraft((p) => (p ? { ...p, role: ev.target.value } : p))} placeholder="Função (opcional)" />
+              <Input value={editingDraft.supplier} onChange={(ev) => setEditingDraft((p) => (p ? { ...p, supplier: ev.target.value } : p))} placeholder="Fornecedor (opcional)" />
+              <label className="flex items-center gap-2 rounded-xl border border-surface-border px-3 text-sm">
+                <input type="checkbox" checked={editingDraft.recurringMonthly} onChange={(ev) => setEditingDraft((p) => (p ? { ...p, recurringMonthly: ev.target.checked } : p))} />
+                Recorrência mensal
+              </label>
+            </div>
+            <div className="mt-4 flex gap-2">
+              <Button type="button" onClick={saveEditExpense}>Guardar alterações</Button>
+              <Button type="button" variant="ghost" onClick={cancelEditExpense}>Cancelar</Button>
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
 
       <div className="grid gap-4 lg:grid-cols-5">
         <Card className="border-surface-border bg-surface-raised/25 lg:col-span-2"><CardHeader><CardTitle className="text-sm text-white">Pagamentos próximos (7 dias)</CardTitle></CardHeader><CardContent className="space-y-2 text-sm">{upcoming.length ? upcoming.map((e) => <div key={e.id} className="flex justify-between rounded-lg border border-surface-border/50 px-2 py-1.5"><span className="truncate">{e.name}</span><span className="tabular-nums">{e.dueDate || "—"}</span></div>) : <p className="text-zinc-500">Sem itens.</p>}</CardContent></Card>
