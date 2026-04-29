@@ -49,6 +49,8 @@ const DOUBLE_ROLE_LABELS: Array<{ id: TeamDoubleRoleId; label: string }> = [
   { id: "cornerLeft", label: "Canto do lado esquerdo" },
 ];
 
+const YELLOW_CARD_RISK_COUNTS = new Set([4, 7, 10, 13, 16]);
+
 export default function TeamPage() {
   const {
     players,
@@ -87,6 +89,7 @@ export default function TeamPage() {
   }>({ key: "games", dir: "desc" });
   const [cellColors, setCellColors] = useState<Record<string, "white" | "red" | "yellow" | "green">>({});
   const [colorPickerCell, setColorPickerCell] = useState<{ playerId: string; statKey: string } | null>(null);
+  const [yellowCardRiskCell, setYellowCardRiskCell] = useState<{ playerId: string; statKey: string } | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [detailStaffId, setDetailStaffId] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
@@ -555,15 +558,38 @@ export default function TeamPage() {
                         ] as const
                       ).map(([statKey, value]) => {
                         const color = cellColors[`${player.id}:${statKey}`];
+                        const isYellowCards = statKey === "yellowCards";
+                        const isYellowRisk = isYellowCards && YELLOW_CARD_RISK_COUNTS.has(Number(value));
                         return (
                           <td key={`${player.id}-${statKey}`} className="relative px-2 py-2 text-center tabular-nums">
-                            <button
-                              type="button"
-                              onClick={() => setColorPickerCell({ playerId: player.id, statKey })}
-                              className={`rounded px-1 ${colorClass(color)}`}
-                            >
-                              {statKey === "winRate" ? `${value}%` : value}
-                            </button>
+                            {isYellowCards ? (
+                              isYellowRisk ? (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setYellowCardRiskCell((prev) =>
+                                      prev?.playerId === player.id && prev.statKey === statKey
+                                        ? null
+                                        : { playerId: player.id, statKey }
+                                    )
+                                  }
+                                  className="rounded px-1 font-semibold text-amber-300 hover:text-amber-200"
+                                  title="Risco de suspensão por acumulação de amarelos"
+                                >
+                                  {value}
+                                </button>
+                              ) : (
+                                <span className="rounded px-1 text-zinc-300">{value}</span>
+                              )
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => setColorPickerCell({ playerId: player.id, statKey })}
+                                className={`rounded px-1 ${colorClass(color)}`}
+                              >
+                                {statKey === "winRate" ? `${value}%` : value}
+                              </button>
+                            )}
                             {colorPickerCell?.playerId === player.id && colorPickerCell.statKey === statKey ? (
                               <div className="absolute right-1 top-full z-20 mt-1 flex gap-1 rounded-lg border border-surface-border bg-zinc-950 p-1">
                                 {(
@@ -593,6 +619,12 @@ export default function TeamPage() {
                                     }}
                                   />
                                 ))}
+                              </div>
+                            ) : null}
+                            {yellowCardRiskCell?.playerId === player.id && yellowCardRiskCell.statKey === statKey ? (
+                              <div className="absolute right-1 top-full z-20 mt-1 w-64 rounded-lg border border-amber-400/40 bg-zinc-950 p-2 text-left text-[11px] leading-relaxed text-amber-200">
+                                Risco de falhar o próximo jogo por acumulação de amarelos. Caso leve amarelo falha o
+                                próximo jogo.
                               </div>
                             ) : null}
                           </td>
