@@ -17,6 +17,14 @@ const performanceColor = {
   down: "text-red-400",
 };
 
+function playerInitials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) {
+    return `${parts[0]!.charAt(0)}${parts[parts.length - 1]!.charAt(0)}`.toUpperCase();
+  }
+  return name.trim().slice(0, 2).toUpperCase() || "?";
+}
+
 export function PlayerCard({
   player,
   onOpen,
@@ -46,8 +54,13 @@ export function PlayerCard({
         <span className={cn("font-display text-xl font-bold leading-none", overallColorClass)}>{insights.overall}</span>
       </div>
       <div className="flex items-start gap-3">
-        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-zinc-800 font-display text-sm font-bold text-zinc-200">
-          {player.number}
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-zinc-800">
+          {player.photoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element -- data URL or remote avatar
+            <img src={player.photoUrl} alt="" className="h-full w-full object-cover" />
+          ) : (
+            <span className="font-display text-sm font-bold text-zinc-400">{playerInitials(player.name)}</span>
+          )}
         </div>
         <div className="min-w-0 flex-1 pr-14 sm:pr-16">
           <p className="truncate font-medium text-white">{player.name}</p>

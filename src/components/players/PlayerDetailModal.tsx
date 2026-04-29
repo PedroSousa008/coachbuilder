@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { createPortal } from "react-dom";
 import { Search, X } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -30,6 +30,9 @@ import {
   EVALUATION_TEST_IDS,
 } from "@/lib/evaluation-tests";
 import { computeAgeFromDateOfBirth } from "@/lib/player-age";
+
+/** Limite para data URL guardada no jogador (local / sync). */
+const PLAYER_PHOTO_MAX_FILE_BYTES = 400_000;
 
 const POSITIONS: Position[] = [
   "GK",
@@ -86,6 +89,8 @@ export function PlayerDetailModal({
     "idle" | "loading" | "linked" | "unlinked" | "need_auth" | "server_off" | "error"
   >("idle");
   const lookupGen = useRef(0);
+  const [photoUrlDraft, setPhotoUrlDraft] = useState("");
+  const photoInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => setMediaPortalMounted(true), []);
 
@@ -119,6 +124,7 @@ export function PlayerDetailModal({
     setEvaluationDraft(ev);
     setDocumentsBundle(normalizeTeamDocuments(player.documents));
     setLinkedNametagDraft(player.linkedNametag ?? "");
+    setPhotoUrlDraft(player.photoUrl ?? "");
     setNametagLookup("idle");
     setTab("dados");
     setEvaluationHelpOpenId(null);
@@ -301,8 +307,28 @@ export function PlayerDetailModal({
       qualities: qualitiesDraft,
       evaluationTests,
       documents: normalizeTeamDocuments(documentsBundle),
+      photoUrl: photoUrlDraft.trim() ? photoUrlDraft.trim() : undefined,
       ...(ln ? { linkedNametag: ln } : { linkedNametag: undefined }),
     });
+  };
+
+  const onPhotoFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (!file.type.startsWith("image/")) return;
+    if (file.size > PLAYER_PHOTO_MAX_FILE_BYTES) {
+      window.alert(
+        `A imagem é demasiado grande. Usa um ficheiro até ~${Math.round(PLAYER_PHOTO_MAX_FILE_BYTES / 1024)} KB.`
+      );
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const s = typeof reader.result === "string" ? reader.result : "";
+      if (s) setPhotoUrlDraft(s);
+    };
+    reader.readAsDataURL(file);
   };
 
   const setStat = (id: keyof PlayerQualities, v: number) => {
@@ -327,47 +353,91 @@ export function PlayerDetailModal({
           <h3 id="player-detail-title" className="font-display text-lg font-semibold text-white">
             {player.name}
           </h3>
-          <div className="mt-3 max-w-sm">
-            <label htmlFor="player-linked-nametag" className="block text-[11px] font-medium uppercase tracking-wide text-zinc-500">
-              Nametag (conta CoachBuilder)
-            </label>
-            <div className="mt-1.5 flex items-center gap-0.5 rounded-xl border border-surface-border bg-black/30 px-2 py-1.5 focus-within:border-accent/40 focus-within:ring-1 focus-within:ring-accent/25">
-              <span className="shrink-0 pl-0.5 font-mono text-sm text-zinc-500" aria-hidden>
-                @
-              </span>
-              <input
-                id="player-linked-nametag"
-                type="text"
-                autoComplete="off"
-                spellCheck={false}
-                placeholder="ex. pedrosousa"
-                value={linkedNametagDraft}
-                onChange={(e) => setLinkedNametagDraft(e.target.value)}
-                className="min-w-0 flex-1 bg-transparent font-mono text-sm text-zinc-100 outline-none placeholder:text-zinc-600"
-              />
+          <div className="mt-3 flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-8">
+            <div className="min-w-0 max-w-sm flex-1">
+              <label htmlFor="player-linked-nametag" className="block text-[11px] font-medium uppercase tracking-wide text-zinc-500">
+                Nametag (conta CoachBuilder)
+              </label>
+              <div className="mt-1.5 flex items-center gap-0.5 rounded-xl border border-surface-border bg-black/30 px-2 py-1.5 focus-within:border-accent/40 focus-within:ring-1 focus-within:ring-accent/25">
+                <span className="shrink-0 pl-0.5 font-mono text-sm text-zinc-500" aria-hidden>
+                  @
+                </span>
+                <input
+                  id="player-linked-nametag"
+                  type="text"
+                  autoComplete="off"
+                  spellCheck={false}
+                  placeholder="ex. pedrosousa"
+                  value={linkedNametagDraft}
+                  onChange={(e) => setLinkedNametagDraft(e.target.value)}
+                  className="min-w-0 flex-1 bg-transparent font-mono text-sm text-zinc-100 outline-none placeholder:text-zinc-600"
+                />
+              </div>
+              {normalizeNametagInput(linkedNametagDraft) ? (
+                <p className="mt-1.5 text-xs" role="status">
+                  {nametagLookup === "loading" ? (
+                    <span className="text-zinc-500">A verificar…</span>
+                  ) : nametagLookup === "linked" ? (
+                    <span className="text-emerald-400/95">Conta encontrada — associação válida.</span>
+                  ) : nametagLookup === "unlinked" ? (
+                    <span className="text-amber-400/95">Ainda não existe conta com este nametag.</span>
+                  ) : nametagLookup === "need_auth" ? (
+                    <span className="text-zinc-500">Inicia sessão na cloud para verificar o nametag.</span>
+                  ) : nametagLookup === "server_off" ? (
+                    <span className="text-zinc-500">Verificação indisponível (servidor).</span>
+                  ) : (
+                    <span className="text-zinc-600">Não foi possível verificar.</span>
+                  )}
+                </p>
+              ) : null}
             </div>
-            {normalizeNametagInput(linkedNametagDraft) ? (
-              <p className="mt-1.5 text-xs" role="status">
-                {nametagLookup === "loading" ? (
-                  <span className="text-zinc-500">A verificar…</span>
-                ) : nametagLookup === "linked" ? (
-                  <span className="text-emerald-400/95">Conta encontrada — associação válida.</span>
-                ) : nametagLookup === "unlinked" ? (
-                  <span className="text-amber-400/95">Ainda não existe conta com este nametag.</span>
-                ) : nametagLookup === "need_auth" ? (
-                  <span className="text-zinc-500">Inicia sessão na cloud para verificar o nametag.</span>
-                ) : nametagLookup === "server_off" ? (
-                  <span className="text-zinc-500">Verificação indisponível (servidor).</span>
-                ) : (
-                  <span className="text-zinc-600">Não foi possível verificar.</span>
-                )}
+            <div className="shrink-0 border-t border-surface-border pt-4 sm:border-l sm:border-t-0 sm:pl-8 sm:pt-0">
+              <p className="text-[11px] font-medium uppercase tracking-wide text-zinc-500">Foto do jogador</p>
+              <div className="mt-1.5 flex flex-wrap items-start gap-3">
+                <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-surface-border bg-zinc-800">
+                  {photoUrlDraft ? (
+                    // eslint-disable-next-line @next/next/no-img-element -- data URL do utilizador
+                    <img src={photoUrlDraft} alt="" className="h-full w-full object-cover" />
+                  ) : (
+                    <span className="text-xs text-zinc-600">—</span>
+                  )}
+                </div>
+                <div className="flex flex-col gap-2">
+                  <input
+                    ref={photoInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    className="hidden"
+                    onChange={onPhotoFileChange}
+                  />
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    className="w-full min-w-[9rem] sm:w-auto"
+                    onClick={() => photoInputRef.current?.click()}
+                  >
+                    Escolher foto
+                  </Button>
+                  {photoUrlDraft ? (
+                    <Button type="button" variant="ghost" size="sm" className="text-zinc-400" onClick={() => setPhotoUrlDraft("")}>
+                      Remover foto
+                    </Button>
+                  ) : null}
+                </div>
+              </div>
+              <p className="mt-1.5 text-[11px] text-zinc-600">
+                Aparece no cartão da equipa. Até ~{Math.round(PLAYER_PHOTO_MAX_FILE_BYTES / 1024)} KB (JPEG, PNG, WebP…).
               </p>
-            ) : null}
+            </div>
           </div>
           <p className="mt-3 text-xs text-zinc-500">Dados, qualidades, avaliação e documentos</p>
           {insights && (
             <div className="mt-4">
-              <PlayerInsightsBox insights={insights} />
+              <PlayerInsightsBox
+                insights={insights}
+                squadNumber={Math.min(99, Math.max(1, parseInt(number, 10) || player.number))}
+              />
             </div>
           )}
           <div className="mt-4 grid grid-cols-2 gap-1 rounded-xl bg-black/40 p-1 sm:grid-cols-4">
