@@ -6,9 +6,9 @@ import { formatPlayerPositions } from "@/lib/player-positions";
 import { buildPlayerInsights } from "@/lib/player-insights";
 
 const availabilityLabel = {
-  available: "Available",
-  doubt: "Matchday doubt",
-  out: "Unavailable",
+  available: "Disponível",
+  doubt: "Dúvida",
+  out: "Indisponível",
 };
 
 const performanceColor = {
@@ -53,7 +53,7 @@ export function PlayerCard({
           <p className="truncate font-medium text-white">{player.name}</p>
           <div className="mt-1 flex flex-wrap items-center gap-2">
             <Badge className="max-w-full truncate">{formatPlayerPositions(player)}</Badge>
-            <span className="text-xs text-zinc-500">{player.age} yrs</span>
+            <span className="text-xs text-zinc-500">{player.age} anos</span>
           </div>
         </div>
       </div>
@@ -69,7 +69,7 @@ export function PlayerCard({
           {availabilityLabel[player.availability]}
         </span>
         <span className={cn("ml-auto shrink-0 text-xs", performanceColor[player.performance])}>
-          Form {player.performance === "up" ? "↑" : player.performance === "down" ? "↓" : "→"}
+          Forma {player.performance === "up" ? "↑" : player.performance === "down" ? "↓" : "→"}
         </span>
       </div>
       {roleBadge ? (

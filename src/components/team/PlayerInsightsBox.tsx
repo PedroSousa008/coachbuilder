@@ -11,27 +11,29 @@ export function PlayerInsightsBox({ insights }: { insights: PlayerInsights }) {
         <span className="font-display text-3xl font-bold text-accent">{overall}</span>
         <span className="text-xs text-zinc-600">média das avaliações (0–100)</span>
       </div>
-      <div>
-        <p className="text-xs font-semibold uppercase tracking-wider text-emerald-400/90">Melhores qualidades</p>
-        <ul className="mt-1 list-inside list-disc text-zinc-300">
-          {strengths.map((s) => (
-            <li key={s.id}>
-              {s.label} — <span className="tabular-nums text-white">{s.value}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
-      <div>
-        <p className="text-xs font-semibold uppercase tracking-wider text-amber-400/90">
-          A desenvolver (foco {primaryPosition})
-        </p>
-        <ul className="mt-1 list-inside list-disc text-zinc-300">
-          {improvements.map((s) => (
-            <li key={s.id}>
-              {s.label} — <span className="tabular-nums text-white">{s.value}</span>
-            </li>
-          ))}
-        </ul>
+      <div className="grid gap-6 md:grid-cols-2">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wider text-emerald-400/90">Melhores qualidades</p>
+          <ul className="mt-1 list-inside list-disc text-zinc-300">
+            {strengths.map((s) => (
+              <li key={s.id}>
+                {s.label} — <span className="tabular-nums text-white">{s.value}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wider text-amber-400/90">
+            A desenvolver (foco {primaryPosition})
+          </p>
+          <ul className="mt-1 list-inside list-disc text-zinc-300">
+            {improvements.map((s) => (
+              <li key={s.id}>
+                {s.label} — <span className="tabular-nums text-white">{s.value}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
       </div>
       <div>
         <p className="text-xs font-semibold uppercase tracking-wider text-sky-400/90">Físico (altura / peso)</p>
