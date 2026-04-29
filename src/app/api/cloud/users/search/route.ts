@@ -24,7 +24,7 @@ export async function GET(req: Request) {
   try {
     const users = await prisma.user.findMany({
       where: {
-        id: { not: cloudAuth.userId },
+        id: { not: cloudAuth.user.id },
         OR: [
           { name: { contains: q, mode: "insensitive" } },
           { email: { contains: q, mode: "insensitive" } },
