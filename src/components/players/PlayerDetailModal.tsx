@@ -97,6 +97,10 @@ export function PlayerDetailModal({
   const lookupGen = useRef(0);
   const [photoUrlDraft, setPhotoUrlDraft] = useState("");
   const [photoFrameDraft, setPhotoFrameDraft] = useState<PlayerPhotoFrame>(() => ({ ...PHOTO_FRAME_DEFAULT }));
+  /** Painel «Ajustar na moldura»: aberto ao escolher foto nova; fechado após Guardar; reabre com «Editar». */
+  const [photoAdjustExpanded, setPhotoAdjustExpanded] = useState(false);
+  /** Esconde nametag, foto e resumo (Overall / IMC) para dar espaço às tabs. */
+  const [playerHeaderCollapsed, setPlayerHeaderCollapsed] = useState(false);
   const photoInputRef = useRef<HTMLInputElement>(null);
 
   const nudgePhotoFrame = (dPosX: number, dPosY: number) => {
@@ -140,6 +144,8 @@ export function PlayerDetailModal({
     setLinkedNametagDraft(player.linkedNametag ?? "");
     setPhotoUrlDraft(player.photoUrl ?? "");
     setPhotoFrameDraft(normalizePlayerPhotoFrame(player.photoFrame));
+    setPhotoAdjustExpanded(false);
+    setPlayerHeaderCollapsed(false);
     setNametagLookup("idle");
     setTab("dados");
     setEvaluationHelpOpenId(null);
@@ -333,6 +339,7 @@ export function PlayerDetailModal({
       photoFrame: trimmedPhoto && !photoFrameIsDefault ? frameNorm : undefined,
       ...(ln ? { linkedNametag: ln } : { linkedNametag: undefined }),
     });
+    setPhotoAdjustExpanded(false);
   };
 
   const onPhotoFileChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -352,6 +359,7 @@ export function PlayerDetailModal({
       if (s) {
         setPhotoUrlDraft(s);
         setPhotoFrameDraft({ ...PHOTO_FRAME_DEFAULT });
+        setPhotoAdjustExpanded(true);
       }
     };
     reader.readAsDataURL(file);
@@ -376,9 +384,26 @@ export function PlayerDetailModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="border-b border-surface-border px-5 py-4">
-          <h3 id="player-detail-title" className="font-display text-lg font-semibold text-white">
-            {player.name}
-          </h3>
+          <div className="flex items-start justify-between gap-3">
+            <h3 id="player-detail-title" className="min-w-0 font-display text-lg font-semibold text-white">
+              {player.name}
+            </h3>
+            <button
+              type="button"
+              onClick={() => setPlayerHeaderCollapsed((c) => !c)}
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-surface-border bg-black/25 px-2.5 py-1.5 text-left text-xs font-medium text-zinc-400 transition-colors hover:border-zinc-600 hover:text-zinc-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/35"
+              aria-expanded={!playerHeaderCollapsed}
+            >
+              {playerHeaderCollapsed ? "Expandir" : "Minimizar"}
+              <ChevronUp
+                className={cn("h-4 w-4 shrink-0 transition-transform", playerHeaderCollapsed && "rotate-180")}
+                strokeWidth={2}
+                aria-hidden
+              />
+            </button>
+          </div>
+          {!playerHeaderCollapsed ? (
+            <>
           <div className="mt-3 flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-8">
             <div className="min-w-0 max-w-sm flex-1">
               <label htmlFor="player-linked-nametag" className="block text-[11px] font-medium uppercase tracking-wide text-zinc-500">
@@ -451,22 +476,45 @@ export function PlayerDetailModal({
                     Escolher foto
                   </Button>
                   {photoUrlDraft ? (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="text-zinc-400"
-                      onClick={() => {
-                        setPhotoUrlDraft("");
-                        setPhotoFrameDraft({ ...PHOTO_FRAME_DEFAULT });
-                      }}
-                    >
-                      Remover foto
-                    </Button>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="text-zinc-400"
+                        onClick={() => {
+                          setPhotoUrlDraft("");
+                          setPhotoFrameDraft({ ...PHOTO_FRAME_DEFAULT });
+                          setPhotoAdjustExpanded(false);
+                        }}
+                      >
+                        Remover foto
+                      </Button>
+                      {!photoAdjustExpanded ? (
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => setPhotoAdjustExpanded(true)}
+                        >
+                          Editar
+                        </Button>
+                      ) : (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="text-zinc-500"
+                          onClick={() => setPhotoAdjustExpanded(false)}
+                        >
+                          Ocultar ajustes
+                        </Button>
+                      )}
+                    </div>
                   ) : null}
                 </div>
               </div>
-              {photoUrlDraft ? (
+              {photoUrlDraft && photoAdjustExpanded ? (
                 <div className="mt-3 max-w-[18rem] space-y-2 rounded-lg border border-surface-border/80 bg-black/25 p-2.5">
                   <p className="text-[11px] font-medium text-zinc-500">Ajustar na moldura</p>
                   <div className="flex gap-3">
@@ -552,12 +600,16 @@ export function PlayerDetailModal({
               </p>
             </div>
           </div>
-          <p className="mt-3 text-xs text-zinc-500">Dados, qualidades, avaliação e documentos</p>
           {insights && (
             <div className="mt-4">
               <PlayerInsightsBox insights={insights} />
             </div>
           )}
+            </>
+          ) : null}
+          <p className={cn("text-xs text-zinc-500", playerHeaderCollapsed ? "mt-2" : "mt-3")}>
+            Dados, qualidades, avaliação e documentos
+          </p>
           <div className="mt-4 grid grid-cols-2 gap-1 rounded-xl bg-black/40 p-1 sm:grid-cols-4">
             <button
               type="button"
