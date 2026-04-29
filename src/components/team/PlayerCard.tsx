@@ -27,6 +27,14 @@ export function PlayerCard({
   roleBadge?: "C" | "SC" | null;
 }) {
   const insights = useMemo(() => buildPlayerInsights(player), [player]);
+  const overallColorClass =
+    insights.overall <= 49
+      ? "text-red-500"
+      : insights.overall <= 69
+        ? "text-amber-400"
+        : insights.overall <= 89
+          ? "text-emerald-400"
+          : "text-sky-300";
 
   return (
     <button
@@ -35,17 +43,7 @@ export function PlayerCard({
       className="relative flex w-full flex-col rounded-2xl border border-surface-border bg-surface-raised/50 p-4 pt-10 text-left transition-all hover:border-zinc-600 hover:bg-surface-raised sm:pt-4"
     >
       <div className="absolute right-3 top-3 flex items-center gap-2">
-        <span className="font-display text-xl font-bold leading-none text-accent">{insights.overall}</span>
-        <span
-          className="flex h-7 w-7 shrink-0 cursor-help items-center justify-center rounded-full border border-amber-500/55 bg-amber-500/15 text-sm font-bold leading-none text-amber-400"
-          title={insights.summaryTitle}
-          aria-label="Resumo: overall, destaques, a desenvolver e físico. Pára o rato para ler."
-          onClick={(e) => e.stopPropagation()}
-          onKeyDown={(e) => e.stopPropagation()}
-          role="note"
-        >
-          !
-        </span>
+        <span className={cn("font-display text-xl font-bold leading-none", overallColorClass)}>{insights.overall}</span>
       </div>
       <div className="flex items-start gap-3">
         <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-zinc-800 font-display text-sm font-bold text-zinc-200">
