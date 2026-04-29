@@ -82,6 +82,7 @@ export const DEFAULT_TRAINING_EXERCISE_AGE_MAP: TrainingExerciseAgeMap = {
     "junior",
     "senior",
   ],
+  "Superioridade nos Setores": ["infantil", "iniciado", "juvenil", "junior", "senior"],
   "4 Finishing Drills": ["benjamin", "infantil", "iniciado", "juvenil", "junior", "senior"],
   "Rondo 9v3": ["benjamin", "infantil", "iniciado", "juvenil", "junior", "senior"],
   "Rondo 5v3": ["benjamin", "infantil", "iniciado", "juvenil", "junior", "senior"],

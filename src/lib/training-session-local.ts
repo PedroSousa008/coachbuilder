@@ -294,6 +294,12 @@ export const VARIACAO_CRUZAMENTOS_VIDEO_URL = "/videos/training/variação-cruza
 export const FOUR_V_FOUR_FOUR_TEAMS_VIDEO_URL = "/videos/training/4v4-4-teams.mp4";
 
 /**
+ * Vídeo do exercício "Superioridade nos Setores".
+ * Coloca o ficheiro em `public/videos/training/superioridade-setores.mp4`.
+ */
+export const SUPERIORIDADE_SETORES_VIDEO_URL = "/videos/training/superioridade-setores.mp4";
+
+/**
  * Vídeo do exercício "Full Back Overlap - Striker".
  * Coloca o ficheiro em `public/videos/training/full-back-overlap-2.mp4` ou substitui por um link YouTube.
  */
@@ -657,6 +663,11 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
     "4v4 apoios laterais",
     "sai imediatamente",
     "equipa de fora entra",
+    "superioridade nos setores",
+    "superioridade ofensiva",
+    "reconhecimento de superioridade",
+    "organizacao ofensiva",
+    "organização ofensiva",
     "variacao de cruzamentos",
     "tres equipas",
     "3 equipas",
@@ -755,6 +766,8 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
     "finalizações rápidas",
     "jogo interior",
     "apoios exteriores",
+    "superioridade ofensiva",
+    "reconhecimento de superioridade",
     "overlap",
     "overlap lateral",
     "finishing transition",
@@ -1001,6 +1014,9 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
     "competitividade",
     "espaco reduzido",
     "espaço reduzido",
+    "superioridade nos setores",
+    "progressao por corredores",
+    "progressão por corredores",
   ],
   balanced: [],
 };
@@ -1591,6 +1607,26 @@ const MAIN_DRILLS: MainDrillDef[] = [
       diagramHint:
         "Rectângulo central 4v4; 4 apoios nas linhas laterais; 2+2 junto às balizas (fundo); seta: golo → equipa sai → equipa de fora entra.",
       videoUrl: FOUR_V_FOUR_FOUR_TEAMS_VIDEO_URL,
+    }),
+  },
+  {
+    themes: ["transition", "finishing", "physical"],
+    title: "Superioridade nos Setores",
+    describe: (pl, m) => ({
+      description: `O exercício realiza-se em mais de meio campo, dividido em 4 setores: setor central (5v4), corredor esquerdo (2v2 + 1 apoio vindo do setor central), corredor direito (2v2 + 1 apoio vindo do setor central) e setor ofensivo (3v4 + entradas de apoio dos restantes setores). A jogada começa no setor central, com saída de bola do guarda-redes, procurando circular e encontrar a melhor linha de passe para ligar num dos corredores laterais. Quando a bola entra no corredor, cria-se 3v2 ofensivo e deixa de ser permitido voltar ao setor central. Ultrapassado o corredor lateral, a jogada entra no setor ofensivo; entra 1 jogador de cada um dos outros setores, formando 4v3 para finalizar o mais rápido possível. Se a equipa defensora recuperar, sai em transição rápida para marcar numa das 2 mini-balizas. O foco está na saída de bola, exploração da superioridade numérica, progressão por corredores e transição ofensiva/defensiva. (${m} min)`,
+      coachingPoints:
+        "No setor central, paciência com critério: atrair pressão para soltar no corredor livre. No corredor, usar o apoio extra para fixar e ultrapassar em vantagem (3v2) sem recuar ao centro. Na entrada no setor ofensivo, reconhecer de imediato o 4v3 e finalizar com poucos toques; se perder, reação agressiva à transição defensiva para proteger a baliza e mini-balizas.",
+      setup:
+        "Mais de meio campo dividido em 4 setores (central, dois corredores, ofensivo); 1 baliza principal + 2 mini-balizas para transição; coletes de duas cores; bolas extra com o treinador e junto ao GR.",
+      groupSplit:
+        pl.length >= 18
+          ? "Manter estrutura completa por setores e rodar funções (apoio, corredor, setor ofensivo, defesa) a cada 4–6 minutos."
+          : pl.length >= 14
+            ? "Reduzir o setor ofensivo para 3v3+apoio ou jogar só um corredor por série, alternando lados."
+            : "Simplificar para 4v3 no centro + progressão para corredor único, mantendo regra de transição para mini-balizas.",
+      diagramHint:
+        "4 setores: central 5v4 → passe ao corredor (3v2 com apoio) → entrada no ofensivo (4v3) → finalização; recuperação defensiva → transição para 2 mini-balizas.",
+      videoUrl: SUPERIORIDADE_SETORES_VIDEO_URL,
     }),
   },
   {
@@ -2302,6 +2338,7 @@ const SINGLE_DRILL_20_MIN_TITLES = new Set<string>([
   "Finishing Transition",
   "Fitness Rondo into Finishing",
   "4v4 mais apoios laterais",
+  "Superioridade nos Setores",
 ]);
 /** Valor médio quando o treinador indica ~15–20 min (ex.: bloco final). */
 const SINGLE_DRILL_18_MIN_TITLES = new Set<string>(["Double Finishing Drill"]);
@@ -2430,6 +2467,15 @@ function singleDrillProgressionVariationsForTitle(title: string): {
         "Apoios exteriores com máximo 2 toques num bloco de 3 min antes de voltar a 1 toque; ou campo mais estreito para forçar verticalidade; ou golo de cabeça vale duplo.",
       variations:
         "Rotação dos apoios laterais com os da linha de baliza a cada 5 minutos; ou equipa que marca mantém o campo e escolhe qual adversário entra; ou limite de 8 s para remate após recuperação no 4v4.",
+    };
+  }
+
+  if (title === "Superioridade nos Setores") {
+    return {
+      progression:
+        "Reduzir o tempo no setor central (ex.: ≤8 s para ligar corredor); ou condicionar corredor a 2 toques no portador para acelerar o 3v2; ou defesa que recupera deve finalizar em ≤6 s numa mini-baliza.",
+      variations:
+        "Alternar lado de progressão obrigatório por blocos de 2 min; ou trocar o jogador de apoio que entra no corredor a cada repetição; ou no setor ofensivo só conta golo após passe extra para obrigar leitura do 4v3.",
     };
   }
 
@@ -2830,6 +2876,7 @@ export function getTrainingCatalogItems(players: Player[]): TrainingCatalogItem[
     "3v2 Finishing Drill": ["finishing", "defensive"],
     "5 Teams 3v3 Attacking": ["finishing", "transition", "physical"],
     "4v4 mais apoios laterais": ["finishing", "transition", "physical"],
+    "Superioridade nos Setores": ["finishing", "transition", "physical"],
 
     // Organização defensiva
     "Back Four Shifting": ["defensive", "pressing"],
