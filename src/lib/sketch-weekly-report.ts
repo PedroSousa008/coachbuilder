@@ -5,11 +5,13 @@ import type {
   SketchFileEntry,
   SketchStaffNote,
   SketchTask,
+  Tactic,
   TacticMatch,
   TrainingSession,
 } from "@/types";
 import type { TrainingCatalogItem } from "@/lib/training-session-local";
 import { calendarDayLisbon } from "@/lib/lisbon-date";
+import { buildCoachNotesLineupSynthesisPt } from "@/lib/coach-notes-lineup-synthesis";
 
 export type WeeklyReportMatchAgg = {
   id: string;
@@ -39,6 +41,8 @@ export type WeeklyReportInput = {
   /** Ex.: «março de 2026» */
   periodMonthLabel: string;
   players: Player[];
+  /** Táticas guardadas — para cruzar com a nota do treinador (11, posições). */
+  savedTactics: Tactic[];
   tacticMatches: TacticMatch[];
   trainingSessionsInPeriod: TrainingSession[];
   /** Notas opcionais do treinador sobre treinos no mês (peso complementar). */
@@ -500,7 +504,19 @@ export function renderWeeklyReportText(data: WeeklyReportData, input: WeeklyRepo
 
   lines.push("🧪 5. Impacto dos treinos");
   const sessions = data.trainingSessionsInPeriod;
-  if (!coachTrainingNotes.trim() && sessions.length === 0) {
+  const lineupSynthesis = buildCoachNotesLineupSynthesisPt({
+    coachTrainingNotes,
+    coachGeneralNotes,
+    players,
+    savedTactics: input.savedTactics,
+    tacticMatches: input.tacticMatches,
+    periodStart: data.periodStart,
+    periodEnd: data.periodEnd,
+    trainingSessionsInPeriod: sessions,
+  });
+  const hasBlock5Body =
+    sessions.length > 0 || coachTrainingNotes.trim().length > 0 || lineupSynthesis.trim().length > 0;
+  if (!hasBlock5Body) {
     lines.push("Sem notas de treino introduzidas e sem sessões de treino datadas neste mês na app — bloco opcional em branco.");
   } else {
     if (sessions.length > 0) {
@@ -511,9 +527,17 @@ export function renderWeeklyReportText(data: WeeklyReportData, input: WeeklyRepo
     if (coachTrainingNotes.trim()) {
       lines.push("Notas do treinador sobre o mês de treino:");
       lines.push(coachTrainingNotes.trim());
+    } else if (coachGeneralNotes.trim() && lineupSynthesis.trim()) {
+      lines.push(
+        "(Sem notas específicas de treino neste campo — a síntese abaixo usa também as notas gerais no final do relatório.)"
+      );
+    }
+    if (lineupSynthesis.trim()) {
+      lines.push("");
+      lines.push(lineupSynthesis);
     }
     lines.push(
-      "Interpretação: correlaciona manualmente estes dados com o bloco 1 — a app não infere causalidade entre treino e resultado sem registos estruturados."
+      "Interpretação: a síntese acima cruza o teu texto com dados estruturados (jogos do período, tática mais usada, lugares no 11, pares na mesma função). Não prova causalidade treino→resultado nem substitui o teu juízo."
     );
   }
   lines.push("");

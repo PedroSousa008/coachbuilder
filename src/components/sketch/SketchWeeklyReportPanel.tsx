@@ -57,7 +57,7 @@ function addDaysYmdPublic(ymd: string, delta: number): string {
 }
 
 export function SketchWeeklyReportPanel() {
-  const { players, tacticMatches, trainingSessions, addTrainingSession, sketchArea } = useAppData();
+  const { players, tacticMatches, trainingSessions, addTrainingSession, sketchArea, savedTactics } = useAppData();
   const today = useMemo(() => calendarDayLisbon(Date.now()), []);
   const [anchorDay, setAnchorDay] = useState(today);
   const reportMonth = useMemo(() => lisbonReportMonthBeforeAnchorsMonth(anchorDay), [anchorDay]);
@@ -123,6 +123,7 @@ export function SketchWeeklyReportPanel() {
     periodEnd: reportMonth.end,
     periodMonthLabel: reportMonth.label,
     players,
+    savedTactics,
     tacticMatches,
     trainingSessionsInPeriod: trainingInPeriod,
     coachTrainingNotes,
