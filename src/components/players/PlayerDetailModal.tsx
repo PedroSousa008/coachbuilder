@@ -29,6 +29,7 @@ import {
   EVALUATION_TESTS,
   EVALUATION_TEST_IDS,
 } from "@/lib/evaluation-tests";
+import { computeAgeFromDateOfBirth } from "@/lib/player-age";
 
 const POSITIONS: Position[] = [
   "GK",
@@ -493,7 +494,12 @@ export function PlayerDetailModal({
                     id="pd-dob"
                     type="date"
                     value={dateOfBirth}
-                    onChange={(e) => setDateOfBirth(e.target.value)}
+                    onChange={(e) => {
+                      const dob = e.target.value;
+                      setDateOfBirth(dob);
+                      const computedAge = computeAgeFromDateOfBirth(dob);
+                      if (computedAge != null) setAge(String(Math.min(45, Math.max(14, computedAge))));
+                    }}
                     className="mt-1"
                   />
                 </div>

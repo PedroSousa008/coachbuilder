@@ -6,6 +6,7 @@ import type { NewPlayerInput } from "@/contexts/AppDataContext";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { cn } from "@/lib/utils";
+import { computeAgeFromDateOfBirth } from "@/lib/player-age";
 
 const POSITIONS: Position[] = [
   "GK",
@@ -177,7 +178,12 @@ export function AddPlayerModal({
                 id="np-dob"
                 type="date"
                 value={dateOfBirth}
-                onChange={(e) => setDateOfBirth(e.target.value)}
+                onChange={(e) => {
+                  const dob = e.target.value;
+                  setDateOfBirth(dob);
+                  const computedAge = computeAgeFromDateOfBirth(dob);
+                  if (computedAge != null) setAge(String(Math.min(45, Math.max(14, computedAge))));
+                }}
                 className="mt-1"
               />
             </div>

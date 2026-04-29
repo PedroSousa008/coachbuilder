@@ -57,10 +57,10 @@ export function PlayerCard({
           </div>
         </div>
       </div>
-      <div className="mt-4 flex items-center justify-between border-t border-surface-border/80 pt-3">
+      <div className="mt-4 flex items-center justify-between gap-4 border-t border-surface-border/80 pt-3">
         <span
           className={cn(
-            "text-xs font-medium",
+            "min-w-0 text-xs font-medium",
             player.availability === "available" && "text-white",
             player.availability === "doubt" && "text-amber-400",
             player.availability === "out" && "text-red-400/90"
@@ -68,7 +68,7 @@ export function PlayerCard({
         >
           {availabilityLabel[player.availability]}
         </span>
-        <span className={cn("text-xs", performanceColor[player.performance])}>
+        <span className={cn("ml-auto shrink-0 text-xs", performanceColor[player.performance])}>
           Form {player.performance === "up" ? "↑" : player.performance === "down" ? "↓" : "→"}
         </span>
       </div>

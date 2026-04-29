@@ -87,6 +87,7 @@ import {
   toLeagueTableRowsPreserveOrder,
 } from "@/lib/league-standings";
 import { buildPastClubResultsFromResolved, mergePastClubResults } from "@/lib/league-past-club-results";
+import { resolveTrackedPlayerAge } from "@/lib/player-age";
 
 function normalizeCoachProfileState(profile: CoachProfileState): CoachProfileState {
   const normalized = withNormalizedHonorCategories(withNormalizedCareerSeasonsInProfile(profile));
@@ -98,6 +99,13 @@ function normalizeCoachProfileState(profile: CoachProfileState): CoachProfileSta
     ...normalized,
     trainingSquadAgeGroup: ageGroup,
     ...(exerciseAgeMap ? { trainingExerciseAgeMap: exerciseAgeMap } : {}),
+  };
+}
+
+function withTrackedPlayerAge(player: Player): Player {
+  return {
+    ...player,
+    age: resolveTrackedPlayerAge(player.age, player.dateOfBirth),
   };
 }
 
@@ -616,7 +624,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     if (!loadedMsgs[SQUAD_GROUP_ID]) {
       loadedMsgs[SQUAD_GROUP_ID] = [];
     }
-    setPlayers(loadedPlayers);
+    setPlayers(loadedPlayers.map(withTrackedPlayerAge));
     setStaff(loadedStaff);
     setTeamRoles(loadedTeamRoles);
     setConversations(loadedConvs);
@@ -675,7 +683,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           const loadedMsgs = { ...s.messages };
           if (!loadedMsgs[SQUAD_GROUP_ID]) loadedMsgs[SQUAD_GROUP_ID] = [];
           const leagueMatchesDeduped = dedupeMatches(s.league.matches ?? []);
-          setPlayers(s.players);
+          setPlayers((s.players ?? []).map(withTrackedPlayerAge));
           setStaff(s.staff ?? []);
           setTeamRoles(normalizeTeamRoles(s.teamRoles));
           setConversations(loadedConvs);
@@ -1007,8 +1015,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       performance: input.performance,
       dateOfBirth: input.dateOfBirth,
     };
-    setPlayers((prev) => [...prev, p]);
-    return p;
+    const tracked = withTrackedPlayerAge(p);
+    setPlayers((prev) => [...prev, tracked]);
+    return tracked;
   }, []);
 
   const addStaff = useCallback((input: NewStaffInput) => {
@@ -1031,7 +1040,12 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const updatePlayer = useCallback((id: string, patch: Partial<Omit<Player, "id">>) => {
-    setPlayers((prev) => prev.map((x) => (x.id === id ? { ...x, ...patch } : x)));
+    setPlayers((prev) =>
+      prev.map((x) => {
+        if (x.id !== id) return x;
+        return withTrackedPlayerAge({ ...x, ...patch });
+      })
+    );
   }, []);
 
   const removePlayer = useCallback((id: string) => {
