@@ -37,7 +37,7 @@ export function PricingCard({
       <p className="mt-2 text-sm text-zinc-400">{description}</p>
       <p className="mt-6 flex items-baseline gap-1">
         <span className="font-display text-4xl font-bold text-white">{price}</span>
-        {price !== "€0" && <span className="text-sm text-zinc-500">/month</span>}
+        {price !== "€0" && <span className="text-sm text-zinc-500">/mês</span>}
       </p>
       <ul className="mt-8 flex flex-col gap-3 text-sm text-zinc-300">
         {features.map((f) => (

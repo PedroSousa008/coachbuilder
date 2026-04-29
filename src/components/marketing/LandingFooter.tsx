@@ -13,47 +13,47 @@ export function LandingFooter() {
               <span className="font-display font-semibold text-white">CoachBuilder</span>
             </div>
             <p className="mt-3 max-w-xs text-sm text-zinc-500">
-              The operating system for football coaches — tactics, training, and squad comms in one workspace.
+              O sistema operativo para treinadores de futebol — táticas, treino e comunicação do plantel num só espaço.
             </p>
           </div>
           <div className="flex flex-wrap gap-10 text-sm">
             <div>
-              <p className="font-medium text-white">Product</p>
+              <p className="font-medium text-white">Produto</p>
               <ul className="mt-3 space-y-2 text-zinc-500">
                 <li>
                   <Link href="/app/tactics" className="hover:text-accent">
-                    Tactics
+                    Táticas
                   </Link>
                 </li>
                 <li>
                   <Link href="/app/training" className="hover:text-accent">
-                    Training
+                    Treino
                   </Link>
                 </li>
                 <li>
                   <Link href="/app/messages" className="hover:text-accent">
-                    Messages
+                    Mensagens
                   </Link>
                 </li>
               </ul>
             </div>
             <div>
-              <p className="font-medium text-white">Company</p>
+              <p className="font-medium text-white">Empresa</p>
               <ul className="mt-3 space-y-2 text-zinc-500">
                 <li>
                   <a href="#pricing" className="hover:text-white">
-                    Pricing
+                    Preços
                   </a>
                 </li>
                 <li>
-                  <span className="cursor-default">Privacy (soon)</span>
+                  <span className="cursor-default">Privacidade (brevemente)</span>
                 </li>
               </ul>
             </div>
           </div>
         </div>
         <p className="mt-12 border-t border-surface-border pt-8 text-center text-xs text-zinc-600">
-          © {new Date().getFullYear()} CoachBuilder. Demo UI — no data leaves your browser.
+          © {new Date().getFullYear()} CoachBuilder. Interface demo — nenhum dado sai do teu browser.
         </p>
       </div>
     </footer>

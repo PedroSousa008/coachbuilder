@@ -12,13 +12,13 @@ export function LandingNav() {
         </Link>
         <nav className="hidden items-center gap-8 text-sm text-zinc-400 md:flex">
           <a href="#features" className="hover:text-white">
-            Features
+            Funcionalidades
           </a>
           <a href="#win" className="hover:text-white">
-            Why coaches
+            Porque treinadores
           </a>
           <a href="#pricing" className="hover:text-white">
-            Pricing
+            Preços
           </a>
         </nav>
         <div className="flex items-center gap-2">
@@ -26,13 +26,13 @@ export function LandingNav() {
             href="/login"
             className="hidden rounded-xl px-3 py-2 text-sm text-zinc-400 hover:text-white sm:block"
           >
-            Log in
+            Iniciar sessão
           </Link>
           <Link
             href="/signup"
             className="inline-flex h-9 items-center justify-center rounded-xl bg-accent px-4 text-sm font-medium text-zinc-950 transition-colors hover:bg-accent-muted"
           >
-            Start free
+            Começar grátis
           </Link>
         </div>
       </div>
