@@ -12,9 +12,9 @@ const availabilityLabel = {
 };
 
 const performanceColor = {
-  up: "text-accent",
+  up: "text-white",
   steady: "text-zinc-400",
-  down: "text-amber-400/90",
+  down: "text-red-400",
 };
 
 export function PlayerCard({
@@ -61,7 +61,7 @@ export function PlayerCard({
         <span
           className={cn(
             "text-xs font-medium",
-            player.availability === "available" && "text-accent",
+            player.availability === "available" && "text-white",
             player.availability === "doubt" && "text-amber-400",
             player.availability === "out" && "text-red-400/90"
           )}
