@@ -19,6 +19,7 @@ import {
   Trash2,
   Users,
   Sparkles,
+  FileBarChart,
 } from "lucide-react";
 import { useAppData } from "@/contexts/AppDataContext";
 import type {
@@ -58,8 +59,9 @@ import {
   SketchBoardCanvas,
 } from "./SketchBoardCanvas";
 import { SketchOpponentAnalysisPanel } from "./SketchOpponentAnalysisPanel";
+import { SketchWeeklyReportPanel } from "./SketchWeeklyReportPanel";
 
-type TabId = "calendar" | "notes" | "tasks" | "files" | "board" | "watchlist" | "opponentAi";
+type TabId = "calendar" | "notes" | "tasks" | "files" | "board" | "watchlist" | "opponentAi" | "weeklyReport";
 
 const TABS: { id: TabId; label: string; icon: typeof Calendar }[] = [
   { id: "calendar", label: "Calendário", icon: Calendar },
@@ -69,6 +71,7 @@ const TABS: { id: TabId; label: string; icon: typeof Calendar }[] = [
   { id: "board", label: "Quadro", icon: LayoutGrid },
   { id: "watchlist", label: "Observação", icon: Users },
   { id: "opponentAi", label: "Análise Adversário AI", icon: Sparkles },
+  { id: "weeklyReport", label: "Relatório Semanal", icon: FileBarChart },
 ];
 
 const FORMS_TOOLS: { id: SketchStrokeTool; label: string }[] = [
@@ -107,10 +110,13 @@ export function SketchAreaClient() {
     tabParam === "files" ||
     tabParam === "board" ||
     tabParam === "watchlist" ||
-    tabParam === "opponent-ai"
+    tabParam === "opponent-ai" ||
+    tabParam === "weekly-report"
       ? tabParam === "opponent-ai"
         ? "opponentAi"
-        : tabParam
+        : tabParam === "weekly-report"
+          ? "weeklyReport"
+          : tabParam
       : "calendar";
 
   const {
@@ -1481,6 +1487,7 @@ export function SketchAreaClient() {
       ) : null}
 
       {tab === "opponentAi" ? <SketchOpponentAnalysisPanel /> : null}
+      {tab === "weeklyReport" ? <SketchWeeklyReportPanel /> : null}
     </div>
   );
 }
