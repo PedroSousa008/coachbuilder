@@ -77,29 +77,6 @@ export function aggregatePlayerInTactic(
   return agg;
 }
 
-export type PlayerMatchAggWithRecord = PlayerMatchAgg & {
-  wins: number;
-  draws: number;
-  losses: number;
-};
-
-/** Estatísticas de um jogador num subconjunto de jogos (ex.: mês do relatório), com registo de resultados. */
-export function aggregatePlayerInMatchList(matches: TacticMatch[], playerId: string): PlayerMatchAggWithRecord {
-  const agg = emptyPlayerAgg();
-  let wins = 0;
-  let draws = 0;
-  let losses = 0;
-  for (const m of matches) {
-    const line = m.playerStats.find((x) => x.playerId === playerId);
-    if (!line) continue;
-    addLine(agg, line);
-    if (m.outcome === "win") wins++;
-    else if (m.outcome === "draw") draws++;
-    else losses++;
-  }
-  return { ...agg, wins, draws, losses };
-}
-
 export function winRatePercent(wins: number, matchesUsed: number): number {
   if (matchesUsed <= 0) return 0;
   return Math.round((wins / matchesUsed) * 100);
