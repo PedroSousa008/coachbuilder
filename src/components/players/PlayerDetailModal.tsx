@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { createPortal } from "react-dom";
-import { Search, X } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Search, X } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { shouldUseCloudClientApis } from "@/lib/cloud-config";
 import { normalizeNametagInput } from "@/lib/user-nametag";
@@ -10,6 +10,7 @@ import type {
   EvaluationTestId,
   Player,
   PlayerEvaluationTests,
+  PlayerPhotoFrame,
   PlayerQualities,
   Position,
   PreferredFoot,
@@ -30,6 +31,11 @@ import {
   EVALUATION_TEST_IDS,
 } from "@/lib/evaluation-tests";
 import { computeAgeFromDateOfBirth } from "@/lib/player-age";
+import {
+  PHOTO_FRAME_DEFAULT,
+  normalizePlayerPhotoFrame,
+  photoFrameImgStyle,
+} from "@/lib/player-photo-frame";
 
 /** Limite para data URL guardada no jogador (local / sync). */
 const PLAYER_PHOTO_MAX_FILE_BYTES = 400_000;
@@ -90,7 +96,15 @@ export function PlayerDetailModal({
   >("idle");
   const lookupGen = useRef(0);
   const [photoUrlDraft, setPhotoUrlDraft] = useState("");
+  const [photoFrameDraft, setPhotoFrameDraft] = useState<PlayerPhotoFrame>(() => ({ ...PHOTO_FRAME_DEFAULT }));
   const photoInputRef = useRef<HTMLInputElement>(null);
+
+  const nudgePhotoFrame = (dPosX: number, dPosY: number) => {
+    setPhotoFrameDraft((prev) => {
+      const f = normalizePlayerPhotoFrame(prev);
+      return normalizePlayerPhotoFrame({ ...f, posX: f.posX + dPosX, posY: f.posY + dPosY });
+    });
+  };
 
   useEffect(() => setMediaPortalMounted(true), []);
 
@@ -125,6 +139,7 @@ export function PlayerDetailModal({
     setDocumentsBundle(normalizeTeamDocuments(player.documents));
     setLinkedNametagDraft(player.linkedNametag ?? "");
     setPhotoUrlDraft(player.photoUrl ?? "");
+    setPhotoFrameDraft(normalizePlayerPhotoFrame(player.photoFrame));
     setNametagLookup("idle");
     setTab("dados");
     setEvaluationHelpOpenId(null);
@@ -292,6 +307,13 @@ export function PlayerDetailModal({
     }
 
     const ln = normalizeNametagInput(linkedNametagDraft);
+    const trimmedPhoto = photoUrlDraft.trim();
+    const frameNorm = normalizePlayerPhotoFrame(photoFrameDraft);
+    const photoFrameIsDefault =
+      frameNorm.posX === PHOTO_FRAME_DEFAULT.posX &&
+      frameNorm.posY === PHOTO_FRAME_DEFAULT.posY &&
+      frameNorm.zoom === PHOTO_FRAME_DEFAULT.zoom;
+
     onSave(player.id, {
       name: n,
       number: num,
@@ -307,7 +329,8 @@ export function PlayerDetailModal({
       qualities: qualitiesDraft,
       evaluationTests,
       documents: normalizeTeamDocuments(documentsBundle),
-      photoUrl: photoUrlDraft.trim() ? photoUrlDraft.trim() : undefined,
+      photoUrl: trimmedPhoto || undefined,
+      photoFrame: trimmedPhoto && !photoFrameIsDefault ? frameNorm : undefined,
       ...(ln ? { linkedNametag: ln } : { linkedNametag: undefined }),
     });
   };
@@ -326,7 +349,10 @@ export function PlayerDetailModal({
     const reader = new FileReader();
     reader.onload = () => {
       const s = typeof reader.result === "string" ? reader.result : "";
-      if (s) setPhotoUrlDraft(s);
+      if (s) {
+        setPhotoUrlDraft(s);
+        setPhotoFrameDraft({ ...PHOTO_FRAME_DEFAULT });
+      }
     };
     reader.readAsDataURL(file);
   };
@@ -397,7 +423,12 @@ export function PlayerDetailModal({
                 <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-surface-border bg-zinc-800">
                   {photoUrlDraft ? (
                     // eslint-disable-next-line @next/next/no-img-element -- data URL do utilizador
-                    <img src={photoUrlDraft} alt="" className="h-full w-full object-cover" />
+                    <img
+                      src={photoUrlDraft}
+                      alt=""
+                      className="h-full w-full"
+                      style={photoFrameImgStyle(photoFrameDraft)}
+                    />
                   ) : (
                     <span className="text-xs text-zinc-600">—</span>
                   )}
@@ -420,12 +451,102 @@ export function PlayerDetailModal({
                     Escolher foto
                   </Button>
                   {photoUrlDraft ? (
-                    <Button type="button" variant="ghost" size="sm" className="text-zinc-400" onClick={() => setPhotoUrlDraft("")}>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="text-zinc-400"
+                      onClick={() => {
+                        setPhotoUrlDraft("");
+                        setPhotoFrameDraft({ ...PHOTO_FRAME_DEFAULT });
+                      }}
+                    >
                       Remover foto
                     </Button>
                   ) : null}
                 </div>
               </div>
+              {photoUrlDraft ? (
+                <div className="mt-3 max-w-[18rem] space-y-2 rounded-lg border border-surface-border/80 bg-black/25 p-2.5">
+                  <p className="text-[11px] font-medium text-zinc-500">Ajustar na moldura</p>
+                  <div className="flex gap-3">
+                    <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-surface-border bg-zinc-800">
+                      {/* eslint-disable-next-line @next/next/no-img-element -- preview */}
+                      <img
+                        src={photoUrlDraft}
+                        alt=""
+                        className="h-full w-full"
+                        style={photoFrameImgStyle(photoFrameDraft)}
+                      />
+                    </div>
+                    <div className="flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5">
+                      <button
+                        type="button"
+                        onClick={() => nudgePhotoFrame(0, -6)}
+                        className="inline-flex h-7 w-10 items-center justify-center rounded-md border border-surface-border bg-zinc-900/80 text-zinc-300 transition-colors hover:border-accent/40 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/35"
+                        aria-label="Mover foto para cima"
+                      >
+                        <ChevronUp className="h-4 w-4" strokeWidth={2} />
+                      </button>
+                      <div className="flex items-center gap-0.5">
+                        <button
+                          type="button"
+                          onClick={() => nudgePhotoFrame(-6, 0)}
+                          className="inline-flex h-7 w-10 items-center justify-center rounded-md border border-surface-border bg-zinc-900/80 text-zinc-300 transition-colors hover:border-accent/40 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/35"
+                          aria-label="Mover foto para a esquerda"
+                        >
+                          <ChevronLeft className="h-4 w-4" strokeWidth={2} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setPhotoFrameDraft({ ...PHOTO_FRAME_DEFAULT })}
+                          className="inline-flex h-7 min-w-[4.25rem] items-center justify-center rounded-md border border-surface-border bg-zinc-900/80 px-1.5 text-[10px] font-medium text-zinc-400 transition-colors hover:border-accent/40 hover:text-zinc-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/35"
+                        >
+                          Centrar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => nudgePhotoFrame(6, 0)}
+                          className="inline-flex h-7 w-10 items-center justify-center rounded-md border border-surface-border bg-zinc-900/80 text-zinc-300 transition-colors hover:border-accent/40 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/35"
+                          aria-label="Mover foto para a direita"
+                        >
+                          <ChevronRight className="h-4 w-4" strokeWidth={2} />
+                        </button>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => nudgePhotoFrame(0, 6)}
+                        className="inline-flex h-7 w-10 items-center justify-center rounded-md border border-surface-border bg-zinc-900/80 text-zinc-300 transition-colors hover:border-accent/40 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/35"
+                        aria-label="Mover foto para baixo"
+                      >
+                        <ChevronDown className="h-4 w-4" strokeWidth={2} />
+                      </button>
+                    </div>
+                  </div>
+                  <div>
+                    <label htmlFor="player-photo-zoom" className="text-[11px] text-zinc-500">
+                      Aproximar
+                    </label>
+                    <input
+                      id="player-photo-zoom"
+                      type="range"
+                      min={100}
+                      max={275}
+                      step={5}
+                      value={Math.round(normalizePlayerPhotoFrame(photoFrameDraft).zoom * 100)}
+                      onChange={(e) =>
+                        setPhotoFrameDraft(
+                          normalizePlayerPhotoFrame({
+                            ...normalizePlayerPhotoFrame(photoFrameDraft),
+                            zoom: Number(e.target.value) / 100,
+                          })
+                        )
+                      }
+                      className="mt-1 h-2 w-full cursor-pointer accent-accent"
+                    />
+                  </div>
+                </div>
+              ) : null}
               <p className="mt-1.5 text-[11px] text-zinc-600">
                 Aparece no cartão da equipa. Até ~{Math.round(PLAYER_PHOTO_MAX_FILE_BYTES / 1024)} KB (JPEG, PNG, WebP…).
               </p>

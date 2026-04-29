@@ -201,6 +201,16 @@ export interface TeamDocumentsBundle {
   items: TeamAttachedDocument[];
 }
 
+/** Encaixe da foto no avatar (posição + zoom dentro da moldura). */
+export interface PlayerPhotoFrame {
+  /** 0–100, eixo horizontal (`object-position`). */
+  posX: number;
+  /** 0–100, eixo vertical. */
+  posY: number;
+  /** ≥1; maior = mais zoom (aproximar). */
+  zoom: number;
+}
+
 export interface Player {
   id: string;
   name: string;
@@ -216,6 +226,8 @@ export interface Player {
   performance: "up" | "steady" | "down";
   number: number;
   photoUrl?: string;
+  /** Posição e zoom da foto dentro do avatar (só com `photoUrl`). */
+  photoFrame?: PlayerPhotoFrame;
   /** FIFA-style attributes 0–100; merged with defaults when missing. */
   qualities?: Partial<PlayerQualities>;
   /** Testes de campo / balneário com valores e AI overall. */

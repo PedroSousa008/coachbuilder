@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/Badge";
 import { cn } from "@/lib/utils";
 import { formatPlayerPositions } from "@/lib/player-positions";
 import { buildPlayerInsights } from "@/lib/player-insights";
+import { photoFrameImgStyle } from "@/lib/player-photo-frame";
 
 const availabilityLabel = {
   available: "Disponível",
@@ -57,7 +58,12 @@ export function PlayerCard({
         <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-zinc-800">
           {player.photoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element -- data URL or remote avatar
-            <img src={player.photoUrl} alt="" className="h-full w-full object-cover" />
+            <img
+              src={player.photoUrl}
+              alt=""
+              className="h-full w-full"
+              style={photoFrameImgStyle(player.photoFrame)}
+            />
           ) : (
             <span className="font-display text-sm font-bold text-zinc-400">{playerInitials(player.name)}</span>
           )}
@@ -70,7 +76,7 @@ export function PlayerCard({
           </div>
         </div>
       </div>
-      <div className="mt-4 flex items-center gap-2 border-t border-surface-border/80 pt-3">
+      <div className="relative mt-4 flex min-h-[1.25rem] items-center gap-2 border-t border-surface-border/80 pt-3 pr-11 sm:pr-12">
         <span
           className={cn(
             "min-w-0 flex-1 text-xs font-medium",
@@ -81,16 +87,14 @@ export function PlayerCard({
         >
           {availabilityLabel[player.availability]}
         </span>
-        <div className="flex shrink-0 items-center justify-end gap-2">
-          <span className={cn("text-xs font-medium", performanceColor[player.performance])}>
-            Forma {player.performance === "up" ? "↑" : player.performance === "down" ? "↓" : "→"}
-          </span>
-          <div
-            className="flex h-5 min-w-[1.35rem] max-w-[2rem] items-center justify-center rounded-full border-2 border-white bg-zinc-900/55 px-1 text-xs font-medium tabular-nums leading-none text-white"
-            aria-label={`Número ${player.number}`}
-          >
-            {player.number}
-          </div>
+        <span className={cn("shrink-0 text-xs font-medium", performanceColor[player.performance])}>
+          Forma {player.performance === "up" ? "↑" : player.performance === "down" ? "↓" : "→"}
+        </span>
+        <div
+          className="absolute right-3 top-1/2 flex h-5 min-w-[1.35rem] max-w-[2rem] -translate-y-1/2 items-center justify-center rounded-full border-2 border-white bg-zinc-900/55 px-1 text-xs font-medium tabular-nums leading-none text-white"
+          aria-label={`Número ${player.number}`}
+        >
+          {player.number}
         </div>
       </div>
       {roleBadge ? (
