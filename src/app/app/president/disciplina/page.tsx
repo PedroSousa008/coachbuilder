@@ -28,6 +28,16 @@ function safeRatio(cards: number, minutes: number): string {
   return (cards / minutes).toFixed(3);
 }
 
+function cardsPerGame(cards: number, sequenceLast5: string): string {
+  if (cards <= 0) return "0.00";
+  const gamesTracked = sequenceLast5
+    .trim()
+    .split(/\s+/)
+    .filter((token) => token === "-" || token === "A" || token === "R").length;
+  if (gamesTracked <= 0) return "0.00";
+  return (cards / gamesTracked).toFixed(2);
+}
+
 function riskClass(yellowCards: number): string {
   if (!YELLOW_CARD_RISK_COUNTS.has(yellowCards)) return "text-zinc-200";
   return "font-semibold text-amber-300";
@@ -213,8 +223,8 @@ export default function PresidentDisciplinaPage() {
                 <th className="px-3 py-2 text-left">Amarelos</th>
                 <th className="px-3 py-2 text-left">Vermelhos</th>
                 <th className="px-3 py-2 text-left">Minutos</th>
-                <th className="px-3 py-2 text-left">Amarelos por Minutos</th>
-                <th className="px-3 py-2 text-left">Vermelhos por Minutos</th>
+                <th className="px-3 py-2 text-left">Amarelos por Jogo</th>
+                <th className="px-3 py-2 text-left">Vermelhos por Jogo</th>
                 <th className="px-3 py-2 text-left">Jogos Suspensos</th>
                 <th className="px-3 py-2 text-left">Sequência de Cartões</th>
                 <th className="px-3 py-2 text-left">Notas</th>
@@ -252,8 +262,8 @@ export default function PresidentDisciplinaPage() {
                       <td className={cn("px-3 py-2", riskClass(r.yellowCards))}>{r.yellowCards}</td>
                       <td className="px-3 py-2 text-zinc-200">{r.redCards}</td>
                       <td className="px-3 py-2 tabular-nums text-zinc-200">{r.minutes}</td>
-                      <td className="px-3 py-2 tabular-nums text-zinc-300">{safeRatio(r.yellowCards, r.minutes)}</td>
-                      <td className="px-3 py-2 tabular-nums text-zinc-300">{safeRatio(r.redCards, r.minutes)}</td>
+                      <td className="px-3 py-2 tabular-nums text-zinc-300">{cardsPerGame(r.yellowCards, r.sequenceLast5)}</td>
+                      <td className="px-3 py-2 tabular-nums text-zinc-300">{cardsPerGame(r.redCards, r.sequenceLast5)}</td>
                       <td className="px-3 py-2 text-zinc-200">{r.gamesSuspended}</td>
                       <td className="px-3 py-2 font-mono text-xs tracking-wide text-zinc-300">{r.sequenceLast5}</td>
                       <td className="max-w-[300px] px-3 py-2 text-zinc-300">
