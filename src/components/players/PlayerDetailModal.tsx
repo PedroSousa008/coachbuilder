@@ -434,10 +434,7 @@ export function PlayerDetailModal({
           <p className="mt-3 text-xs text-zinc-500">Dados, qualidades, avaliação e documentos</p>
           {insights && (
             <div className="mt-4">
-              <PlayerInsightsBox
-                insights={insights}
-                squadNumber={Math.min(99, Math.max(1, parseInt(number, 10) || player.number))}
-              />
+              <PlayerInsightsBox insights={insights} />
             </div>
           )}
           <div className="mt-4 grid grid-cols-2 gap-1 rounded-xl bg-black/40 p-1 sm:grid-cols-4">

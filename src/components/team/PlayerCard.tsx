@@ -50,8 +50,14 @@ export function PlayerCard({
       onClick={onOpen}
       className="relative flex w-full flex-col rounded-2xl border border-surface-border bg-surface-raised/50 p-4 pt-10 text-left transition-all hover:border-zinc-600 hover:bg-surface-raised sm:pt-4"
     >
-      <div className="absolute right-3 top-3 flex items-center gap-2">
+      <div className="absolute right-3 top-3 flex flex-col items-end gap-1.5">
         <span className={cn("font-display text-xl font-bold leading-none", overallColorClass)}>{insights.overall}</span>
+        <div
+          className="flex h-9 min-w-[2.25rem] items-center justify-center rounded-full border-[3px] border-white bg-zinc-900/50 px-1.5 font-display text-sm font-bold tabular-nums text-white shadow-[0_0_0_1px_rgba(255,255,255,0.06)]"
+          aria-label={`Número ${player.number}`}
+        >
+          {player.number}
+        </div>
       </div>
       <div className="flex items-start gap-3">
         <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-zinc-800">
