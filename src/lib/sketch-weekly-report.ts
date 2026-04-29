@@ -228,6 +228,7 @@ export function renderWeeklyReportText(data: WeeklyReportData, input: WeeklyRepo
 
   lines.push("RELATÓRIO SEMANAL INTELIGENTE");
   lines.push(`Período: ${data.label} (jogos registados nas táticas)`);
+  lines.push("Ponderação: dados de jogos são a base principal; informação de treinos (sessões na app + notas) entra apenas como complemento, sem substituir os números dos jogos.");
   lines.push("");
 
   lines.push("🧠 1. Resumo geral da semana");
