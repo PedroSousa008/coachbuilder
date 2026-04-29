@@ -12,7 +12,7 @@ import {
   buildAutoTrainingPlanText,
   buildWeeklyReportData,
   collectPastReportSnippetsInMonth,
-  lisbonReportMonthBeforeAnchorsMonth,
+  lisbonRollingDaysEnding,
   newSessionInputFromPlan,
   renderWeeklyReportText,
   type WeeklyReportInput,
@@ -60,7 +60,7 @@ export function SketchWeeklyReportPanel() {
   const { players, tacticMatches, trainingSessions, addTrainingSession, sketchArea, savedTactics } = useAppData();
   const today = useMemo(() => calendarDayLisbon(Date.now()), []);
   const [anchorDay, setAnchorDay] = useState(today);
-  const reportMonth = useMemo(() => lisbonReportMonthBeforeAnchorsMonth(anchorDay), [anchorDay]);
+  const reportWindow = useMemo(() => lisbonRollingDaysEnding(anchorDay), [anchorDay]);
 
   const [coachTrainingNotes, setCoachTrainingNotes] = useState("");
   const [coachGeneralNotes, setCoachGeneralNotes] = useState("");
@@ -72,45 +72,45 @@ export function SketchWeeklyReportPanel() {
   const catalog = useMemo(() => getTrainingCatalogItems(players), [players]);
 
   const trainingInPeriod = useMemo(
-    () => trainingSessions.filter((s) => sessionDayInRange(s.date, reportMonth.start, reportMonth.end)),
-    [trainingSessions, reportMonth.start, reportMonth.end]
+    () => trainingSessions.filter((s) => sessionDayInRange(s.date, reportWindow.start, reportWindow.end)),
+    [trainingSessions, reportWindow.start, reportWindow.end]
   );
 
   const sketchNotesInPeriod = useMemo(
     () =>
-      sketchArea.notes.filter((n) => noteTouchesMonth(n.date, n.updatedAt, reportMonth.start, reportMonth.end)),
-    [sketchArea.notes, reportMonth.start, reportMonth.end]
+      sketchArea.notes.filter((n) => noteTouchesMonth(n.date, n.updatedAt, reportWindow.start, reportWindow.end)),
+    [sketchArea.notes, reportWindow.start, reportWindow.end]
   );
 
   const sketchEventsInPeriod = useMemo(
     () =>
-      sketchArea.calendarEvents.filter((e) => sessionDayInRange(e.date, reportMonth.start, reportMonth.end)),
-    [sketchArea.calendarEvents, reportMonth.start, reportMonth.end]
+      sketchArea.calendarEvents.filter((e) => sessionDayInRange(e.date, reportWindow.start, reportWindow.end)),
+    [sketchArea.calendarEvents, reportWindow.start, reportWindow.end]
   );
 
   const sketchTasksTouchingPeriod = useMemo(
     () =>
       sketchArea.tasks.filter((t) => {
         if (t.completed && t.completedAt) {
-          return sessionDayInRange(t.completedAt, reportMonth.start, reportMonth.end);
+          return sessionDayInRange(t.completedAt, reportWindow.start, reportWindow.end);
         }
         if (t.dueDate) {
-          return sessionDayInRange(t.dueDate, reportMonth.start, reportMonth.end);
+          return sessionDayInRange(t.dueDate, reportWindow.start, reportWindow.end);
         }
         return false;
       }),
-    [sketchArea.tasks, reportMonth.start, reportMonth.end]
+    [sketchArea.tasks, reportWindow.start, reportWindow.end]
   );
 
   const sketchFilesInPeriod = useMemo(
     () =>
-      sketchArea.files.filter((f) => sessionDayInRange(f.createdAt, reportMonth.start, reportMonth.end)),
-    [sketchArea.files, reportMonth.start, reportMonth.end]
+      sketchArea.files.filter((f) => sessionDayInRange(f.createdAt, reportWindow.start, reportWindow.end)),
+    [sketchArea.files, reportWindow.start, reportWindow.end]
   );
 
   const pastReportSnippetsInMonth = useMemo(
-    () => collectPastReportSnippetsInMonth(sketchArea.notes, reportMonth.start, reportMonth.end),
-    [sketchArea.notes, reportMonth.start, reportMonth.end]
+    () => collectPastReportSnippetsInMonth(sketchArea.notes, reportWindow.start, reportWindow.end),
+    [sketchArea.notes, reportWindow.start, reportWindow.end]
   );
 
   const recentSessions = useMemo(
@@ -119,9 +119,9 @@ export function SketchWeeklyReportPanel() {
   );
 
   const buildInput = (): WeeklyReportInput => ({
-    periodStart: reportMonth.start,
-    periodEnd: reportMonth.end,
-    periodMonthLabel: reportMonth.label,
+    periodStart: reportWindow.start,
+    periodEnd: reportWindow.end,
+    periodMonthLabel: reportWindow.label,
     players,
     savedTactics,
     tacticMatches,
@@ -182,10 +182,10 @@ export function SketchWeeklyReportPanel() {
 
       <div className="no-print flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h2 className="font-display text-xl font-semibold text-white">Relatório mensal</h2>
+          <h2 className="font-display text-xl font-semibold text-white">Relatório — últimos 30 dias</h2>
           <p className="mt-1 max-w-2xl text-sm text-zinc-500">
-            Cobre o mês civil completo anterior ao mês do dia de referência (ex.: referência em abril → todo março). Prioridade: jogos nas táticas;
-            em complemento: treinos no mês, notas/eventos/tarefas/ficheiros da Sketch e relatórios de texto guardados nas notas (com «relatório»).
+            Janela móvel: do dia de referência e 29 dias anteriores (Lisboa). Os jogos vêm dos registos em Táticas — usa a data de cada jogo e a tática certa.
+            Treinos, Sketch e relatórios guardados nas notas seguem a mesma janela.
           </p>
         </div>
       </div>
@@ -199,17 +199,17 @@ export function SketchWeeklyReportPanel() {
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">
           <label className="space-y-1">
-            <span className="text-xs text-zinc-500">Dia de referência (mês reportado = mês civil anterior ao deste dia, Lisboa)</span>
+            <span className="text-xs text-zinc-500">Dia de referência (fim da janela; por defeito é hoje, Lisboa)</span>
             <Input type="date" value={anchorDay} onChange={(e) => setAnchorDay(e.target.value)} />
           </label>
           <div className="flex items-end">
             <p className="text-sm text-zinc-400">
-              Mês reportado: <span className="text-zinc-200">{reportMonth.label}</span> —{" "}
-              <span className="text-zinc-200">{reportMonth.start}</span> a <span className="text-zinc-200">{reportMonth.end}</span>
+              <span className="text-zinc-200">{reportWindow.label}</span>:{" "}
+              <span className="text-zinc-200">{reportWindow.start}</span> a <span className="text-zinc-200">{reportWindow.end}</span>
             </p>
           </div>
           <label className="space-y-1 md:col-span-2">
-            <span className="text-xs text-zinc-500">Notas sobre treinos deste mês (opcional — complemento)</span>
+            <span className="text-xs text-zinc-500">Notas sobre treinos neste período (opcional — complemento)</span>
             <textarea
               className={cn(
                 "min-h-[88px] w-full rounded-xl border border-surface-border bg-surface-raised/90 px-3 py-2 text-sm text-zinc-100",

@@ -45,7 +45,7 @@ export type WeeklyReportInput = {
   savedTactics: Tactic[];
   tacticMatches: TacticMatch[];
   trainingSessionsInPeriod: TrainingSession[];
-  /** Notas opcionais do treinador sobre treinos no mês (peso complementar). */
+  /** Notas opcionais do treinador sobre treinos no período do relatório (peso complementar). */
   coachTrainingNotes: string;
   /** Notas gerais livres do treinador antes de gerar. */
   coachGeneralNotes: string;
@@ -84,6 +84,10 @@ export type WeeklyReportData = {
   gamesInPeriodCount: number;
 };
 
+/**
+ * Dia do jogo tal como guardado no registo da tática (`TacticMatch.date`).
+ * Cada jogo deve estar associado à tática usada; o relatório filtra só por esta data (Europe/Lisbon).
+ */
 function ymdKeyFromMatch(m: TacticMatch): string {
   const raw = (m.date ?? "").trim();
   if (!raw) return "";
@@ -116,7 +120,33 @@ function addDaysYmd(ymd: string, delta: number): string {
   return calendarDayLisbon(u);
 }
 
-/** Mês civil completo **anterior** ao mês que contém `anchorYmd` (Europe/Lisbon). Ex.: anchor em abril → março 1–último. */
+/** Número de dias corridos na janela do relatório Sketch (inclui início e fim). */
+export const SKETCH_REPORT_ROLLING_DAYS = 30;
+
+/**
+ * Janela móvel dos últimos N dias terminando em `anchorYmd` (Europe/Lisbon).
+ * Por defeito N=30: o fim é o dia de referência (hoje, se for esse o ancor), o início é 29 dias antes.
+ */
+export function lisbonRollingDaysEnding(
+  anchorYmd: string,
+  days: number = SKETCH_REPORT_ROLLING_DAYS
+): { start: string; end: string; label: string } {
+  let end: string;
+  try {
+    end = calendarDayLisbon(anchorYmd);
+  } catch {
+    end = anchorYmd.slice(0, 10);
+  }
+  const span = Math.max(1, days);
+  const start = addDaysYmd(end, -(span - 1));
+  return {
+    start,
+    end,
+    label: span === SKETCH_REPORT_ROLLING_DAYS ? "Últimos 30 dias" : `Últimos ${span} dias`,
+  };
+}
+
+/** @deprecated Preferir `lisbonRollingDaysEnding` (janela móvel). Mantido por compatibilidade. */
 export function lisbonReportMonthBeforeAnchorsMonth(anchorYmd: string): { start: string; end: string; label: string } {
   const [y, m] = anchorYmd.split("-").map((x) => parseInt(x, 10));
   const startMs = Date.UTC(y, m - 2, 1);
@@ -132,15 +162,14 @@ export function lisbonReportMonthBeforeAnchorsMonth(anchorYmd: string): { start:
   return { start, end, label };
 }
 
-/** Mês civil imediatamente anterior ao mês que começa em `monthFirstDayYmd` (YYYY-MM-DD = dia 1). */
-function previousCalendarMonthRange(monthFirstDayYmd: string): { start: string; end: string } {
-  const [y, m] = monthFirstDayYmd.split("-").map((x) => parseInt(x, 10));
-  const startMs = Date.UTC(y, m - 2, 1);
-  const endMs = Date.UTC(y, m - 1, 0);
-  return { start: calendarDayLisbon(startMs), end: calendarDayLisbon(endMs) };
+/** Os `days` dias de calendário imediatamente anteriores à janela que começa em `currentWindowStart`. */
+function previousAdjacentRollingWindow(currentWindowStart: string, days: number): { start: string; end: string } {
+  const prevEnd = addDaysYmd(currentWindowStart, -1);
+  const prevStart = addDaysYmd(currentWindowStart, -days);
+  return { start: prevStart, end: prevEnd };
 }
 
-/** Notas da Sketch que parecem relatórios guardados e foram actualizadas dentro do mês reportado. */
+/** Notas da Sketch que parecem relatórios guardados e foram actualizadas dentro do intervalo do relatório. */
 export function collectPastReportSnippetsInMonth(
   notes: SketchStaffNote[],
   periodStart: string,
@@ -260,7 +289,7 @@ function aggregatePlayers(matches: TacticMatch[]): WeeklyReportPlayerAgg[] {
 export function buildWeeklyReportData(input: WeeklyReportInput): WeeklyReportData {
   const { periodStart, periodEnd } = input;
   const periodMatches = input.tacticMatches.filter((m) => inRangeInclusive(ymdKeyFromMatch(m), periodStart, periodEnd));
-  const { start: prevStart, end: prevEnd } = previousCalendarMonthRange(periodStart);
+  const { start: prevStart, end: prevEnd } = previousAdjacentRollingWindow(periodStart, SKETCH_REPORT_ROLLING_DAYS);
   const prevPeriodMatches = input.tacticMatches.filter((m) => inRangeInclusive(ymdKeyFromMatch(m), prevStart, prevEnd));
 
   const matches = summarizeMatches(periodMatches);
@@ -318,35 +347,40 @@ export function renderWeeklyReportText(data: WeeklyReportData, input: WeeklyRepo
   const p = data.prevTeamTotals;
   const lines: string[] = [];
 
-  lines.push("RELATÓRIO MENSAL INTELIGENTE");
-  lines.push(`Período: ${data.label} (jogos registados nas táticas)`);
+  lines.push("RELATÓRIO INTELIGENTE — ÚLTIMOS 30 DIAS");
+  lines.push(`Período: ${data.label}.`);
   lines.push(
-    "Ponderação: dados de jogos são a base principal; informação da Sketch Area (notas, calendário, tarefas, ficheiros) e de treinos (sessões na app + notas tuas) entra como complemento, sem substituir os números dos jogos."
+    "Jogos: contam-se só os registos em Táticas cuja data do jogo cai neste intervalo — em cada jogo, usa a tática certa e a data em que foi disputado."
+  );
+  lines.push(
+    "Ponderação: dados de jogos são a base principal; Sketch Area e treinos na app entram como complemento."
   );
   lines.push("");
 
-  lines.push("🧠 1. Resumo geral do mês");
+  lines.push("🧠 1. Resumo geral do período");
   if (t.games === 0) {
-    lines.push("Não há jogos com estatísticas registadas neste mês nas táticas. Adiciona resultados e linhas de jogadores nos jogos para alimentar este relatório.");
+    lines.push("Não há jogos com estatísticas registadas neste intervalo nas táticas. Adiciona jogos com data correcta e linhas de jogadores para alimentar o relatório.");
   } else {
     lines.push(`Resultados: ${t.wins} vitórias, ${t.draws} empates, ${t.losses} derrotas (${t.games} jogos).`);
     lines.push(`Golos: ${t.goalsFor} marcados, ${t.goalsAgainst} sofridos (média ${(t.goalsFor / t.games).toFixed(2)} / ${(t.goalsAgainst / t.games).toFixed(2)} por jogo).`);
     if (p.games > 0) {
       const gd = t.goalsFor - t.goalsAgainst;
       const pgd = p.goalsFor - p.goalsAgainst;
-      if (t.wins > p.wins) lines.push(`Tendência vs mês anterior: mais vitórias (${t.wins} agora, ${p.wins} antes).`);
-      else if (t.wins < p.wins) lines.push(`Tendência vs mês anterior: menos vitórias (${t.wins} agora, ${p.wins} antes).`);
-      else lines.push(`Vitórias iguais ao mês anterior (${t.wins}).`);
-      if (gd > pgd) lines.push(`Saldo de golos melhor que no mês anterior (${gd} vs ${pgd}).`);
-      else if (gd < pgd) lines.push(`Saldo de golos pior que no mês anterior (${gd} vs ${pgd}).`);
-      else lines.push(`Saldo de golos igual ao do mês anterior (${gd}).`);
+      if (t.wins > p.wins) {
+        lines.push(`Tendência vs os 30 dias anteriores: mais vitórias (${t.wins} nesta janela, ${p.wins} na anterior).`);
+      } else if (t.wins < p.wins) {
+        lines.push(`Tendência vs os 30 dias anteriores: menos vitórias (${t.wins} nesta janela, ${p.wins} na anterior).`);
+      } else lines.push(`Vitórias iguais entre as duas janelas de 30 dias (${t.wins}).`);
+      if (gd > pgd) lines.push(`Saldo de golos melhor que nos 30 dias anteriores (${gd} vs ${pgd}).`);
+      else if (gd < pgd) lines.push(`Saldo de golos pior que nos 30 dias anteriores (${gd} vs ${pgd}).`);
+      else lines.push(`Saldo de golos igual ao dos 30 dias anteriores (${gd}).`);
     } else {
-      lines.push("Sem jogos no mês civil anterior para comparar tendência.");
+      lines.push("Sem jogos nos 30 dias imediatamente anteriores a este período para comparar tendência.");
     }
     if (t.losses > t.wins && t.games >= 2) {
-      lines.push("Diagnóstico: mês com mais derrotas que vitórias — rever equilíbrio ofensivo/defensivo com base nos números abaixo.");
+      lines.push("Diagnóstico: mais derrotas que vitórias nesta janela — rever equilíbrio ofensivo/defensivo com base nos números abaixo.");
     } else if (t.wins > t.losses && t.games >= 2) {
-      lines.push("Diagnóstico: mês positivo em resultados; manter consistência e gestão de carga.");
+      lines.push("Diagnóstico: janela positiva em resultados; manter consistência e gestão de carga.");
     } else if (t.games === 1) {
       lines.push("Diagnóstico: apenas um jogo no período — evita conclusões largas; usa os blocos seguintes como foco.");
     } else {
@@ -355,7 +389,7 @@ export function renderWeeklyReportText(data: WeeklyReportData, input: WeeklyRepo
   }
 
   lines.push("");
-  lines.push("Sketch Area (último mês reportado):");
+  lines.push("Sketch Area (últimos 30 dias, mesma janela):");
   const tasksCompletedInMonth = sketchTasksTouchingPeriod.filter(
     (x) => x.completed && x.completedAt && ymdInRange(x.completedAt, data.periodStart, data.periodEnd)
   );
@@ -370,7 +404,7 @@ export function renderWeeklyReportText(data: WeeklyReportData, input: WeeklyRepo
     tasksOpenDueInMonth.length > 0 ||
     pastReportSnippetsInMonth.length > 0;
   if (!sketchHasAnything) {
-    lines.push("Sem notas, eventos de calendário, ficheiros, tarefas (concluídas ou com prazo no mês) nem relatórios guardados identificáveis neste mês na Sketch.");
+    lines.push("Sem notas, eventos de calendário, ficheiros, tarefas (concluídas ou com prazo na janela) nem relatórios guardados identificáveis na Sketch neste intervalo.");
   }
   if (sketchNotesInPeriod.length > 0) {
     lines.push(
@@ -398,7 +432,7 @@ export function renderWeeklyReportText(data: WeeklyReportData, input: WeeklyRepo
   }
   if (tasksOpenDueInMonth.length > 0) {
     lines.push(
-      `Tarefas ainda em aberto com prazo neste mês (${tasksOpenDueInMonth.length}): ${tasksOpenDueInMonth
+      `Tarefas ainda em aberto com prazo nesta janela (${tasksOpenDueInMonth.length}): ${tasksOpenDueInMonth
         .slice(0, 5)
         .map((x) => `${x.title.replace(/\s+/g, " ")} (até ${x.dueDate})`)
         .join("; ")}${tasksOpenDueInMonth.length > 5 ? "…" : ""}.`
@@ -420,7 +454,7 @@ export function renderWeeklyReportText(data: WeeklyReportData, input: WeeklyRepo
     }
   } else if (sketchHasAnything) {
     lines.push(
-      "Relatórios guardados: nenhum identificado neste mês (título ou corpo com «relatório» nas notas da Sketch — podes usar essa convenção para arquivo)."
+      "Relatórios guardados: nenhum identificado nesta janela (título ou corpo com «relatório» nas notas da Sketch — podes usar essa convenção para arquivo)."
     );
   }
   lines.push("");
@@ -517,15 +551,15 @@ export function renderWeeklyReportText(data: WeeklyReportData, input: WeeklyRepo
   const hasBlock5Body =
     sessions.length > 0 || coachTrainingNotes.trim().length > 0 || lineupSynthesis.trim().length > 0;
   if (!hasBlock5Body) {
-    lines.push("Sem notas de treino introduzidas e sem sessões de treino datadas neste mês na app — bloco opcional em branco.");
+    lines.push("Sem notas de treino introduzidas e sem sessões de treino datadas nesta janela na app — bloco opcional em branco.");
   } else {
     if (sessions.length > 0) {
       lines.push(
-        `Sessões registadas na app neste mês (${sessions.length}): ${sessions.map((s) => `${s.title} (${s.date}, ${s.durationMin} min, intensidade ${s.intensity})`).join("; ")}.`
+        `Sessões registadas na app nesta janela (${sessions.length}): ${sessions.map((s) => `${s.title} (${s.date}, ${s.durationMin} min, intensidade ${s.intensity})`).join("; ")}.`
       );
     }
     if (coachTrainingNotes.trim()) {
-      lines.push("Notas do treinador sobre o mês de treino:");
+      lines.push("Notas do treinador sobre treinos (período do relatório):");
       lines.push(coachTrainingNotes.trim());
     } else if (coachGeneralNotes.trim() && lineupSynthesis.trim()) {
       lines.push(
@@ -562,7 +596,7 @@ export function renderWeeklyReportText(data: WeeklyReportData, input: WeeklyRepo
       .sort((a, b) => a.minutes - b.minutes);
     if (gamesInMonth >= 6 && lowMin.length > 0) {
       lines.push(
-        `Com ${gamesInMonth} jogos no mês, jogadores com menos de 45 min totais no período: ${formatList(lowMin.map((x) => playerName(players, x.playerId)))}.`
+        `Com ${gamesInMonth} jogos nesta janela de 30 dias, jogadores com menos de 45 min totais no período: ${formatList(lowMin.map((x) => playerName(players, x.playerId)))}.`
       );
     }
     const RISK_AMARELOS = new Set([4, 7, 10, 13, 16]);
@@ -594,7 +628,7 @@ export function renderWeeklyReportText(data: WeeklyReportData, input: WeeklyRepo
       recs.push("Rotação de referências no último terço: variar conclusores nos exercícios e no jogo.");
     }
     if (data.gamesInPeriodCount >= 10) {
-      recs.push("Gestão de carga: mês com muitos jogos — priorizar recuperação e treinos de baixa/média intensidade pontuais.");
+      recs.push("Gestão de carga: muitos jogos nestes 30 dias — priorizar recuperação e treinos de baixa/média intensidade pontuais.");
     }
     if (recs.length === 0) {
       recs.push("Manter o plano com base nos números: equilíbrio entre continuidade e pequenos ajustes posicionais.");
@@ -701,7 +735,7 @@ export function buildAutoTrainingPlanText(
 
   const lines: string[] = [];
   lines.push("PLANO DE TREINO GERADO AUTOMATICAMENTE");
-  lines.push(`Com base no relatório do mês (${data.label}). Foco inferido: ${focus}.`);
+  lines.push(`Com base no relatório dos últimos 30 dias (${data.label}). Foco inferido: ${focus}.`);
   lines.push(`Duração total sugerida: ${totalMin} min. Intensidade sugerida: ${intensity}.`);
   lines.push("");
   lines.push("Aquecimento");

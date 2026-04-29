@@ -229,7 +229,7 @@ export function buildCoachNotesLineupSynthesisPt(input: CoachNotesLineupSynthesi
         );
       } else if (diff > 1.5) {
         lines.push(
-          `  Leitura para o 11: indicadores do mês (golos, assistências, vitórias em que jogou, minutos) favorecem ${target.name} face a ${rosterName(input.players, incumbentId)} — pode fazer sentido dar entrada ou titularidade, desde que encaixe no plano e na função «${slotLabel}».`
+          `  Leitura para o 11: indicadores desta janela (golos, assistências, vitórias em que jogou, minutos) favorecem ${target.name} face a ${rosterName(input.players, incumbentId)} — pode fazer sentido dar entrada ou titularidade, desde que encaixe no plano e na função «${slotLabel}».`
         );
       } else if (diff < -1.5) {
         lines.push(
@@ -246,7 +246,7 @@ export function buildCoachNotesLineupSynthesisPt(input: CoachNotesLineupSynthesi
       );
     } else if (isStarterOnCard) {
       lines.push(
-        `  Leitura para o 11: como titular na ficha, os dados do mês não apontam claramente para substituição imediata só por estatística.`
+        `  Leitura para o 11: como titular na ficha, os dados desta janela não apontam claramente para substituição imediata só por estatística.`
       );
     }
   }
