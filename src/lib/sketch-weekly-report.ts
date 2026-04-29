@@ -1,4 +1,13 @@
-import type { DrillCategory, Player, TacticMatch, TrainingSession } from "@/types";
+import type {
+  DrillCategory,
+  Player,
+  SketchCalendarEvent,
+  SketchFileEntry,
+  SketchStaffNote,
+  SketchTask,
+  TacticMatch,
+  TrainingSession,
+} from "@/types";
 import type { TrainingCatalogItem } from "@/lib/training-session-local";
 import { calendarDayLisbon } from "@/lib/lisbon-date";
 
@@ -25,23 +34,31 @@ export type WeeklyReportPlayerAgg = {
 };
 
 export type WeeklyReportInput = {
-  weekStart: string;
-  weekEnd: string;
+  periodStart: string;
+  periodEnd: string;
+  /** Ex.: «março de 2026» */
+  periodMonthLabel: string;
   players: Player[];
   tacticMatches: TacticMatch[];
-  trainingSessionsInWeek: TrainingSession[];
-  /** Notas opcionais do treinador sobre treinos da semana (peso complementar). */
+  trainingSessionsInPeriod: TrainingSession[];
+  /** Notas opcionais do treinador sobre treinos no mês (peso complementar). */
   coachTrainingNotes: string;
   /** Notas gerais livres do treinador antes de gerar. */
   coachGeneralNotes: string;
+  sketchNotesInPeriod: SketchStaffNote[];
+  sketchEventsInPeriod: SketchCalendarEvent[];
+  sketchTasksTouchingPeriod: SketchTask[];
+  sketchFilesInPeriod: SketchFileEntry[];
+  pastReportSnippetsInMonth: { title: string; excerpt: string; at: string }[];
 };
 
 export type WeeklyReportData = {
   label: string;
-  weekStart: string;
-  weekEnd: string;
+  periodStart: string;
+  periodEnd: string;
+  periodMonthLabel: string;
   matches: WeeklyReportMatchAgg[];
-  prevWeekMatches: WeeklyReportMatchAgg[];
+  prevPeriodMatches: WeeklyReportMatchAgg[];
   teamTotals: {
     games: number;
     wins: number;
@@ -59,8 +76,8 @@ export type WeeklyReportData = {
     goalsAgainst: number;
   };
   playerAggs: WeeklyReportPlayerAgg[];
-  trainingSessionsInWeek: TrainingSession[];
-  gamesInWeekCount: number;
+  trainingSessionsInPeriod: TrainingSession[];
+  gamesInPeriodCount: number;
 };
 
 function ymdKeyFromMatch(m: TacticMatch): string {
@@ -78,11 +95,73 @@ function inRangeInclusive(day: string, start: string, end: string): boolean {
   return day >= start && day <= end;
 }
 
+function ymdInRange(iso: string, start: string, end: string): boolean {
+  try {
+    const d = calendarDayLisbon(iso);
+    return d.length >= 10 && d >= start && d <= end;
+  } catch {
+    const d = iso.slice(0, 10);
+    return d.length >= 10 && d >= start && d <= end;
+  }
+}
+
 function addDaysYmd(ymd: string, delta: number): string {
   const [y, m, d] = ymd.split("-").map((x) => parseInt(x, 10));
   if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) return ymd;
   const u = Date.UTC(y, m - 1, d + delta);
   return calendarDayLisbon(u);
+}
+
+/** Mês civil completo **anterior** ao mês que contém `anchorYmd` (Europe/Lisbon). Ex.: anchor em abril → março 1–último. */
+export function lisbonReportMonthBeforeAnchorsMonth(anchorYmd: string): { start: string; end: string; label: string } {
+  const [y, m] = anchorYmd.split("-").map((x) => parseInt(x, 10));
+  const startMs = Date.UTC(y, m - 2, 1);
+  const endMs = Date.UTC(y, m - 1, 0);
+  const start = calendarDayLisbon(startMs);
+  const end = calendarDayLisbon(endMs);
+  const rawLabel = new Intl.DateTimeFormat("pt-PT", {
+    month: "long",
+    year: "numeric",
+    timeZone: "Europe/Lisbon",
+  }).format(new Date(startMs));
+  const label = rawLabel.length ? rawLabel.charAt(0).toUpperCase() + rawLabel.slice(1) : `${start.slice(0, 7)}`;
+  return { start, end, label };
+}
+
+/** Mês civil imediatamente anterior ao mês que começa em `monthFirstDayYmd` (YYYY-MM-DD = dia 1). */
+function previousCalendarMonthRange(monthFirstDayYmd: string): { start: string; end: string } {
+  const [y, m] = monthFirstDayYmd.split("-").map((x) => parseInt(x, 10));
+  const startMs = Date.UTC(y, m - 2, 1);
+  const endMs = Date.UTC(y, m - 1, 0);
+  return { start: calendarDayLisbon(startMs), end: calendarDayLisbon(endMs) };
+}
+
+/** Notas da Sketch que parecem relatórios guardados e foram actualizadas dentro do mês reportado. */
+export function collectPastReportSnippetsInMonth(
+  notes: SketchStaffNote[],
+  periodStart: string,
+  periodEnd: string
+): { title: string; excerpt: string; at: string }[] {
+  const isReportLike = (n: SketchStaffNote) =>
+    /relatório/i.test(n.title) ||
+    /\bRELATÓRIO\b/.test(n.body) ||
+    n.body.includes("Relatório semanal") ||
+    n.body.includes("Relatório mensal") ||
+    n.body.includes("RELATÓRIO SEMANAL") ||
+    n.body.includes("RELATÓRIO MENSAL");
+  return notes
+    .filter((n) => {
+      if (!isReportLike(n)) return false;
+      const at = calendarDayLisbon(n.updatedAt);
+      return at >= periodStart && at <= periodEnd;
+    })
+    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+    .slice(0, 5)
+    .map((n) => ({
+      title: n.title.trim() || "(sem título)",
+      excerpt: n.body.replace(/\s+/g, " ").trim().slice(0, 220),
+      at: calendarDayLisbon(n.updatedAt),
+    }));
 }
 
 /** Semana segunda–domingo (Europe/Lisbon) que contém o dia `anchorYmd` (YYYY-MM-DD). */
@@ -175,26 +254,26 @@ function aggregatePlayers(matches: TacticMatch[]): WeeklyReportPlayerAgg[] {
 }
 
 export function buildWeeklyReportData(input: WeeklyReportInput): WeeklyReportData {
-  const { weekStart, weekEnd } = input;
-  const weekMatches = input.tacticMatches.filter((m) => inRangeInclusive(ymdKeyFromMatch(m), weekStart, weekEnd));
-  const prevEnd = addDaysYmd(weekStart, -1);
-  const prevStart = addDaysYmd(weekStart, -7);
-  const prevWeekMatches = input.tacticMatches.filter((m) => inRangeInclusive(ymdKeyFromMatch(m), prevStart, prevEnd));
+  const { periodStart, periodEnd } = input;
+  const periodMatches = input.tacticMatches.filter((m) => inRangeInclusive(ymdKeyFromMatch(m), periodStart, periodEnd));
+  const { start: prevStart, end: prevEnd } = previousCalendarMonthRange(periodStart);
+  const prevPeriodMatches = input.tacticMatches.filter((m) => inRangeInclusive(ymdKeyFromMatch(m), prevStart, prevEnd));
 
-  const matches = summarizeMatches(weekMatches);
-  const prevSummaries = summarizeMatches(prevWeekMatches);
+  const matches = summarizeMatches(periodMatches);
+  const prevSummaries = summarizeMatches(prevPeriodMatches);
 
   return {
-    label: `${weekStart} a ${weekEnd}`,
-    weekStart,
-    weekEnd,
+    label: `${input.periodMonthLabel} (${periodStart} a ${periodEnd})`,
+    periodMonthLabel: input.periodMonthLabel,
+    periodStart,
+    periodEnd,
     matches,
-    prevWeekMatches: prevSummaries,
+    prevPeriodMatches: prevSummaries,
     teamTotals: teamTotalsFromMatches(matches),
     prevTeamTotals: teamTotalsFromMatches(prevSummaries),
-    playerAggs: aggregatePlayers(weekMatches),
-    trainingSessionsInWeek: input.trainingSessionsInWeek,
-    gamesInWeekCount: matches.length,
+    playerAggs: aggregatePlayers(periodMatches),
+    trainingSessionsInPeriod: input.trainingSessionsInPeriod,
+    gamesInPeriodCount: matches.length,
   };
 }
 
@@ -221,43 +300,124 @@ function formatList(names: string[]): string {
 
 /** Relatório em texto puro (pt-PT), só com base nos dados agregados. */
 export function renderWeeklyReportText(data: WeeklyReportData, input: WeeklyReportInput): string {
-  const { players, coachTrainingNotes, coachGeneralNotes } = input;
+  const {
+    players,
+    coachTrainingNotes,
+    coachGeneralNotes,
+    sketchNotesInPeriod,
+    sketchEventsInPeriod,
+    sketchTasksTouchingPeriod,
+    sketchFilesInPeriod,
+    pastReportSnippetsInMonth,
+  } = input;
   const t = data.teamTotals;
   const p = data.prevTeamTotals;
   const lines: string[] = [];
 
-  lines.push("RELATÓRIO SEMANAL INTELIGENTE");
+  lines.push("RELATÓRIO MENSAL INTELIGENTE");
   lines.push(`Período: ${data.label} (jogos registados nas táticas)`);
-  lines.push("Ponderação: dados de jogos são a base principal; informação de treinos (sessões na app + notas) entra apenas como complemento, sem substituir os números dos jogos.");
+  lines.push(
+    "Ponderação: dados de jogos são a base principal; informação da Sketch Area (notas, calendário, tarefas, ficheiros) e de treinos (sessões na app + notas tuas) entra como complemento, sem substituir os números dos jogos."
+  );
   lines.push("");
 
-  lines.push("🧠 1. Resumo geral da semana");
+  lines.push("🧠 1. Resumo geral do mês");
   if (t.games === 0) {
-    lines.push("Não há jogos com estatísticas registadas neste período nas táticas. Adiciona resultados e linhas de jogadores nos jogos para alimentar este relatório.");
+    lines.push("Não há jogos com estatísticas registadas neste mês nas táticas. Adiciona resultados e linhas de jogadores nos jogos para alimentar este relatório.");
   } else {
     lines.push(`Resultados: ${t.wins} vitórias, ${t.draws} empates, ${t.losses} derrotas (${t.games} jogos).`);
     lines.push(`Golos: ${t.goalsFor} marcados, ${t.goalsAgainst} sofridos (média ${(t.goalsFor / t.games).toFixed(2)} / ${(t.goalsAgainst / t.games).toFixed(2)} por jogo).`);
     if (p.games > 0) {
       const gd = t.goalsFor - t.goalsAgainst;
       const pgd = p.goalsFor - p.goalsAgainst;
-      if (t.wins > p.wins) lines.push(`Tendência vs semana anterior: mais vitórias (${t.wins} agora, ${p.wins} antes).`);
-      else if (t.wins < p.wins) lines.push(`Tendência vs semana anterior: menos vitórias (${t.wins} agora, ${p.wins} antes).`);
-      else lines.push(`Vitórias iguais à semana anterior (${t.wins}).`);
-      if (gd > pgd) lines.push(`Saldo de golos melhor que na semana anterior (${gd} vs ${pgd}).`);
-      else if (gd < pgd) lines.push(`Saldo de golos pior que na semana anterior (${gd} vs ${pgd}).`);
-      else lines.push(`Saldo de golos igual ao da semana anterior (${gd}).`);
+      if (t.wins > p.wins) lines.push(`Tendência vs mês anterior: mais vitórias (${t.wins} agora, ${p.wins} antes).`);
+      else if (t.wins < p.wins) lines.push(`Tendência vs mês anterior: menos vitórias (${t.wins} agora, ${p.wins} antes).`);
+      else lines.push(`Vitórias iguais ao mês anterior (${t.wins}).`);
+      if (gd > pgd) lines.push(`Saldo de golos melhor que no mês anterior (${gd} vs ${pgd}).`);
+      else if (gd < pgd) lines.push(`Saldo de golos pior que no mês anterior (${gd} vs ${pgd}).`);
+      else lines.push(`Saldo de golos igual ao do mês anterior (${gd}).`);
     } else {
-      lines.push("Sem jogos na semana anterior para comparar tendência.");
+      lines.push("Sem jogos no mês civil anterior para comparar tendência.");
     }
     if (t.losses > t.wins && t.games >= 2) {
-      lines.push("Diagnóstico: semana com mais derrotas que vitórias — rever equilíbrio ofensivo/defensivo com base nos números abaixo.");
+      lines.push("Diagnóstico: mês com mais derrotas que vitórias — rever equilíbrio ofensivo/defensivo com base nos números abaixo.");
     } else if (t.wins > t.losses && t.games >= 2) {
-      lines.push("Diagnóstico: semana positiva em resultados; manter consistência e gestão de carga.");
+      lines.push("Diagnóstico: mês positivo em resultados; manter consistência e gestão de carga.");
     } else if (t.games === 1) {
       lines.push("Diagnóstico: apenas um jogo no período — evita conclusões largas; usa os blocos seguintes como foco.");
     } else {
       lines.push("Diagnóstico: resultados equilibrados no período; afinar detalhe nas áreas ofensiva e defensiva.");
     }
+  }
+
+  lines.push("");
+  lines.push("Sketch Area (último mês reportado):");
+  const tasksCompletedInMonth = sketchTasksTouchingPeriod.filter(
+    (x) => x.completed && x.completedAt && ymdInRange(x.completedAt, data.periodStart, data.periodEnd)
+  );
+  const tasksOpenDueInMonth = sketchTasksTouchingPeriod.filter(
+    (x) => !x.completed && x.dueDate && ymdInRange(x.dueDate, data.periodStart, data.periodEnd)
+  );
+  const sketchHasAnything =
+    sketchNotesInPeriod.length > 0 ||
+    sketchEventsInPeriod.length > 0 ||
+    sketchFilesInPeriod.length > 0 ||
+    tasksCompletedInMonth.length > 0 ||
+    tasksOpenDueInMonth.length > 0 ||
+    pastReportSnippetsInMonth.length > 0;
+  if (!sketchHasAnything) {
+    lines.push("Sem notas, eventos de calendário, ficheiros, tarefas (concluídas ou com prazo no mês) nem relatórios guardados identificáveis neste mês na Sketch.");
+  }
+  if (sketchNotesInPeriod.length > 0) {
+    lines.push(
+      `Notas (${sketchNotesInPeriod.length}): ${sketchNotesInPeriod
+        .slice(0, 8)
+        .map((n) => (n.title.trim() || "(sem título)").replace(/\s+/g, " "))
+        .join("; ")}${sketchNotesInPeriod.length > 8 ? "…" : ""}.`
+    );
+  }
+  if (sketchEventsInPeriod.length > 0) {
+    lines.push(
+      `Calendário (${sketchEventsInPeriod.length} eventos): ${sketchEventsInPeriod
+        .slice(0, 6)
+        .map((e) => `${e.title.replace(/\s+/g, " ")} (${e.date})`)
+        .join("; ")}${sketchEventsInPeriod.length > 6 ? "…" : ""}.`
+    );
+  }
+  if (tasksCompletedInMonth.length > 0) {
+    lines.push(
+      `Tarefas concluídas (${tasksCompletedInMonth.length}): ${tasksCompletedInMonth
+        .slice(0, 6)
+        .map((x) => x.title.replace(/\s+/g, " "))
+        .join("; ")}${tasksCompletedInMonth.length > 6 ? "…" : ""}.`
+    );
+  }
+  if (tasksOpenDueInMonth.length > 0) {
+    lines.push(
+      `Tarefas ainda em aberto com prazo neste mês (${tasksOpenDueInMonth.length}): ${tasksOpenDueInMonth
+        .slice(0, 5)
+        .map((x) => `${x.title.replace(/\s+/g, " ")} (até ${x.dueDate})`)
+        .join("; ")}${tasksOpenDueInMonth.length > 5 ? "…" : ""}.`
+    );
+  }
+  if (sketchFilesInPeriod.length > 0) {
+    lines.push(
+      `Ficheiros adicionados à Sketch (${sketchFilesInPeriod.length}): ${sketchFilesInPeriod
+        .slice(0, 6)
+        .map((f) => f.name.replace(/\s+/g, " "))
+        .join("; ")}${sketchFilesInPeriod.length > 6 ? "…" : ""}.`
+    );
+  }
+  if (pastReportSnippetsInMonth.length > 0) {
+    lines.push("Relatórios de texto guardados na Sketch (referência cruzada):");
+    for (const s of pastReportSnippetsInMonth) {
+      const tail = s.excerpt.length >= 220 ? "…" : "";
+      lines.push(`• ${s.at} — ${s.title}: ${s.excerpt}${tail}`);
+    }
+  } else if (sketchHasAnything) {
+    lines.push(
+      "Relatórios guardados: nenhum identificado neste mês (título ou corpo com «relatório» nas notas da Sketch — podes usar essa convenção para arquivo)."
+    );
   }
   lines.push("");
 
@@ -339,17 +499,17 @@ export function renderWeeklyReportText(data: WeeklyReportData, input: WeeklyRepo
   lines.push("");
 
   lines.push("🧪 5. Impacto dos treinos");
-  const sessions = data.trainingSessionsInWeek;
+  const sessions = data.trainingSessionsInPeriod;
   if (!coachTrainingNotes.trim() && sessions.length === 0) {
-    lines.push("Sem notas de treino introduzidas e sem sessões de treino datadas nesta semana na app — bloco opcional em branco.");
+    lines.push("Sem notas de treino introduzidas e sem sessões de treino datadas neste mês na app — bloco opcional em branco.");
   } else {
     if (sessions.length > 0) {
       lines.push(
-        `Sessões registadas na app nesta semana (${sessions.length}): ${sessions.map((s) => `${s.title} (${s.date}, ${s.durationMin} min, intensidade ${s.intensity})`).join("; ")}.`
+        `Sessões registadas na app neste mês (${sessions.length}): ${sessions.map((s) => `${s.title} (${s.date}, ${s.durationMin} min, intensidade ${s.intensity})`).join("; ")}.`
       );
     }
     if (coachTrainingNotes.trim()) {
-      lines.push("Notas do treinador sobre a semana de treino:");
+      lines.push("Notas do treinador sobre o mês de treino:");
       lines.push(coachTrainingNotes.trim());
     }
     lines.push(
@@ -372,13 +532,13 @@ export function renderWeeklyReportText(data: WeeklyReportData, input: WeeklyRepo
     } else {
       lines.push("Sem cartões registados nas linhas dos jogadores neste período.");
     }
-    const gamesThisWeek = data.gamesInWeekCount;
+    const gamesInMonth = data.gamesInPeriodCount;
     const lowMin = [...data.playerAggs]
       .filter((x) => x.games >= 1 && x.minutes < 45)
       .sort((a, b) => a.minutes - b.minutes);
-    if (gamesThisWeek >= 2 && lowMin.length > 0) {
+    if (gamesInMonth >= 6 && lowMin.length > 0) {
       lines.push(
-        `Com ${gamesThisWeek} jogos na semana, jogadores com menos de 45 min totais no período: ${formatList(lowMin.map((x) => playerName(players, x.playerId)))}.`
+        `Com ${gamesInMonth} jogos no mês, jogadores com menos de 45 min totais no período: ${formatList(lowMin.map((x) => playerName(players, x.playerId)))}.`
       );
     }
     const RISK_AMARELOS = new Set([4, 7, 10, 13, 16]);
@@ -409,8 +569,8 @@ export function renderWeeklyReportText(data: WeeklyReportData, input: WeeklyRepo
     if (t.goalsFor >= 2 && scorers.length === 1) {
       recs.push("Rotação de referências no último terço: variar conclusores nos exercícios e no jogo.");
     }
-    if (data.gamesInWeekCount >= 3) {
-      recs.push("Gestão de carga: semana com muitos jogos — priorizar recuperação e treinos de baixa/média intensidade pontuais.");
+    if (data.gamesInPeriodCount >= 10) {
+      recs.push("Gestão de carga: mês com muitos jogos — priorizar recuperação e treinos de baixa/média intensidade pontuais.");
     }
     if (recs.length === 0) {
       recs.push("Manter o plano com base nos números: equilíbrio entre continuidade e pequenos ajustes posicionais.");
@@ -512,12 +672,12 @@ export function buildAutoTrainingPlanText(
   const mainDur = pick.reduce((s, x) => s + x.durationMin, 0);
   const totalMin = wDur + mainDur + cDur;
 
-  const games = data.gamesInWeekCount;
-  const intensity: TrainingSession["intensity"] = games >= 3 ? "low" : games <= 1 ? "high" : "medium";
+  const games = data.gamesInPeriodCount;
+  const intensity: TrainingSession["intensity"] = games >= 9 ? "low" : games <= 3 ? "high" : "medium";
 
   const lines: string[] = [];
   lines.push("PLANO DE TREINO GERADO AUTOMATICAMENTE");
-  lines.push(`Com base no relatório da semana (${data.label}). Foco inferido: ${focus}.`);
+  lines.push(`Com base no relatório do mês (${data.label}). Foco inferido: ${focus}.`);
   lines.push(`Duração total sugerida: ${totalMin} min. Intensidade sugerida: ${intensity}.`);
   lines.push("");
   lines.push("Aquecimento");

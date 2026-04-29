@@ -71,7 +71,7 @@ const TABS: { id: TabId; label: string; icon: typeof Calendar }[] = [
   { id: "board", label: "Quadro", icon: LayoutGrid },
   { id: "watchlist", label: "Observação", icon: Users },
   { id: "opponentAi", label: "Análise Adversário AI", icon: Sparkles },
-  { id: "weeklyReport", label: "Relatório Semanal", icon: FileBarChart },
+  { id: "weeklyReport", label: "Relatório Mensal", icon: FileBarChart },
 ];
 
 const FORMS_TOOLS: { id: SketchStrokeTool; label: string }[] = [

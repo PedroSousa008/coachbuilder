@@ -11,14 +11,15 @@ import { getTrainingCatalogItems } from "@/lib/training-session-local";
 import {
   buildAutoTrainingPlanText,
   buildWeeklyReportData,
-  lisbonWeekRangeContaining,
+  collectPastReportSnippetsInMonth,
+  lisbonReportMonthBeforeAnchorsMonth,
   newSessionInputFromPlan,
   renderWeeklyReportText,
   type WeeklyReportInput,
 } from "@/lib/sketch-weekly-report";
 import { cn } from "@/lib/utils";
 
-function sessionDayInWeek(sessionDate: string, start: string, end: string): boolean {
+function sessionDayInRange(sessionDate: string, start: string, end: string): boolean {
   let day: string;
   try {
     day = calendarDayLisbon(sessionDate);
@@ -28,6 +29,27 @@ function sessionDayInWeek(sessionDate: string, start: string, end: string): bool
   return day.length >= 10 && day >= start && day <= end;
 }
 
+function noteTouchesMonth(
+  dateIso: string,
+  updatedIso: string,
+  start: string,
+  end: string
+): boolean {
+  let d: string;
+  let u: string;
+  try {
+    d = calendarDayLisbon(dateIso);
+  } catch {
+    d = dateIso.slice(0, 10);
+  }
+  try {
+    u = calendarDayLisbon(updatedIso);
+  } catch {
+    u = updatedIso.slice(0, 10);
+  }
+  return (d.length >= 10 && d >= start && d <= end) || (u.length >= 10 && u >= start && u <= end);
+}
+
 function addDaysYmdPublic(ymd: string, delta: number): string {
   const [y, m, d] = ymd.split("-").map((x) => parseInt(x, 10));
   const u = Date.UTC(y, m - 1, d + delta);
@@ -35,10 +57,10 @@ function addDaysYmdPublic(ymd: string, delta: number): string {
 }
 
 export function SketchWeeklyReportPanel() {
-  const { players, tacticMatches, trainingSessions, addTrainingSession } = useAppData();
+  const { players, tacticMatches, trainingSessions, addTrainingSession, sketchArea } = useAppData();
   const today = useMemo(() => calendarDayLisbon(Date.now()), []);
   const [anchorDay, setAnchorDay] = useState(today);
-  const week = useMemo(() => lisbonWeekRangeContaining(anchorDay), [anchorDay]);
+  const reportMonth = useMemo(() => lisbonReportMonthBeforeAnchorsMonth(anchorDay), [anchorDay]);
 
   const [coachTrainingNotes, setCoachTrainingNotes] = useState("");
   const [coachGeneralNotes, setCoachGeneralNotes] = useState("");
@@ -49,9 +71,46 @@ export function SketchWeeklyReportPanel() {
 
   const catalog = useMemo(() => getTrainingCatalogItems(players), [players]);
 
-  const trainingInWeek = useMemo(
-    () => trainingSessions.filter((s) => sessionDayInWeek(s.date, week.start, week.end)),
-    [trainingSessions, week.start, week.end]
+  const trainingInPeriod = useMemo(
+    () => trainingSessions.filter((s) => sessionDayInRange(s.date, reportMonth.start, reportMonth.end)),
+    [trainingSessions, reportMonth.start, reportMonth.end]
+  );
+
+  const sketchNotesInPeriod = useMemo(
+    () =>
+      sketchArea.notes.filter((n) => noteTouchesMonth(n.date, n.updatedAt, reportMonth.start, reportMonth.end)),
+    [sketchArea.notes, reportMonth.start, reportMonth.end]
+  );
+
+  const sketchEventsInPeriod = useMemo(
+    () =>
+      sketchArea.calendarEvents.filter((e) => sessionDayInRange(e.date, reportMonth.start, reportMonth.end)),
+    [sketchArea.calendarEvents, reportMonth.start, reportMonth.end]
+  );
+
+  const sketchTasksTouchingPeriod = useMemo(
+    () =>
+      sketchArea.tasks.filter((t) => {
+        if (t.completed && t.completedAt) {
+          return sessionDayInRange(t.completedAt, reportMonth.start, reportMonth.end);
+        }
+        if (t.dueDate) {
+          return sessionDayInRange(t.dueDate, reportMonth.start, reportMonth.end);
+        }
+        return false;
+      }),
+    [sketchArea.tasks, reportMonth.start, reportMonth.end]
+  );
+
+  const sketchFilesInPeriod = useMemo(
+    () =>
+      sketchArea.files.filter((f) => sessionDayInRange(f.createdAt, reportMonth.start, reportMonth.end)),
+    [sketchArea.files, reportMonth.start, reportMonth.end]
+  );
+
+  const pastReportSnippetsInMonth = useMemo(
+    () => collectPastReportSnippetsInMonth(sketchArea.notes, reportMonth.start, reportMonth.end),
+    [sketchArea.notes, reportMonth.start, reportMonth.end]
   );
 
   const recentSessions = useMemo(
@@ -59,16 +118,24 @@ export function SketchWeeklyReportPanel() {
     [trainingSessions]
   );
 
+  const buildInput = (): WeeklyReportInput => ({
+    periodStart: reportMonth.start,
+    periodEnd: reportMonth.end,
+    periodMonthLabel: reportMonth.label,
+    players,
+    tacticMatches,
+    trainingSessionsInPeriod: trainingInPeriod,
+    coachTrainingNotes,
+    coachGeneralNotes,
+    sketchNotesInPeriod,
+    sketchEventsInPeriod,
+    sketchTasksTouchingPeriod,
+    sketchFilesInPeriod,
+    pastReportSnippetsInMonth,
+  });
+
   const generateReport = () => {
-    const input: WeeklyReportInput = {
-      weekStart: week.start,
-      weekEnd: week.end,
-      players,
-      tacticMatches,
-      trainingSessionsInWeek: trainingInWeek,
-      coachTrainingNotes,
-      coachGeneralNotes,
-    };
+    const input = buildInput();
     const data = buildWeeklyReportData(input);
     setReportText(renderWeeklyReportText(data, input));
     setPlanText("");
@@ -76,15 +143,7 @@ export function SketchWeeklyReportPanel() {
   };
 
   const generatePlan = () => {
-    const input: WeeklyReportInput = {
-      weekStart: week.start,
-      weekEnd: week.end,
-      players,
-      tacticMatches,
-      trainingSessionsInWeek: trainingInWeek,
-      coachTrainingNotes,
-      coachGeneralNotes,
-    };
+    const input = buildInput();
     const data = buildWeeklyReportData(input);
     setReportText(renderWeeklyReportText(data, input));
     const plan = buildAutoTrainingPlanText(data, catalog, recentSessions, tacticMatches);
@@ -95,15 +154,7 @@ export function SketchWeeklyReportPanel() {
   const addPlanToTraining = () => {
     let meta = planMeta;
     if (!meta) {
-      const input: WeeklyReportInput = {
-        weekStart: week.start,
-        weekEnd: week.end,
-        players,
-        tacticMatches,
-        trainingSessionsInWeek: trainingInWeek,
-        coachTrainingNotes,
-        coachGeneralNotes,
-      };
+      const input = buildInput();
       const data = buildWeeklyReportData(input);
       meta = buildAutoTrainingPlanText(data, catalog, recentSessions, tacticMatches);
       setPlanMeta(meta);
@@ -130,10 +181,10 @@ export function SketchWeeklyReportPanel() {
 
       <div className="no-print flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h2 className="font-display text-xl font-semibold text-white">Relatório semanal</h2>
+          <h2 className="font-display text-xl font-semibold text-white">Relatório mensal</h2>
           <p className="mt-1 max-w-2xl text-sm text-zinc-500">
-            Relatório baseado em jogos registados nas táticas (prioridade) e, em complemento, treinos da semana na app e notas tuas.
-            Não são inventados dados fora do que está guardado.
+            Cobre o mês civil completo anterior ao mês do dia de referência (ex.: referência em abril → todo março). Prioridade: jogos nas táticas;
+            em complemento: treinos no mês, notas/eventos/tarefas/ficheiros da Sketch e relatórios de texto guardados nas notas (com «relatório»).
           </p>
         </div>
       </div>
@@ -147,16 +198,17 @@ export function SketchWeeklyReportPanel() {
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">
           <label className="space-y-1">
-            <span className="text-xs text-zinc-500">Dia de referência (semana segunda–domingo, Lisboa)</span>
+            <span className="text-xs text-zinc-500">Dia de referência (mês reportado = mês civil anterior ao deste dia, Lisboa)</span>
             <Input type="date" value={anchorDay} onChange={(e) => setAnchorDay(e.target.value)} />
           </label>
           <div className="flex items-end">
             <p className="text-sm text-zinc-400">
-              Período: <span className="text-zinc-200">{week.start}</span> a <span className="text-zinc-200">{week.end}</span>
+              Mês reportado: <span className="text-zinc-200">{reportMonth.label}</span> —{" "}
+              <span className="text-zinc-200">{reportMonth.start}</span> a <span className="text-zinc-200">{reportMonth.end}</span>
             </p>
           </div>
           <label className="space-y-1 md:col-span-2">
-            <span className="text-xs text-zinc-500">Notas sobre treinos desta semana (opcional — complemento)</span>
+            <span className="text-xs text-zinc-500">Notas sobre treinos deste mês (opcional — complemento)</span>
             <textarea
               className={cn(
                 "min-h-[88px] w-full rounded-xl border border-surface-border bg-surface-raised/90 px-3 py-2 text-sm text-zinc-100",
@@ -176,7 +228,7 @@ export function SketchWeeklyReportPanel() {
               )}
               value={coachGeneralNotes}
               onChange={(e) => setCoachGeneralNotes(e.target.value)}
-              placeholder="Contexto extra, objetivos da próxima semana, ausências relevantes…"
+              placeholder="Contexto extra, objetivos do próximo mês, ausências relevantes…"
             />
           </label>
           <div className="flex flex-wrap gap-2 md:col-span-2">
