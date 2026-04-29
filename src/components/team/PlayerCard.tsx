@@ -50,14 +50,8 @@ export function PlayerCard({
       onClick={onOpen}
       className="relative flex w-full flex-col rounded-2xl border border-surface-border bg-surface-raised/50 p-4 pt-10 text-left transition-all hover:border-zinc-600 hover:bg-surface-raised sm:pt-4"
     >
-      <div className="absolute right-3 top-3 flex flex-col items-end gap-1.5">
+      <div className="absolute right-3 top-3 flex justify-end">
         <span className={cn("font-display text-xl font-bold leading-none", overallColorClass)}>{insights.overall}</span>
-        <div
-          className="flex h-9 min-w-[2.25rem] items-center justify-center rounded-full border-[3px] border-white bg-zinc-900/50 px-1.5 font-display text-sm font-bold tabular-nums text-white shadow-[0_0_0_1px_rgba(255,255,255,0.06)]"
-          aria-label={`Número ${player.number}`}
-        >
-          {player.number}
-        </div>
       </div>
       <div className="flex items-start gap-3">
         <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-zinc-800">
@@ -76,10 +70,10 @@ export function PlayerCard({
           </div>
         </div>
       </div>
-      <div className="mt-4 flex items-center justify-between gap-4 border-t border-surface-border/80 pt-3">
+      <div className="mt-4 flex items-center gap-2 border-t border-surface-border/80 pt-3">
         <span
           className={cn(
-            "min-w-0 text-xs font-medium",
+            "min-w-0 flex-1 text-xs font-medium",
             player.availability === "available" && "text-white",
             player.availability === "doubt" && "text-amber-400",
             player.availability === "out" && "text-red-400/90"
@@ -87,9 +81,17 @@ export function PlayerCard({
         >
           {availabilityLabel[player.availability]}
         </span>
-        <span className={cn("ml-auto shrink-0 text-xs", performanceColor[player.performance])}>
-          Forma {player.performance === "up" ? "↑" : player.performance === "down" ? "↓" : "→"}
-        </span>
+        <div className="flex shrink-0 items-center justify-end gap-2">
+          <span className={cn("text-xs font-medium", performanceColor[player.performance])}>
+            Forma {player.performance === "up" ? "↑" : player.performance === "down" ? "↓" : "→"}
+          </span>
+          <div
+            className="flex h-5 min-w-[1.35rem] max-w-[2rem] items-center justify-center rounded-full border-2 border-white bg-zinc-900/55 px-1 text-xs font-medium tabular-nums leading-none text-white"
+            aria-label={`Número ${player.number}`}
+          >
+            {player.number}
+          </div>
+        </div>
       </div>
       {roleBadge ? (
         <span className="absolute bottom-3 right-3 rounded-md border border-accent/50 bg-accent/20 px-2 py-0.5 text-[11px] font-semibold text-accent">
