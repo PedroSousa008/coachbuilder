@@ -82,21 +82,27 @@ const POSITION_FOCUS: Record<Position, readonly QualityStatId[]> = {
   LW: [
     "acceleration",
     "sprintSpeed",
-    "crossing",
+    "shotPower",
+    "longShots",
     "dribbling",
     "ballControl",
     "agility",
     "finishing",
+    "crossing",
+    "strength",
     "stamina",
   ],
   RW: [
     "acceleration",
     "sprintSpeed",
-    "crossing",
+    "shotPower",
+    "longShots",
     "dribbling",
     "ballControl",
     "agility",
     "finishing",
+    "crossing",
+    "strength",
     "stamina",
   ],
   ST: [
@@ -236,12 +242,29 @@ export function getTopStrengths(
 export function getImprovementsForPosition(
   primary: Position,
   q: PlayerQualities,
-  n: number
+  n: number,
+  overall: number
 ): { id: QualityStatId; label: string; value: number }[] {
   const focus = [...POSITION_FOCUS[primary]];
   const scored = focus.map((id) => ({ id, label: STAT_PT[id], value: q[id] }));
-  scored.sort((a, b) => a.value - b.value);
-  return scored.slice(0, n);
+
+  // Regra principal: para desenvolver, priorizar atributos relevantes da posição
+  // com valor abaixo do overall geral do jogador.
+  const belowOverall = scored.filter((s) => s.value < overall).sort((a, b) => a.value - b.value);
+  if (belowOverall.length >= n) return belowOverall.slice(0, n);
+
+  // Fallback: se não houver suficientes abaixo do overall, completar com os
+  // atributos relevantes mais próximos (ou ligeiramente acima), mantendo foco posicional.
+  const used = new Set(belowOverall.map((s) => s.id));
+  const remaining = scored
+    .filter((s) => !used.has(s.id))
+    .sort((a, b) => {
+      const da = Math.abs(a.value - overall);
+      const db = Math.abs(b.value - overall);
+      if (da !== db) return da - db;
+      return a.value - b.value;
+    });
+  return [...belowOverall, ...remaining].slice(0, n);
 }
 
 export type PhysicalInsight = {
@@ -313,7 +336,7 @@ export function buildPlayerInsights(player: Player): PlayerInsights {
   const overall = computePlayerOverall(primary, player.qualities);
 
   const strengths = getTopStrengths(q, 3, primary);
-  const improvements = getImprovementsForPosition(primary, q, 3);
+  const improvements = getImprovementsForPosition(primary, q, 3, overall);
   const physical = evaluatePhysicalProfile(primary, player.heightCm, player.weightKg);
 
   const sStr = strengths.map((x) => `${x.label} (${x.value})`).join(", ");
