@@ -26,6 +26,12 @@ import {
 } from "@/lib/chat-attachments";
 import { getTrainingCatalogItems } from "@/lib/training-session-local";
 
+type DirectoryUser = {
+  userId: string;
+  name: string;
+  subtitle: string;
+};
+
 function mapApiMessage(
   convId: string,
   m: {
@@ -70,7 +76,7 @@ function mapWorkspaceMessage(msg: {
   };
 }
 
-export function MessagesClient() {
+export function MessagesClient({ enableGlobalUserSearch = false }: { enableGlobalUserSearch?: boolean }) {
   const {
     conversations,
     messagesByConv,
@@ -78,6 +84,7 @@ export function MessagesClient() {
     staff,
     createDmWithPlayer,
     createDmWithStaff,
+    createDmWithAccount,
     createGroupConversation,
     updateGroupConversation,
     addParticipantsToGroupChat,
@@ -145,6 +152,10 @@ export function MessagesClient() {
   const [attachMenuCoords, setAttachMenuCoords] = useState<{ left: number; bottom: number } | null>(null);
   const [dmPickerOpen, setDmPickerOpen] = useState(false);
   const [createGroupOpen, setCreateGroupOpen] = useState(false);
+  const [directoryOpen, setDirectoryOpen] = useState(false);
+  const [directoryQuery, setDirectoryQuery] = useState("");
+  const [directoryLoading, setDirectoryLoading] = useState(false);
+  const [directoryUsers, setDirectoryUsers] = useState<DirectoryUser[]>([]);
   const [manageGroupOpen, setManageGroupOpen] = useState(false);
   const [groupNameDraft, setGroupNameDraft] = useState("");
   const [manageGroupNameDraft, setManageGroupNameDraft] = useState("");
@@ -164,6 +175,40 @@ export function MessagesClient() {
   const scrollThreadPendingRef = useRef(false);
 
   const coachUserId = user?.id ?? mockCoach.id;
+
+  useEffect(() => {
+    if (!enableGlobalUserSearch || !directoryOpen) return;
+    const q = directoryQuery.trim();
+    if (q.length < 2) {
+      setDirectoryUsers([]);
+      setDirectoryLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setDirectoryLoading(true);
+    const id = window.setTimeout(() => {
+      fetch(`/api/cloud/users/search?q=${encodeURIComponent(q)}`, { credentials: "include" })
+        .then((r) => r.json())
+        .then((data: { ok?: boolean; users?: DirectoryUser[] }) => {
+          if (cancelled) return;
+          if (data.ok && Array.isArray(data.users)) {
+            setDirectoryUsers(data.users);
+          } else {
+            setDirectoryUsers([]);
+          }
+        })
+        .catch(() => {
+          if (!cancelled) setDirectoryUsers([]);
+        })
+        .finally(() => {
+          if (!cancelled) setDirectoryLoading(false);
+        });
+    }, 220);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(id);
+    };
+  }, [directoryOpen, directoryQuery, enableGlobalUserSearch]);
 
   useLayoutEffect(() => {
     if (!attachMenuOpen) {
@@ -931,6 +976,62 @@ export function MessagesClient() {
         }
         canEditName
       />
+      {enableGlobalUserSearch && directoryOpen ? (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 p-4">
+          <div className="w-full max-w-xl rounded-2xl border border-surface-border bg-surface p-4">
+            <p className="font-display text-lg font-semibold text-white">{isPt ? "Mensagem para qualquer conta" : "Message any app account"}</p>
+            <p className="mt-1 text-xs text-zinc-400">
+              {isPt ? "Pesquisa por nome, email ou @nametag." : "Search by name, email, or @nametag."}
+            </p>
+            <Input
+              className="mt-3"
+              value={directoryQuery}
+              onChange={(e) => setDirectoryQuery(e.target.value)}
+              placeholder={isPt ? "Ex.: João, joao@email.com, @joao" : "E.g. John, john@email.com, @john"}
+            />
+            <div className="mt-3 max-h-72 space-y-2 overflow-y-auto">
+              {directoryLoading ? (
+                <p className="text-sm text-zinc-500">{isPt ? "A pesquisar..." : "Searching..."}</p>
+              ) : directoryQuery.trim().length < 2 ? (
+                <p className="text-sm text-zinc-500">{isPt ? "Escreve pelo menos 2 caracteres." : "Type at least 2 characters."}</p>
+              ) : directoryUsers.length === 0 ? (
+                <p className="text-sm text-zinc-500">{isPt ? "Sem resultados." : "No results."}</p>
+              ) : (
+                directoryUsers.map((u) => (
+                  <button
+                    key={u.userId}
+                    type="button"
+                    className="w-full rounded-xl border border-surface-border px-3 py-2 text-left hover:bg-white/5"
+                    onClick={() => {
+                      const id = createDmWithAccount({
+                        userId: u.userId,
+                        name: u.name,
+                        subtitle: u.subtitle,
+                      });
+                      if (id) {
+                        focusDraftAfterConvIdRef.current = id;
+                        setActiveId(id);
+                        setTab("dm");
+                        setDirectoryOpen(false);
+                        setDirectoryQuery("");
+                        setDirectoryUsers([]);
+                      }
+                    }}
+                  >
+                    <p className="text-sm font-medium text-white">{u.name}</p>
+                    <p className="text-xs text-zinc-500">{u.subtitle}</p>
+                  </button>
+                ))
+              )}
+            </div>
+            <div className="mt-4 flex justify-end">
+              <Button type="button" variant="ghost" onClick={() => setDirectoryOpen(false)}>
+                {isPt ? "Fechar" : "Close"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
       {manageGroupOpen && activeConv?.type === "group" ? (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 p-4">
           <div className="w-full max-w-2xl rounded-2xl border border-surface-border bg-surface p-4">
@@ -1181,6 +1282,11 @@ export function MessagesClient() {
         <Button type="button" variant="secondary" size="sm" onClick={() => setDmPickerOpen(true)}>
           {isPt ? "Nova mensagem direta" : "New direct message"}
         </Button>
+        {enableGlobalUserSearch ? (
+          <Button type="button" variant="secondary" size="sm" onClick={() => setDirectoryOpen(true)}>
+            {isPt ? "Nova mensagem (conta app)" : "New message (app account)"}
+          </Button>
+        ) : null}
         <Button type="button" variant="outline" size="sm" onClick={() => setCreateGroupOpen(true)}>
           {isPt ? "Criar novo grupo" : "Create new group"}
         </Button>

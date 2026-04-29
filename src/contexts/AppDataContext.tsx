@@ -375,6 +375,7 @@ type AppDataContextValue = {
   lastReadMessageByConv: Record<string, string>;
   createDmWithPlayer: (player: Player, opts?: { peerCloudUserId: string | null }) => string | null;
   createDmWithStaff: (member: StaffMember, opts?: { peerCloudUserId: string | null }) => string | null;
+  createDmWithAccount: (target: { userId: string; name: string; subtitle?: string }) => string | null;
   addPlayerToGroupChat: (conversationId: string, player: Player) => void;
   createGroupConversation: (title: string, members: { participantId: string; name: string }[]) => string;
   updateGroupConversation: (conversationId: string, patch: { title?: string }) => Promise<void>;
@@ -1546,6 +1547,34 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     [user, user?.id]
   );
 
+  const createDmWithAccount = useCallback(
+    (target: { userId: string; name: string; subtitle?: string }) => {
+      const peer = target.userId;
+      if (!peer) return null;
+      if (shouldUseCloudClientApis(user) && user?.id) {
+        const id = cloudDmConversationId(user.id, peer);
+        setConversations((prev) => {
+          if (prev.some((c) => c.id === id)) return prev;
+          const conv: Conversation = {
+            id,
+            type: "dm",
+            title: target.name,
+            subtitle: target.subtitle?.trim() || "Conta da app",
+            avatarInitials: initials(target.name),
+            lastMessagePreview: "No messages yet",
+            lastMessageAt: new Date().toISOString(),
+            participantIds: [user.id, peer],
+          };
+          return [...prev, conv];
+        });
+        setMessagesByConv((prev) => (prev[id] ? prev : { ...prev, [id]: [] }));
+        return id;
+      }
+      return null;
+    },
+    [user, user?.id]
+  );
+
   const addPlayerToGroupChat = useCallback((conversationId: string, player: Player) => {
     const actorId = user?.id ?? mockCoach.id;
     setConversations((prev) =>
@@ -2077,6 +2106,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       lastReadMessageByConv,
       createDmWithPlayer,
       createDmWithStaff,
+      createDmWithAccount,
       addPlayerToGroupChat,
       createGroupConversation,
       updateGroupConversation,
@@ -2152,6 +2182,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       lastReadMessageByConv,
       createDmWithPlayer,
       createDmWithStaff,
+      createDmWithAccount,
       addPlayerToGroupChat,
       createGroupConversation,
       updateGroupConversation,

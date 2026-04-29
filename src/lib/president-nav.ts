@@ -38,7 +38,7 @@ export const PRESIDENT_NAV: PresidentNavItem[] = [
   { href: "/app/president/operacoes", label: "Operações", icon: CalendarRange },
   { href: "/app/president/relatorios", label: "Relatórios", icon: FileBarChart },
   { href: "/app/president/documentos", label: "Documentos", icon: FolderLock },
-  { href: "/app/president/comunicacao", label: "Comunicação", icon: MessagesSquare },
+  { href: "/app/president/mensagens", label: "Mensagens", icon: MessagesSquare },
   { href: "/app/president/definicoes", label: "Definições", icon: Settings },
 ];
 
