@@ -6,46 +6,46 @@ import type {
 } from "@/types";
 
 export const EVENT_CATEGORY_LABELS: Record<SketchCalendarEventCategory, string> = {
-  training: "Training session",
-  match: "Match",
-  player_review: "Player review",
-  opponent_analysis: "Opponent analysis",
-  task_deadline: "Deadline / task",
-  meeting: "Meeting",
-  other: "Other",
+  training: "Sessão de treino",
+  match: "Jogo",
+  player_review: "Revisão de jogador",
+  opponent_analysis: "Análise ao adversário",
+  task_deadline: "Prazo / tarefa",
+  meeting: "Reunião",
+  other: "Outro",
 };
 
 export const NOTE_CATEGORY_LABELS: Record<SketchStaffNoteCategory, string> = {
-  training: "Training notes",
-  player: "Player notes",
-  todo: "To-do notes",
-  meeting: "Meeting notes",
-  match: "Match notes",
-  opponent: "Opponent notes",
-  players_to_analyze: "Players to analyze",
-  session_reflection: "Session reflections",
-  recruitment: "Recruitment / trial",
-  generic: "General",
+  training: "Notas de treino",
+  player: "Notas de jogador",
+  todo: "Notas de tarefas",
+  meeting: "Notas de reunião",
+  match: "Notas de jogo",
+  opponent: "Notas do adversário",
+  players_to_analyze: "Jogadores a analisar",
+  session_reflection: "Reflexão de sessão",
+  recruitment: "Recrutamento / observação",
+  generic: "Geral",
 };
 
 export const TASK_CATEGORY_LABELS: Record<SketchTaskCategory, string> = {
-  team: "Team",
-  player: "Player",
-  training: "Training",
-  match: "Match",
+  team: "Equipa",
+  player: "Jogador",
+  training: "Treino",
+  match: "Jogo",
   staff: "Staff",
-  personal: "Personal",
+  personal: "Pessoal",
 };
 
 export const FILE_FOLDER_LABELS: Record<SketchFileFolder, string> = {
-  training: "Training",
-  matchday: "Matchday",
-  opponents: "Opponents",
-  team_talks: "Team talks",
-  player_analysis: "Player analysis",
-  staff_meetings: "Staff meetings",
-  season_planning: "Season planning",
-  recruitment: "Recruitment",
+  training: "Treino",
+  matchday: "Dia de jogo",
+  opponents: "Adversários",
+  team_talks: "Palestras de equipa",
+  player_analysis: "Análise de jogador",
+  staff_meetings: "Reuniões de staff",
+  season_planning: "Planeamento da época",
+  recruitment: "Recrutamento",
 };
 
 export const MAX_SKETCH_FILE_BYTES = 380_000;

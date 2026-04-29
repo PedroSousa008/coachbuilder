@@ -62,26 +62,26 @@ import { SketchOpponentAnalysisPanel } from "./SketchOpponentAnalysisPanel";
 type TabId = "calendar" | "notes" | "tasks" | "files" | "board" | "watchlist" | "opponentAi";
 
 const TABS: { id: TabId; label: string; icon: typeof Calendar }[] = [
-  { id: "calendar", label: "Calendar", icon: Calendar },
-  { id: "notes", label: "Notes", icon: PenLine },
-  { id: "tasks", label: "Tasks", icon: ClipboardList },
-  { id: "files", label: "Files", icon: FolderOpen },
-  { id: "board", label: "Board", icon: LayoutGrid },
-  { id: "watchlist", label: "Watchlist", icon: Users },
+  { id: "calendar", label: "Calendário", icon: Calendar },
+  { id: "notes", label: "Notas", icon: PenLine },
+  { id: "tasks", label: "Tarefas", icon: ClipboardList },
+  { id: "files", label: "Ficheiros", icon: FolderOpen },
+  { id: "board", label: "Quadro", icon: LayoutGrid },
+  { id: "watchlist", label: "Observação", icon: Users },
   { id: "opponentAi", label: "Análise Adversário AI", icon: Sparkles },
 ];
 
 const FORMS_TOOLS: { id: SketchStrokeTool; label: string }[] = [
-  { id: "ball", label: "Ball" },
-  { id: "circle", label: "Circle" },
-  { id: "square", label: "Square" },
-  { id: "triangle", label: "Triangle" },
+  { id: "ball", label: "Bola" },
+  { id: "circle", label: "Círculo" },
+  { id: "square", label: "Quadrado" },
+  { id: "triangle", label: "Triângulo" },
   { id: "cone", label: "Cone" },
-  { id: "mannequin", label: "Mannequin" },
-  { id: "poleBase", label: "Pole Base" },
-  { id: "ladder", label: "Ladder" },
-  { id: "arrow", label: "Arrow" },
-  { id: "goal", label: "Goal" },
+  { id: "mannequin", label: "Manequim" },
+  { id: "poleBase", label: "Estaca base" },
+  { id: "ladder", label: "Escada" },
+  { id: "arrow", label: "Seta" },
+  { id: "goal", label: "Baliza" },
 ];
 
 function sketchUid(prefix: string) {
@@ -543,8 +543,8 @@ export function SketchAreaClient() {
       <div className={cn("no-print", boardExpanded && tab === "board" && "hidden")}>
         <h2 className="font-display text-xl font-semibold text-white">Sketch Area</h2>
         <p className="mt-1 max-w-3xl text-sm text-zinc-500">
-          Daily planning, quick notes, tasks, files, tactical sketches, and player watchlist — your private staff
-          workspace.
+          Planeamento diário, notas rápidas, tarefas, ficheiros, sketches táticos e observação de jogadores — o teu
+          espaço privado de staff.
         </p>
         <div className="mt-4 flex flex-wrap gap-2 border-b border-surface-border pb-3">
           {TABS.map(({ id, label, icon: Icon }) => (
@@ -565,7 +565,7 @@ export function SketchAreaClient() {
 
       <PlayerPickerModal
         open={pickerOpen}
-        title="Select player"
+        title="Selecionar jogador"
         players={players}
         onClose={() => {
           setPickerOpen(false);
@@ -578,11 +578,11 @@ export function SketchAreaClient() {
         <div className="no-print grid gap-6 lg:grid-cols-5">
           <Card className="lg:col-span-2">
             <CardHeader>
-              <CardTitle>New event</CardTitle>
+              <CardTitle>Novo evento</CardTitle>
               <p className="text-xs text-zinc-500">Category, time, location, links to team / player / session / match.</p>
             </CardHeader>
             <CardContent className="space-y-3">
-              <Input value={evtForm.title} onChange={(e) => setEvtForm((f) => ({ ...f, title: e.target.value }))} placeholder="Title" />
+              <Input value={evtForm.title} onChange={(e) => setEvtForm((f) => ({ ...f, title: e.target.value }))} placeholder="Título" />
               <select
                 className="h-10 w-full rounded-xl border border-surface-border bg-surface-raised px-3 text-sm text-zinc-200"
                 value={evtForm.category}
@@ -606,14 +606,14 @@ export function SketchAreaClient() {
                 type="time"
                 value={evtForm.timeEnd}
                 onChange={(e) => setEvtForm((f) => ({ ...f, timeEnd: e.target.value }))}
-                placeholder="End (optional)"
+                placeholder="Fim (opcional)"
               />
-              <Input value={evtForm.location} onChange={(e) => setEvtForm((f) => ({ ...f, location: e.target.value }))} placeholder="Location" />
+              <Input value={evtForm.location} onChange={(e) => setEvtForm((f) => ({ ...f, location: e.target.value }))} placeholder="Local" />
               <textarea
                 className="min-h-[72px] w-full rounded-xl border border-surface-border bg-surface-raised/50 px-3 py-2 text-sm text-zinc-200"
                 value={evtForm.notes}
                 onChange={(e) => setEvtForm((f) => ({ ...f, notes: e.target.value }))}
-                placeholder="Notes"
+                placeholder="Notas"
               />
               <label className="flex items-center gap-2 text-sm text-zinc-400">
                 <input
@@ -621,11 +621,11 @@ export function SketchAreaClient() {
                   checked={evtForm.teamScope}
                   onChange={(e) => setEvtForm((f) => ({ ...f, teamScope: e.target.checked }))}
                 />
-                Whole team
+                Equipa inteira
               </label>
               <div className="flex flex-wrap gap-2">
                 <Button type="button" variant="secondary" className="text-xs" onClick={() => openPicker("event")}>
-                  Link player
+                  Ligar jogador
                 </Button>
                 {evtForm.linkedPlayerId ? (
                   <Badge variant="muted">{playerName(evtForm.linkedPlayerId)}</Badge>
@@ -636,7 +636,7 @@ export function SketchAreaClient() {
                 value={evtForm.linkedTrainingSessionId}
                 onChange={(e) => setEvtForm((f) => ({ ...f, linkedTrainingSessionId: e.target.value }))}
               >
-                <option value="">Training session…</option>
+                <option value="">Sessão de treino…</option>
                 {trainingSessions.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.title} · {parseDay(s.date)}
@@ -648,7 +648,7 @@ export function SketchAreaClient() {
                 value={evtForm.linkedFixtureId}
                 onChange={(e) => setEvtForm((f) => ({ ...f, linkedFixtureId: e.target.value }))}
               >
-                <option value="">Match (fixture)…</option>
+                <option value="">Jogo (calendário)…</option>
                 {fixtures.map((f) => (
                   <option key={f.id} value={f.id}>
                     vs {f.opponent} · {calendarDayLisbon(f.kickoff)}
@@ -657,7 +657,7 @@ export function SketchAreaClient() {
               </select>
               <Button type="button" onClick={addEvent} className="w-full">
                 <Plus className="mr-2 h-4 w-4" />
-                Add to calendar
+                Adicionar ao calendário
               </Button>
             </CardContent>
           </Card>
@@ -665,7 +665,7 @@ export function SketchAreaClient() {
           <Card className="lg:col-span-3">
             <CardHeader className="flex flex-row flex-wrap items-end justify-between gap-2">
               <div>
-                <CardTitle>Day view</CardTitle>
+                <CardTitle>Vista do dia</CardTitle>
                 <p className={cn("text-xs", calDay === todayDay() ? "font-medium text-accent" : "text-zinc-500")}>
                   {calDay}
                   {calDay === todayDay() ? <span className="ml-1.5 font-normal text-accent/80">· hoje</span> : null}
@@ -682,7 +682,7 @@ export function SketchAreaClient() {
             </CardHeader>
             <CardContent className="space-y-3">
               {eventsForDay.length === 0 ? (
-                <p className="py-8 text-center text-sm text-zinc-500">No events this day.</p>
+                <p className="py-8 text-center text-sm text-zinc-500">Sem eventos neste dia.</p>
               ) : (
                 <ul className="space-y-2">
                   {eventsForDay.map((e) => (
@@ -699,7 +699,7 @@ export function SketchAreaClient() {
                         </p>
                         {e.notes ? <p className="mt-1 text-sm text-zinc-400">{e.notes}</p> : null}
                         <div className="mt-2 flex flex-wrap gap-1">
-                          {e.teamScope ? <Badge variant="accent">Team</Badge> : null}
+                          {e.teamScope ? <Badge variant="accent">Equipa</Badge> : null}
                           {e.linkedPlayerId ? <Badge variant="muted">{playerName(e.linkedPlayerId)}</Badge> : null}
                         </div>
                       </div>
@@ -726,7 +726,7 @@ export function SketchAreaClient() {
         <div className="no-print grid gap-6 lg:grid-cols-2">
           <Card>
             <CardHeader>
-              <CardTitle>Quick note</CardTitle>
+              <CardTitle>Nota rápida</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <select
@@ -740,17 +740,17 @@ export function SketchAreaClient() {
                   </option>
                 ))}
               </select>
-              <Input value={noteForm.title} onChange={(e) => setNoteForm((f) => ({ ...f, title: e.target.value }))} placeholder="Title" />
+              <Input value={noteForm.title} onChange={(e) => setNoteForm((f) => ({ ...f, title: e.target.value }))} placeholder="Título" />
               <textarea
                 className="min-h-[100px] w-full rounded-xl border border-surface-border bg-surface-raised/50 px-3 py-2 text-sm"
                 value={noteForm.body}
                 onChange={(e) => setNoteForm((f) => ({ ...f, body: e.target.value }))}
-                placeholder="Body"
+                placeholder="Conteúdo"
               />
               <Input
                 value={noteForm.tags}
                 onChange={(e) => setNoteForm((f) => ({ ...f, tags: e.target.value }))}
-                placeholder="Tags (comma-separated)"
+                placeholder="Tags (separadas por vírgulas)"
               />
               <label className="flex items-center gap-2 text-sm text-zinc-400">
                 <input
@@ -758,17 +758,17 @@ export function SketchAreaClient() {
                   checked={noteForm.pinned}
                   onChange={(e) => setNoteForm((f) => ({ ...f, pinned: e.target.checked }))}
                 />
-                Pinned
+                Fixada
               </label>
               <Button type="button" variant="secondary" className="w-full text-xs" onClick={() => openPicker("note")}>
-                Link player
+                Ligar jogador
               </Button>
               <select
                 className="h-10 w-full rounded-xl border border-surface-border bg-surface-raised px-3 text-sm"
                 value={noteForm.linkedTrainingSessionId}
                 onChange={(e) => setNoteForm((f) => ({ ...f, linkedTrainingSessionId: e.target.value }))}
               >
-                <option value="">Link training…</option>
+                <option value="">Ligar treino…</option>
                 {trainingSessions.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.title}
@@ -780,7 +780,7 @@ export function SketchAreaClient() {
                 value={noteForm.linkedFixtureId}
                 onChange={(e) => setNoteForm((f) => ({ ...f, linkedFixtureId: e.target.value }))}
               >
-                <option value="">Link match…</option>
+                <option value="">Ligar jogo…</option>
                 {fixtures.map((f) => (
                   <option key={f.id} value={f.id}>
                     vs {f.opponent}
@@ -790,16 +790,16 @@ export function SketchAreaClient() {
               <Input
                 value={noteForm.attachmentHint}
                 onChange={(e) => setNoteForm((f) => ({ ...f, attachmentHint: e.target.value }))}
-                placeholder="Attachment hint / link"
+                placeholder="Nota de anexo / link"
               />
               <Button type="button" onClick={addNote} className="w-full">
-                Save note
+                Guardar nota
               </Button>
             </CardContent>
           </Card>
           <Card>
             <CardHeader>
-              <CardTitle>Library</CardTitle>
+              <CardTitle>Biblioteca</CardTitle>
             </CardHeader>
             <CardContent className="max-h-[560px] space-y-2 overflow-y-auto">
               {[...sketchArea.notes].sort((a, b) => Number(b.pinned) - Number(a.pinned)).map((n) => (
@@ -832,7 +832,7 @@ export function SketchAreaClient() {
                   ) : null}
                 </div>
               ))}
-              {sketchArea.notes.length === 0 ? <p className="text-sm text-zinc-500">No notes yet.</p> : null}
+              {sketchArea.notes.length === 0 ? <p className="text-sm text-zinc-500">Ainda sem notas.</p> : null}
             </CardContent>
           </Card>
         </div>
@@ -842,10 +842,10 @@ export function SketchAreaClient() {
         <div className="no-print space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>New task</CardTitle>
+              <CardTitle>Nova tarefa</CardTitle>
             </CardHeader>
             <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              <Input value={taskForm.title} onChange={(e) => setTaskForm((f) => ({ ...f, title: e.target.value }))} placeholder="What to do" />
+              <Input value={taskForm.title} onChange={(e) => setTaskForm((f) => ({ ...f, title: e.target.value }))} placeholder="O que fazer" />
               <select
                 className="h-10 rounded-xl border border-surface-border bg-surface-raised px-3 text-sm"
                 value={taskForm.category}
@@ -863,18 +863,18 @@ export function SketchAreaClient() {
                 value={taskForm.priority}
                 onChange={(e) => setTaskForm((f) => ({ ...f, priority: e.target.value as SketchTaskPriority }))}
               >
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
+                <option value="low">Baixa</option>
+                <option value="medium">Média</option>
+                <option value="high">Alta</option>
               </select>
               <select
                 className="h-10 rounded-xl border border-surface-border bg-surface-raised px-3 text-sm"
                 value={taskForm.recurring}
                 onChange={(e) => setTaskForm((f) => ({ ...f, recurring: e.target.value as SketchTaskRecurring }))}
               >
-                <option value="none">No repeat</option>
-                <option value="daily">Daily</option>
-                <option value="weekly">Weekly</option>
+                <option value="none">Sem repetição</option>
+                <option value="daily">Diária</option>
+                <option value="weekly">Semanal</option>
               </select>
               <label className="flex items-center gap-2 text-sm text-zinc-400">
                 <input
@@ -882,17 +882,17 @@ export function SketchAreaClient() {
                   checked={taskForm.reminderEnabled}
                   onChange={(e) => setTaskForm((f) => ({ ...f, reminderEnabled: e.target.checked }))}
                 />
-                Reminder flag
+                Lembrete ativo
               </label>
               <Button type="button" variant="secondary" className="text-xs" onClick={() => openPicker("task")}>
-                Link player
+                Ligar jogador
               </Button>
               <select
                 className="h-10 rounded-xl border border-surface-border bg-surface-raised px-3 text-sm sm:col-span-2"
                 value={taskForm.linkedCalendarEventId}
                 onChange={(e) => setTaskForm((f) => ({ ...f, linkedCalendarEventId: e.target.value }))}
               >
-                <option value="">Link calendar event…</option>
+                <option value="">Ligar evento do calendário…</option>
                 {sketchArea.calendarEvents.map((ev) => (
                   <option key={ev.id} value={ev.id}>
                     {ev.title} · {ev.date}
@@ -900,17 +900,17 @@ export function SketchAreaClient() {
                 ))}
               </select>
               <Button type="button" onClick={addTask} className="sm:col-span-2 lg:col-span-3">
-                Add task
+                Adicionar tarefa
               </Button>
             </CardContent>
           </Card>
 
           {(
             [
-              ["Overdue", taskBuckets.overdue],
-              ["Today / no date", taskBuckets.today],
-              ["Upcoming", taskBuckets.upcoming],
-              ["Completed", taskBuckets.done],
+              ["Em atraso", taskBuckets.overdue],
+              ["Hoje / sem data", taskBuckets.today],
+              ["Próximas", taskBuckets.upcoming],
+              ["Concluídas", taskBuckets.done],
             ] as const
           ).map(([label, list]) => (
             <Card key={label}>
@@ -934,9 +934,9 @@ export function SketchAreaClient() {
                         <p className={`text-sm font-medium ${t.completed ? "text-zinc-500 line-through" : "text-white"}`}>{t.title}</p>
                         <p className="text-[11px] text-zinc-500">
                           {TASK_CATEGORY_LABELS[t.category]}
-                          {t.dueDate ? ` · due ${t.dueDate}` : ""} · {t.priority}
+                          {t.dueDate ? ` · prazo ${t.dueDate}` : ""} · {t.priority}
                           {t.recurring !== "none" ? ` · ${t.recurring}` : ""}
-                          {t.reminderEnabled ? " · reminder" : ""}
+                          {t.reminderEnabled ? " · lembrete" : ""}
                         </p>
                       </div>
                     </div>
@@ -965,7 +965,7 @@ export function SketchAreaClient() {
                             setSketchArea((s) => ({ ...s, tasks: [row, ...s.tasks] }));
                           }}
                         >
-                          Next
+                          Seguinte
                         </Button>
                       ) : null}
                       <button
@@ -988,20 +988,20 @@ export function SketchAreaClient() {
         <div className="no-print space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Print and Design your Sketch</CardTitle>
+              <CardTitle>Imprimir e desenhar o teu sketch</CardTitle>
               <p className="text-sm text-zinc-500">
-                Open and print `printsketch.pdf` instantly. Replace this file anytime with your own template.
+                Abre e imprime `printsketch.pdf` de imediato. Podes substituir este ficheiro a qualquer momento pelo teu template.
               </p>
             </CardHeader>
             <CardContent>
               <Button type="button" onClick={openPrintSketchTemplate}>
-                Open and print template
+                Abrir e imprimir template
               </Button>
             </CardContent>
           </Card>
           <Card>
             <CardHeader>
-              <CardTitle>Drop zone & links</CardTitle>
+              <CardTitle>Zona de ficheiros e links</CardTitle>
               <p className="text-sm text-zinc-500">Small files store in-browser; large files — paste a cloud link.</p>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -1013,7 +1013,7 @@ export function SketchAreaClient() {
                   void onDropFiles(e.dataTransfer.files);
                 }}
               >
-                <p className="text-sm text-zinc-400">Drop files here or choose</p>
+                <p className="text-sm text-zinc-400">Larga ficheiros aqui ou escolhe</p>
                 <input
                   type="file"
                   multiple
@@ -1038,15 +1038,15 @@ export function SketchAreaClient() {
                   value={fileVis}
                   onChange={(e) => setFileVis(e.target.value as SketchFileVisibility)}
                 >
-                  <option value="private">Private</option>
-                  <option value="team">Send to team (flag)</option>
-                  <option value="selected_players">Selected players</option>
-                  <option value="assistants">Assistant coaches (flag)</option>
+                  <option value="private">Privado</option>
+                  <option value="team">Enviar à equipa (marcador)</option>
+                  <option value="selected_players">Jogadores selecionados</option>
+                  <option value="assistants">Treinadores adjuntos (marcador)</option>
                 </select>
               </div>
               <label className="flex items-center gap-2 text-sm text-zinc-400">
                 <input type="checkbox" checked={fileReviewLater} onChange={(e) => setFileReviewLater(e.target.checked)} />
-                Review later
+                Rever mais tarde
               </label>
               {fileVis === "selected_players" ? (
                 <div className="flex flex-wrap items-center gap-2">
@@ -1056,21 +1056,21 @@ export function SketchAreaClient() {
                     className="text-xs"
                     onClick={() => openPicker("file_players")}
                   >
-                    Toggle players ({filePlayerIds.length})
+                    Selecionar jogadores ({filePlayerIds.length})
                   </Button>
                 </div>
               ) : null}
               <div className="flex gap-2">
-                <Input value={fileUrl} onChange={(e) => setFileUrl(e.target.value)} placeholder="Or paste URL (Drive, Dropbox…)" />
+                <Input value={fileUrl} onChange={(e) => setFileUrl(e.target.value)} placeholder="Ou cola URL (Drive, Dropbox…)" />
                 <Button type="button" variant="secondary" onClick={addExternalFile}>
-                  Add link
+                  Adicionar link
                 </Button>
               </div>
             </CardContent>
           </Card>
           <Card>
             <CardHeader>
-              <CardTitle>Library</CardTitle>
+              <CardTitle>Biblioteca</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
               {sketchArea.files.map((f) => (
@@ -1079,11 +1079,11 @@ export function SketchAreaClient() {
                     <p className="font-medium text-white">{f.name}</p>
                     <p className="text-[11px] text-zinc-500">
                       {FILE_FOLDER_LABELS[f.folder]} · {f.visibility}
-                      {f.reviewLater ? " · review later" : ""}
+                      {f.reviewLater ? " · rever mais tarde" : ""}
                     </p>
                     {f.externalUrl ? (
                       <a href={f.externalUrl} className="text-xs text-accent hover:underline" target="_blank" rel="noreferrer">
-                        Open link
+                        Abrir link
                       </a>
                     ) : null}
                   </div>
@@ -1096,7 +1096,7 @@ export function SketchAreaClient() {
                   </button>
                 </div>
               ))}
-              {sketchArea.files.length === 0 ? <p className="text-sm text-zinc-500">No files yet.</p> : null}
+              {sketchArea.files.length === 0 ? <p className="text-sm text-zinc-500">Ainda sem ficheiros.</p> : null}
             </CardContent>
           </Card>
         </div>
@@ -1117,7 +1117,7 @@ export function SketchAreaClient() {
                 className="inline-flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-zinc-300 transition-colors hover:bg-white/5 hover:text-white"
               >
                 <ArrowLeft className="h-4 w-4 shrink-0" strokeWidth={2} />
-                Back to app
+                Voltar à app
               </Link>
               <Button
                 type="button"
@@ -1126,7 +1126,7 @@ export function SketchAreaClient() {
                 onClick={() => setBoardExpanded(false)}
               >
                 <Minimize2 className="mr-1.5 h-3.5 w-3.5" strokeWidth={2} />
-                Exit fullscreen
+                Sair do ecrã inteiro
               </Button>
               <p className="ml-auto hidden text-[11px] text-zinc-500 sm:block">
                 Touch-friendly drawing · pinch outside to scroll the page when not fullscreen
@@ -1134,16 +1134,16 @@ export function SketchAreaClient() {
             </div>
           ) : null}
           <CardHeader className="no-print flex flex-row flex-wrap items-center justify-between gap-3">
-            <CardTitle>Sketch board</CardTitle>
+            <CardTitle>Quadro de sketch</CardTitle>
             <div className="flex flex-wrap gap-2">
               <Button type="button" variant="secondary" className="text-xs" onClick={() => ensureDraft()}>
-                Start draft
+                Iniciar draft
               </Button>
               <Button type="button" variant="secondary" className="text-xs" onClick={newDraft}>
-                New board
+                Novo quadro
               </Button>
               <Button type="button" className="text-xs" onClick={printBoard}>
-                Print / PDF
+                Imprimir / PDF
               </Button>
               {sketchArea.boardDrafts.length > 0 && activeDraft ? (
                 <Button
@@ -1155,12 +1155,12 @@ export function SketchAreaClient() {
                   {boardExpanded ? (
                     <>
                       <Minimize2 className="mr-1.5 h-3.5 w-3.5" strokeWidth={2} />
-                      Minimize
+                      Minimizar
                     </>
                   ) : (
                     <>
                       <Maximize2 className="mr-1.5 h-3.5 w-3.5" strokeWidth={2} />
-                      Fullscreen
+                      Ecrã inteiro
                     </>
                   )}
                 </Button>
@@ -1185,10 +1185,10 @@ export function SketchAreaClient() {
                     ))}
                   </select>
                   {([
-                    { id: "player", label: "Player" },
-                    { id: "draw", label: "Draw" },
-                    { id: "forms", label: "Forms/Tools" },
-                    { id: "drag", label: "Drag" },
+                    { id: "player", label: "Jogador" },
+                    { id: "draw", label: "Desenhar" },
+                    { id: "forms", label: "Formas/Ferramentas" },
+                    { id: "drag", label: "Mover" },
                   ] as const).map(({ id, label }) => (
                     <Button
                       key={id}
@@ -1209,7 +1209,7 @@ export function SketchAreaClient() {
                 {boardPanel === "player" ? (
                   <div className="no-print space-y-2 rounded-xl border border-surface-border bg-surface-raised/20 p-3">
                     <p className="text-xs text-zinc-500">
-                      Escolhe um jogador e clica no campo para o colocar. Em modo Player também podes arrastar os jogadores já colocados.
+                      Escolhe um jogador e clica no campo para o colocar. Em modo Jogador também podes arrastar os jogadores já colocados.
                     </p>
                     <div className="max-h-36 space-y-1 overflow-auto pr-1">
                       {players.map((p) => (
@@ -1259,7 +1259,7 @@ export function SketchAreaClient() {
                       className="h-7 w-7 rounded-full border border-zinc-600"
                       style={{ backgroundColor: c, boxShadow: boardColor === c ? "0 0 0 2px white" : undefined }}
                       onClick={() => setBoardColor(c)}
-                      aria-label={`colour ${c}`}
+                      aria-label={`cor ${c}`}
                     />
                   ))}
                   <Input
@@ -1317,11 +1317,11 @@ export function SketchAreaClient() {
                   className="no-print text-xs"
                   onClick={() => saveBoardStrokes([])}
                 >
-                  Clear strokes
+                  Limpar traços
                 </Button>
               </>
             ) : (
-              <p className="text-sm text-zinc-500">Press “Start draft” to open the canvas.</p>
+              <p className="text-sm text-zinc-500">Clica em “Iniciar draft” para abrir o quadro.</p>
             )}
           </CardContent>
         </Card>
@@ -1331,34 +1331,34 @@ export function SketchAreaClient() {
         <div className="no-print space-y-4">
           <div className="grid gap-4 rounded-2xl border border-surface-border bg-surface-raised/20 p-4 md:grid-cols-2">
             <div className="space-y-3">
-              <p className="text-sm font-medium text-zinc-200">Add from your team</p>
+              <p className="text-sm font-medium text-zinc-200">Adicionar da tua equipa</p>
               <Button type="button" onClick={() => openPicker("watch")}>
                 <Plus className="mr-2 h-4 w-4" />
-                Add team player
+                Adicionar jogador da equipa
               </Button>
             </div>
             <div className="space-y-3">
-              <p className="text-sm font-medium text-zinc-200">Add external player (other teams)</p>
+              <p className="text-sm font-medium text-zinc-200">Adicionar jogador externo (outras equipas)</p>
               <div className="grid gap-2">
                 <Input
                   value={externalWatchForm.name}
                   onChange={(e) => setExternalWatchForm((f) => ({ ...f, name: e.target.value }))}
-                  placeholder="Player name"
+                  placeholder="Nome do jogador"
                 />
                 <div className="grid gap-2 sm:grid-cols-2">
                   <Input
                     value={externalWatchForm.club}
                     onChange={(e) => setExternalWatchForm((f) => ({ ...f, club: e.target.value }))}
-                    placeholder="Club (optional)"
+                    placeholder="Clube (opcional)"
                   />
                   <Input
                     value={externalWatchForm.position}
                     onChange={(e) => setExternalWatchForm((f) => ({ ...f, position: e.target.value }))}
-                    placeholder="Position (optional)"
+                    placeholder="Posição (opcional)"
                   />
                 </div>
                 <Button type="button" variant="secondary" onClick={addExternalWatch}>
-                  Add external player
+                  Adicionar jogador externo
                 </Button>
               </div>
             </div>
@@ -1370,13 +1370,13 @@ export function SketchAreaClient() {
                 <Card key={w.id}>
                   <CardHeader className="flex flex-row items-start justify-between gap-2">
                     <div>
-                      <CardTitle className="text-base">{pl?.name ?? w.externalPlayerName ?? "Player"}</CardTitle>
+                      <CardTitle className="text-base">{pl?.name ?? w.externalPlayerName ?? "Jogador"}</CardTitle>
                       {!pl && (w.externalClub || w.externalPosition) ? (
                         <p className="mt-1 text-xs text-zinc-500">
                           {[w.externalClub, w.externalPosition].filter(Boolean).join(" · ")}
                         </p>
                       ) : null}
-                      {!pl ? <Badge variant="muted">External</Badge> : null}
+                      {!pl ? <Badge variant="muted">Externo</Badge> : null}
                     </div>
                     <button
                       type="button"
@@ -1387,7 +1387,7 @@ export function SketchAreaClient() {
                     </button>
                   </CardHeader>
                   <CardContent className="space-y-2 text-sm">
-                    <label className="block text-xs text-zinc-500">Focus tags (comma)</label>
+                    <label className="block text-xs text-zinc-500">Tags de foco (vírgula)</label>
                     <Input
                       value={w.focusTags.join(", ")}
                       onChange={(e) => {
@@ -1401,7 +1401,7 @@ export function SketchAreaClient() {
                         }));
                       }}
                     />
-                    <label className="block text-xs text-zinc-500">Latest note</label>
+                    <label className="block text-xs text-zinc-500">Última nota</label>
                     <textarea
                       className="min-h-[56px] w-full rounded-xl border border-surface-border bg-surface-raised/50 px-3 py-2 text-sm"
                       value={w.latestNote}
@@ -1414,7 +1414,7 @@ export function SketchAreaClient() {
                         }))
                       }
                     />
-                    <label className="block text-xs text-zinc-500">Next action</label>
+                    <label className="block text-xs text-zinc-500">Próxima ação</label>
                     <Input
                       value={w.nextAction}
                       onChange={(e) =>
@@ -1426,7 +1426,7 @@ export function SketchAreaClient() {
                         }))
                       }
                     />
-                    <label className="block text-xs text-zinc-500">Reminder</label>
+                    <label className="block text-xs text-zinc-500">Lembrete</label>
                     <Input
                       value={w.reminderText ?? ""}
                       onChange={(e) =>
@@ -1438,7 +1438,7 @@ export function SketchAreaClient() {
                         }))
                       }
                     />
-                    <label className="block text-xs text-zinc-500">Attendance note</label>
+                    <label className="block text-xs text-zinc-500">Nota de presença</label>
                     <Input
                       value={w.attendanceNote ?? ""}
                       onChange={(e) =>
@@ -1450,7 +1450,7 @@ export function SketchAreaClient() {
                         }))
                       }
                     />
-                    <label className="block text-xs text-zinc-500">Clip links (one per line)</label>
+                    <label className="block text-xs text-zinc-500">Links de clips (um por linha)</label>
                     <textarea
                       className="min-h-[56px] w-full rounded-xl border border-surface-border bg-surface-raised/50 px-3 py-2 text-sm"
                       value={w.clipLinks.join("\n")}
@@ -1476,7 +1476,7 @@ export function SketchAreaClient() {
               );
             })}
           </div>
-          {sketchArea.watchlist.length === 0 ? <p className="text-center text-sm text-zinc-500">No players on the watchlist.</p> : null}
+          {sketchArea.watchlist.length === 0 ? <p className="text-center text-sm text-zinc-500">Sem jogadores na lista de observação.</p> : null}
         </div>
       ) : null}
 
