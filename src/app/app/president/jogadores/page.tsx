@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { Pencil, Trash2, RefreshCw } from "lucide-react";
+import { Pencil, Trash2, RefreshCw, Check } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -243,7 +243,19 @@ export default function PresidentJogadoresPage() {
                       <td className="px-4 py-3 text-zinc-400">{p.team || "—"}</td>
                       <td className="px-4 py-3 text-zinc-400">{p.position || "—"}</td>
                       <td className="px-4 py-3 text-zinc-400">{p.attendance || "—"}</td>
-                      <td className="px-4 py-3 text-zinc-400">{p.isTopTalent ? "Sim" : "—"}</td>
+                      <td className="px-4 py-3 text-center">
+                        {p.isTopTalent ? (
+                          <span
+                            className="inline-flex h-5 w-5 items-center justify-center rounded-md border border-emerald-400/35 bg-emerald-500/15 text-emerald-300"
+                            aria-label="Jogador de topo"
+                            title="Jogador de topo"
+                          >
+                            <Check className="h-3.5 w-3.5" strokeWidth={2.75} />
+                          </span>
+                        ) : (
+                          <span className="text-zinc-500">—</span>
+                        )}
+                      </td>
                       <td className="max-w-[120px] truncate px-4 py-3 text-zinc-500" title={p.injuryStatus}>
                         {p.injuryStatus || "—"}
                       </td>

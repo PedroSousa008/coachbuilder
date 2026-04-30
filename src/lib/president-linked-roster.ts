@@ -89,7 +89,8 @@ export function mapWorkspaceToPresidentPlayers(
     potentialRating: "",
     injuryStatus: availabilityToInjuryStatus(pl),
     notes: "Dados do plantel do treinador (sincronizados).",
-    isTopTalent: false,
+    // "Jogador de topo" no modo presidente segue automaticamente o estado de forma do plantel do treinador.
+    isTopTalent: pl.performance === "up",
     technicalEvolution: "",
     physicalNotes: "",
     coachFeedback: "",
