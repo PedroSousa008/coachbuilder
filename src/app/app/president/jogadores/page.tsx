@@ -206,7 +206,7 @@ export default function PresidentJogadoresPage() {
                 <th className="px-4 py-3 font-medium">Idade</th>
                 <th className="px-4 py-3 font-medium">Equipa</th>
                 <th className="px-4 py-3 font-medium">Pos.</th>
-                <th className="px-4 py-3 font-medium">Presenças</th>
+                <th className="px-4 py-3 font-medium">Jogos</th>
                 <th className="px-4 py-3 font-medium">Topo</th>
                 <th className="px-4 py-3 font-medium">Lesão</th>
                 <th className="px-4 py-3 font-medium w-24">Acções</th>
@@ -339,7 +339,7 @@ export default function PresidentJogadoresPage() {
               <Input value={form.position} onChange={(e) => setForm((f) => ({ ...f, position: e.target.value }))} />
             </label>
             <label className="space-y-1">
-              <span className="text-xs text-zinc-500">Presenças</span>
+              <span className="text-xs text-zinc-500">Jogos</span>
               <Input
                 value={form.attendance}
                 onChange={(e) => setForm((f) => ({ ...f, attendance: e.target.value }))}

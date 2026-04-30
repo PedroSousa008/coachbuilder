@@ -35,6 +35,19 @@ function availabilityToInjuryStatus(p: Player): string {
   return "";
 }
 
+function buildPlayerGamesCount(matches: TacticMatch[]): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const m of matches) {
+    const seenInMatch = new Set<string>();
+    for (const line of m.playerStats ?? []) {
+      if (!line.playerId || seenInMatch.has(line.playerId)) continue;
+      seenInMatch.add(line.playerId);
+      counts.set(line.playerId, (counts.get(line.playerId) ?? 0) + 1);
+    }
+  }
+  return counts;
+}
+
 /** Constrói a linha de treinador no modo Presidente a partir do workspace (perfil + estatísticas). */
 export function mapWorkspaceToPresidentCoach(
   coachUserId: string,
@@ -77,6 +90,7 @@ export function mapWorkspaceToPresidentPlayers(
   snapshot: WorkspaceSnapshotV1
 ): PresidentPlayer[] {
   const club = (snapshot.coachProfile.club ?? "").trim();
+  const gamesByPlayerId = buildPlayerGamesCount(snapshot.tacticMatches ?? []);
   return (snapshot.players ?? []).map((pl) => ({
     id: `linked:${coachUserId}:${pl.id}`,
     coachUserId,
@@ -85,7 +99,7 @@ export function mapWorkspaceToPresidentPlayers(
     age: String(pl.age ?? ""),
     team: club,
     position: formatPlayerPositions(pl),
-    attendance: "",
+    attendance: String(gamesByPlayerId.get(pl.id) ?? 0),
     potentialRating: "",
     injuryStatus: availabilityToInjuryStatus(pl),
     notes: "Dados do plantel do treinador (sincronizados).",
