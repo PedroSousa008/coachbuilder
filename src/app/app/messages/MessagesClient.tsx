@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Paperclip } from "lucide-react";
+import { ChevronLeft, Paperclip } from "lucide-react";
 import { ChatConversationItem } from "@/components/messages/ChatConversationItem";
 import { GroupEditorModal } from "@/components/messages/GroupEditorModal";
 import { MessageBubble } from "@/components/messages/MessageBubble";
@@ -136,6 +136,8 @@ export function MessagesClient({ enableGlobalUserSearch = false }: { enableGloba
   );
 
   const [tab, setTab] = useState<"group" | "dm">("group");
+  const [isMobile, setIsMobile] = useState(false);
+  const [mobileScreen, setMobileScreen] = useState<"list" | "chat">("list");
   const filtered = useMemo(
     () => conversations.filter((c) => (tab === "group" ? c.type === "group" : c.type === "dm")),
     [conversations, tab]
@@ -169,6 +171,8 @@ export function MessagesClient({ enableGlobalUserSearch = false }: { enableGloba
   const [staffCloudUserId, setStaffCloudUserId] = useState<Record<string, string>>({});
   const streamSinceRef = useRef<Record<string, string>>({});
   const draftInputRef = useRef<HTMLInputElement>(null);
+  const threadScrollRef = useRef<HTMLDivElement>(null);
+  const stickToBottomRef = useRef(true);
   /** After opening a DM, focus the composer once that conversation is active. */
   const focusDraftAfterConvIdRef = useRef<string | null>(null);
   /** Scroll to first unread (or bottom) once per conversa aberta — não em cada poll. */
@@ -365,6 +369,19 @@ export function MessagesClient({ enableGlobalUserSearch = false }: { enableGloba
   );
 
   useEffect(() => {
+    const mq = window.matchMedia("(max-width: 1023px)");
+    const sync = () => setIsMobile(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
+
+  useEffect(() => {
+    if (!isMobile) setMobileScreen("chat");
+    else setMobileScreen("list");
+  }, [isMobile]);
+
+  useEffect(() => {
     if (!hydrated) return;
     if (conversations.length === 0) return;
     if (activeId && conversations.some((c) => c.id === activeId)) return;
@@ -383,31 +400,29 @@ export function MessagesClient({ enableGlobalUserSearch = false }: { enableGloba
 
   useLayoutEffect(() => {
     scrollThreadPendingRef.current = true;
+    stickToBottomRef.current = true;
   }, [activeId]);
 
   useLayoutEffect(() => {
     if (!activeId || !scrollThreadPendingRef.current) return;
     if (thread.length === 0) return;
-    const targetId = thread[thread.length - 1]?.id ?? null;
-    if (!targetId) {
-      scrollThreadPendingRef.current = false;
-      return;
-    }
+    const el = threadScrollRef.current;
+    if (!el) return;
     const run = () => {
-      const el = document.getElementById(`chat-msg-${targetId}`);
-      if (el) {
-        el.scrollIntoView({ block: "end", behavior: "auto" });
-        scrollThreadPendingRef.current = false;
-        return true;
-      }
-      return false;
+      el.scrollTop = el.scrollHeight;
+      scrollThreadPendingRef.current = false;
     };
-    if (!run()) {
-      requestAnimationFrame(() => {
-        if (!run()) scrollThreadPendingRef.current = false;
-      });
-    }
+    run();
+    requestAnimationFrame(run);
   }, [activeId, thread]);
+
+  useLayoutEffect(() => {
+    const el = threadScrollRef.current;
+    if (!el || thread.length === 0) return;
+    if (!scrollThreadPendingRef.current && !stickToBottomRef.current) return;
+    el.scrollTop = el.scrollHeight;
+    if (scrollThreadPendingRef.current) scrollThreadPendingRef.current = false;
+  }, [thread]);
 
   const activeDmPeerCloudId = useMemo(() => {
     if (!activeConv || activeConv.type !== "dm" || !user?.id) return null;
@@ -767,6 +782,7 @@ export function MessagesClient({ enableGlobalUserSearch = false }: { enableGloba
     const attErr = validateAttachmentPayload(attachPayload);
     if (attErr) return;
 
+    stickToBottomRef.current = true;
     if (activeConv.type === "dm" && activeDmPeerCloudId && user?.id && shouldUseCloudClientApis(user)) {
       try {
         const res = await fetch("/api/cloud/chat/dm", {
@@ -1278,7 +1294,7 @@ export function MessagesClient({ enableGlobalUserSearch = false }: { enableGloba
         </div>
       ) : null}
 
-      <div className="flex flex-wrap gap-2">
+      <div className={`${isMobile && mobileScreen === "chat" ? "hidden" : "flex flex-wrap gap-2"}`}>
         <Button type="button" variant="secondary" size="sm" onClick={() => setDmPickerOpen(true)}>
           {isPt ? "Nova mensagem direta" : "New direct message"}
         </Button>
@@ -1293,12 +1309,13 @@ export function MessagesClient({ enableGlobalUserSearch = false }: { enableGloba
       </div>
 
       <div className="flex flex-col gap-4 lg:h-[calc(100vh-10rem)] lg:flex-row lg:gap-0 lg:overflow-hidden lg:rounded-2xl lg:border lg:border-surface-border lg:bg-surface-raised/20">
-        <div className="flex w-full flex-col border-surface-border lg:w-[320px] lg:border-r">
+        <div className={`${isMobile && mobileScreen === "chat" ? "hidden" : "flex w-full flex-col border-surface-border lg:w-[320px] lg:border-r"}`}>
           <div className="flex gap-1 border-b border-surface-border p-3">
             <button
               type="button"
               onClick={() => {
                 setTab("group");
+                if (isMobile) setMobileScreen("list");
                 const first = conversations.find((c) => c.type === "group");
                 if (first) setActiveId(first.id);
                 else setActiveId("");
@@ -1313,6 +1330,7 @@ export function MessagesClient({ enableGlobalUserSearch = false }: { enableGloba
               type="button"
               onClick={() => {
                 setTab("dm");
+                if (isMobile) setMobileScreen("list");
                 const first = conversations.find((c) => c.type === "dm");
                 if (first) setActiveId(first.id);
                 else setActiveId("");
@@ -1343,27 +1361,43 @@ export function MessagesClient({ enableGlobalUserSearch = false }: { enableGloba
                   key={c.id}
                   conversation={c}
                   active={c.id === activeId}
-                  onClick={() => setActiveId(c.id)}
+                  onClick={() => {
+                    setActiveId(c.id);
+                    if (isMobile) setMobileScreen("chat");
+                    stickToBottomRef.current = true;
+                  }}
                 />
               ))
             )}
           </div>
         </div>
 
-        <div className="flex min-h-[420px] flex-1 flex-col lg:min-h-0">
+        <div className={`${isMobile && mobileScreen === "list" ? "hidden" : "flex min-h-[420px] flex-1 flex-col lg:min-h-0"}`}>
           {activeConv ? (
             <div className="border-b border-surface-border px-4 py-4 lg:px-6">
-              {activeConv.type === "group" ? (
-                <button
-                  type="button"
-                  className="font-display font-semibold text-white transition-colors hover:text-accent"
-                  onClick={() => setManageGroupOpen(true)}
-                >
-                  {activeConv.title}
-                </button>
-              ) : (
-                <p className="font-display font-semibold text-white">{activeConv.title}</p>
-              )}
+              <div className="flex items-center gap-2">
+                {isMobile ? (
+                  <button
+                    type="button"
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-surface-border text-zinc-300 hover:bg-white/5"
+                    onClick={() => setMobileScreen("list")}
+                    aria-label={isPt ? "Voltar à lista" : "Back to list"}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+                ) : null}
+                {activeConv.type === "group" ? (
+                  <button
+                    type="button"
+                    className="font-display font-semibold text-white transition-colors hover:text-accent"
+                    onClick={() => setManageGroupOpen(true)}
+                  >
+                    {activeConv.title}
+                  </button>
+                ) : (
+                  <p className="font-display font-semibold text-white">{activeConv.title}</p>
+                )}
+              </div>
               {savingGroupSettings ? (
                 <p className="text-xs text-amber-400">{isPt ? "A guardar..." : "Saving..."}</p>
               ) : activeConv.subtitle ? (
@@ -1376,7 +1410,16 @@ export function MessagesClient({ enableGlobalUserSearch = false }: { enableGloba
               <p className="text-xs text-zinc-500">{isPt ? "Escolhe uma conversa" : "Pick a conversation"}</p>
             </div>
           )}
-          <div className="flex flex-1 flex-col gap-3 overflow-y-auto px-4 py-4 lg:px-6">
+          <div
+            ref={threadScrollRef}
+            onScroll={() => {
+              const el = threadScrollRef.current;
+              if (!el) return;
+              const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+              stickToBottomRef.current = distanceFromBottom <= 80;
+            }}
+            className="flex flex-1 flex-col gap-3 overflow-y-auto px-4 py-4 lg:px-6"
+          >
             {!activeConv ? (
               <div className="flex flex-1 flex-col items-center justify-center gap-2 text-center">
                 <p className="text-sm text-zinc-500">{isPt ? "Nenhuma conversa aberta." : "No conversation open."}</p>
