@@ -15,75 +15,75 @@ import type {
   AiTrainingPhase,
 } from "@/lib/training-ai-types";
 /**
- * Vídeo do exercício "Offensive Between Lines".
+ * Vídeo do exercício "Passe Entre Linhas e Ataque".
  * Coloca o ficheiro em `public/videos/training/offensive-between-lines.mp4` ou substitui por um link YouTube (URL completa).
  */
 export const OFFENSIVE_BETWEEN_LINES_VIDEO_URL = "/videos/training/offensive-between-lines.mp4";
 
 /**
- * Vídeo do exercício "Between the Lines" (7v3 + 2 balizas).
+ * Vídeo do exercício "Passe Entre Linhas 7v3" (7v3 + 2 balizas).
  * Coloca o ficheiro em `public/videos/training/between-the-lines.mp4`.
  */
 export const BETWEEN_THE_LINES_VIDEO_URL = "/videos/training/between-the-lines.mp4";
 
 /**
- * Vídeo do exercício "Defensive Recovery on Counter Attack" (2v1 + recuperação).
+ * Vídeo do exercício "Recuperação Defensiva no Contra Ataque" (2v1 + recuperação).
  * Coloca o ficheiro em `public/videos/training/defensive-recovery.mp4`.
  */
 export const DEFENSIVE_RECOVERY_ON_COUNTER_ATTACK_VIDEO_URL =
   "/videos/training/defensive-recovery.mp4";
 
 /**
- * Vídeo do exercício "Passing Activation".
+ * Vídeo do exercício "Ativação dos Passes".
  * Coloca o ficheiro em `public/videos/training/passing-activity.mp4` ou substitui por um link YouTube.
  */
 export const PASSING_ACTIVATION_VIDEO_URL = "/videos/training/passing-activity.mp4";
 
 /**
- * Vídeo do exercício "Warm Up with Ball".
+ * Vídeo do exercício "Aquecimento com Bola".
  * Coloca o ficheiro em `public/videos/training/warm-up.mp4` ou substitui por um link YouTube.
  */
 export const WARM_UP_WITH_BALL_VIDEO_URL = "/videos/training/warm-up.mp4";
 
 /**
- * Vídeo do exercício "Dual Passing".
+ * Vídeo do exercício "Passe Duplo e Movimentação".
  * Coloca o ficheiro em `public/videos/training/dual-passing.mp4` ou substitui por um link YouTube.
  */
 export const DUAL_PASSING_VIDEO_URL = "/videos/training/dual-passing.mp4";
 
 /**
- * Vídeo do exercício "9v9 + 2 Game".
+ * Vídeo do exercício "Jogo de 9v9 + 2".
  * Coloca o ficheiro em `public/videos/training/9v9+2.mp4` ou substitui por um link YouTube.
  */
 export const NINE_V_NINE_PLUS_TWO_VIDEO_URL = "/videos/training/9v9+2.mp4";
 
 /**
- * Vídeo do exercício "Double Finishing Drill".
+ * Vídeo do exercício "Duplo Exercício de Finalização".
  * Coloca o ficheiro em `public/videos/training/finishing-drill.mp4` ou substitui por um link YouTube.
  */
 export const DOUBLE_FINISHING_DRILL_VIDEO_URL = "/videos/training/finishing-drill.mp4";
 
 /**
- * Vídeo do exercício "Back Four Shifting".
+ * Vídeo do exercício "Rotação de 4 Defesas a Pressionar".
  * Coloca o ficheiro em `public/videos/training/back-four-shifting.mp4` ou substitui por um link YouTube.
  */
 export const BACK_FOUR_SHIFTING_VIDEO_URL = "/videos/training/back-four-shifting.mp4";
 
 /**
- * Vídeo do exercício "Compact Defending Transition".
+ * Vídeo do exercício "Transição Defensiva Compacta".
  * Coloca o ficheiro em `public/videos/training/compact-defending-transition.mp4` ou substitui por um link YouTube.
  */
 export const COMPACT_DEFENDING_TRANSITION_VIDEO_URL =
   "/videos/training/compact-defending-transition.mp4";
 
 /**
- * Vídeo do exercício "Finishing Transition".
+ * Vídeo do exercício "Transição com Finalização".
  * Coloca o ficheiro em `public/videos/training/transition-finishing.mp4` ou substitui por um link YouTube.
  */
 export const FINISHING_TRANSITION_VIDEO_URL = "/videos/training/transition-finishing.mp4";
 
 /**
- * Vídeo do exercício "Cross and Strike".
+ * Vídeo do exercício "Cruzamento e Finalização fora da Área".
  * Coloca o ficheiro em `public/videos/training/cross-and-strike.mp4` ou substitui por um link YouTube.
  */
 export const CROSS_AND_STRIKE_VIDEO_URL = "/videos/training/cross-and-strike.mp4";
@@ -107,73 +107,73 @@ export const RONDO_9V3_VIDEO_URL = "/videos/training/rondo-9v3.mp4";
 export const RONDO_5V3_VIDEO_URL = "/videos/training/rondo-5v3.mp4";
 
 /**
- * Vídeo do exercício "Breakout Rondo".
+ * Vídeo do exercício "Constante abertura de Rondo".
  * Coloca o ficheiro em `public/videos/training/breakout-rondo.mp4` ou substitui por um link YouTube.
  */
 export const BREAKOUT_RONDO_VIDEO_URL = "/videos/training/breakout-rondo.mp4";
 
 /**
- * Vídeo do exercício "(2+1)v1 Transition".
+ * Vídeo do exercício "Transição (2+1)v1".
  * Coloca o ficheiro em `public/videos/training/2+1v1-transition.mp4` ou substitui por um link YouTube.
  */
 export const TWO_PLUS_ONE_V_ONE_TRANSITION_VIDEO_URL = "/videos/training/2+1v1-transition.mp4";
 
 /**
- * Vídeo do exercício "Build up into Counter Attack".
+ * Vídeo do exercício "De Construção para Contra Ataque ".
  * Coloca o ficheiro em `public/videos/training/build-up-into-counter-attack.mp4` ou substitui por um link YouTube.
  */
 export const BUILD_UP_INTO_COUNTER_ATTACK_VIDEO_URL = "/videos/training/build-up-into-counter-attack.mp4";
 
 /**
- * Vídeo do exercício "Fitness Rondo into Finishing".
+ * Vídeo do exercício "Recuperação de Bola no Rondo para Finalização".
  * Coloca o ficheiro em `public/videos/training/fitness-rondo-finishing.mp4` ou substitui por um link YouTube.
  */
 export const FITNESS_RONDO_INTO_FINISHING_VIDEO_URL = "/videos/training/fitness-rondo-finishing.mp4";
 
 /**
- * Vídeo do exercício "Rondo to Counter Attack".
+ * Vídeo do exercício "Rondo para Contra Ataque".
  * Coloca o ficheiro em `public/videos/training/rondo-to-counter.mp4` ou substitui por um link YouTube.
  */
 export const RONDO_TO_COUNTER_ATTACK_VIDEO_URL = "/videos/training/rondo-to-counter.mp4";
 
 /**
- * Vídeo do exercício "Goal Kick 1".
+ * Vídeo do exercício "Pontapé de Baliza 1".
  * Coloca o ficheiro em `public/videos/training/goal-kick-1.mp4` ou substitui por um link YouTube.
  */
 export const GOAL_KICK_1_VIDEO_URL = "/videos/training/goal-kick-1.mp4";
 
 /**
- * Vídeo do exercício "Goal Kick 2".
+ * Vídeo do exercício "Pontapé de Baliza 2".
  * Coloca o ficheiro em `public/videos/training/goal-kick-2.mp4` ou substitui por um link YouTube.
  */
 export const GOAL_KICK_2_VIDEO_URL = "/videos/training/goal-kick-2.mp4";
 
 /**
- * Vídeo do exercício "Midfielder Run Behind Defense".
+ * Vídeo do exercício "Corrida do Meio Campo nas Costas da Defesa".
  * Coloca o ficheiro em `public/videos/training/behind-defense.mp4` ou substitui por um link YouTube.
  */
 export const MIDFIELDER_RUN_BEHIND_DEFENSE_VIDEO_URL = "/videos/training/behind-defense.mp4";
 
 /**
- * Vídeo do exercício "3v2 Fast Break".
+ * Vídeo do exercício "Transição Rápida 3v2".
  * Coloca o ficheiro em `public/videos/training/3x2-fast-breaks.mp4` ou substitui por um link YouTube.
  */
 export const THREE_V_TWO_FAST_BREAK_VIDEO_URL = "/videos/training/3x2-fast-breaks.mp4";
 
 /**
- * Vídeo do exercício "3v2 Finishing Drill".
+ * Vídeo do exercício "Exercício de Finalização 3v2".
  * Coloca o ficheiro em `public/videos/training/3v2-finishing-drill.mp4` ou substitui por um link YouTube.
  */
 export const THREE_V_TWO_FINISHING_DRILL_VIDEO_URL = "/videos/training/3v2-finishing-drill.mp4";
 
 /**
- * Vídeo do exercício "5 Teams 3v3 Attacking".
+ * Vídeo do exercício "Ataque com 5 Equipas 3v3".
  * Coloca o ficheiro em `public/videos/training/3v3-5-teams.mp4`.
  */
 export const FIVE_TEAMS_3V3_ATTACKING_VIDEO_URL = "/videos/training/3v3-5-teams.mp4";
 
 /**
- * Vídeo do exercício "Fixed Position Rondo".
+ * Vídeo do exercício "Rondo com Organização Fixa Posicional".
  * Coloca o ficheiro em `public/videos/training/fixed-position-rondo.mp4`.
  */
 export const FIXED_POSITION_RONDO_VIDEO_URL = "/videos/training/fixed-position-rondo.mp4";
@@ -203,37 +203,37 @@ export const PASSE_ROTURA_COMBINACOES_VIDEO_URL = "/videos/training/passe-rotura
 export const COMBINACOES_SOB_PRESSAO_VIDEO_URL = "/videos/training/combinacoes-pressao.mp4";
 
 /**
- * Vídeo do exercício "Short Corner by Newcastle".
+ * Vídeo do exercício "Canto Curto: Newcastle".
  * Coloca o ficheiro em `public/videos/training/short-corner-newcastle.mp4`.
  */
 export const SHORT_CORNER_BY_NEWCASTLE_VIDEO_URL = "/videos/training/short-corner-newcastle.mp4";
 
 /**
- * Vídeo do exercício "Short Corner by Empoli".
+ * Vídeo do exercício "Canto Curto: Empoli".
  * Coloca o ficheiro em `public/videos/training/short-corner-empoli.mp4`.
  */
 export const SHORT_CORNER_BY_EMPOLI_VIDEO_URL = "/videos/training/short-corner-empoli.mp4";
 
 /**
- * Vídeo do exercício "Short Corner Routine".
+ * Vídeo do exercício "Canto Curto Estudado".
  * Coloca o ficheiro em `public/videos/training/short-corner.mp4` ou substitui por um link YouTube.
  */
 export const SHORT_CORNER_ROUTINE_VIDEO_URL = "/videos/training/short-corner.mp4";
 
 /**
- * Vídeo do exercício "Free Kick Routine".
+ * Vídeo do exercício "Livre Direto Estudado ".
  * Coloca o ficheiro em `public/videos/training/free-kick-routine.mp4`.
  */
 export const FREE_KICK_ROUTINE_VIDEO_URL = "/videos/training/free-kick-routine.mp4";
 
 /**
- * Vídeo do exercício "Short Free Kick - Winger Movement".
+ * Vídeo do exercício "Livre Direto Estudado: Movimentação do Extremo".
  * Coloca o ficheiro em `public/videos/training/short-free-kick.mp4`.
  */
 export const SHORT_FREE_KICK_WINGER_MOVEMENT_VIDEO_URL = "/videos/training/short-free-kick.mp4";
 
 /**
- * Vídeo do exercício "1v1 Situations".
+ * Vídeo do exercício "Situações de 1v1".
  * Coloca o ficheiro em `public/videos/training/1v1-situations.mp4`.
  */
 export const ONE_V_ONE_SITUATIONS_VIDEO_URL = "/videos/training/1v1-situations.mp4";
@@ -288,7 +288,7 @@ export const MOVIMENTACAO_AREA_CRUZAMENTOS_VIDEO_URL =
 export const VARIACAO_CRUZAMENTOS_VIDEO_URL = "/videos/training/variação-cruzamentos.mp4";
 
 /**
- * Vídeo do exercício "4v4 mais apoios laterais".
+ * Vídeo do exercício "4v4 + Apoios Laterais".
  * Coloca o ficheiro em `public/videos/training/4v4-4-teams.mp4`.
  */
 export const FOUR_V_FOUR_FOUR_TEAMS_VIDEO_URL = "/videos/training/4v4-4-teams.mp4";
@@ -300,13 +300,13 @@ export const FOUR_V_FOUR_FOUR_TEAMS_VIDEO_URL = "/videos/training/4v4-4-teams.mp
 export const SUPERIORIDADE_SETORES_VIDEO_URL = "/videos/training/superioridade-setores.mp4";
 
 /**
- * Vídeo do exercício "Full Back Overlap - Striker".
+ * Vídeo do exercício "Overlap do Lateral: Avançado ".
  * Coloca o ficheiro em `public/videos/training/full-back-overlap-2.mp4` ou substitui por um link YouTube.
  */
 export const FULL_BACK_OVERLAP_STRIKER_VIDEO_URL = "/videos/training/full-back-overlap-2.mp4";
 export const FULL_BACK_OVERLAP_WINGER_VIDEO_URL = "/videos/training/full-back-overlap-1.mp4";
 
-/** Vídeo do exercício "Pressing Exercise". Coloca o ficheiro em `public/videos/training/pressing-exercise.mp4`. */
+/** Vídeo do exercício "Exercício de Pressão". Coloca o ficheiro em `public/videos/training/pressing-exercise.mp4`. */
 export const PRESSING_EXERCISE_VIDEO_URL = "/videos/training/pressing-exercise.mp4";
 
 export type TrainingThemeId =
@@ -1122,7 +1122,7 @@ type MainDrillDef = {
 const MAIN_DRILLS: MainDrillDef[] = [
   {
     themes: ["physical", "possession", "balanced"],
-    title: "Warm Up with Ball",
+    title: "Aquecimento com Bola",
     describe: (pl, m) => ({
       description: `Os jogadores conduzem a bola, passam por 2 cones em drible e, após realizar o passe para um colega, saem imediatamente em sprint para o espaço livre. O exercício decorre de forma contínua, focando a coordenação, controlo de bola e aceleração após passe. (${m} min)`,
       coachingPoints:
@@ -1140,7 +1140,7 @@ const MAIN_DRILLS: MainDrillDef[] = [
   },
   {
     themes: ["physical", "balanced"],
-    title: "Passing Activation",
+    title: "Ativação dos Passes",
     describe: (pl, m) => ({
       description: `Circuito dinâmico de aquecimento focado em coordenação, agilidade e ativação física. Os jogadores passam por diferentes estações em sequência: escada de agilidade (skipping rápido, frequência elevada de pés); cones (contornar rapidamente, mudanças de direção); barreira de mobilidade (saltos com os dois pés, explosão e coordenação); cones finais (sprint em vaivém com aceleração e travagem rápida). O foco está na mobilidade, velocidade de pés, coordenação e preparação física para o treino. (${m} min)`,
       coachingPoints:
@@ -1160,7 +1160,7 @@ const MAIN_DRILLS: MainDrillDef[] = [
   },
   {
     themes: ["physical", "transition", "balanced"],
-    title: "1v1 Situations",
+    title: "Situações de 1v1",
     describe: (pl, m) => ({
       description: `Colocam-se 2 cones de partida afastados cerca de 5 metros, com 5 cones centrais alinhados a dividir os dois lados. Nas laterais ficam 2 balizas pequenas. Dois jogadores arrancam em simultâneo em direção aos cones centrais, sendo que um parte com bola e outro sem bola. Quando se encontram frente a frente, inicia-se o 1v1: o jogador com bola deve ultrapassar o adversário e entrar em sprint por uma das balizas laterais, enquanto o defensor tenta recuperar ou desarmar. Após cada ação entram os jogadores seguintes, e os que terminaram trocam funções (atacante passa a defender e vice-versa). O foco está na reação, drible, agressividade defensiva e intensidade no aquecimento. (${m} min)`,
       coachingPoints:
@@ -1300,7 +1300,7 @@ const MAIN_DRILLS: MainDrillDef[] = [
   },
   {
     themes: ["possession", "physical", "balanced"],
-    title: "Dual Passing",
+    title: "Passe Duplo e Movimentação",
     describe: (_pl, m) => ({
       description: `Organizam-se 6 jogadores nos vértices de um hexágono e 1 jogador atrás do que começa com a bola (7 jogadores no total). A bola circula pelos jogadores exteriores enquanto, em simultâneo, se realizam combinações com o jogador do centro (passe de apoio / devolução). O foco está no timing dos movimentos, orientação corporal para jogar rápido e tomada de decisão, garantindo fluidez e precisão em todas as ações. (${m} min)`,
       coachingPoints:
@@ -1405,7 +1405,7 @@ const MAIN_DRILLS: MainDrillDef[] = [
   },
   {
     themes: ["defensive", "pressing", "balanced"],
-    title: "Back Four Shifting",
+    title: "Rotação de 4 Defesas a Pressionar",
     describe: (_pl, m) => ({
       description: `Organização da linha de 4 defensiva: manter a linha alinhada, explorar o fora de jogo e fechar espaços com rapidez. Pressão imediata ao portador da bola. O defesa mais próximo da bola deve pressionar o portador, enquanto os restantes ajustam o posicionamento, fechando dentro e protegendo a zona central. O objectivo é orientar o adversário para as zonas laterais, onde o perigo é menor. É fundamental manter uma boa orientação corporal, permitindo reagir rapidamente, e garantir comunicação constante entre os jogadores para coordenar movimentos e coberturas. (${m} min)`,
       coachingPoints:
@@ -1419,7 +1419,7 @@ const MAIN_DRILLS: MainDrillDef[] = [
   },
   {
     themes: ["defensive", "transition", "balanced"],
-    title: "Compact Defending Transition",
+    title: "Transição Defensiva Compacta",
     describe: (_pl, m) => ({
       description: `Defesa compacta com transição rápida: a equipa organiza-se de forma compacta, com a linha defensiva e o trinco bem coordenados, garantindo equilíbrio e proximidade entre setores. A prioridade é fechar o corredor central, manter a linha defensiva alinhada e organizada e assegurar comunicação constante entre todos. Após a recuperação da bola, a equipa reage de imediato, procurando atacar o mais rápido possível as quatro balizas, explorando o espaço e a desorganização do adversário. (${m} min)`,
       coachingPoints:
@@ -1433,7 +1433,7 @@ const MAIN_DRILLS: MainDrillDef[] = [
   },
   {
     themes: ["transition", "finishing", "pressing", "possession", "defensive"],
-    title: "Defensive Recovery on Counter Attack",
+    title: "Recuperação Defensiva no Contra Ataque",
     describe: (pl, m) => ({
       description: `O exercício (${m} min) começa com a bola num defesa junto à linha de fundo. À frente estão 2 jogadores ofensivos (preferencialmente avançados, extremos ou médios) prontos para receber, com 1 defesa atrás deles (lateral ou trinco). O central coloca a bola num dos atacantes e inicia-se uma situação de 2v1 em direção à baliza. Ao mesmo tempo, o jogador que estava atrás arranca em sprint para recuperar posição e condicionar a jogada. Os atacantes devem aproveitar a superioridade numérica e finalizar o mais rápido possível, antes da chegada do segundo defensor. O foco está na decisão rápida, eficácia no último passe e na finalização, e na recuperação defensiva em velocidade.`,
       coachingPoints:
@@ -1453,7 +1453,7 @@ const MAIN_DRILLS: MainDrillDef[] = [
   },
   {
     themes: ["transition", "finishing", "possession"],
-    title: "Offensive Between Lines",
+    title: "Passe Entre Linhas e Ataque",
     describe: (pl, m) => ({
       description: `Jogo em meio-campo (${m} min): duas equipas com balizas; ideal ~12–20 jogadores de campo + 2 ou 3 GR (8v8 ou 9v9 — com terceira equipa de 8, roda à espera ou em campo vizinho). A equipa em posse começa sempre pela linha defensiva: com poucos toques, procurar um passe rasteiro entre linhas para um médio. Ao receber entre linhas, os médios rodam depressa e a equipa ataca a baliza. Se a bola for intercetada, a equipa que recupera não pode atacar de imediato: primeiro recua e toca nos seus defesas, depois repete o mesmo ciclo (entre linhas → rotação → finalização).`,
       coachingPoints:
@@ -1467,7 +1467,7 @@ const MAIN_DRILLS: MainDrillDef[] = [
   },
   {
     themes: ["possession", "pressing", "finishing", "transition"],
-    title: "Between the Lines",
+    title: "Passe Entre Linhas 7v3",
     describe: (pl, m) => ({
       description: `Situação de jogo 7v3 (${m} min): a equipa com superioridade numérica (7) procura marcar golo em duas balizas pequenas, defendidas pelos 3 jogadores adversários. Os 3 defensores não podem permanecer parados à frente das balizas: são obrigados a ajustar posicionamentos e a pressionar o portador da bola. A equipa em posse deve circular bola e jogadores rapidamente, procurando criar espaço e encontrar o passe entre linhas defensivas para finalizar. A bola deve ser jogada sempre no chão; não é permitido levantar. Sempre que os 3 jogadores sofrem golo, saem e entram outros 3 que estão de fora. Após uma série definida, trocam-se as equipas, mantendo-se o jogador extra como elemento neutro ou de apoio. O foco está na circulação rápida, mobilidade, criação de linhas de passe e reação defensiva em inferioridade numérica.`,
       coachingPoints:
@@ -1487,7 +1487,7 @@ const MAIN_DRILLS: MainDrillDef[] = [
   },
   {
     themes: ["wide", "finishing", "possession"],
-    title: "9v9 + 2 Game",
+    title: "Jogo de 9v9 + 2",
     describe: (_pl, m) => ({
       description: `Joga-se 9v9 em campo reduzido, com 2 extremos fixos nas linhas laterais a dar largura. As equipas devem circular a bola e procurar mudanças rápidas de corredor para explorar os extremos. Sempre que a bola entra no extremo, este tem no máximo 2 toques e é obrigatório cruzar para a área para finalização. O foco está na utilização da largura, rapidez na circulação e eficácia no momento de cruzamento e finalização. (${m} min)`,
       coachingPoints:
@@ -1501,7 +1501,7 @@ const MAIN_DRILLS: MainDrillDef[] = [
   },
   {
     themes: ["finishing", "wide", "transition"],
-    title: "Double Finishing Drill",
+    title: "Duplo Exercício de Finalização",
     describe: (_pl, m) => ({
       description: `O exercício inicia com trocas de bola curtas entre médio, avançado e extremo, preparando o momento para o remate do extremo. Após a finalização, a jogada continua automaticamente com um overlap do lateral, criando superioridade no corredor lateral. De seguida, há uma combinação rápida entre extremo e médio, acompanhada por movimentações dentro da área por parte dos jogadores ofensivos. O lateral cruza com precisão para finalização. Após a conclusão, o exercício repete no lado oposto. O foco está na qualidade da finalização, timing das movimentações na área e coordenação dos overlaps dos laterais. (${m} min)`,
       coachingPoints:
@@ -1515,7 +1515,7 @@ const MAIN_DRILLS: MainDrillDef[] = [
   },
   {
     themes: ["transition", "finishing", "wide"],
-    title: "Finishing Transition",
+    title: "Transição com Finalização",
     describe: (pl, m) => ({
       description: `O exercício inicia com 1v1, com a equipa branca em posse a atacar. Após a finalização, a equipa preta (que defendia) passa imediatamente a atacar numa situação de 2v1. Depois dessa acção, a equipa branca adiciona um jogador, criando um 3v2, voltando a atacar. Por fim, a equipa preta entra com mais um jogador, ficando 3v3, com apoio de 2 extremos fixos e bem abertos. O exercício decorre de forma contínua, com transições muito rápidas e pouco tempo entre finalizações, focando a reacção à perda e ganho de bola, tomada de decisão e aproveitamento de superioridades numéricas. (${m} min)`,
       coachingPoints:
@@ -1535,7 +1535,7 @@ const MAIN_DRILLS: MainDrillDef[] = [
   },
   {
     themes: ["transition", "finishing", "wide"],
-    title: "Cross and Strike",
+    title: "Cruzamento e Finalização fora da Área",
     describe: (_pl, m) => ({
       description: `O exercício inicia com troca de bola entre médio e lateral ou extremo, preparando o momento do cruzamento vindo da zona central / interior. O médio (ou quem assume o papel de cruzador desde o eixo) executa o cruzamento no timing certo, enquanto os avançados fazem movimentos cruzados para atacar o primeiro e o segundo poste. Após a primeira finalização, a bola é colocada em passe atrasado para a entrada da área, onde o médio finaliza de primeira. De seguida, o exercício repete no lado oposto. O foco está no timing das movimentações, qualidade do cruzamento e eficácia na finalização (na área e em situação de remate vindo de fora da área após o lay-off). (${m} min)`,
       coachingPoints:
@@ -1591,7 +1591,7 @@ const MAIN_DRILLS: MainDrillDef[] = [
   },
   {
     themes: ["transition", "finishing", "physical"],
-    title: "4v4 mais apoios laterais",
+    title: "4v4 + Apoios Laterais",
     describe: (pl, m) => ({
       description: `O exercício decorre num campo curto com duas balizas de 11, envolvendo 4 equipas de 4 jogadores. Jogam 2 equipas no interior (4v4), enquanto as outras 2 aguardam fora do campo. A equipa que sofre golo sai de imediato, entrando uma das equipas que está de fora. Os 8 jogadores exteriores funcionam como apoios: 4 nas linhas laterais e 4 junto às balizas (um de cada lado em cada baliza). Os apoios exteriores só podem jogar com 1 toque, acelerando o ritmo. O foco está em finalizações rápidas, decisões em espaço reduzido, uso dos apoios exteriores, velocidade mental e intensidade competitiva. (${m} min)`,
       coachingPoints:
@@ -1631,7 +1631,7 @@ const MAIN_DRILLS: MainDrillDef[] = [
   },
   {
     themes: ["finishing", "transition", "physical"],
-    title: "4 Finishing Drills",
+    title: "4 Exercícios de Finalização",
     describe: (pl, m) => ({
       description: `O exercício começa com o jogador aberto na largura, que recebe a bola e deve atacar rapidamente o cone (ou referência de golo) e finalizar. De seguida, recua, recebe novo passe e finaliza outra vez. Depois, realiza um movimento nas costas da defesa para receber em profundidade e finalizar de frente para o guarda-redes. Volta a recuar, recebe a bola e executa uma rotação completa do corpo para finalizar. Por fim, ataca o cone, recua e recebe um passe entre linhas, finalizando com o pé contrário ao dominante. Após completar a sequência, entra um novo avançado (ou extremo / médio ofensivo). O foco está na variedade de finalizações, movimentos ofensivos, mudança rápida de cenário e rapidez de execução, trabalhando os dois pés. (${m} min)`,
       coachingPoints:
@@ -1691,7 +1691,7 @@ const MAIN_DRILLS: MainDrillDef[] = [
   },
   {
     themes: ["possession", "pressing", "transition", "finishing"],
-    title: "Breakout Rondo",
+    title: "Constante abertura de Rondo",
     describe: (pl, m) => ({
       description: `O exercício decorre em dois quadrados (interior e exterior). No quadrado interior, a equipa preta joga em superioridade numérica (6v3), com o objetivo de realizar 6 passes consecutivos para poder sair para o quadrado exterior e finalizar o mais rápido possível. Se a equipa branca recuperar a bola: joga imediatamente para os jogadores do quadrado exterior; fica numa situação de 9v6 em superioridade; após 10 passes, pode finalizar nas balizas. Se a equipa preta voltar a recuperar a bola: pode finalizar imediatamente numa das balizas. O foco está na manutenção da posse, reação à perda/ganho de bola e rapidez na transição para finalização. (${m} min)`,
       coachingPoints:
@@ -1711,7 +1711,7 @@ const MAIN_DRILLS: MainDrillDef[] = [
   },
   {
     themes: ["possession", "pressing", "transition", "finishing"],
-    title: "(2+1)v1 Transition",
+    title: "Transição (2+1)v1",
     describe: (pl, m) => ({
       description: `O exercício é dividido em 4 zonas, onde em cada uma existe uma situação de 2v1, com apoio de um terceiro jogador neutro, que vai rodando entre zonas para oferecer mais uma linha de passe. À volta das zonas estão colocadas 4 balizas pequenas. A equipa em posse deve manter a bola, criar linhas de passe constantes e variar o jogo rapidamente entre zonas, aproveitando a superioridade numérica. A equipa defensora procura fechar linhas de passe e recuperar a bola o mais rápido possível. Assim que recupera, deve finalizar imediatamente numa das 4 balizas. O foco está na posse orientada, mobilidade, mudança rápida de corredor e reação à recuperação da bola. (${m} min)`,
       coachingPoints:
@@ -1731,7 +1731,7 @@ const MAIN_DRILLS: MainDrillDef[] = [
   },
   {
     themes: ["wide", "finishing", "possession", "transition"],
-    title: "Short Corner Routine",
+    title: "Canto Curto Estudado",
     describe: (_pl, m) => ({
       description: `O canto é batido curto para o jogador colocado na esquina da área. Em simultâneo, o jogador que estava no primeiro poste sai rapidamente para dar apoio e receber a bola. Enquanto isso, os restantes jogadores dentro da área fazem movimento para o segundo poste, arrastando marcações e criando espaço na zona frontal. No momento em que a bola entra no jogador que veio do primeiro poste, um dos jogadores da área regressa ao centro para bloquear o defesa responsável pela entrada da área. De seguida, a bola é colocada no jogador que surge sozinho à entrada da área, que deve rematar de primeira, preferencialmente para o poste mais próximo. Nos cantos do lado esquerdo utiliza-se, idealmente, batedor destro e apoio canhoto; no lado direito, o contrário. O foco está no timing das movimentações, bloqueio legal e finalização rápida de média distância. (${m} min)`,
       coachingPoints:
@@ -1747,7 +1747,7 @@ const MAIN_DRILLS: MainDrillDef[] = [
   },
   {
     themes: ["wide", "finishing", "balanced"],
-    title: "Short Corner by Newcastle",
+    title: "Canto Curto: Newcastle",
     describe: (_pl, m) => ({
       description: `A jogada inicia com organização prévia: 1 jogador no segundo poste, 1 junto ao guarda-redes, 1 na esquina da área para apoio curto, 2 na pequena área, 2 à entrada da área para movimentos e 2 no meio-campo para prevenir contra-ataque. No arranque, o jogador junto ao guarda-redes aproxima-se do batedor para receber curto, enquanto o jogador da esquina também se aproxima para atrair marcação. Em simultâneo, os dois jogadores da entrada da área atacam o segundo poste. Quando a bola entra no apoio curto, o jogador que estava no segundo poste arranca para a zona da marca de penálti. Ao mesmo tempo, os jogadores em movimento fazem bloqueio legal ao defesa que o seguia. Depois, a bola é devolvida ao batedor, que decide rapidamente entre passe tenso para a zona de penálti ou cruzamento para o segundo poste em contexto de 4v4. O foco está no timing das movimentações, bloqueios, criação de espaço e decisão rápida do batedor. (${m} min)`,
       coachingPoints:
@@ -1763,7 +1763,7 @@ const MAIN_DRILLS: MainDrillDef[] = [
   },
   {
     themes: ["wide", "finishing", "balanced"],
-    title: "Short Corner by Empoli",
+    title: "Canto Curto: Empoli",
     describe: (_pl, m) => ({
       description: `A jogada começa com vários jogadores a arrastar movimentações para o primeiro poste, concentrando aí a atenção defensiva. Em simultâneo, o jogador mais afastado da área inicia corrida discreta para o segundo poste. Após o passe curto para o jogador de apoio, a equipa adversária é atraída ainda mais para a zona do primeiro poste, enquanto continua a movimentação de ataque ao segundo poste. Ao mesmo tempo, o jogador que estava inicialmente no primeiro poste faz o movimento inverso, recuando para garantir novamente dois jogadores atrás da linha da bola e prevenir o contra-ataque. O objetivo final é criar espaço para que um jogador surja completamente sozinho no segundo poste, pronto para finalizar sem marcação. O foco está no timing das movimentações, atração da marcação e finalização no segundo poste. (${m} min)`,
       coachingPoints:
@@ -1779,7 +1779,7 @@ const MAIN_DRILLS: MainDrillDef[] = [
   },
   {
     themes: ["wide", "finishing", "balanced"],
-    title: "Free Kick Routine",
+    title: "Livre Direto Estudado ",
     describe: (pl, m) => ({
       description: `A jogada inicia com 2 jogadores na bola e 1 jogador aberto na esquina da área, preparado para receber e atrair marcação. Na área, 4 jogadores atacam o segundo poste, arrastando a linha defensiva. Em simultâneo, outro jogador parte de posição mais exterior e surge em corrida para a entrada da área. O executante toca curto para o jogador da esquina, que joga de primeira para o colega que aparece solto à entrada da área. Esse jogador tem três decisões: (1) rematar à baliza, se tiver espaço; (2) cruzar para o segundo poste, onde entram os 4 colegas; (3) ligar curto no jogador perto da barreira, criando nova combinação. O foco está no efeito surpresa, timing das movimentações e rapidez na decisão final. (${m} min)`,
       coachingPoints:
@@ -1799,7 +1799,7 @@ const MAIN_DRILLS: MainDrillDef[] = [
   },
   {
     themes: ["wide", "finishing", "balanced"],
-    title: "Short Free Kick - Winger Movement",
+    title: "Livre Direto Estudado: Movimentação do Extremo",
     describe: (pl, m) => ({
       description: `A jogada inicia com 2 jogadores na bola, 1 jogador junto à barreira e 1 jogador aberto na esquina da área, preparado para acelerar nas costas da defesa. Na área, 5 jogadores atacam o segundo poste, arrastando a linha defensiva. Em simultâneo, um desses jogadores surge em corrida para a entrada da área. O executante toca curto para o jogador que recebe, que pica a bola de primeira para o colega que veio a correr da esquina da área em direcção ao segundo poste. Esse jogador tem três decisões: (1) rematar à baliza, se tiver espaço; (2) cruzar para o segundo poste, onde entram os 4 colegas; (3) ligar curto no jogador que está na entrada da área, criando nova combinação. O foco está no efeito surpresa, timing das movimentações e rapidez na decisão final. (${m} min)`,
       coachingPoints:
@@ -1819,7 +1819,7 @@ const MAIN_DRILLS: MainDrillDef[] = [
   },
   {
     themes: ["possession", "transition", "finishing", "pressing"],
-    title: "Build up into Counter Attack",
+    title: "De Construção para Contra Ataque ",
     describe: (pl, m) => ({
       description: `O exercício realiza-se num espaço de 30 metros com 2 balizas, dividido em duas metades, e envolve 3 ou 4 equipas, jogando apenas 2 de cada vez. Na primeira metade, a equipa em posse tenta sair a jogar com 2 jogadores + guarda-redes, enfrentando 3 adversários em pressão. O objetivo é conseguir ligar o jogo para o setor seguinte através de passe. Se o passe entrar no setor ofensivo, os avançados recebem e atacam numa situação de 3v2, procurando finalização rápida. Se a equipa defensora recuperar a bola antes da ligação, pode finalizar imediatamente na baliza. Sempre que uma equipa sofre golo, sai e entra a equipa que está há mais tempo à espera. O foco está na saída sob pressão, ligação entre setores, transição ofensiva e reação rápida à perda/ganho de bola. (${m} min)`,
       coachingPoints:
@@ -1839,7 +1839,7 @@ const MAIN_DRILLS: MainDrillDef[] = [
   },
   {
     themes: ["possession", "pressing", "transition", "finishing", "physical"],
-    title: "Fitness Rondo into Finishing",
+    title: "Recuperação de Bola no Rondo para Finalização",
     describe: (pl, m) => ({
       description: `O exercício é composto por 2 equipas de 10 jogadores (ajustável) e dividido em 3 setores consecutivos. A equipa com colete começa distribuída pelos setores, com 3 jogadores em cada zona, enquanto a equipa sem colete entra com duplas de 2 jogadores para pressionar. Em cada setor cria-se uma situação de 3v2, onde a equipa com colete tem como objetivo manter a posse de bola o máximo de tempo possível em espaço reduzido, valorizando controlo, apoio e rapidez de decisão sob pressão. A equipa sem colete procura recuperar a bola e sair do setor, avançando sucessivamente pelos 3 setores. Quando ultrapassa o último setor, ataca a baliza numa situação de 2v1 contra um defesa da equipa com colete. O exercício repete-se até todas as duplas realizarem o percurso. Depois, trocam-se as funções: quem estava dentro passa a pressionar e vice-versa. Tudo é cronometrado, vencendo a equipa que completar o exercício em menos tempo. Cada golo marcado desconta 10 segundos ao tempo final. O foco está na posse sob pressão, reação à perda, progressão entre zonas e eficácia na finalização. (${m} min)`,
       coachingPoints:
@@ -1859,7 +1859,7 @@ const MAIN_DRILLS: MainDrillDef[] = [
   },
   {
     themes: ["possession", "pressing", "transition", "finishing"],
-    title: "Rondo to Counter Attack",
+    title: "Rondo para Contra Ataque",
     describe: (_pl, m) => ({
       description: `O exercício inicia com uma equipa de 5 jogadores a realizar posse de bola dentro de um retângulo curto, sendo pressionada por 3 defensores. A equipa em posse tem como objetivo manter a bola e completar 10 passes consecutivos, podendo depois finalizar nas balizas pequenas. A equipa defensora procura recuperar a bola o mais rápido possível e sair imediatamente em contra-ataque numa situação de 4v2. O segundo jogador que recua para defender será o que estiver mais próximo da baliza no momento da perda. O foco está na posse em espaço reduzido, reação à perda, transição ofensiva rápida e eficácia na finalização. (${m} min)`,
       coachingPoints:
@@ -1875,7 +1875,7 @@ const MAIN_DRILLS: MainDrillDef[] = [
   },
   {
     themes: ["possession", "transition", "wide"],
-    title: "Goal Kick 1",
+    title: "Pontapé de Baliza 1",
     describe: (_pl, m) => ({
       description: `O exercício começa com pontapé de baliza: saída curta para o central do lado onde está o lateral mais rápido. A equipa procura atrair o adversário para o meio e para o lado direito (ou o corredor escolhido no plano), com extremo, avançado e médio a aproximarem-se para criar linhas de passe e libertar o lateral, que fica bem aberto e prepara o overlap total. O central joga no extremo ou no avançado e, nesse momento, o lateral inicia a sobreposição. O médio do lado da bola recua para bloquear / atrasar o médio adversário, abrindo espaço para a jogada. A bola segue para o trinco e é colocada em profundidade nas costas da defesa. A partir daí: o médio ofensivo ataca a profundidade — se for mais rápido, ataca o primeiro poste; se não, ataca o segundo poste para obrigar o defesa a decidir. Se o defesa sai ao portador, o médio fica livre no centro para finalizar; se o defesa acompanha o médio, o lateral progride e decide entre rematar ou assistir em passe atrasado. (${m} min)`,
       coachingPoints:
@@ -1891,7 +1891,7 @@ const MAIN_DRILLS: MainDrillDef[] = [
   },
   {
     themes: ["possession", "transition", "wide", "defensive"],
-    title: "Goal Kick 2",
+    title: "Pontapé de Baliza 2",
     describe: (_pl, m) => ({
       description: `O pontapé de baliza inicia no central do lado do extremo mais rápido, que joga no guarda-redes para este abrir com os pés. O GR lê a pressão do avançado adversário: se o avançado fecha o lado do central que bateu o pontapé, a bola entra no trinco, que de primeira liga no central que subiu, explorando o espaço livre; se o avançado pressiona de frente ao GR, o guarda-redes joga no outro central enquanto o primeiro abre com o seu lateral. Com a bola no lado oposto, cria-se espaço graças ao arrastamento do meio-campo, e o central espera o momento certo para virar o jogo. Como o avançado está mais atrasado na pressão, quem salta primeiro é o extremo, deixando o nosso lateral livre e projetado. Após o passe para o lateral: se o lateral adversário sai na pressão, o nosso extremo ataca a profundidade e cria 1v1 com o central; se não sai, o lateral progride com espaço. O foco está na leitura da pressão, criação de espaço, atrair para um lado e explorar rapidamente o corredor lateral com futebol directo. (${m} min)`,
       coachingPoints:
@@ -1907,7 +1907,7 @@ const MAIN_DRILLS: MainDrillDef[] = [
   },
   {
     themes: ["possession", "transition", "finishing", "wide"],
-    title: "Midfielder Run Behind Defense",
+    title: "Corrida do Meio Campo nas Costas da Defesa",
     describe: (_pl, m) => ({
       description: `A jogada começa com bola no médio, que liga no extremo. O extremo simula que vai abrir, mas vem para dentro e joga de primeira no avançado, que amortece para o médio em apoio. Em paralelo, o médio e o extremo do lado oposto atacam as costas da defesa, preparando a zona de finalização. O médio em posse cruza para o segundo poste, onde surgem os jogadores em movimento para finalizar. O foco está na combinação rápida na primeira zona, nos movimentos sem bola nas costas da linha e no ataque coordenado ao segundo poste. (${m} min)`,
       coachingPoints:
@@ -1923,7 +1923,7 @@ const MAIN_DRILLS: MainDrillDef[] = [
   },
   {
     themes: ["possession", "wide", "transition", "finishing"],
-    title: "Full Back Overlap - Winger",
+    title: "Overlap do Lateral: Extremo",
     describe: (_pl, m) => ({
       description: `Saída de bola iniciada por um dos centrais, com apoio do trinco para variar no outro central e manter linhas de passe constantes. O extremo aproxima para vir buscar jogo e libertar o corredor para o overlap do lateral nas costas. O médio-centro aproxima ao meio e abre linha entre linhas para o avançado que fixa no corredor central. Bola no extremo que recuou, aproximação do trinco para jogar de frente e leitura do movimento do lateral a atacar profundidade. A partir daí, passe no lateral e movimentos coordenados dentro da área do avançado, extremo do lado contrário e médio-centro para finalizar. Foco em futebol curto/apoiado, 1–2 toques e ocupação inteligente de área. (${m} min)`,
       coachingPoints:
@@ -1939,7 +1939,7 @@ const MAIN_DRILLS: MainDrillDef[] = [
   },
   {
     themes: ["possession", "wide", "transition", "finishing"],
-    title: "Full Back Overlap - Striker",
+    title: "Overlap do Lateral: Avançado ",
     describe: (_pl, m) => ({
       description: `Saída de bola iniciada num central de um dos lados, com apoio do trinco para variar para o outro central e manter linhas de passe constantes. O central em posse tem várias opções: extremo a vir buscar, lateral a preparar overlap nas costas, médio-centro a abrir para expor linha ao avançado e trinco a recuar para segurança. A bola entra no avançado a jogar de costas para a baliza e a tocar de frente com 3 apoios frontais. A partir desse apoio: se entra no médio-centro do lado da bola, ativa-se o overlap do lateral e cobertura defensiva do extremo que recuou; se entra no médio do lado oposto, o extremo oposto ataca a rotura; se volta no trinco, ficam disponíveis os dois lados para decidir. Foco em futebol curto/apoiado, 1–2 toques e leitura de opções entre linhas. (${m} min)`,
       coachingPoints:
@@ -1955,7 +1955,7 @@ const MAIN_DRILLS: MainDrillDef[] = [
   },
   {
     themes: ["transition", "finishing", "wide"],
-    title: "3v2 Fast Break",
+    title: "Transição Rápida 3v2",
     describe: (pl, m) => ({
       description: `O exercício decorre num espaço de ~30 metros com duas balizas. Inicia com o treinador ou um médio a colocar uma bola longa no extremo oposto, fora do setor central. Este recebe e realiza um cruzamento obrigatório para a área, onde os avançados enfrentam os defesas numa situação de 2v2 para finalização. Após remate ou corte, todos transitam depressa para a outra baliza; os avançados ajustam o timing de corrida para evitar fora de jogo. De seguida, o extremo do lado contrário recebe nova bola (podendo entrar no setor central), criando um 3v2 ofensivo com bola no chão e jogo normal no interior. Após nova finalização, o exercício reinicia com outros jogadores. O foco está na velocidade de transição, na tomada de decisão e na eficácia na finalização. (${m} min)`,
       coachingPoints:
@@ -1975,7 +1975,7 @@ const MAIN_DRILLS: MainDrillDef[] = [
   },
   {
     themes: ["transition", "finishing", "defensive"],
-    title: "3v2 Finishing Drill",
+    title: "Exercício de Finalização 3v2",
     describe: (pl, m) => ({
       description: `O exercício é composto por 2 defesas e 3 avançados. Inicia-se com os 2 centrais na linha de fundo, que colocam a bola no jogador ofensivo do meio. Após a receção, os 3 avançados atacam de imediato a baliza numa situação de 3v2, procurando aproveitar a superioridade numérica para marcar rapidamente. Os defesas devem ajustar posicionamentos, atrasar a jogada e tentar impedir a finalização. O foco está na transição ofensiva rápida, tomada de decisão no último terço e organização defensiva em inferioridade numérica. (${m} min)`,
       coachingPoints:
@@ -1995,7 +1995,7 @@ const MAIN_DRILLS: MainDrillDef[] = [
   },
   {
     themes: ["transition", "finishing", "physical"],
-    title: "5 Teams 3v3 Attacking",
+    title: "Ataque com 5 Equipas 3v3",
     describe: (pl, m) => ({
       description: `O exercício decorre em dois campos curtos, com jogos de 3v3 em simultâneo, envolvendo cinco equipas de três jogadores. Existe sempre uma equipa posicionada ao meio, à espera para entrar. O objectivo em cada campo é marcar golo o mais rapidamente possível, promovendo intensidade e decisões rápidas. Sempre que uma equipa sofre golo, sai imediatamente e entra a equipa que estava à espera no meio do campo; o jogo reinicia de forma contínua. O foco está na competitividade, nas transições rápidas, na intensidade alta e na eficácia na finalização. (${m} min)`,
       coachingPoints:
@@ -2015,7 +2015,7 @@ const MAIN_DRILLS: MainDrillDef[] = [
   },
   {
     themes: ["possession", "pressing", "balanced"],
-    title: "Fixed Position Rondo",
+    title: "Rondo com Organização Fixa Posicional",
     describe: (pl, m) => ({
       description: `O exercício é realizado com uma equipa de dez jogadores de campo, posicionados nas suas funções reais dentro do sistema, distribuídos pelo terreno. Cada jogador pode movimentar-se apenas horizontalmente ou verticalmente dentro da sua zona, sem abandonar o espaço definido. O objectivo é circular a bola, criar linhas de passe e ajustar posicionamentos, desenvolvendo noção espacial, ocupação racional do campo e relações entre sectores. A equipa adversária pressiona com cinco jogadores, estando limitada a um máximo de dois jogadores a pressionar por zona (existem quatro zonas de pressão), para condicionar a posse e obrigar decisões rápidas. O foco está na disciplina posicional, na circulação sob pressão e no entendimento colectivo dos espaços. (${m} min)`,
       coachingPoints:
@@ -2037,7 +2037,7 @@ const MAIN_DRILLS: MainDrillDef[] = [
   },
   {
     themes: ["pressing", "defensive", "transition"],
-    title: "Pressing Exercise",
+    title: "Exercício de Pressão",
     describe: (_pl, m) => ({
       description: `Pressão alta em 4-4-2 na saída adversária. A equipa organiza-se em 4-4-2, com o médio ofensivo ao lado do avançado, permitindo saída curta do adversário mas fechando sempre os espaços entre linhas. O objetivo é identificar o central com menor qualidade e direcionar o jogo para esse lado.
 Quando a bola entra no lateral, surge o gatilho de pressão: o extremo aproxima para pressionar e toda a equipa desliza para esse lado, fechando linhas de passe interiores e profundidade. O objetivo é forçar o lateral a devolver ao central.
@@ -2234,11 +2234,11 @@ export function buildLocalFullTrainingSession(params: {
   const summary = `Plano gerado localmente com base no teu objetivo (${themes.filter((t) => t !== "balanced").join(", ") || "equilíbrio"}) e ${players.length} jogadores seleccionados. Ajusta tempos e espaços ao teu relvado.`;
 
   const recalc: AiTrainingBlock[] = [];
-  const warmBase = singleDrillDurationForTitle("Warm Up with Ball", objective.length);
+  const warmBase = singleDrillDurationForTitle("Aquecimento com Bola", objective.length);
   const coolBase = 10;
   const targetMainTotal = Math.max(5, durationMin - warmBase - coolBase);
   const allowedMain = filterDrillsByAgeGroup(
-    MAIN_DRILLS.filter((d) => d.title !== "Warm Up with Ball"),
+    MAIN_DRILLS.filter((d) => d.title !== "Aquecimento com Bola"),
     ageGroup,
     exerciseAgeMap
   );
@@ -2249,7 +2249,7 @@ export function buildLocalFullTrainingSession(params: {
     themes,
     Math.max(allowedMain.length, 1),
     seed,
-    new Set<string>(["Warm Up with Ball"]),
+    new Set<string>(["Aquecimento com Bola"]),
     ageGroup,
     exerciseAgeMap
   );
@@ -2265,7 +2265,7 @@ export function buildLocalFullTrainingSession(params: {
   }
   if (defs2.length === 0) defs2.push(rankedDefs[0]!);
   const warmUpAllowed =
-    !ageGroup || resolveExerciseAgeGroupsForTitle("Warm Up with Ball", exerciseAgeMap).includes(ageGroup);
+    !ageGroup || resolveExerciseAgeGroupsForTitle("Aquecimento com Bola", exerciseAgeMap).includes(ageGroup);
   if (!warmUpAllowed) {
     throw new Error("warmup_not_in_age_group");
   }
@@ -2277,7 +2277,7 @@ export function buildLocalFullTrainingSession(params: {
   const coolD = allAdjusted[allAdjusted.length - 1]!;
 
   recalc.push({
-    title: "Warm Up with Ball",
+    title: "Aquecimento com Bola",
     durationMin: warmD,
     phase: "warmup",
     description: `Os jogadores conduzem a bola, passam por 2 cones em drible e, após realizar o passe para um colega, saem imediatamente em sprint para o espaço livre. O exercício decorre de forma contínua, focando a coordenação, controlo de bola e aceleração após passe. (${warmD} min). ${players.length} jogadores.`,
@@ -2333,22 +2333,22 @@ export function buildLocalFullTrainingSession(params: {
 }
 
 const SINGLE_DRILL_20_MIN_TITLES = new Set<string>([
-  "Offensive Between Lines",
-  "9v9 + 2 Game",
-  "Finishing Transition",
-  "Fitness Rondo into Finishing",
-  "4v4 mais apoios laterais",
+  "Passe Entre Linhas e Ataque",
+  "Jogo de 9v9 + 2",
+  "Transição com Finalização",
+  "Recuperação de Bola no Rondo para Finalização",
+  "4v4 + Apoios Laterais",
   "Superioridade nos Setores",
 ]);
 /** Valor médio quando o treinador indica ~15–20 min (ex.: bloco final). */
-const SINGLE_DRILL_18_MIN_TITLES = new Set<string>(["Double Finishing Drill"]);
+const SINGLE_DRILL_18_MIN_TITLES = new Set<string>(["Duplo Exercício de Finalização"]);
 const SINGLE_DRILL_15_MIN_TITLES = new Set<string>([
-  "3v2 Fast Break",
-  "5 Teams 3v3 Attacking",
-  "Fixed Position Rondo",
-  "Between the Lines",
-  "Defensive Recovery on Counter Attack",
-  "Short Corner Routine",
+  "Transição Rápida 3v2",
+  "Ataque com 5 Equipas 3v3",
+  "Rondo com Organização Fixa Posicional",
+  "Passe Entre Linhas 7v3",
+  "Recuperação Defensiva no Contra Ataque",
+  "Canto Curto Estudado",
   "Reação e Finalização",
   "Posse de Bola com Transição",
   "Combinações e Passe de Rotura",
@@ -2357,39 +2357,39 @@ const SINGLE_DRILL_15_MIN_TITLES = new Set<string>([
   "Variação de Cruzamentos",
 ]);
 const SINGLE_DRILL_10_MIN_TITLES = new Set<string>([
-  "Passing Activation",
-  "Back Four Shifting",
-  "Compact Defending Transition",
-  "Cross and Strike",
+  "Ativação dos Passes",
+  "Rotação de 4 Defesas a Pressionar",
+  "Transição Defensiva Compacta",
+  "Cruzamento e Finalização fora da Área",
   "4 Finishing Drills",
-  "Goal Kick 1",
-  "Goal Kick 2",
-  "Midfielder Run Behind Defense",
+  "Pontapé de Baliza 1",
+  "Pontapé de Baliza 2",
+  "Corrida do Meio Campo nas Costas da Defesa",
   "Rondo 5v3",
-  "Breakout Rondo",
-  "Build up into Counter Attack",
-  "Rondo to Counter Attack",
-  "Full Back Overlap - Winger",
-  "Full Back Overlap - Striker",
-  "Pressing Exercise",
-  "3v2 Finishing Drill",
-  "(2+1)v1 Transition",
-  "Free Kick Routine",
-  "Short Free Kick - Winger Movement",
-  "1v1 Situations",
+  "Constante abertura de Rondo",
+  "De Construção para Contra Ataque ",
+  "Rondo para Contra Ataque",
+  "Overlap do Lateral: Extremo",
+  "Overlap do Lateral: Avançado ",
+  "Exercício de Pressão",
+  "Exercício de Finalização 3v2",
+  "Transição (2+1)v1",
+  "Livre Direto Estudado ",
+  "Livre Direto Estudado: Movimentação do Extremo",
+  "Situações de 1v1",
   "Passe e Movimentação",
   "Drible Rápido e Passe",
   "Sair a Jogar da Defesa com Pressão",
   "Jogo do Galo",
   "Variação de Posse de Bola com base na Pressão",
 ]);
-const SINGLE_DRILL_8_MIN_TITLES = new Set<string>(["Dual Passing"]);
+const SINGLE_DRILL_8_MIN_TITLES = new Set<string>(["Passe Duplo e Movimentação"]);
 const SINGLE_DRILL_5_MIN_TITLES = new Set<string>([
   "Aquecimento com Bola - Movimentação",
-  "Short Corner by Empoli",
-  "Short Corner by Newcastle",
+  "Canto Curto: Empoli",
+  "Canto Curto: Newcastle",
   "Rondo 9v3",
-  "Warm Up with Ball",
+  "Aquecimento com Bola",
 ]);
 
 function singleDrillDurationForTitle(title: string, briefLength: number): number {
@@ -2406,42 +2406,42 @@ function singleDrillProgressionVariationsForTitle(title: string): {
   progression: string;
   variations?: string;
 } {
-  const isOffensiveBetweenLines = title === "Offensive Between Lines";
-  const isBetweenTheLines = title === "Between the Lines";
-  const isDefensiveRecoveryOnCounterAttack = title === "Defensive Recovery on Counter Attack";
-  const isBackFourShifting = title === "Back Four Shifting";
-  const isCompactDefendingTransition = title === "Compact Defending Transition";
-  const isFinishingTransition = title === "Finishing Transition";
-  const isCrossAndStrike = title === "Cross and Strike";
+  const isOffensiveBetweenLines = title === "Passe Entre Linhas e Ataque";
+  const isBetweenTheLines = title === "Passe Entre Linhas 7v3";
+  const isDefensiveRecoveryOnCounterAttack = title === "Recuperação Defensiva no Contra Ataque";
+  const isBackFourShifting = title === "Rotação de 4 Defesas a Pressionar";
+  const isCompactDefendingTransition = title === "Transição Defensiva Compacta";
+  const isFinishingTransition = title === "Transição com Finalização";
+  const isCrossAndStrike = title === "Cruzamento e Finalização fora da Área";
   const isFourFinishingDrills = title === "4 Finishing Drills";
-  const isDoubleFinishing = title === "Double Finishing Drill";
-  const is9v9Plus2Game = title === "9v9 + 2 Game";
+  const isDoubleFinishing = title === "Duplo Exercício de Finalização";
+  const is9v9Plus2Game = title === "Jogo de 9v9 + 2";
   const isRondo9v3 = title === "Rondo 9v3";
   const isRondo5v3 = title === "Rondo 5v3";
-  const isBreakoutRondo = title === "Breakout Rondo";
-  const is2Plus1V1Transition = title === "(2+1)v1 Transition";
-  const isShortCornerRoutine = title === "Short Corner Routine";
-  const isShortCornerByNewcastle = title === "Short Corner by Newcastle";
-  const isShortCornerByEmpoli = title === "Short Corner by Empoli";
-  const isFreeKickRoutine = title === "Free Kick Routine";
-  const isShortFreeKickWingerMovement = title === "Short Free Kick - Winger Movement";
-  const isBuildUpIntoCounterAttack = title === "Build up into Counter Attack";
-  const isRondoToCounterAttack = title === "Rondo to Counter Attack";
-  const isFitnessRondoIntoFinishing = title === "Fitness Rondo into Finishing";
-  const isGoalKick1 = title === "Goal Kick 1";
-  const isGoalKick2 = title === "Goal Kick 2";
-  const isMidfielderRunBehindDefense = title === "Midfielder Run Behind Defense";
-  const isFullBackOverlapWinger = title === "Full Back Overlap - Winger";
-  const isFullBackOverlapStriker = title === "Full Back Overlap - Striker";
-  const is3v2FastBreak = title === "3v2 Fast Break";
-  const is3v2FinishingDrill = title === "3v2 Finishing Drill";
-  const is5Teams3v3Attacking = title === "5 Teams 3v3 Attacking";
-  const isFixedPositionRondo = title === "Fixed Position Rondo";
+  const isBreakoutRondo = title === "Constante abertura de Rondo";
+  const is2Plus1V1Transition = title === "Transição (2+1)v1";
+  const isShortCornerRoutine = title === "Canto Curto Estudado";
+  const isShortCornerByNewcastle = title === "Canto Curto: Newcastle";
+  const isShortCornerByEmpoli = title === "Canto Curto: Empoli";
+  const isFreeKickRoutine = title === "Livre Direto Estudado ";
+  const isShortFreeKickWingerMovement = title === "Livre Direto Estudado: Movimentação do Extremo";
+  const isBuildUpIntoCounterAttack = title === "De Construção para Contra Ataque ";
+  const isRondoToCounterAttack = title === "Rondo para Contra Ataque";
+  const isFitnessRondoIntoFinishing = title === "Recuperação de Bola no Rondo para Finalização";
+  const isGoalKick1 = title === "Pontapé de Baliza 1";
+  const isGoalKick2 = title === "Pontapé de Baliza 2";
+  const isMidfielderRunBehindDefense = title === "Corrida do Meio Campo nas Costas da Defesa";
+  const isFullBackOverlapWinger = title === "Overlap do Lateral: Extremo";
+  const isFullBackOverlapStriker = title === "Overlap do Lateral: Avançado ";
+  const is3v2FastBreak = title === "Transição Rápida 3v2";
+  const is3v2FinishingDrill = title === "Exercício de Finalização 3v2";
+  const is5Teams3v3Attacking = title === "Ataque com 5 Equipas 3v3";
+  const isFixedPositionRondo = title === "Rondo com Organização Fixa Posicional";
   const isWarmUpWithMovement = title === "Aquecimento com Bola - Movimentação";
-  const isWarmUpWithBall = title === "Warm Up with Ball";
-  const isPassingActivation = title === "Passing Activation";
-  const isDualPassing = title === "Dual Passing";
-  const isPressingExercise = title === "Pressing Exercise";
+  const isWarmUpWithBall = title === "Aquecimento com Bola";
+  const isPassingActivation = title === "Ativação dos Passes";
+  const isDualPassing = title === "Passe Duplo e Movimentação";
+  const isPressingExercise = title === "Exercício de Pressão";
 
   if (title === "Movimentação dentro de Área em Cruzamentos") {
     return {
@@ -2461,7 +2461,7 @@ function singleDrillProgressionVariationsForTitle(title: string): {
     };
   }
 
-  if (title === "4v4 mais apoios laterais") {
+  if (title === "4v4 + Apoios Laterais") {
     return {
       progression:
         "Apoios exteriores com máximo 2 toques num bloco de 3 min antes de voltar a 1 toque; ou campo mais estreito para forçar verticalidade; ou golo de cabeça vale duplo.",
@@ -2707,7 +2707,7 @@ export function buildLocalSingleDrill(
   const mins = singleDrillDurationForTitle(def.title, brief.length);
   const body = def.describe(players, mins);
   const { progression, variations } = singleDrillProgressionVariationsForTitle(def.title);
-  const isDualPassing = def.title === "Dual Passing";
+  const isDualPassing = def.title === "Passe Duplo e Movimentação";
 
   return {
     title: def.title,
@@ -2782,11 +2782,11 @@ export function getTrainingCatalogItems(players: Player[]): TrainingCatalogItem[
   const n = Math.max(1, players.length);
   const warmDuration = 5;
   const coolDuration = 10;
-  const warmPv = singleDrillProgressionVariationsForTitle("Warm Up with Ball");
+  const warmPv = singleDrillProgressionVariationsForTitle("Aquecimento com Bola");
 
   const warmup: TrainingCatalogItem = {
     catalogId: "template:warmup",
-    title: "Warm Up with Ball",
+    title: "Aquecimento com Bola",
     phase: "warmup",
     durationMin: warmDuration,
     brief: `Aquecimento com bola: drible por 2 cones, passe ao colega e sprint ao espaço livre. Foco em coordenação, controlo e aceleração após passe. ${n} jogadores.`,
@@ -2826,11 +2826,11 @@ export function getTrainingCatalogItems(players: Player[]): TrainingCatalogItem[
   /** Mapeamento explícito dos filtros da aba "Todos os exercícios", conforme pedido do treinador. */
   const explicitFilterCategoriesByTitle: Partial<Record<string, readonly SavedExerciseCategory[]>> = {
     // Aquecimento / activação
-    "Warm Up with Ball": ["warmup"],
-    "Passing Activation": ["warmup"],
-    "Dual Passing": ["warmup"],
+    "Aquecimento com Bola": ["warmup"],
+    "Ativação dos Passes": ["warmup"],
+    "Passe Duplo e Movimentação": ["warmup"],
     "Aquecimento com Bola - Movimentação": ["warmup"],
-    "1v1 Situations": ["warmup", "transition", "physical"],
+    "Situações de 1v1": ["warmup", "transition", "physical"],
     "Passe e Movimentação": ["warmup", "possession"],
     "Variação de Posse de Bola com base na Pressão": ["warmup", "possession"],
     "Combinações e Passe de Rotura": ["warmup", "possession", "transition"],
@@ -2842,49 +2842,49 @@ export function getTrainingCatalogItems(players: Player[]): TrainingCatalogItem[
     "Jogo do Galo": ["warmup", "physical"],
 
     // Posse de bola
-    "Offensive Between Lines": ["possession", "transition"],
-    "Between the Lines": ["possession", "pressing"],
+    "Passe Entre Linhas e Ataque": ["possession", "transition"],
+    "Passe Entre Linhas 7v3": ["possession", "pressing"],
     "Rondo 9v3": ["possession", "pressing", "transition", "physical"],
     "Rondo 5v3": ["possession", "pressing", "transition", "physical"],
-    "Breakout Rondo": ["possession", "pressing", "transition", "physical"],
-    "(2+1)v1 Transition": ["possession", "transition", "physical"],
-    "Rondo to Counter Attack": ["possession", "pressing", "transition"],
-    "Goal Kick 1": ["possession", "goalKick", "setPiece"],
-    "Goal Kick 2": ["possession", "goalKick", "setPiece"],
-    "Fixed Position Rondo": ["possession", "pressing"],
+    "Constante abertura de Rondo": ["possession", "pressing", "transition", "physical"],
+    "Transição (2+1)v1": ["possession", "transition", "physical"],
+    "Rondo para Contra Ataque": ["possession", "pressing", "transition"],
+    "Pontapé de Baliza 1": ["possession", "goalKick", "setPiece"],
+    "Pontapé de Baliza 2": ["possession", "goalKick", "setPiece"],
+    "Rondo com Organização Fixa Posicional": ["possession", "pressing"],
 
     // Finalização
-    "Defensive Recovery on Counter Attack": ["finishing", "defensive", "transition"],
-    "9v9 + 2 Game": ["finishing"],
-    "Double Finishing Drill": ["finishing"],
-    "Finishing Transition": ["finishing", "transition", "physical"],
-    "Cross and Strike": ["finishing"],
+    "Recuperação Defensiva no Contra Ataque": ["finishing", "defensive", "transition"],
+    "Jogo de 9v9 + 2": ["finishing"],
+    "Duplo Exercício de Finalização": ["finishing"],
+    "Transição com Finalização": ["finishing", "transition", "physical"],
+    "Cruzamento e Finalização fora da Área": ["finishing"],
     "4 Finishing Drills": ["finishing", "physical"],
-    "Short Corner Routine": ["finishing", "setPiece"],
-    "Short Corner by Newcastle": ["finishing", "setPiece"],
-    "Short Corner by Empoli": ["finishing", "setPiece"],
-    "Free Kick Routine": ["finishing", "setPiece"],
-    "Short Free Kick - Winger Movement": ["finishing", "setPiece"],
-    "Build up into Counter Attack": ["finishing", "transition"],
-    "Fitness Rondo into Finishing": ["finishing", "pressing", "physical"],
-    "Midfielder Run Behind Defense": ["finishing"],
+    "Canto Curto Estudado": ["finishing", "setPiece"],
+    "Canto Curto: Newcastle": ["finishing", "setPiece"],
+    "Canto Curto: Empoli": ["finishing", "setPiece"],
+    "Livre Direto Estudado ": ["finishing", "setPiece"],
+    "Livre Direto Estudado: Movimentação do Extremo": ["finishing", "setPiece"],
+    "De Construção para Contra Ataque ": ["finishing", "transition"],
+    "Recuperação de Bola no Rondo para Finalização": ["finishing", "pressing", "physical"],
+    "Corrida do Meio Campo nas Costas da Defesa": ["finishing"],
     "Movimentação dentro de Área em Cruzamentos": ["finishing", "transition"],
     "Variação de Cruzamentos": ["finishing", "transition"],
-    "Full Back Overlap - Winger": ["finishing"],
-    "Full Back Overlap - Striker": ["finishing"],
-    "3v2 Fast Break": ["finishing", "defensive", "transition", "physical"],
-    "3v2 Finishing Drill": ["finishing", "defensive"],
-    "5 Teams 3v3 Attacking": ["finishing", "transition", "physical"],
-    "4v4 mais apoios laterais": ["finishing", "transition", "physical"],
+    "Overlap do Lateral: Extremo": ["finishing"],
+    "Overlap do Lateral: Avançado ": ["finishing"],
+    "Transição Rápida 3v2": ["finishing", "defensive", "transition", "physical"],
+    "Exercício de Finalização 3v2": ["finishing", "defensive"],
+    "Ataque com 5 Equipas 3v3": ["finishing", "transition", "physical"],
+    "4v4 + Apoios Laterais": ["finishing", "transition", "physical"],
     "Superioridade nos Setores": ["finishing", "transition", "physical"],
 
     // Organização defensiva
-    "Back Four Shifting": ["defensive", "pressing"],
-    "Compact Defending Transition": ["defensive", "pressing", "transition"],
-    "Pressing Exercise": ["defensive", "pressing"],
+    "Rotação de 4 Defesas a Pressionar": ["defensive", "pressing"],
+    "Transição Defensiva Compacta": ["defensive", "pressing", "transition"],
+    "Exercício de Pressão": ["defensive", "pressing"],
   };
 
-  const mains: TrainingCatalogItem[] = MAIN_DRILLS.filter((def) => def.title !== "Warm Up with Ball").map((def) => {
+  const mains: TrainingCatalogItem[] = MAIN_DRILLS.filter((def) => def.title !== "Aquecimento com Bola").map((def) => {
     const mins = singleDrillDurationForTitle(def.title, 40);
     const body = def.describe(players, mins);
     const { progression, variations } = singleDrillProgressionVariationsForTitle(def.title);
