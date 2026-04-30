@@ -66,7 +66,7 @@ export const COACHING_SKILLS: CoachingSkillDef[] = TOPIC_SKILL_SPECS.flatMap((t)
 export const COACHING_LESSON_DEVELOPMENTS: CoachingLessonDevelopmentDef[] = [
   {
     lessonId: "day-001",
-    title: "Fabregas - Building up to Attack - Coaches' Vision",
+    title: "Fabregas - Construir até ao Ataque - Coaches' Vision",
     skillIds: [
       "tactical-intelligence-decision-making",
       "tactical-intelligence-positioning",
@@ -82,7 +82,7 @@ export const COACHING_LESSON_DEVELOPMENTS: CoachingLessonDevelopmentDef[] = [
   },
   {
     lessonId: "day-002",
-    title: "Fabregas - Playing under Pressure - Coaches' Vision",
+    title: "Fabregas - Jogar sob Pressão - Coaches' Vision",
     skillIds: [
       "midfield-mastery-deep-build-up-composure",
       "midfielder-elite-habits-press-escape-awareness",
@@ -97,7 +97,7 @@ export const COACHING_LESSON_DEVELOPMENTS: CoachingLessonDevelopmentDef[] = [
   },
   {
     lessonId: "day-003",
-    title: "Fabregas - Importance of the Midfield - Coaches' Vision",
+    title: "Fabregas - Importância do Meio Campo- Coaches' Vision",
     skillIds: [
       "midfielder-elite-habits-scanning",
       "midfielder-elite-habits-open-body-shape",
@@ -113,7 +113,7 @@ export const COACHING_LESSON_DEVELOPMENTS: CoachingLessonDevelopmentDef[] = [
   },
   {
     lessonId: "day-004",
-    title: "Fabregas - Importance of the Wingers - Coaches' Vision",
+    title: "Fabregas - Importância dos Extremos - Coaches' Vision",
     skillIds: [
       "defensive-skills-pressing-intensity",
       "advanced-tactical-depth-management",
@@ -139,7 +139,7 @@ export const COACHING_LESSON_DEVELOPMENTS: CoachingLessonDevelopmentDef[] = [
   },
   {
     lessonId: "day-006",
-    title: "Thiago Alcântara - Importance of Positioning - Coaches' Vision",
+    title: "Thiago Alcântara - Importância do Posicionamento - Coaches' Vision",
     skillIds: [
       "tactical-intelligence-positioning",
       "tactical-intelligence-spatial-awareness",
@@ -157,7 +157,7 @@ export const COACHING_LESSON_DEVELOPMENTS: CoachingLessonDevelopmentDef[] = [
   },
   {
     lessonId: "day-007",
-    title: "Thiago Alcântara - False 9 Options - Coaches' Vision",
+    title: "Thiago Alcântara - Opções do Falso 9 - Coaches' Vision",
     skillIds: [
       "midfield-mastery-midfield-balance-awareness",
       "tactical-intelligence-positioning",
@@ -176,7 +176,7 @@ export const COACHING_LESSON_DEVELOPMENTS: CoachingLessonDevelopmentDef[] = [
   },
   {
     lessonId: "day-008",
-    title: "Thiago Alcântara - Full Backs and Wingers Coordination - Coaches' Vision",
+    title: "Thiago Alcântara - Coordenação entre os Extremos e Laterais- Coaches' Vision",
     skillIds: [
       "tactical-intelligence-game-reading",
       "advanced-tactical-width-management",
@@ -189,7 +189,7 @@ export const COACHING_LESSON_DEVELOPMENTS: CoachingLessonDevelopmentDef[] = [
   },
   {
     lessonId: "day-009",
-    title: "Thiago Alcântara - Striker Stretching the Team - Coaches' Vision",
+    title: "Thiago Alcântara - Avançado a esticar a Equipa - Coaches' Vision",
     skillIds: [
       "attacking-skills-hold-up-play",
       "attacking-skills-link-up-play",
@@ -205,7 +205,7 @@ export const COACHING_LESSON_DEVELOPMENTS: CoachingLessonDevelopmentDef[] = [
   },
   {
     lessonId: "day-010",
-    title: "Thiago Alcântara - Midfielder dropping for Build Up - Coaches' Vision",
+    title: "Thiago Alcântara - Meio Campo a recuar para ajudar na Construção- Coaches' Vision",
     skillIds: [
       "midfielder-elite-habits-scanning",
       "midfield-mastery-deep-build-up-composure",
@@ -227,7 +227,7 @@ export const COACHING_LESSON_DEVELOPMENTS: CoachingLessonDevelopmentDef[] = [
   },
   {
     lessonId: "day-011",
-    title: "Thiago Alcântara - Midfield Defensive Awareness - Coaches' Vision",
+    title: "Thiago Alcântara - Precepção Defensiva do Meio Campo - Coaches' Vision",
     skillIds: [
       "tactical-intelligence-spatial-awareness",
       "tactical-intelligence-defensive-shape-understanding",
@@ -244,7 +244,7 @@ export const COACHING_LESSON_DEVELOPMENTS: CoachingLessonDevelopmentDef[] = [
   },
   {
     lessonId: "day-012",
-    title: "Thiago Alcântara - Reaction to Losing the ball - Coaches' Vision",
+    title: "Thiago Alcântara - Reação à Perda da Bola - Coaches' Vision",
     skillIds: [
       "defensive-skills-pressing-intensity",
       "advanced-tactical-trigger-press-recognition",
@@ -265,7 +265,7 @@ export const COACHING_LESSON_DEVELOPMENTS: CoachingLessonDevelopmentDef[] = [
   },
   {
     lessonId: "day-013",
-    title: "Zabaleta - Importance of Full Backs - Coaches' Vision",
+    title: "Zabaleta - Importância dos Laterais - Coaches' Vision",
     skillIds: [
       "full-back-wing-back-wide-channel-defending",
       "centre-back-build-up-passing",
@@ -289,7 +289,7 @@ export const COACHING_LESSON_DEVELOPMENTS: CoachingLessonDevelopmentDef[] = [
   },
   {
     lessonId: "day-014",
-    title: "Zabaleta - Defending 1v1 situations as a Full Back - Coaches' Vision",
+    title: "Zabaleta - Defender situações de 1v1 sendo Lateral - Coaches' Vision",
     skillIds: [
       "defensive-skills-1v1-defending",
       "defensive-specialist-last-man-defending",
@@ -314,7 +314,7 @@ export const COACHING_LESSON_DEVELOPMENTS: CoachingLessonDevelopmentDef[] = [
   },
   {
     lessonId: "day-015",
-    title: "Zabaleta - Final Decision after Overlap - Coaches' Vision",
+    title: "Zabaleta - Decisão Final após Overlap - Coaches' Vision",
     skillIds: [
       "tactical-intelligence-decision-making",
       "attacking-skills-chance-creation",
@@ -338,7 +338,7 @@ export const COACHING_LESSON_DEVELOPMENTS: CoachingLessonDevelopmentDef[] = [
   },
   {
     lessonId: "day-016",
-    title: "Zabaleta - Full Back and Wingers Adaptation - Coaches' Vision",
+    title: "Zabaleta - Adaptação entre os Laterais e Extremos - Coaches' Vision",
     skillIds: [
       "coach-evaluation-development-role-adaptation",
       "wide-player-winger-wide-combination-play",
@@ -357,7 +357,7 @@ export const COACHING_LESSON_DEVELOPMENTS: CoachingLessonDevelopmentDef[] = [
   },
   {
     lessonId: "day-017",
-    title: "Zabaleta - Importance of switching from Overlap to Underlap - Coaches' Vision",
+    title: "Zabaleta - Importância da variação entre o Overlap e Underlap - Coaches' Vision",
     skillIds: [
       "attacking-skills-underlap-timing",
       "full-back-wing-back-underlap-runs",
@@ -372,7 +372,7 @@ export const COACHING_LESSON_DEVELOPMENTS: CoachingLessonDevelopmentDef[] = [
   },
   {
     lessonId: "day-018",
-    title: "Zabaleta - Inverted Full Back - Coaches' Vision",
+    title: "Zabaleta - Lateral Invertido - Coaches' Vision",
     skillIds: [
       "full-back-wing-back-inverted-fullback-iq",
       "centre-back-build-up-passing",
@@ -400,7 +400,7 @@ export const COACHING_LESSON_DEVELOPMENTS: CoachingLessonDevelopmentDef[] = [
   },
   {
     lessonId: "day-019",
-    title: "Zabaleta - Game reading as an Inverted Full Back - Coaches' Vision",
+    title: "Zabaleta - Leitura de jogo enquanto Lateral Invertido - Coaches' Vision",
     skillIds: [
       "tactical-intelligence-game-reading",
       "advanced-tactical-match-momentum-reading",
@@ -417,7 +417,7 @@ export const COACHING_LESSON_DEVELOPMENTS: CoachingLessonDevelopmentDef[] = [
   },
   {
     lessonId: "day-020",
-    title: "Zabaleta - Inverted Full Back Movement inside the Box - Coaches' Vision",
+    title: "Zabaleta - Movimento do Lateral Invertido dentro da área - Coaches' Vision",
     skillIds: [
       "full-back-wing-back-inverted-fullback-iq",
       "tactical-intelligence-zone-occupation",
@@ -436,7 +436,7 @@ export const COACHING_LESSON_DEVELOPMENTS: CoachingLessonDevelopmentDef[] = [
   },
   {
     lessonId: "day-021",
-    title: "Vítor Pereira - Between the Lines - Coaches’ Vision",
+    title: "Vítor Pereira - Jogo Entre Linhas - Coaches’ Vision",
     skillIds: [
       "tactical-intelligence-line-breaking-vision",
       "midfielder-elite-habits-receive-between-lines",
@@ -461,7 +461,7 @@ export const COACHING_LESSON_DEVELOPMENTS: CoachingLessonDevelopmentDef[] = [
   },
   {
     lessonId: "day-022",
-    title: "Vítor Pereira - Build up Pressure Trigger - Coaches’ Vision",
+    title: "Vítor Pereira - Gatilhos para Pressão ao Adversário - Coaches’ Vision",
     skillIds: [
       "defensive-skills-pressing-intensity",
       "advanced-tactical-trigger-press-recognition",
@@ -480,7 +480,7 @@ export const COACHING_LESSON_DEVELOPMENTS: CoachingLessonDevelopmentDef[] = [
   },
   {
     lessonId: "day-023",
-    title: "Sean Dyche - Trapping Opposition on One Side - Coaches’ Vision",
+    title: "Sean Dyche - Fechar o Adversário num Lado - Coaches’ Vision",
     skillIds: [
       "tactical-intelligence-press-resistance",
       "defensive-skills-pressing-intensity",
@@ -503,7 +503,7 @@ export const COACHING_LESSON_DEVELOPMENTS: CoachingLessonDevelopmentDef[] = [
   },
   {
     lessonId: "day-024",
-    title: "Sean Dyche - Switching from one Side to the Other - Coaches’ Vision",
+    title: "Sean Dyche - Rodar de um lado para o outro Defensivamente - Coaches’ Vision",
     skillIds: [
       "tactical-intelligence-game-reading",
       "tactical-intelligence-transition-awareness",
@@ -534,7 +534,7 @@ export const COACHING_LESSON_DEVELOPMENTS: CoachingLessonDevelopmentDef[] = [
   },
   {
     lessonId: "day-025",
-    title: "Sean Dyche - Compact Defense on the Box - Coaches’ Vision",
+    title: "Sean Dyche - Defesa Compacta dentro da área - Coaches’ Vision",
     skillIds: [
       "defensive-specialist-box-defending",
       "defensive-skills-defensive-positioning",
@@ -559,7 +559,7 @@ export const COACHING_LESSON_DEVELOPMENTS: CoachingLessonDevelopmentDef[] = [
   },
   {
     lessonId: "day-026",
-    title: "Xavi Hernández - Importance of Positioning  - Coaches’ Vision",
+    title: "Xavi Hernández - Importância do Posicionamento - Coaches’ Vision",
     skillIds: [
       "tactical-intelligence-tempo-control",
       "midfielder-elite-habits-scanning",
@@ -582,7 +582,7 @@ export const COACHING_LESSON_DEVELOPMENTS: CoachingLessonDevelopmentDef[] = [
   },
   {
     lessonId: "day-027",
-    title: "Xavi Hernández - Build up Play Superiority - Coaches’ Vision",
+    title: "Xavi Hernández - Superioridade na Construção - Coaches’ Vision",
     skillIds: [
       "goalkeeper-specific-distribution",
       "centre-back-build-up-passing",
@@ -605,7 +605,7 @@ export const COACHING_LESSON_DEVELOPMENTS: CoachingLessonDevelopmentDef[] = [
   },
   {
     lessonId: "day-028",
-    title: "Xavi Hernández - Offensive Midfield Options- Coaches’ Vision",
+    title: "Xavi Hernández - Opções no Meio Campo Ofensivo- Coaches’ Vision",
     skillIds: [
       "tactical-intelligence-numerical-superiority-recognition",
       "tactical-intelligence-line-breaking-vision",
@@ -632,7 +632,7 @@ export const COACHING_LESSON_DEVELOPMENTS: CoachingLessonDevelopmentDef[] = [
   },
   {
     lessonId: "day-029",
-    title: "Xavi Hernández - Pressing Build Up - Coaches’ Vision",
+    title: "Xavi Hernández - Pressão na Saída de Bola - Coaches’ Vision",
     skillIds: [
       "defensive-skills-pressing-intensity",
       "advanced-tactical-trigger-press-recognition",
@@ -662,7 +662,7 @@ export const COACHING_LESSON_DEVELOPMENTS: CoachingLessonDevelopmentDef[] = [
   },
   {
     lessonId: "day-030",
-    title: "Xavi Hernández - Keeping Possession - Coaches’ Vision",
+    title: "Xavi Hernández - Manter a Posse de Bola - Coaches’ Vision",
     skillIds: [
       "midfield-mastery-recycling-possession",
       "midfield-mastery-rhythm-setting",
@@ -686,7 +686,7 @@ export const COACHING_LESSON_DEVELOPMENTS: CoachingLessonDevelopmentDef[] = [
   },
   {
     lessonId: "day-031",
-    title: "Pep Guardiola - Importance of Short Passes - Sky Sports",
+    title: "Pep Guardiola - Importância dos Passes Curtos - Sky Sports",
     skillIds: [
       "technical-ability-passing-accuracy",
       "technical-ability-short-passing",
@@ -706,7 +706,7 @@ export const COACHING_LESSON_DEVELOPMENTS: CoachingLessonDevelopmentDef[] = [
   },
   {
     lessonId: "day-032",
-    title: "Thierry Henry - Understand GegenePresssing - CBS Sports Golazo",
+    title: "Thierry Henry - Entender o que é GegenePresssing - CBS Sports Golazo",
     skillIds: [
       "tactical-intelligence-transition-awareness",
       "defensive-skills-pressing-intensity",
@@ -738,7 +738,7 @@ export const COACHING_LESSON_DEVELOPMENTS: CoachingLessonDevelopmentDef[] = [
   },
   {
     lessonId: "day-033",
-    title: "Freddie Ljungberg - Playing as a Team, Without Egos - Coaches’ Voice",
+    title: "Freddie Ljungberg - Jogar como Equipa, sem egos - Coaches’ Voice",
     skillIds: [
       "mental-attributes-discipline",
       "mental-attributes-winning-mentality",
@@ -761,7 +761,7 @@ export const COACHING_LESSON_DEVELOPMENTS: CoachingLessonDevelopmentDef[] = [
   },
   {
     lessonId: "day-034",
-    title: "Freddie Ljungberg - Understanding the Team Ideas (giving Confidence to players) - Coaches’ Voice",
+    title: "Freddie Ljungberg - Perceber as Ideias da Equipa (dar confiança aos jogadores) - Coaches’ Voice",
     skillIds: [
       "mental-attributes-confidence",
       "mental-attributes-winning-mentality",
@@ -784,7 +784,7 @@ export const COACHING_LESSON_DEVELOPMENTS: CoachingLessonDevelopmentDef[] = [
   },
   {
     lessonId: "day-035",
-    title: "Pochettino - Importance of the Assistant Coach - Coaches’ Voice",
+    title: "Pochettino - Importância do Treinador Adjunto - High Performance",
     skillIds: [
       "assistant-coach-management-trust-in-assistant-coach",
       "assistant-coach-management-daily-communication-with-assistant",
@@ -797,7 +797,7 @@ export const COACHING_LESSON_DEVELOPMENTS: CoachingLessonDevelopmentDef[] = [
   },
   {
     lessonId: "day-036",
-    title: "Pochettino - Management of Players - Coaches’ Voice",
+    title: "Pochettino - Conseguir Gerir os Jogadores - High Performance",
     skillIds: [
       "mental-attributes-leadership",
       "mental-attributes-responsibility",
@@ -813,7 +813,7 @@ export const COACHING_LESSON_DEVELOPMENTS: CoachingLessonDevelopmentDef[] = [
   },
   {
     lessonId: "day-037",
-    title: "Robert Lewandowski - Lessons learnt from Coaches - High Performance",
+    title: "Robert Lewandowski - O que se aprende com Treinadores - High Performance",
     skillIds: [
       "mental-attributes-leadership",
       "mental-attributes-adaptability",
@@ -827,7 +827,7 @@ export const COACHING_LESSON_DEVELOPMENTS: CoachingLessonDevelopmentDef[] = [
   },
   {
     lessonId: "day-038",
-    title: "Vincent Kompany - Motivation for Players - TNT Sports",
+    title: "Vincent Kompany - Motivação dos Jogadores - TNT Sports",
     skillIds: [
       "mental-attributes-competitive-mentality",
       "mental-attributes-winning-mentality",
