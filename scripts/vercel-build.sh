@@ -55,7 +55,8 @@ migrate_with_retries() {
       if is_db_connectivity_error "$last_log"; then
         echo "Aviso: base de dados indisponível durante o build (P1001/P1002)."
         echo "A continuar sem migrate/seed para não bloquear o deploy."
-        return 2
+        MIGRATE_RESULT=2
+        return 0
       fi
       return 1
     fi
@@ -65,12 +66,7 @@ migrate_with_retries() {
 }
 
 MIGRATE_RESULT=0
-set +e
-migrate_with_retries
-MIGRATE_RESULT=$?
-set -e
-
-if [[ "$MIGRATE_RESULT" -eq 1 ]]; then
+if ! migrate_with_retries; then
   echo "Erro de migração não relacionado com conectividade. A abortar build."
   exit 1
 fi
