@@ -29,9 +29,15 @@ export async function GET(req: Request) {
   try {
     const row = await prisma.user.findUnique({
       where: { nametag: tag },
-      select: { id: true },
+      select: { id: true, name: true, nametag: true },
     });
-    return NextResponse.json({ ok: true, exists: Boolean(row), normalized: tag });
+    return NextResponse.json({
+      ok: true,
+      exists: Boolean(row),
+      normalized: tag,
+      userId: row?.id ?? null,
+      displayName: row ? (row.name?.trim() || row.nametag || tag) : null,
+    });
   } catch (e) {
     console.error("[nametag/lookup]", e);
     return NextResponse.json({ ok: false, error: "Erro ao verificar." }, { status: 500 });

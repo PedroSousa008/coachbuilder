@@ -167,6 +167,15 @@ export function MessagesClient({ enableGlobalUserSearch = false }: { enableGloba
   const [selectedManageStaffIds, setSelectedManageStaffIds] = useState<string[]>([]);
   const [selectedMemberCloudId, setSelectedMemberCloudId] = useState<string | null>(null);
   const [savingGroupSettings, setSavingGroupSettings] = useState(false);
+  const [manageGroupNametagPanelOpen, setManageGroupNametagPanelOpen] = useState(false);
+  const [manageGroupNametagInput, setManageGroupNametagInput] = useState("");
+  const [manageGroupNametagBusy, setManageGroupNametagBusy] = useState(false);
+  const [manageGroupNametagMsg, setManageGroupNametagMsg] = useState("");
+  const [manageGroupNametagPicks, setManageGroupNametagPicks] = useState<{ participantId: string; name: string }[]>(
+    []
+  );
+  const manageGroupNametagPicksRef = useRef(manageGroupNametagPicks);
+  manageGroupNametagPicksRef.current = manageGroupNametagPicks;
   const [playerCloudUserId, setPlayerCloudUserId] = useState<Record<string, string>>({});
   const [staffCloudUserId, setStaffCloudUserId] = useState<Record<string, string>>({});
   const streamSinceRef = useRef<Record<string, string>>({});
@@ -896,6 +905,16 @@ export function MessagesClient({ enableGlobalUserSearch = false }: { enableGloba
     if (activeConv?.type === "group") setManageGroupNameDraft(activeConv.title);
   }, [activeConv?.id, activeConv?.title, activeConv?.type]);
 
+  useEffect(() => {
+    if (manageGroupOpen && activeConv?.type === "group") {
+      setManageGroupNametagPanelOpen(false);
+      setManageGroupNametagInput("");
+      setManageGroupNametagMsg("");
+      setManageGroupNametagPicks([]);
+      setManageGroupNametagBusy(false);
+    }
+  }, [manageGroupOpen, activeConv?.id, activeConv?.type]);
+
   const toggleCreatePlayer = (playerId: string) => {
     setSelectedCreatePlayerIds((prev) =>
       prev.includes(playerId) ? prev.filter((id) => id !== playerId) : [...prev, playerId]
@@ -919,6 +938,65 @@ export function MessagesClient({ enableGlobalUserSearch = false }: { enableGloba
       prev.includes(staffId) ? prev.filter((id) => id !== staffId) : [...prev, staffId]
     );
   };
+
+  const addGroupMemberByNametag = useCallback(async () => {
+    if (!activeConv || activeConv.type !== "group") return;
+    const raw = manageGroupNametagInput.trim();
+    if (!raw) {
+      setManageGroupNametagMsg(isPt ? "Escreve um nametag." : "Enter a nametag.");
+      return;
+    }
+    if (!shouldUseCloudClientApis(user)) {
+      setManageGroupNametagMsg(
+        isPt ? "Precisas de sessão na cloud para adicionar por nametag." : "Cloud session required to add by nametag."
+      );
+      return;
+    }
+    setManageGroupNametagBusy(true);
+    setManageGroupNametagMsg("");
+    try {
+      const r = await fetch(`/api/cloud/nametag/lookup?tag=${encodeURIComponent(raw)}`, {
+        credentials: "include",
+      });
+      const data = (await r.json()) as {
+        ok?: boolean;
+        exists?: boolean;
+        userId?: string | null;
+        displayName?: string | null;
+        error?: string;
+      };
+      if (!r.ok || !data.ok) {
+        setManageGroupNametagMsg(data.error ?? (isPt ? "Erro ao verificar nametag." : "Could not verify nametag."));
+        return;
+      }
+      if (!data.exists || !data.userId) {
+        setManageGroupNametagMsg(
+          isPt ? "Não existe conta com este nametag." : "No account with this nametag."
+        );
+        return;
+      }
+      if (data.userId === coachUserId) {
+        setManageGroupNametagMsg(isPt ? "Não podes adicionar-te a ti próprio." : "You cannot add yourself.");
+        return;
+      }
+      if (activeConv.participantIds.includes(data.userId)) {
+        setManageGroupNametagMsg(isPt ? "Esta pessoa já está no grupo." : "This person is already in the group.");
+        return;
+      }
+      if (manageGroupNametagPicksRef.current.some((p) => p.participantId === data.userId)) {
+        setManageGroupNametagMsg(isPt ? "Já está na lista para adicionar." : "Already queued to add.");
+        return;
+      }
+      const label = (data.displayName ?? "").trim() || normalizeNametagInput(raw) || raw;
+      setManageGroupNametagPicks((prev) => [...prev, { participantId: data.userId!, name: label }]);
+      setManageGroupNametagInput("");
+      setManageGroupNametagMsg(isPt ? `Adicionado à lista: ${label}` : `Queued: ${label}`);
+    } catch {
+      setManageGroupNametagMsg(isPt ? "Erro de rede." : "Network error.");
+    } finally {
+      setManageGroupNametagBusy(false);
+    }
+  }, [activeConv, coachUserId, isPt, manageGroupNametagInput, user]);
 
   return (
     <div className={`mx-auto max-w-6xl ${isMobile ? "space-y-0" : "space-y-4"}`}>
@@ -1106,7 +1184,77 @@ export function MessagesClient({ enableGlobalUserSearch = false }: { enableGloba
                 onChange={(e) => setManageGroupNameDraft(e.target.value)}
                 placeholder={isPt ? "Ex.: Dumiense 2025/26" : "E.g. Dumiense 2025/26"}
               />
-              <p className="mt-3 text-sm font-semibold text-white">{isPt ? "Adicionar pessoas" : "Add people"}</p>
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                <p className="text-sm font-semibold text-white">{isPt ? "Adicionar pessoas" : "Add people"}</p>
+                {shouldUseCloudClientApis(user) ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => {
+                      setManageGroupNametagPanelOpen((v) => !v);
+                      setManageGroupNametagMsg("");
+                    }}
+                  >
+                    {isPt ? "Adicionar por nametag" : "Add by nametag"}
+                  </Button>
+                ) : null}
+              </div>
+              {manageGroupNametagPanelOpen && shouldUseCloudClientApis(user) ? (
+                <div className="mt-2 rounded-xl border border-accent/25 bg-accent/5 p-3">
+                  <p className="text-xs text-zinc-400">
+                    {isPt
+                      ? "Qualquer conta na app tem nametag. Não precisa de estar na tua equipa."
+                      : "Any app account has a nametag. They don’t need to be on your roster."}
+                  </p>
+                  <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center">
+                    <Input
+                      value={manageGroupNametagInput}
+                      onChange={(e) => {
+                        setManageGroupNametagInput(e.target.value);
+                        if (manageGroupNametagMsg) setManageGroupNametagMsg("");
+                      }}
+                      placeholder={isPt ? "Ex.: pedrosousa ou @pedrosousa" : "E.g. johndoe or @johndoe"}
+                      className="sm:flex-1"
+                      disabled={manageGroupNametagBusy}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          void addGroupMemberByNametag();
+                        }
+                      }}
+                    />
+                    <Button type="button" disabled={manageGroupNametagBusy} onClick={() => void addGroupMemberByNametag()}>
+                      {manageGroupNametagBusy ? (isPt ? "A verificar…" : "Checking…") : isPt ? "Validar e adicionar" : "Add"}
+                    </Button>
+                  </div>
+                  {manageGroupNametagMsg ? (
+                    <p className="mt-2 text-xs text-zinc-400">{manageGroupNametagMsg}</p>
+                  ) : null}
+                  {manageGroupNametagPicks.length > 0 ? (
+                    <ul className="mt-2 flex flex-wrap gap-2">
+                      {manageGroupNametagPicks.map((p) => (
+                        <li
+                          key={p.participantId}
+                          className="inline-flex items-center gap-1 rounded-full border border-surface-border bg-surface-raised/80 px-2 py-1 text-xs text-zinc-200"
+                        >
+                          <span>{p.name}</span>
+                          <button
+                            type="button"
+                            className="rounded px-1 text-zinc-500 hover:text-red-300"
+                            onClick={() =>
+                              setManageGroupNametagPicks((prev) => prev.filter((x) => x.participantId !== p.participantId))
+                            }
+                            aria-label={isPt ? "Remover da lista" : "Remove from queue"}
+                          >
+                            ×
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </div>
+              ) : null}
               <div className="mt-2 max-h-40 space-y-2 overflow-y-auto">
                 {activeGroupPlayers.length === 0 && activeGroupStaff.length === 0 ? (
                   <p className="text-xs text-zinc-400">
@@ -1283,12 +1431,20 @@ export function MessagesClient({ enableGlobalUserSearch = false }: { enableGloba
                       return { participantId: peerId, name: sm.name };
                     })
                     .filter((m): m is { participantId: string; name: string } => Boolean(m));
-                  addParticipantsToGroupChat(activeConv.id, [...fromPlayers, ...fromStaff]);
+                  addParticipantsToGroupChat(activeConv.id, [
+                    ...fromPlayers,
+                    ...fromStaff,
+                    ...manageGroupNametagPicks,
+                  ]);
                   setSavingGroupSettings(false);
                   setManageGroupOpen(false);
                   setSelectedManagePlayerIds([]);
                   setSelectedManageStaffIds([]);
                   setSelectedMemberCloudId(null);
+                  setManageGroupNametagPicks([]);
+                  setManageGroupNametagInput("");
+                  setManageGroupNametagMsg("");
+                  setManageGroupNametagPanelOpen(false);
                 }}
               >
                 {isPt ? "Guardar alterações" : "Save changes"}
@@ -1301,6 +1457,10 @@ export function MessagesClient({ enableGlobalUserSearch = false }: { enableGloba
                   setSelectedManagePlayerIds([]);
                   setSelectedManageStaffIds([]);
                   setSelectedMemberCloudId(null);
+                  setManageGroupNametagPicks([]);
+                  setManageGroupNametagInput("");
+                  setManageGroupNametagMsg("");
+                  setManageGroupNametagPanelOpen(false);
                 }}
               >
                 {isPt ? "Fechar" : "Close"}
