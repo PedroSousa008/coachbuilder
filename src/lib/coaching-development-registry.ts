@@ -842,6 +842,25 @@ export const COACHING_LESSON_DEVELOPMENTS: CoachingLessonDevelopmentDef[] = [
       "advanced-mental-calm-under-chaos",
     ],
   },
+  {
+    lessonId: "day-039",
+    title: "Carlos Carvalhal - Importância da Concentração - FOOTURE",
+    skillIds: [
+      "tactical-intelligence-decision-making",
+      "tactical-intelligence-game-reading",
+      "advanced-tactical-match-momentum-reading",
+      "mental-attributes-concentration",
+      "mental-attributes-focus-under-pressure",
+      "mental-attributes-consistency",
+      "advanced-mental-attention-to-detail",
+      "advanced-mental-calm-under-chaos",
+      "physical-attributes-reaction-speed",
+      "attacking-skills-creativity",
+      "attacking-skills-improvisation",
+      "mental-attributes-emotional-control",
+      "mental-attributes-adaptability",
+    ],
+  },
 ];
 
 const LESSON_BY_ID: Map<string, CoachingLessonDevelopmentDef> = new Map(
