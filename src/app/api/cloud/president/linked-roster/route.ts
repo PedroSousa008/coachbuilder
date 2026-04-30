@@ -5,9 +5,11 @@ import { emptyWorkspaceSnapshot, parseWorkspacePayload } from "@/lib/workspace-s
 import {
   mapWorkspaceToPresidentCoach,
   mapWorkspaceToPresidentLinkedStaff,
+  mapWorkspaceToPresidentPlayerTopStats,
   mapWorkspaceToPresidentPlayers,
 } from "@/lib/president-linked-roster";
 import type { PresidentCoach, PresidentLinkedStaff, PresidentPlayer } from "@/types/president-club";
+import type { PresidentPlayerTopStat } from "@/lib/president-linked-roster";
 import { requirePresidentPremiumAccess } from "@/lib/require-president-premium-server";
 
 export const dynamic = "force-dynamic";
@@ -39,6 +41,7 @@ export async function GET() {
     const coaches: PresidentCoach[] = [];
     const players: PresidentPlayer[] = [];
     const staffRows: PresidentLinkedStaff[] = [];
+    const playerTopStats: PresidentPlayerTopStat[] = [];
 
     for (const c of linked) {
       const row = await prisma.workspace.findUnique({ where: { userId: c.id } });
@@ -46,6 +49,7 @@ export async function GET() {
       coaches.push(mapWorkspaceToPresidentCoach(c.id, c.email, snap));
       players.push(...mapWorkspaceToPresidentPlayers(c.id, c.email, snap));
       staffRows.push(...mapWorkspaceToPresidentLinkedStaff(c.id, c.email, snap));
+      playerTopStats.push(...mapWorkspaceToPresidentPlayerTopStats(c.id, c.email, snap));
     }
 
     const selfRow = await prisma.workspace.findUnique({ where: { userId: presidentId } });
@@ -56,6 +60,7 @@ export async function GET() {
       coaches.push(mapWorkspaceToPresidentCoach(me.id, me.email, selfSnap));
       players.push(...mapWorkspaceToPresidentPlayers(me.id, me.email, selfSnap));
       staffRows.push(...mapWorkspaceToPresidentLinkedStaff(me.id, me.email, selfSnap));
+      playerTopStats.push(...mapWorkspaceToPresidentPlayerTopStats(me.id, me.email, selfSnap));
     }
 
     return NextResponse.json({
@@ -63,6 +68,7 @@ export async function GET() {
       coaches,
       players,
       staffRows,
+      playerTopStats,
       linkedCoachAccounts: linked.length,
     });
   } catch (e) {

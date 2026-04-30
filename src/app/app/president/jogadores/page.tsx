@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { Pencil, Trash2, RefreshCw, Check } from "lucide-react";
+import { Pencil, Trash2, RefreshCw, Check, ChevronDown, ChevronUp } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -71,10 +71,27 @@ export default function PresidentJogadoresPage() {
   const [linkedPlayerForm, setLinkedPlayerForm] = useState<LinkedCloudPlayerForm>(emptyLinkedPlayerForm);
   const [linkedSaving, setLinkedSaving] = useState(false);
   const [linkedError, setLinkedError] = useState<string | null>(null);
+  const [manualFormOpen, setManualFormOpen] = useState(false);
 
   const cloudApis = shouldUseCloudClientApis(user);
 
   const mergedPlayers = useMemo(() => [...roster.players, ...state.players], [roster.players, state.players]);
+  const topScorers = useMemo(
+    () =>
+      [...roster.playerTopStats]
+        .filter((row) => row.goals > 0)
+        .sort((a, b) => b.goals - a.goals || b.assists - a.assists || a.playerName.localeCompare(b.playerName))
+        .slice(0, 15),
+    [roster.playerTopStats]
+  );
+  const topAssisters = useMemo(
+    () =>
+      [...roster.playerTopStats]
+        .filter((row) => row.assists > 0)
+        .sort((a, b) => b.assists - a.assists || b.goals - a.goals || a.playerName.localeCompare(b.playerName))
+        .slice(0, 15),
+    [roster.playerTopStats]
+  );
 
   const startEdit = (p: PresidentPlayer) => {
     if (isLinkedPlayerRow(p.id)) return;
@@ -304,6 +321,94 @@ export default function PresidentJogadoresPage() {
         </CardContent>
       </Card>
 
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Card className="border-surface-border bg-surface-raised/30">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base text-white">Melhores Marcadores</CardTitle>
+            <p className="text-xs text-zinc-500">Top 15 automático com base nos jogos registados no clube.</p>
+          </CardHeader>
+          <CardContent className="overflow-x-auto p-0 sm:p-6">
+            <table className="w-full min-w-[420px] text-left text-sm">
+              <thead className="border-b border-surface-border bg-surface-raised/50 text-xs uppercase text-zinc-500">
+                <tr>
+                  <th className="px-4 py-3 font-medium">#</th>
+                  <th className="px-4 py-3 font-medium">Jogador</th>
+                  <th className="px-4 py-3 font-medium">Equipa</th>
+                  <th className="px-4 py-3 text-right font-medium">Golos</th>
+                </tr>
+              </thead>
+              <tbody>
+                {topScorers.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="px-4 py-10 text-center text-zinc-500">
+                      Ainda sem golos registados.
+                    </td>
+                  </tr>
+                ) : (
+                  topScorers.map((row, idx) => (
+                    <tr key={row.id} className="border-b border-surface-border/60">
+                      <td className="px-4 py-3 text-zinc-500">{idx + 1}</td>
+                      <td className="px-4 py-3 font-medium text-zinc-200">{row.playerName}</td>
+                      <td className="max-w-[150px] truncate px-4 py-3 text-zinc-400" title={row.team}>
+                        {row.team || "—"}
+                      </td>
+                      <td className="px-4 py-3 text-right font-semibold text-zinc-100">{row.goals}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </CardContent>
+        </Card>
+
+        <Card className="border-surface-border bg-surface-raised/30">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base text-white">Melhores Assistentes</CardTitle>
+            <p className="text-xs text-zinc-500">Top 15 automático com base nas assistências registadas.</p>
+          </CardHeader>
+          <CardContent className="overflow-x-auto p-0 sm:p-6">
+            <table className="w-full min-w-[420px] text-left text-sm">
+              <thead className="border-b border-surface-border bg-surface-raised/50 text-xs uppercase text-zinc-500">
+                <tr>
+                  <th className="px-4 py-3 font-medium">#</th>
+                  <th className="px-4 py-3 font-medium">Jogador</th>
+                  <th className="px-4 py-3 font-medium">Equipa</th>
+                  <th className="px-4 py-3 text-right font-medium">Assistências</th>
+                </tr>
+              </thead>
+              <tbody>
+                {topAssisters.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="px-4 py-10 text-center text-zinc-500">
+                      Ainda sem assistências registadas.
+                    </td>
+                  </tr>
+                ) : (
+                  topAssisters.map((row, idx) => (
+                    <tr key={row.id} className="border-b border-surface-border/60">
+                      <td className="px-4 py-3 text-zinc-500">{idx + 1}</td>
+                      <td className="px-4 py-3 font-medium text-zinc-200">{row.playerName}</td>
+                      <td className="max-w-[150px] truncate px-4 py-3 text-zinc-400" title={row.team}>
+                        {row.team || "—"}
+                      </td>
+                      <td className="px-4 py-3 text-right font-semibold text-zinc-100">{row.assists}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="flex justify-end">
+        <Button type="button" variant="secondary" onClick={() => setManualFormOpen((v) => !v)}>
+          {manualFormOpen ? "Fechar registo manual" : "Abrir registo manual"}
+          {manualFormOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+        </Button>
+      </div>
+
+      {manualFormOpen ? (
       <Card className="border-surface-border bg-surface-raised/30">
         <CardHeader>
           <CardTitle className="text-base text-white">
@@ -406,6 +511,7 @@ export default function PresidentJogadoresPage() {
           </form>
         </CardContent>
       </Card>
+      ) : null}
 
       {linkedPlayerEdit ? (
         <div

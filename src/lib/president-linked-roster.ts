@@ -3,6 +3,17 @@ import type { PresidentCoach, PresidentLinkedStaff, PresidentPlayer } from "@/ty
 import type { WorkspaceSnapshotV1 } from "@/lib/workspace-snapshot";
 import { formatPlayerPositions } from "@/lib/player-positions";
 
+export type PresidentPlayerTopStat = {
+  id: string;
+  coachUserId: string;
+  coachEmail: string;
+  playerId: string;
+  playerName: string;
+  team: string;
+  goals: number;
+  assists: number;
+};
+
 export function winPctFromTacticMatches(matches: TacticMatch[]): number {
   if (!matches.length) return 0;
   let wins = 0;
@@ -112,6 +123,37 @@ export function mapWorkspaceToPresidentPlayers(
     injuriesNote: "",
     familyContacts: "",
   }));
+}
+
+/** Top jogadores por golos/assistências a partir dos jogos registados no workspace do treinador. */
+export function mapWorkspaceToPresidentPlayerTopStats(
+  coachUserId: string,
+  coachEmail: string,
+  snapshot: WorkspaceSnapshotV1
+): PresidentPlayerTopStat[] {
+  const club = (snapshot.coachProfile.club ?? "").trim();
+  const byPlayerId = new Map<string, PresidentPlayerTopStat>();
+  for (const pl of snapshot.players ?? []) {
+    byPlayerId.set(pl.id, {
+      id: `linked:${coachUserId}:${pl.id}`,
+      coachUserId,
+      coachEmail,
+      playerId: pl.id,
+      playerName: pl.name,
+      team: club,
+      goals: 0,
+      assists: 0,
+    });
+  }
+  for (const match of snapshot.tacticMatches ?? []) {
+    for (const line of match.playerStats ?? []) {
+      const row = byPlayerId.get(line.playerId);
+      if (!row) continue;
+      row.goals += Math.max(0, Number(line.goals) || 0);
+      row.assists += Math.max(0, Number(line.assists) || 0);
+    }
+  }
+  return [...byPlayerId.values()];
 }
 
 /** Constrói linhas de staff para sincronização em despesas (pagamentos a sair). */
