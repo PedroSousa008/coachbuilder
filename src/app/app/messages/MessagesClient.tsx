@@ -369,7 +369,8 @@ export function MessagesClient({ enableGlobalUserSearch = false }: { enableGloba
   );
 
   useEffect(() => {
-    const mq = window.matchMedia("(max-width: 1023px)");
+    // Mobile + iPad experience (inclui iPad em landscape).
+    const mq = window.matchMedia("(max-width: 1279px)");
     const sync = () => setIsMobile(mq.matches);
     sync();
     mq.addEventListener("change", sync);
@@ -423,6 +424,21 @@ export function MessagesClient({ enableGlobalUserSearch = false }: { enableGloba
     el.scrollTop = el.scrollHeight;
     if (scrollThreadPendingRef.current) scrollThreadPendingRef.current = false;
   }, [thread]);
+
+  useLayoutEffect(() => {
+    if (!isMobile || mobileScreen !== "chat") return;
+    const el = threadScrollRef.current;
+    if (!el) return;
+    // Ao abrir uma conversa em mobile/iPad, começa sempre na mensagem mais recente.
+    stickToBottomRef.current = true;
+    scrollThreadPendingRef.current = true;
+    const run = () => {
+      el.scrollTop = el.scrollHeight;
+      scrollThreadPendingRef.current = false;
+    };
+    run();
+    requestAnimationFrame(run);
+  }, [isMobile, mobileScreen, activeId]);
 
   const activeDmPeerCloudId = useMemo(() => {
     if (!activeConv || activeConv.type !== "dm" || !user?.id) return null;
