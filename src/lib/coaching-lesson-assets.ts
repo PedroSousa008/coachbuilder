@@ -12,6 +12,7 @@ const DAY_KEY_RE = /^\d{4}-\d{2}-\d{2}$/;
  */
 const LESSON_VIDEO_URL_OVERRIDES: Record<string, string | undefined> = {
   "day-039": process.env.NEXT_PUBLIC_COACHING_DAY_039_VIDEO_URL,
+  "day-040": process.env.NEXT_PUBLIC_COACHING_DAY_040_VIDEO_URL,
 };
 
 /**
