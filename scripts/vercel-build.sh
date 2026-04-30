@@ -46,10 +46,16 @@ migrate_with_retries() {
   done
 }
 
-migrate_with_retries
+if ! migrate_with_retries; then
+  echo "AVISO: prisma migrate deploy falhou após várias tentativas (DB offline/indisponível)."
+  echo "AVISO: o build vai continuar para não bloquear o deploy; aplica migrações quando a base voltar."
+fi
 
 export DATABASE_URL="$POOLED_DATABASE_URL"
 
 npx prisma generate
-npx prisma db seed
+if ! npx prisma db seed; then
+  echo "AVISO: prisma db seed falhou (possível indisponibilidade da DB)."
+  echo "AVISO: o build continua sem seed para evitar falha total do deploy."
+fi
 exec npx next build
