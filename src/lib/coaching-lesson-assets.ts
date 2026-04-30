@@ -14,6 +14,7 @@ const LESSON_VIDEO_URL_OVERRIDES: Record<string, string | undefined> = {
   "day-039": process.env.NEXT_PUBLIC_COACHING_DAY_039_VIDEO_URL,
   "day-040": process.env.NEXT_PUBLIC_COACHING_DAY_040_VIDEO_URL,
   "day-041": process.env.NEXT_PUBLIC_COACHING_DAY_041_VIDEO_URL,
+  "day-042": process.env.NEXT_PUBLIC_COACHING_DAY_042_VIDEO_URL,
 };
 
 /**

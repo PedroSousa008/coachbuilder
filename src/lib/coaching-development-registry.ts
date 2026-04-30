@@ -920,6 +920,31 @@ export const COACHING_LESSON_DEVELOPMENTS: CoachingLessonDevelopmentDef[] = [
       "advanced-tactical-decoy-runs",
     ],
   },
+  {
+    lessonId: "day-042",
+    title: "Carlos Carvalhal - Equipa Aberta e Extremos Diretos - FOOTURE",
+    skillIds: [
+      "tactical-intelligence-game-reading",
+      "attacking-skills-movement-off-ball",
+      "attacking-specialist-final-third-decisions",
+      "advanced-tactical-width-management",
+      "wide-player-winger-wide-combination-play",
+      "full-back-wing-back-overlap-end-product",
+      "advanced-tactical-switch-of-play-timing",
+      "technical-ability-1v1-ability",
+      "attacking-specialist-explosive-run-in-behind",
+      "attacking-specialist-dribble-to-final-third",
+      "tactical-intelligence-line-breaking-vision",
+      "midfield-mastery-tempo-acceleration",
+      "technical-ability-dribbling",
+      "wide-player-winger-isolation-confidence",
+      "wide-player-winger-beat-fullback-outside",
+      "wide-player-winger-beat-fullback-inside",
+      "physical-attributes-pace",
+      "physical-attributes-acceleration",
+      "physical-attributes-explosiveness",
+    ],
+  },
 ];
 
 const LESSON_BY_ID: Map<string, CoachingLessonDevelopmentDef> = new Map(
