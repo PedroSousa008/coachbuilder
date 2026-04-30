@@ -921,7 +921,7 @@ export function MessagesClient({ enableGlobalUserSearch = false }: { enableGloba
   };
 
   return (
-    <div className="mx-auto max-w-6xl space-y-4">
+    <div className={`mx-auto max-w-6xl ${isMobile ? "space-y-0" : "space-y-4"}`}>
       <PlayerPickerModal
         open={dmPickerOpen}
         title={isPt ? "Mensagem direta" : "Direct message"}
@@ -1324,7 +1324,11 @@ export function MessagesClient({ enableGlobalUserSearch = false }: { enableGloba
         </Button>
       </div>
 
-      <div className="flex flex-col gap-4 lg:h-[calc(100vh-10rem)] lg:flex-row lg:gap-0 lg:overflow-hidden lg:rounded-2xl lg:border lg:border-surface-border lg:bg-surface-raised/20">
+      <div
+        className={`flex flex-col gap-4 lg:h-[calc(100vh-10rem)] lg:flex-row lg:gap-0 lg:overflow-hidden lg:rounded-2xl lg:border lg:border-surface-border lg:bg-surface-raised/20 ${
+          isMobile && mobileScreen === "chat" ? "h-[calc(100dvh-5.5rem)] overflow-hidden" : ""
+        }`}
+      >
         <div className={`${isMobile && mobileScreen === "chat" ? "hidden" : "flex w-full flex-col border-surface-border lg:w-[320px] lg:border-r"}`}>
           <div className="flex gap-1 border-b border-surface-border p-3">
             <button
@@ -1388,9 +1392,19 @@ export function MessagesClient({ enableGlobalUserSearch = false }: { enableGloba
           </div>
         </div>
 
-        <div className={`${isMobile && mobileScreen === "list" ? "hidden" : "flex min-h-[420px] flex-1 flex-col lg:min-h-0"}`}>
+        <div
+          className={`${
+            isMobile && mobileScreen === "list"
+              ? "hidden"
+              : "flex min-h-[420px] flex-1 flex-col lg:min-h-0"
+          } ${isMobile ? "h-full overflow-hidden" : ""}`}
+        >
           {activeConv ? (
-            <div className="border-b border-surface-border px-4 py-4 lg:px-6">
+            <div
+              className={`border-b border-surface-border px-4 py-4 lg:px-6 ${
+                isMobile ? "sticky top-0 z-20 bg-surface/95 backdrop-blur" : ""
+              }`}
+            >
               <div className="flex items-center gap-2">
                 {isMobile ? (
                   <button
@@ -1459,7 +1473,11 @@ export function MessagesClient({ enableGlobalUserSearch = false }: { enableGloba
               ))
             )}
           </div>
-          <div className="border-t border-surface-border p-4 lg:p-6">
+          <div
+            className={`border-t border-surface-border p-4 lg:p-6 ${
+              isMobile ? "sticky bottom-0 z-20 bg-surface/95 pb-[max(1rem,env(safe-area-inset-bottom))] backdrop-blur" : ""
+            }`}
+          >
             {hasConversations && activeConv ? (
               <>
                 {pendingAttachments.length > 0 ? (
