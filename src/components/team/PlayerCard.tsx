@@ -45,14 +45,35 @@ export function PlayerCard({
           ? "text-emerald-400"
           : "text-sky-300";
 
+  /** Altura reservada para C/SC — mantém o número na mesma posição vertical com ou sem emblema. */
+  const roleSlotMinH = "min-h-[1.625rem]";
+
   return (
     <button
       type="button"
       onClick={onOpen}
       className="relative flex w-full flex-col rounded-2xl border border-surface-border bg-surface-raised/50 p-4 pt-10 text-left transition-all hover:border-zinc-600 hover:bg-surface-raised sm:pt-4"
     >
-      <div className="absolute right-3 top-3 flex justify-end">
-        <span className={cn("font-display text-xl font-bold leading-none", overallColorClass)}>{insights.overall}</span>
+      {/* Coluna direita: Overall → número → emblema (ou espaço vazio com a mesma altura). */}
+      <div className="pointer-events-none absolute bottom-3 right-3 top-3 z-[1] flex w-10 flex-col items-end sm:w-11">
+        <span className={cn("shrink-0 font-display text-xl font-bold leading-none", overallColorClass)}>
+          {insights.overall}
+        </span>
+        <div className="flex min-h-0 flex-1 flex-col items-end justify-center py-1">
+          <div
+            className="flex h-5 min-w-[1.35rem] max-w-[2rem] items-center justify-center rounded-full border-2 border-white bg-zinc-900/55 px-1 text-xs font-medium tabular-nums leading-none text-white"
+            aria-label={`Número ${player.number}`}
+          >
+            {player.number}
+          </div>
+        </div>
+        <div className={cn("flex w-full shrink-0 items-end justify-end", roleSlotMinH)}>
+          {roleBadge ? (
+            <span className="rounded-md border border-accent/50 bg-accent/20 px-2 py-0.5 text-[11px] font-semibold text-accent">
+              {roleBadge}
+            </span>
+          ) : null}
+        </div>
       </div>
       <div className="flex items-start gap-3">
         <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-zinc-800">
@@ -76,7 +97,7 @@ export function PlayerCard({
           </div>
         </div>
       </div>
-      <div className="relative mt-4 flex min-h-[1.25rem] items-center gap-2 border-t border-surface-border/80 pt-3 pr-11 sm:pr-12">
+      <div className="mt-4 flex min-h-[1.25rem] flex-wrap items-center gap-x-2 gap-y-1 border-t border-surface-border/80 pt-3">
         <span
           className={cn(
             "min-w-0 flex-1 text-xs font-medium",
@@ -90,18 +111,7 @@ export function PlayerCard({
         <span className={cn("shrink-0 text-xs font-medium", performanceColor[player.performance])}>
           Forma {player.performance === "up" ? "↑" : player.performance === "down" ? "↓" : "→"}
         </span>
-        <div
-          className="absolute right-3 top-1/2 flex h-5 min-w-[1.35rem] max-w-[2rem] -translate-y-1/2 items-center justify-center rounded-full border-2 border-white bg-zinc-900/55 px-1 text-xs font-medium tabular-nums leading-none text-white"
-          aria-label={`Número ${player.number}`}
-        >
-          {player.number}
-        </div>
       </div>
-      {roleBadge ? (
-        <span className="absolute bottom-3 right-3 rounded-md border border-accent/50 bg-accent/20 px-2 py-0.5 text-[11px] font-semibold text-accent">
-          {roleBadge}
-        </span>
-      ) : null}
     </button>
   );
 }
