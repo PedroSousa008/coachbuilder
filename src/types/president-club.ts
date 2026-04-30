@@ -170,15 +170,43 @@ export type PresidentPayment = {
 
 export type PresidentSponsor = {
   id: string;
+  logoUrl: string;
   company: string;
+  type: "patrocinador" | "parceiro";
+  segment: "principal" | "secundario" | "parceiro_tecnico" | "parceiro_institucional" | "apoio_local";
   contactPerson: string;
+  contactEmail: string;
+  contactPhone: string;
   contractValueEUR: number;
+  amountPaidEUR: number;
+  paymentFrequency: "mensal" | "anual" | "unico";
+  status: "ativo" | "em_negociacao" | "expirado" | "perdido";
   startDate: string;
+  endDate: string;
   renewalDate: string;
-  paymentStatus: string;
-  benefits: string;
+  nextPaymentDate: string;
+  contractPdfUrl: string;
+  exposureTypes: Array<"equipamento_frente" | "equipamento_costas" | "equipamento_mangas" | "campo_placards" | "redes_sociais" | "eventos">;
+  contractDurationMonths: number;
+  clausesNotes: string;
+  deliverablesPosts: number;
+  deliverablesMatches: number;
+  deliverablesEvents: number;
+  visibilityProofUrls: string;
+  autoReportNotes: string;
+  timelineNotes: string;
+  interactionsLog: string;
   notes: string;
-  pipelineStage: "ativo" | "potencial" | "negociação";
+  active: boolean;
+};
+
+export type PresidentSponsorLead = {
+  id: string;
+  company: string;
+  contact: string;
+  status: "por_contactar" | "contactado" | "em_negociacao" | "proposta_enviada" | "fechado" | "perdido";
+  notes: string;
+  interactionsLog: string;
 };
 
 /** Gravidade da lesão (Centro médico). */
@@ -330,6 +358,7 @@ export type PresidentClubState = {
   expenses: PresidentExpense[];
   payments: PresidentPayment[];
   sponsors: PresidentSponsor[];
+  sponsorLeads: PresidentSponsorLead[];
   injuries: PresidentInjury[];
   /** Equipa clínica do clube (aparece também em Pagamentos / despesas). */
   medicalStaff: PresidentMedicalStaff[];

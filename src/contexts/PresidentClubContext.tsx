@@ -48,6 +48,7 @@ import type {
   PresidentRecruitmentShortlistEntry,
   PresidentReport,
   PresidentSponsor,
+  PresidentSponsorLead,
 } from "@/types/president-club";
 
 type PresidentClubContextValue = {
@@ -87,6 +88,9 @@ type PresidentClubContextValue = {
   addSponsor: (row: Omit<PresidentSponsor, "id">) => string;
   updateSponsor: (id: string, patch: Partial<PresidentSponsor>) => void;
   removeSponsor: (id: string) => void;
+  addSponsorLead: (row: Omit<PresidentSponsorLead, "id">) => string;
+  updateSponsorLead: (id: string, patch: Partial<PresidentSponsorLead>) => void;
+  removeSponsorLead: (id: string) => void;
   addInjury: (row: Omit<PresidentInjury, "id">) => string;
   updateInjury: (id: string, patch: Partial<PresidentInjury>) => void;
   removeInjury: (id: string) => void;
@@ -452,6 +456,23 @@ export function PresidentClubProvider({ children }: { children: ReactNode }) {
     setState((prev) => ({ ...prev, sponsors: prev.sponsors.filter((s) => s.id !== id) }));
   }, []);
 
+  const addSponsorLead = useCallback((row: Omit<PresidentSponsorLead, "id">) => {
+    const id = presidentUid();
+    setState((prev) => ({ ...prev, sponsorLeads: [{ ...row, id }, ...prev.sponsorLeads] }));
+    return id;
+  }, []);
+
+  const updateSponsorLead = useCallback((id: string, patch: Partial<PresidentSponsorLead>) => {
+    setState((prev) => ({
+      ...prev,
+      sponsorLeads: prev.sponsorLeads.map((s) => (s.id === id ? { ...s, ...patch, id } : s)),
+    }));
+  }, []);
+
+  const removeSponsorLead = useCallback((id: string) => {
+    setState((prev) => ({ ...prev, sponsorLeads: prev.sponsorLeads.filter((s) => s.id !== id) }));
+  }, []);
+
   const addInjury = useCallback((row: Omit<PresidentInjury, "id">) => {
     const id = presidentUid();
     setState((prev) => ({ ...prev, injuries: [{ ...row, id }, ...prev.injuries] }));
@@ -732,6 +753,9 @@ export function PresidentClubProvider({ children }: { children: ReactNode }) {
       addSponsor,
       updateSponsor,
       removeSponsor,
+      addSponsorLead,
+      updateSponsorLead,
+      removeSponsorLead,
       addInjury,
       updateInjury,
       removeInjury,
@@ -796,6 +820,9 @@ export function PresidentClubProvider({ children }: { children: ReactNode }) {
       addSponsor,
       updateSponsor,
       removeSponsor,
+      addSponsorLead,
+      updateSponsorLead,
+      removeSponsorLead,
       addInjury,
       updateInjury,
       removeInjury,

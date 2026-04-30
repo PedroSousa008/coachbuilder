@@ -17,6 +17,7 @@ import type {
   PresidentPlayer,
   PresidentRecruitmentShortlistEntry,
   PresidentReport,
+  PresidentSponsorLead,
   PresidentSponsor,
 } from "@/types/president-club";
 import { normalizePaymentRow } from "@/lib/president-finance";
@@ -41,6 +42,7 @@ export function emptyPresidentClubState(): PresidentClubState {
     expenses: [],
     payments: [],
     sponsors: [],
+    sponsorLeads: [],
     injuries: [],
     medicalStaff: [],
     medicalAppointments: [],
@@ -83,10 +85,36 @@ export function mergePresidentClubState(raw: unknown, fallback: PresidentClubSta
     return mapped.length > 0 ? mapped : fallback.equipasSlots;
   })();
 
-  function sponsorPipeline(v: unknown): PresidentSponsor["pipelineStage"] {
-    if (v === "potencial") return "potencial";
-    if (v === "negociação") return "negociação";
+  function sponsorType(v: unknown): PresidentSponsor["type"] {
+    return v === "parceiro" ? "parceiro" : "patrocinador";
+  }
+  function sponsorSegment(v: unknown): PresidentSponsor["segment"] {
+    if (v === "principal") return "principal";
+    if (v === "secundario") return "secundario";
+    if (v === "parceiro_tecnico") return "parceiro_tecnico";
+    if (v === "parceiro_institucional") return "parceiro_institucional";
+    return "apoio_local";
+  }
+  function sponsorFrequency(v: unknown): PresidentSponsor["paymentFrequency"] {
+    if (v === "mensal") return "mensal";
+    if (v === "anual") return "anual";
+    return "unico";
+  }
+  function sponsorStatus(v: unknown): PresidentSponsor["status"] {
+    if (v === "ativo") return "ativo";
+    if (v === "em_negociacao") return "em_negociacao";
+    if (v === "expirado") return "expirado";
+    if (v === "perdido") return "perdido";
+    if (v === "negociação") return "em_negociacao";
     return "ativo";
+  }
+  function sponsorLeadStatus(v: unknown): PresidentSponsorLead["status"] {
+    if (v === "contactado") return "contactado";
+    if (v === "em_negociacao") return "em_negociacao";
+    if (v === "proposta_enviada") return "proposta_enviada";
+    if (v === "fechado") return "fechado";
+    if (v === "perdido") return "perdido";
+    return "por_contactar";
   }
 
   return {
@@ -271,18 +299,67 @@ export function mergePresidentClubState(raw: unknown, fallback: PresidentClubSta
       .map(
         (s): PresidentSponsor => ({
           id: str(s.id, ""),
+          logoUrl: str((s as { logoUrl?: unknown }).logoUrl, ""),
           company: str(s.company, ""),
+          type: sponsorType((s as { type?: unknown }).type),
+          segment: sponsorSegment((s as { segment?: unknown }).segment),
           contactPerson: str(s.contactPerson, ""),
+          contactEmail: str((s as { contactEmail?: unknown }).contactEmail, ""),
+          contactPhone: str((s as { contactPhone?: unknown }).contactPhone, ""),
           contractValueEUR: num(s.contractValueEUR, 0),
+          amountPaidEUR: num((s as { amountPaidEUR?: unknown }).amountPaidEUR, 0),
+          paymentFrequency: sponsorFrequency((s as { paymentFrequency?: unknown }).paymentFrequency),
+          status: sponsorStatus((s as { status?: unknown }).status ?? (s as { pipelineStage?: unknown }).pipelineStage),
           startDate: str(s.startDate, ""),
+          endDate: str((s as { endDate?: unknown }).endDate, ""),
           renewalDate: str(s.renewalDate, ""),
-          paymentStatus: str(s.paymentStatus, ""),
-          benefits: str(s.benefits, ""),
+          nextPaymentDate: str((s as { nextPaymentDate?: unknown }).nextPaymentDate, ""),
+          contractPdfUrl: str((s as { contractPdfUrl?: unknown }).contractPdfUrl, ""),
+          exposureTypes: arr<unknown>((s as { exposureTypes?: unknown }).exposureTypes)
+            .map((x) => (typeof x === "string" ? x : ""))
+            .filter(
+              (
+                x
+              ): x is
+                | "equipamento_frente"
+                | "equipamento_costas"
+                | "equipamento_mangas"
+                | "campo_placards"
+                | "redes_sociais"
+                | "eventos" =>
+                x === "equipamento_frente" ||
+                x === "equipamento_costas" ||
+                x === "equipamento_mangas" ||
+                x === "campo_placards" ||
+                x === "redes_sociais" ||
+                x === "eventos"
+            ),
+          contractDurationMonths: num((s as { contractDurationMonths?: unknown }).contractDurationMonths, 0),
+          clausesNotes: str((s as { clausesNotes?: unknown }).clausesNotes, ""),
+          deliverablesPosts: num((s as { deliverablesPosts?: unknown }).deliverablesPosts, 0),
+          deliverablesMatches: num((s as { deliverablesMatches?: unknown }).deliverablesMatches, 0),
+          deliverablesEvents: num((s as { deliverablesEvents?: unknown }).deliverablesEvents, 0),
+          visibilityProofUrls: str((s as { visibilityProofUrls?: unknown }).visibilityProofUrls, ""),
+          autoReportNotes: str((s as { autoReportNotes?: unknown }).autoReportNotes, ""),
+          timelineNotes: str((s as { timelineNotes?: unknown }).timelineNotes, ""),
+          interactionsLog: str((s as { interactionsLog?: unknown }).interactionsLog, ""),
           notes: str(s.notes, ""),
-          pipelineStage: sponsorPipeline(s.pipelineStage),
+          active: bool((s as { active?: unknown }).active, sponsorStatus((s as { status?: unknown }).status) === "ativo"),
         })
       )
       .filter((s) => s.id),
+    sponsorLeads: arr<PresidentSponsorLead>(o.sponsorLeads)
+      .map(
+        (x): PresidentSponsorLead => ({
+          id: str(x.id, ""),
+          company: str(x.company, ""),
+          contact: str(x.contact, ""),
+          status: sponsorLeadStatus(x.status),
+          notes: str(x.notes, ""),
+          interactionsLog: str(x.interactionsLog, ""),
+        })
+      )
+      .filter((x) => x.id),
     injuries: arr<PresidentInjury>(o.injuries)
       .map((i): PresidentInjury | null => {
         const id = str(i.id, "");

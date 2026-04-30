@@ -84,10 +84,10 @@ export function computePresidentDashboardKpis(state: PresidentClubState): Presid
     .reduce((s, p) => s + paymentEffectiveEUR(p), 0);
 
   const activeSponsorsEUR = state.sponsors
-    .filter((s) => s.pipelineStage === "ativo")
+    .filter((s) => s.status === "ativo")
     .reduce((s, x) => s + x.contractValueEUR, 0);
   const potentialSponsorsEUR = state.sponsors
-    .filter((s) => s.pipelineStage === "potencial" || s.pipelineStage === "negociação")
+    .filter((s) => s.status === "em_negociacao")
     .reduce((s, x) => s + x.contractValueEUR, 0);
 
   const thirtyDaysAgo = new Date(now);
