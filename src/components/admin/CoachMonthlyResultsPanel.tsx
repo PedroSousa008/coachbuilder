@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import { Card, CardContent } from "@/components/ui/Card";
 
 export type CoachMonthlyResultRow = {
@@ -9,6 +10,7 @@ export type CoachMonthlyResultRow = {
   monthLabel: string;
   sequence: string;
   games: number;
+  wins: number;
   goalsFor: number;
   goalsAgainst: number;
 };
@@ -29,6 +31,34 @@ export function CoachMonthlyResultsPanel({
   title?: string;
 }) {
   const rows = payload?.rows ?? [];
+  const [sortBy, setSortBy] = useState<"wins" | "goalsFor" | "goalsAgainst" | null>(null);
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+
+  const sortedRows = useMemo(() => {
+    if (!sortBy) return rows;
+    const next = [...rows];
+    next.sort((a, b) => {
+      const diff = (a[sortBy] ?? 0) - (b[sortBy] ?? 0);
+      if (diff !== 0) return sortDir === "desc" ? -diff : diff;
+      return a.coachName.localeCompare(b.coachName, "pt-PT");
+    });
+    return next;
+  }, [rows, sortBy, sortDir]);
+
+  const toggleSort = (field: "wins" | "goalsFor" | "goalsAgainst") => {
+    if (sortBy === field) {
+      setSortDir((prev) => (prev === "desc" ? "asc" : "desc"));
+      return;
+    }
+    setSortBy(field);
+    setSortDir("desc");
+  };
+
+  const sortIndicator = (field: "wins" | "goalsFor" | "goalsAgainst") => {
+    if (sortBy !== field) return "↕";
+    return sortDir === "desc" ? "↓" : "↑";
+  };
+
   return (
     <section className="space-y-4">
       <div>
@@ -48,17 +78,31 @@ export function CoachMonthlyResultsPanel({
                 <th className="px-4 py-3">Equipa</th>
                 <th className="px-4 py-3">Resultados</th>
                 <th className="px-4 py-3">Jogos</th>
-                <th className="px-4 py-3">Golos marcados</th>
-                <th className="px-4 py-3">Golos sofridos</th>
+                <th className="px-4 py-3">
+                  <button type="button" className="inline-flex items-center gap-1" onClick={() => toggleSort("wins")}>
+                    Vitórias <span className="text-[10px]">{sortIndicator("wins")}</span>
+                  </button>
+                </th>
+                <th className="px-4 py-3">
+                  <button type="button" className="inline-flex items-center gap-1" onClick={() => toggleSort("goalsFor")}>
+                    Golos marcados <span className="text-[10px]">{sortIndicator("goalsFor")}</span>
+                  </button>
+                </th>
+                <th className="px-4 py-3">
+                  <button type="button" className="inline-flex items-center gap-1" onClick={() => toggleSort("goalsAgainst")}>
+                    Golos sofridos <span className="text-[10px]">{sortIndicator("goalsAgainst")}</span>
+                  </button>
+                </th>
               </tr>
             </thead>
             <tbody>
-              {rows.map((r) => (
+              {sortedRows.map((r) => (
                 <tr key={r.userId} className="border-b border-surface-border/60">
                   <td className="px-4 py-3 font-medium text-zinc-200">{r.coachName}</td>
                   <td className="px-4 py-3">{r.team}</td>
                   <td className="px-4 py-3 font-mono text-xs text-zinc-300">{r.sequence}</td>
                   <td className="px-4 py-3">{r.games}</td>
+                  <td className="px-4 py-3">{r.wins}</td>
                   <td className="px-4 py-3">{r.goalsFor}</td>
                   <td className="px-4 py-3">{r.goalsAgainst}</td>
                 </tr>

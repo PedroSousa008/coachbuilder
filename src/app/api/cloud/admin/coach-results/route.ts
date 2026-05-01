@@ -21,6 +21,7 @@ type CoachMonthlyResultRow = {
   monthLabel: string;
   sequence: string;
   games: number;
+  wins: number;
   goalsFor: number;
   goalsAgainst: number;
 };
@@ -79,6 +80,7 @@ export async function GET() {
       const matches = buildRows(u.workspace?.payload);
       const gf = matches.reduce((sum, m) => sum + m.gf, 0);
       const ga = matches.reduce((sum, m) => sum + m.ga, 0);
+      const wins = matches.reduce((sum, m) => sum + (m.outcome === "V" ? 1 : 0), 0);
       const sequence = matches.length ? matches.map((m) => m.outcome).join(" - ") : "—";
       return {
         userId: u.id,
@@ -87,6 +89,7 @@ export async function GET() {
         monthLabel: "Últimos 5 jogos (Calendário)",
         sequence,
         games: matches.length,
+        wins,
         goalsFor: gf,
         goalsAgainst: ga,
       };
