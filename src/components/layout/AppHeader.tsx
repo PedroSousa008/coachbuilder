@@ -169,6 +169,7 @@ export function AppHeader({ title }: { title: string }) {
       { href: "/app/team", label: t("nav.team") },
       { href: "/app/calendar", label: t("nav.calendar") },
       { href: "/app/profile", label: t("nav.profile") },
+      { href: "/app/treinador-do-mes", label: t("nav.coachOfMonth") },
       { href: "/app/settings", label: t("nav.settings") },
     ] as const;
     const ownerListed = Boolean(user?.email && clientEmailShowsAdminNav(user.email));

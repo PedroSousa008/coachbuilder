@@ -111,3 +111,10 @@ model DmChatMessage {
 
   @@index([threadKey, sentAt])
 }
+
+model CoachOfMonthContent {
+  id              String   @id @default("global")
+  payload         Json
+  updatedAt       DateTime @updatedAt
+  updatedByUserId String?
+}

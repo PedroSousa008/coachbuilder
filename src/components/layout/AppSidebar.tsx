@@ -11,6 +11,7 @@ import {
   PenSquare,
   Users,
   UserCircle,
+  Trophy,
   Settings,
   Shield,
   Database,
@@ -38,6 +39,7 @@ export function AppSidebar() {
     { href: "/app/team", label: t("nav.team"), icon: Users },
     { href: "/app/calendar", label: t("nav.calendar"), icon: Calendar },
     { href: "/app/profile", label: t("nav.profile"), icon: UserCircle },
+    { href: "/app/treinador-do-mes", label: t("nav.coachOfMonth"), icon: Trophy },
     { href: "/app/settings", label: t("nav.settings"), icon: Settings },
   ];
 

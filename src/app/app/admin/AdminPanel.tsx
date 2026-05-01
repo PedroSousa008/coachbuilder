@@ -17,6 +17,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { clsx } from "clsx";
 import { unpaidMonthlyPlanForCoachingRole } from "@/lib/subscription-access";
+import { CoachOfMonthAdminEditor } from "@/components/admin/CoachOfMonthAdminEditor";
+import { CoachOfMonthBoard } from "@/components/coach-of-month/CoachOfMonthBoard";
+import {
+  defaultCoachOfMonthContent,
+  normalizeCoachOfMonthContent,
+  type CoachOfMonthContent,
+} from "@/lib/coach-of-month";
 
 type Stats = {
   generatedAt: string;
@@ -156,7 +163,7 @@ type PersonalizationPayload = {
   error?: string;
 };
 
-type AdminTab = "overview" | "online" | "revenue" | "personalization";
+type AdminTab = "overview" | "online" | "revenue" | "personalization" | "coachOfMonth";
 
 const REFRESH_OVERVIEW_MS = 45_000;
 const REFRESH_ONLINE_MS = 15_000;
@@ -298,6 +305,9 @@ export function AdminPanel() {
   const [loading, setLoading] = useState(true);
   const [planDraft, setPlanDraft] = useState<Record<string, string>>({});
   const [priceDraft, setPriceDraft] = useState<Record<string, string>>({});
+  const [coachOfMonthDraft, setCoachOfMonthDraft] = useState<CoachOfMonthContent>(defaultCoachOfMonthContent());
+  const [coachOfMonthSaving, setCoachOfMonthSaving] = useState(false);
+  const [coachOfMonthUpdatedAt, setCoachOfMonthUpdatedAt] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setError(null);
@@ -377,6 +387,46 @@ export function AdminPanel() {
     }
   }, []);
 
+  const loadCoachOfMonth = useCallback(async () => {
+    try {
+      const res = await fetch("/api/cloud/admin/coach-of-month", { credentials: "include" });
+      const j = (await res.json()) as { ok?: boolean; payload?: unknown; updatedAt?: string | null };
+      if (res.ok && j.ok) {
+        setCoachOfMonthDraft(normalizeCoachOfMonthContent(j.payload));
+        setCoachOfMonthUpdatedAt(j.updatedAt ?? null);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  const saveCoachOfMonth = useCallback(
+    async (next: CoachOfMonthContent) => {
+      setCoachOfMonthSaving(true);
+      setError(null);
+      try {
+        const res = await fetch("/api/cloud/admin/coach-of-month", {
+          method: "PUT",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ payload: next }),
+        });
+        const j = (await res.json()) as { ok?: boolean; error?: string; payload?: unknown; updatedAt?: string | null };
+        if (!res.ok || !j.ok) {
+          setError(j.error || "Não foi possível guardar Treinador do Mês.");
+          return;
+        }
+        setCoachOfMonthDraft(normalizeCoachOfMonthContent(j.payload));
+        setCoachOfMonthUpdatedAt(j.updatedAt ?? null);
+      } catch {
+        setError("Erro de rede ao guardar Treinador do Mês.");
+      } finally {
+        setCoachOfMonthSaving(false);
+      }
+    },
+    []
+  );
+
   const patchPersonalization = useCallback(
     async (id: string, body: Record<string, unknown>) => {
       setError(null);
@@ -442,6 +492,11 @@ export function AdminPanel() {
     const t = window.setInterval(() => void loadPersonalization(), REFRESH_PERSONALIZATION_MS);
     return () => window.clearInterval(t);
   }, [tab, loadPersonalization]);
+
+  useEffect(() => {
+    if (tab !== "coachOfMonth") return;
+    void loadCoachOfMonth();
+  }, [tab, loadCoachOfMonth]);
 
   const patchSubscription = useCallback(
     async (id: string, body: Record<string, unknown>) => {
@@ -513,6 +568,7 @@ export function AdminPanel() {
             if (tab === "online") void loadOnline();
             if (tab === "revenue") void loadRevenue();
             if (tab === "personalization") void loadPersonalization();
+            if (tab === "coachOfMonth") void loadCoachOfMonth();
           }}
         >
           Atualizar agora
@@ -539,6 +595,9 @@ export function AdminPanel() {
           onClick={() => setTab("personalization")}
         >
           Full Personalization Process
+        </TabButton>
+        <TabButton id="coachOfMonth" selected={tab === "coachOfMonth"} onClick={() => setTab("coachOfMonth")}>
+          Treinador do Mês
         </TabButton>
       </div>
 
@@ -598,6 +657,34 @@ export function AdminPanel() {
           onRefresh={() => void loadPersonalization()}
           onPatch={(id, body) => void patchPersonalization(id, body)}
         />
+      ) : null}
+
+      {tab === "coachOfMonth" ? (
+        <section className="space-y-4" role="tabpanel" aria-labelledby="tab-coachOfMonth">
+          <div className="rounded-xl border border-surface-border bg-surface-raised/20 p-4 text-xs text-zinc-500">
+            <p>
+              Esta secção controla a publicação global do ecrã <strong className="text-zinc-300">Treinador do Mês</strong>
+              {" "}para treinador, presidente e admin.
+            </p>
+            {coachOfMonthUpdatedAt ? (
+              <p className="mt-1">
+                Última publicação: {new Date(coachOfMonthUpdatedAt).toLocaleString("pt-PT")}
+              </p>
+            ) : null}
+          </div>
+          <CoachOfMonthAdminEditor
+            initial={coachOfMonthDraft}
+            coachOptions={users
+              .filter((u) => u.role !== "admin")
+              .map((u) => ({ id: u.id, name: u.name, email: u.email }))}
+            onSave={saveCoachOfMonth}
+            saving={coachOfMonthSaving}
+          />
+          <div>
+            <h3 className="mb-3 font-display text-lg font-semibold text-white">Pré-visualização</h3>
+            <CoachOfMonthBoard adminPreview={coachOfMonthDraft} />
+          </div>
+        </section>
       ) : null}
 
       <p className="text-xs text-zinc-600">

@@ -14,6 +14,7 @@ export type TranslationKey =
   | "shell.team"
   | "shell.calendar"
   | "shell.profile"
+  | "shell.coachOfMonth"
   | "shell.settings"
   | "shell.admin"
   | "shell.database"
@@ -27,6 +28,7 @@ export type TranslationKey =
   | "nav.team"
   | "nav.calendar"
   | "nav.profile"
+  | "nav.coachOfMonth"
   | "nav.settings"
   | "nav.admin"
   | "nav.database"
@@ -100,6 +102,14 @@ const dict: Dict = {
   "shell.team": { "pt-PT": "Equipa", en: "Team", es: "Equipo", fr: "Équipe", it: "Squadra", de: "Team" },
   "shell.calendar": { "pt-PT": "Calendário", en: "Calendar", es: "Calendario", fr: "Calendrier", it: "Calendario", de: "Kalender" },
   "shell.profile": { "pt-PT": "Perfil", en: "Profile", es: "Perfil", fr: "Profil", it: "Profilo", de: "Profil" },
+  "shell.coachOfMonth": {
+    "pt-PT": "Treinador do Mês",
+    en: "Coach of the Month",
+    es: "Entrenador del Mes",
+    fr: "Coach du Mois",
+    it: "Allenatore del Mese",
+    de: "Trainer des Monats",
+  },
   "shell.settings": { "pt-PT": "Definições", en: "Settings", es: "Ajustes", fr: "Paramètres", it: "Impostazioni", de: "Einstellungen" },
   "shell.admin": { "pt-PT": "Admin", en: "Admin", es: "Admin", fr: "Admin", it: "Admin", de: "Admin" },
   "shell.database": { "pt-PT": "Base de dados", en: "Database", es: "Base de datos", fr: "Base de données", it: "Database", de: "Datenbank" },
@@ -113,6 +123,14 @@ const dict: Dict = {
   "nav.team": { "pt-PT": "Equipa", en: "Team", es: "Equipo", fr: "Équipe", it: "Squadra", de: "Team" },
   "nav.calendar": { "pt-PT": "Calendário", en: "Calendar", es: "Calendario", fr: "Calendrier", it: "Calendario", de: "Kalender" },
   "nav.profile": { "pt-PT": "Perfil", en: "Profile", es: "Perfil", fr: "Profil", it: "Profilo", de: "Profil" },
+  "nav.coachOfMonth": {
+    "pt-PT": "Treinador do Mês",
+    en: "Coach of the Month",
+    es: "Entrenador del Mes",
+    fr: "Coach du Mois",
+    it: "Allenatore del Mese",
+    de: "Trainer des Monats",
+  },
   "nav.settings": { "pt-PT": "Definições", en: "Settings", es: "Ajustes", fr: "Paramètres", it: "Impostazioni", de: "Einstellungen" },
   "nav.admin": { "pt-PT": "Admin", en: "Admin", es: "Admin", fr: "Admin", it: "Admin", de: "Admin" },
   "nav.database": { "pt-PT": "Base de dados", en: "Database", es: "Base de datos", fr: "Base de données", it: "Database", de: "Datenbank" },
