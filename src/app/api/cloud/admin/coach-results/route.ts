@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { CLOUD_SERVER_UNAVAILABLE_MESSAGE, isCloudSyncEnabledServer } from "@/lib/cloud-config";
 import { requireAdminSession } from "@/lib/admin-guard";
 import { emptyWorkspaceSnapshot, parseWorkspacePayload } from "@/lib/workspace-snapshot";
+import { calendarDayLisbon, wallClockLisbonToUtcIso } from "@/lib/lisbon-date";
 
 export const dynamic = "force-dynamic";
 
@@ -24,23 +25,79 @@ type CoachMonthlyResultRow = {
   goalsAgainst: number;
 };
 
-function previousMonthBounds() {
-  const now = new Date();
-  const y = now.getUTCFullYear();
-  const m = now.getUTCMonth();
-  const start = new Date(Date.UTC(y, m - 1, 1, 0, 0, 0, 0));
-  const end = new Date(Date.UTC(y, m, 0, 23, 59, 59, 999));
-  return { start, end };
+/** Ano e mês (1–12) do relógio de parede em Lisboa para `now`. */
+function lisbonYearMonth(now: Date): { y: number; m: number } {
+  const fmt = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Lisbon",
+    year: "numeric",
+    month: "2-digit",
+  });
+  const o: Record<string, string> = {};
+  for (const p of fmt.formatToParts(now)) {
+    if (p.type !== "literal") o[p.type] = p.value;
+  }
+  return { y: parseInt(o.year ?? "NaN", 10), m: parseInt(o.month ?? "NaN", 10) };
 }
 
-function parseDate(input: string): number {
+/** Mês civil anterior (Lisboa): limites YYYY-MM-DD inclusivos, como no relatório semanal. */
+function previousMonthPeriodLisbon(now = new Date()): {
+  periodStart: string;
+  periodEnd: string;
+  monthStartIso: string;
+  monthEndIso: string;
+  monthLabel: string;
+} {
+  const { y, m } = lisbonYearMonth(now);
+  const targetY = m === 1 ? y - 1 : y;
+  const targetM = m === 1 ? 12 : m - 1;
+  const periodStart = `${targetY}-${String(targetM).padStart(2, "0")}-01`;
+  const lastDay = new Date(Date.UTC(targetY, targetM, 0)).getUTCDate();
+  const periodEnd = `${targetY}-${String(targetM).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+
+  const monthStartIso =
+    wallClockLisbonToUtcIso(targetY, targetM, 1, 0, 0) ?? `${periodStart}T00:00:00.000Z`;
+  const monthEndIso =
+    wallClockLisbonToUtcIso(targetY, targetM, lastDay, 23, 59) ?? `${periodEnd}T23:59:59.999Z`;
+
+  const labelAnchor = new Date(Date.UTC(targetY, targetM - 1, 15, 12, 0, 0));
+  const monthLabel = labelAnchor.toLocaleDateString("pt-PT", {
+    month: "long",
+    year: "numeric",
+    timeZone: "Europe/Lisbon",
+  });
+
+  return { targetY, targetM, periodStart, periodEnd, monthStartIso, monthEndIso, monthLabel };
+}
+
+function parseDateMs(input: string): number {
   const t = new Date(input).getTime();
   return Number.isFinite(t) ? t : NaN;
 }
 
-function inRange(iso: string, startMs: number, endMs: number): boolean {
-  const t = parseDate(iso);
-  return Number.isFinite(t) && t >= startMs && t <= endMs;
+/** Dia civil em Lisboa para o instante do jogo; alinhado com `sketch-weekly-report`. */
+function matchDayKeyLisbon(raw: string | undefined | null): string | null {
+  const t = typeof raw === "string" ? raw.trim() : "";
+  if (!t) return null;
+  const ms = new Date(t).getTime();
+  if (!Number.isFinite(ms)) return null;
+  return calendarDayLisbon(ms);
+}
+
+function inLisbonMonthRange(dayKey: string | null, periodStart: string, periodEnd: string): boolean {
+  if (!dayKey || dayKey.length < 10) return false;
+  return dayKey >= periodStart && dayKey <= periodEnd;
+}
+
+function leagueScoresParsed(m: { homeScore?: unknown; awayScore?: unknown }): {
+  hs: number;
+  as: number;
+} | null {
+  const hsRaw = m.homeScore;
+  const asRaw = m.awayScore;
+  const hs = typeof hsRaw === "number" ? hsRaw : Number(hsRaw);
+  const aws = typeof asRaw === "number" ? asRaw : Number(asRaw);
+  if (!Number.isFinite(hs) || !Number.isFinite(aws)) return null;
+  return { hs: Math.max(0, Math.trunc(hs)), as: Math.max(0, Math.trunc(aws)) };
 }
 
 function toRowResult(gf: number, ga: number): "V" | "E" | "D" {
@@ -49,10 +106,10 @@ function toRowResult(gf: number, ga: number): "V" | "E" | "D" {
   return "E";
 }
 
-function buildRows(payload: unknown, startMs: number, endMs: number): MatchRow[] {
+function buildRows(payload: unknown, periodStart: string, periodEnd: string): MatchRow[] {
   const s = parseWorkspacePayload(payload) ?? emptyWorkspaceSnapshot();
   const fromTactics: MatchRow[] = (s.tacticMatches ?? [])
-    .filter((m) => inRange(m.date, startMs, endMs))
+    .filter((m) => inLisbonMonthRange(matchDayKeyLisbon(m.date), periodStart, periodEnd))
     .map((m) => ({
       date: m.date,
       gf: Math.max(0, Number(m.teamGoals) || 0),
@@ -61,7 +118,7 @@ function buildRows(payload: unknown, startMs: number, endMs: number): MatchRow[]
     }));
 
   const fromCalendarPrints: MatchRow[] = (s.league.pastClubResults ?? [])
-    .filter((m) => inRange(m.recordedAt, startMs, endMs))
+    .filter((m) => inLisbonMonthRange(matchDayKeyLisbon(m.recordedAt), periodStart, periodEnd))
     .map((m) => ({
       date: m.recordedAt,
       gf: Math.max(0, Number(m.homeGoals) || 0),
@@ -70,21 +127,21 @@ function buildRows(payload: unknown, startMs: number, endMs: number): MatchRow[]
     }));
 
   const fromImportedLeague: MatchRow[] = (s.league.matches ?? [])
-    .filter(
-      (m) =>
-        typeof m.homeScore === "number" &&
-        typeof m.awayScore === "number" &&
-        inRange(m.kickoff, startMs, endMs)
-    )
-    .map((m) => ({
-      date: m.kickoff,
-      gf: Math.max(0, Number(m.homeScore) || 0),
-      ga: Math.max(0, Number(m.awayScore) || 0),
-      outcome: toRowResult(Math.max(0, Number(m.homeScore) || 0), Math.max(0, Number(m.awayScore) || 0)),
-    }));
+    .map((m) => {
+      const sc = leagueScoresParsed(m);
+      if (!sc) return null;
+      if (!inLisbonMonthRange(matchDayKeyLisbon(m.kickoff), periodStart, periodEnd)) return null;
+      return {
+        date: m.kickoff,
+        gf: sc.hs,
+        ga: sc.as,
+        outcome: toRowResult(sc.hs, sc.as),
+      } satisfies MatchRow;
+    })
+    .filter((r): r is MatchRow => r != null);
 
   return [...fromTactics, ...fromCalendarPrints, ...fromImportedLeague].sort(
-    (a, b) => parseDate(a.date) - parseDate(b.date)
+    (a, b) => parseDateMs(a.date) - parseDateMs(b.date)
   );
 }
 
@@ -96,9 +153,7 @@ export async function GET() {
   if (!gate.ok) return gate.response;
 
   try {
-    const { start, end } = previousMonthBounds();
-    const startMs = start.getTime();
-    const endMs = end.getTime();
+    const period = previousMonthPeriodLisbon();
 
     const users = await prisma.user.findMany({
       where: { role: { not: "admin" } },
@@ -113,7 +168,7 @@ export async function GET() {
 
     const rows: CoachMonthlyResultRow[] = users.map((u) => {
       const s = parseWorkspacePayload(u.workspace?.payload) ?? emptyWorkspaceSnapshot();
-      const matches = buildRows(u.workspace?.payload, startMs, endMs);
+      const matches = buildRows(u.workspace?.payload, period.periodStart, period.periodEnd);
       const gf = matches.reduce((sum, m) => sum + m.gf, 0);
       const ga = matches.reduce((sum, m) => sum + m.ga, 0);
       const sequence = matches.length ? matches.map((m) => m.outcome).join(" - ") : "—";
@@ -121,7 +176,7 @@ export async function GET() {
         userId: u.id,
         coachName: s.coachProfile.name?.trim() || u.name?.trim() || u.email,
         team: s.coachProfile.club?.trim() || "—",
-        monthLabel: start.toLocaleDateString("pt-PT", { month: "long", year: "numeric", timeZone: "UTC" }),
+        monthLabel: period.monthLabel,
         sequence,
         games: matches.length,
         goalsFor: gf,
@@ -131,9 +186,11 @@ export async function GET() {
 
     return NextResponse.json({
       ok: true,
-      monthStart: start.toISOString(),
-      monthEnd: end.toISOString(),
-      monthLabel: start.toLocaleDateString("pt-PT", { month: "long", year: "numeric", timeZone: "UTC" }),
+      monthStart: period.monthStartIso,
+      monthEnd: period.monthEndIso,
+      periodStart: period.periodStart,
+      periodEnd: period.periodEnd,
+      monthLabel: period.monthLabel,
       rows,
       generatedAt: new Date().toISOString(),
     });
