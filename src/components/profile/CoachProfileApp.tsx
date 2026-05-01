@@ -57,17 +57,20 @@ export function CoachProfileApp() {
     [setCoachProfile]
   );
 
-  const [heroAvatarOverride, setHeroAvatarOverride] = useState<string | null | undefined>(undefined);
+  /** Estado partilhado com Dados pessoais: evita depender de efeitos para o hero ver a pré-visualização. */
+  const [personalAvatarPending, setPersonalAvatarPending] = useState<string | null | undefined>(undefined);
   useEffect(() => {
-    if (tab !== "personal") setHeroAvatarOverride(undefined);
+    if (tab !== "personal") setPersonalAvatarPending(undefined);
   }, [tab]);
 
   const heroAvatarSrc =
-    heroAvatarOverride === null
-      ? undefined
-      : heroAvatarOverride !== undefined
-        ? heroAvatarOverride
-        : coachProfile.avatarDataUrl;
+    tab === "personal"
+      ? personalAvatarPending === null
+        ? undefined
+        : personalAvatarPending !== undefined
+          ? personalAvatarPending
+          : coachProfile.avatarDataUrl
+      : coachProfile.avatarDataUrl;
 
   const displayName = coachProfile.name.trim() || "O teu nome";
   const subtitle = useMemo(() => {
@@ -198,7 +201,8 @@ export function CoachProfileApp() {
           <PersonalTab
             coachProfile={coachProfile}
             hydrated={hydrated}
-            onHeroAvatarOverrideChange={setHeroAvatarOverride}
+            avatarPending={personalAvatarPending}
+            setAvatarPending={setPersonalAvatarPending}
             onSave={(next) => {
               const role = (next.profession ?? next.role ?? coachProfile.role).trim() || "Head Coach";
               commitProfile({ ...next, role });

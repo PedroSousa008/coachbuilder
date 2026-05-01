@@ -6,23 +6,20 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { profileFieldClass, profileTextAreaClass } from "@/components/profile/field-styles";
 
+/** undefined = sem alteração local; null = removida antes de gravar; string = data URL da pré-visualização. */
+type AvatarPending = string | null | undefined;
+
 type Props = {
   coachProfile: CoachProfileState;
   hydrated: boolean;
   onSave: (patch: Partial<CoachProfileState>) => void;
-  /** Pré-visualização na moldura do hero: `undefined` = usar perfil gravado; `null` = iniciais. */
-  onHeroAvatarOverrideChange?: (url: string | null | undefined) => void;
+  /** Controlado pelo pai para o hero e o formulário usarem o mesmo valor. */
+  avatarPending: AvatarPending;
+  setAvatarPending: (v: AvatarPending) => void;
 };
 
-/**
- * Foto escolhida no input: pré-visualização no hero; persistência após "Guardar dados".
- * undefined = não há alteração local; null = utilizador removeu a foto antes de gravar.
- */
-type AvatarPending = string | null | undefined;
-
-export function PersonalTab({ coachProfile, hydrated, onSave, onHeroAvatarOverrideChange }: Props) {
+export function PersonalTab({ coachProfile, hydrated, onSave, avatarPending, setAvatarPending }: Props) {
   const [draft, setDraft] = useState(coachProfile);
-  const [avatarPending, setAvatarPending] = useState<AvatarPending>(undefined);
   const [dirty, setDirty] = useState(false);
   const [hint, setHint] = useState<string | null>(null);
 
@@ -30,17 +27,16 @@ export function PersonalTab({ coachProfile, hydrated, onSave, onHeroAvatarOverri
     if (!hydrated || dirty) return;
     setDraft(coachProfile);
     setAvatarPending(undefined);
-  }, [hydrated, coachProfile, dirty]);
-
-  useEffect(() => {
-    onHeroAvatarOverrideChange?.(avatarPending);
-  }, [avatarPending, onHeroAvatarOverrideChange]);
+  }, [hydrated, coachProfile, dirty, setAvatarPending]);
 
   const previewAvatarUrl: string | undefined =
     avatarPending === undefined ? draft.avatarDataUrl : avatarPending === null ? undefined : avatarPending;
 
   const readAvatar = (file: File | null) => {
-    if (!file || !file.type.startsWith("image/")) return;
+    if (!file) return;
+    const looksLikeImage =
+      file.type.startsWith("image/") || /\.(jpe?g|png|gif|webp|bmp|svg|heic|heif)$/i.test(file.name);
+    if (!looksLikeImage) return;
     if (file.size > 1_200_000) {
       setHint("Imagem demasiado grande (máx. ~1,2 MB). Tenta redimensionar.");
       window.setTimeout(() => setHint(null), 4000);
