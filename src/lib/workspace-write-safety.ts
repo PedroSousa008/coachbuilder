@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import {
   emptyWorkspaceSnapshot,
   parseWorkspacePayload,
+  pickFirstNonEmptyAvatarUrl,
   snapshotHasMeaningfulData,
   type WorkspaceSnapshotV1,
 } from "@/lib/workspace-snapshot";
@@ -106,6 +107,10 @@ export function mergeWorkspacePayloadSafely(
     name: pickNonEmptyString(incoming.coachProfile.name ?? "", existing.coachProfile.name ?? ""),
     club: pickNonEmptyString(incoming.coachProfile.club ?? "", existing.coachProfile.club ?? ""),
     email: pickNonEmptyString(incoming.coachProfile.email ?? "", existing.coachProfile.email ?? ""),
+    avatarDataUrl: pickFirstNonEmptyAvatarUrl(
+      incoming.coachProfile.avatarDataUrl,
+      existing.coachProfile.avatarDataUrl
+    ),
   };
 
   const mergedTeamCallup =

@@ -58,6 +58,23 @@ export type WorkspaceSnapshotV1 = {
   teamCallup: TeamCallupState;
 };
 
+/**
+ * Evita perder `avatarDataUrl` quando um lado do merge não traz o campo ou vem vazio por omissão.
+ * `""` em `preferred` significa remoção explícita (resultado `undefined`).
+ */
+export function pickFirstNonEmptyAvatarUrl(
+  preferred: string | undefined,
+  fallback: string | undefined
+): string | undefined {
+  if (preferred === "") return undefined;
+  const p = preferred?.trim();
+  if (p) return preferred;
+  if (fallback === "") return undefined;
+  const f = fallback?.trim();
+  if (f) return fallback;
+  return undefined;
+}
+
 export function emptyWorkspaceSnapshot(): WorkspaceSnapshotV1 {
   return {
     version: WORKSPACE_SNAPSHOT_VERSION,

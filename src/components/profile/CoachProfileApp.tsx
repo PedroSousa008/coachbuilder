@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { Activity, Briefcase, Sparkles, User, Video } from "lucide-react";
 import { useAppData } from "@/contexts/AppDataContext";
@@ -57,8 +57,17 @@ export function CoachProfileApp() {
     [setCoachProfile]
   );
 
-  /** Só dados gravados — a pré-visualização do ficheiro em Dados pessoais não actualiza isto até "Guardar dados". */
-  const savedAvatarUrl = coachProfile.avatarDataUrl;
+  const [heroAvatarOverride, setHeroAvatarOverride] = useState<string | null | undefined>(undefined);
+  useEffect(() => {
+    if (tab !== "personal") setHeroAvatarOverride(undefined);
+  }, [tab]);
+
+  const heroAvatarSrc =
+    heroAvatarOverride === null
+      ? undefined
+      : heroAvatarOverride !== undefined
+        ? heroAvatarOverride
+        : coachProfile.avatarDataUrl;
 
   const displayName = coachProfile.name.trim() || "O teu nome";
   const subtitle = useMemo(() => {
@@ -127,9 +136,9 @@ export function CoachProfileApp() {
           <div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
             <div className="flex flex-col gap-6 sm:flex-row sm:items-center">
               <div className="relative h-28 w-28 shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-zinc-800 to-zinc-950 shadow-2xl ring-2 ring-accent/25">
-                {savedAvatarUrl ? (
+                {heroAvatarSrc?.trim() ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={savedAvatarUrl} alt="" className="h-full w-full object-cover" />
+                  <img src={heroAvatarSrc} alt="" className="h-full w-full object-cover" />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center font-display text-3xl font-bold text-white/90">
                     {letters}
@@ -189,6 +198,7 @@ export function CoachProfileApp() {
           <PersonalTab
             coachProfile={coachProfile}
             hydrated={hydrated}
+            onHeroAvatarOverrideChange={setHeroAvatarOverride}
             onSave={(next) => {
               const role = (next.profession ?? next.role ?? coachProfile.role).trim() || "Head Coach";
               commitProfile({ ...next, role });

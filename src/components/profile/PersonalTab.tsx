@@ -10,15 +10,17 @@ type Props = {
   coachProfile: CoachProfileState;
   hydrated: boolean;
   onSave: (patch: Partial<CoachProfileState>) => void;
+  /** Pré-visualização na moldura do hero: `undefined` = usar perfil gravado; `null` = iniciais. */
+  onHeroAvatarOverrideChange?: (url: string | null | undefined) => void;
 };
 
 /**
- * Foto escolhida no input: só entra no perfil (e na capa do hero) após "Guardar dados".
+ * Foto escolhida no input: pré-visualização no hero; persistência após "Guardar dados".
  * undefined = não há alteração local; null = utilizador removeu a foto antes de gravar.
  */
 type AvatarPending = string | null | undefined;
 
-export function PersonalTab({ coachProfile, hydrated, onSave }: Props) {
+export function PersonalTab({ coachProfile, hydrated, onSave, onHeroAvatarOverrideChange }: Props) {
   const [draft, setDraft] = useState(coachProfile);
   const [avatarPending, setAvatarPending] = useState<AvatarPending>(undefined);
   const [dirty, setDirty] = useState(false);
@@ -29,6 +31,10 @@ export function PersonalTab({ coachProfile, hydrated, onSave }: Props) {
     setDraft(coachProfile);
     setAvatarPending(undefined);
   }, [hydrated, coachProfile, dirty]);
+
+  useEffect(() => {
+    onHeroAvatarOverrideChange?.(avatarPending);
+  }, [avatarPending, onHeroAvatarOverrideChange]);
 
   const previewAvatarUrl: string | undefined =
     avatarPending === undefined ? draft.avatarDataUrl : avatarPending === null ? undefined : avatarPending;
@@ -72,7 +78,7 @@ export function PersonalTab({ coachProfile, hydrated, onSave }: Props) {
             <div className="w-full space-y-2">
               <label className="text-xs font-medium text-zinc-500">Foto de perfil</label>
               <p className="text-[11px] text-zinc-600">
-                A imagem na capa do perfil só muda depois de guardares.
+                A pré-visualização actualiza já na capa; grava para persistir neste dispositivo e na nuvem.
               </p>
               <input
                 type="file"

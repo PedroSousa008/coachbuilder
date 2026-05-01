@@ -64,6 +64,7 @@ import { isCloudSyncEnabledClient, shouldUseCloudClientApis } from "@/lib/cloud-
 import {
   collectWorkspaceFromLocalStorage,
   mergeSketchArea,
+  pickFirstNonEmptyAvatarUrl,
   snapshotHasMeaningfulData,
   writeWorkspaceSnapshotToLocalStorage,
   type WorkspaceSnapshotV1,
@@ -187,6 +188,10 @@ function mergeWorkspaceSnapshotsClient(cloud: WorkspaceSnapshotV1, local: Worksp
       name: pickNonEmptyString(cloud.coachProfile.name ?? "", local.coachProfile.name ?? ""),
       club: pickNonEmptyString(cloud.coachProfile.club ?? "", local.coachProfile.club ?? ""),
       email: pickNonEmptyString(cloud.coachProfile.email ?? "", local.coachProfile.email ?? ""),
+      avatarDataUrl: pickFirstNonEmptyAvatarUrl(
+        cloud.coachProfile.avatarDataUrl,
+        local.coachProfile.avatarDataUrl
+      ),
     },
     league: {
       ...local.league,
@@ -675,7 +680,16 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           const s =
             snapshotHasMeaningfulData(local) && local.version === data.payload.version
               ? mergeWorkspaceSnapshotsClient(data.payload, local)
-              : data.payload;
+              : {
+                  ...data.payload,
+                  coachProfile: {
+                    ...data.payload.coachProfile,
+                    avatarDataUrl: pickFirstNonEmptyAvatarUrl(
+                      data.payload.coachProfile.avatarDataUrl,
+                      local.coachProfile.avatarDataUrl
+                    ),
+                  },
+                };
           const actorIdCloud = user?.id ?? mockCoach.id;
           let loadedConvs = s.conversations;
           if (!loadedConvs.some((c) => c.type === "group")) {
