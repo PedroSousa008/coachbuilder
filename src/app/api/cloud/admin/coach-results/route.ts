@@ -66,7 +66,7 @@ function previousMonthPeriodLisbon(now = new Date()): {
     timeZone: "Europe/Lisbon",
   });
 
-  return { targetY, targetM, periodStart, periodEnd, monthStartIso, monthEndIso, monthLabel };
+  return { periodStart, periodEnd, monthStartIso, monthEndIso, monthLabel };
 }
 
 function parseDateMs(input: string): number {
