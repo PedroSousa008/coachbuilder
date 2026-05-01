@@ -78,7 +78,14 @@ function NewsRow({ winner }: { winner: CoachMonthWinner }) {
   );
 }
 
-export function CoachOfMonthBoard({ adminPreview }: { adminPreview?: CoachOfMonthContent }) {
+export function CoachOfMonthBoard({
+  adminPreview,
+  refetchKey = 0,
+}: {
+  adminPreview?: CoachOfMonthContent;
+  /** Incrementar após guardar na BD para voltar a pedir o conteúdo público resolvido. */
+  refetchKey?: number;
+}) {
   const [content, setContent] = useState<CoachOfMonthContent>(adminPreview ?? defaultCoachOfMonthContent());
   const [loading, setLoading] = useState(!adminPreview);
   const [error, setError] = useState<string | null>(null);
@@ -114,7 +121,7 @@ export function CoachOfMonthBoard({ adminPreview }: { adminPreview?: CoachOfMont
     return () => {
       cancelled = true;
     };
-  }, [adminPreview]);
+  }, [adminPreview, refetchKey]);
 
   const winners = useMemo(() => content.winners.slice(0, 5), [content.winners]);
 

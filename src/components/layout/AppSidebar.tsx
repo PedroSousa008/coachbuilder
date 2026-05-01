@@ -16,6 +16,7 @@ import {
   Shield,
   Database,
   LogOut,
+  ClipboardList,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAppData } from "@/contexts/AppDataContext";
@@ -23,6 +24,7 @@ import { cn } from "@/lib/utils";
 import { clientEmailShowsAdminNav } from "@/lib/bootstrap-admin-client";
 import { hasFullWorkspaceAccess } from "@/lib/subscription-client";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { canUseOwnerCoachTools } from "@/lib/owner-coach-tools-client";
 
 export function AppSidebar() {
   const pathname = usePathname();
@@ -30,6 +32,7 @@ export function AppSidebar() {
   const { user, logout } = useAuth();
   const { coachProfile, unreadMessagesCount } = useAppData();
   const { t } = useLanguage();
+  const ownerCoachTools = canUseOwnerCoachTools(user?.email);
   const nav = [
     { href: "/app", label: t("nav.dashboard"), icon: LayoutDashboard },
     { href: "/app/tactics", label: t("nav.tactics"), icon: GitBranch },
@@ -40,6 +43,9 @@ export function AppSidebar() {
     { href: "/app/calendar", label: t("nav.calendar"), icon: Calendar },
     { href: "/app/profile", label: t("nav.profile"), icon: UserCircle },
     { href: "/app/treinador-do-mes", label: t("nav.coachOfMonth"), icon: Trophy },
+    ...(ownerCoachTools
+      ? [{ href: "/app/treinadores" as const, label: t("nav.coaches"), icon: ClipboardList }]
+      : []),
     { href: "/app/settings", label: t("nav.settings"), icon: Settings },
   ];
 
@@ -94,7 +100,13 @@ export function AppSidebar() {
         })}
         {(fullWorkspace
           ? nav
-          : nav.filter((item) => item.href === "/app/messages" || item.href === "/app/settings")
+          : nav.filter(
+              (item) =>
+                item.href === "/app/messages" ||
+                item.href === "/app/settings" ||
+                (ownerCoachTools &&
+                  (item.href === "/app/treinador-do-mes" || item.href === "/app/treinadores"))
+            )
         ).map((item) => {
           const active =
             item.href === "/app" ? pathname === "/app" : pathname.startsWith(item.href);

@@ -26,6 +26,7 @@ function shellTitle(pathname: string, t: ReturnType<typeof useLanguage>["t"]): s
     "/app/calendar": t("shell.calendar"),
     "/app/profile": t("shell.profile"),
     "/app/treinador-do-mes": t("shell.coachOfMonth"),
+    "/app/treinadores": t("shell.coaches"),
     "/app/settings": t("shell.settings"),
     "/app/admin": t("shell.admin"),
   };

@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { clientEmailShowsAdminNav } from "@/lib/bootstrap-admin-client";
 import { hasFullWorkspaceAccess } from "@/lib/subscription-client";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { canUseOwnerCoachTools } from "@/lib/owner-coach-tools-client";
 import { useScheduleNow } from "@/hooks/useScheduleNow";
 import { resolveNextMatchForCoach } from "@/lib/next-match";
 import { collectUniqueTeamNames, pickBestTeamMatch } from "@/lib/team-match";
@@ -160,6 +161,7 @@ export function AppHeader({ title }: { title: string }) {
     (nextMatchNotification ? 1 : 0) + sketchTimeReminders.length + calendarTimeReminders.length + unreadConversations.length;
 
   const mobileLinks = useMemo(() => {
+    const ownerCoachTools = canUseOwnerCoachTools(user?.email);
     const mobileLinksBase = [
       { href: "/app", label: t("nav.home") },
       { href: "/app/tactics", label: t("nav.tactics") },
@@ -170,13 +172,19 @@ export function AppHeader({ title }: { title: string }) {
       { href: "/app/calendar", label: t("nav.calendar") },
       { href: "/app/profile", label: t("nav.profile") },
       { href: "/app/treinador-do-mes", label: t("nav.coachOfMonth") },
+      ...(ownerCoachTools ? ([{ href: "/app/treinadores", label: t("nav.coaches") }] as const) : []),
       { href: "/app/settings", label: t("nav.settings") },
     ] as const;
     const ownerListed = Boolean(user?.email && clientEmailShowsAdminNav(user.email));
     const full = hasFullWorkspaceAccess(user, ownerListed);
     const baseList = full
       ? mobileLinksBase
-      : mobileLinksBase.filter((l) => l.href === "/app/messages" || l.href === "/app/settings");
+      : mobileLinksBase.filter(
+          (l) =>
+            l.href === "/app/messages" ||
+            l.href === "/app/settings" ||
+            (ownerCoachTools && (l.href === "/app/treinador-do-mes" || l.href === "/app/treinadores"))
+        );
     const base = baseList.map((l) => ({ href: l.href, label: l.label }));
     const showAdmin =
       user?.role === "admin" || (user?.email ? clientEmailShowsAdminNav(user.email) : false);

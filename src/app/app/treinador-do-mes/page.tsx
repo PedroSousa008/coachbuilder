@@ -1,5 +1,5 @@
-import { CoachOfMonthBoard } from "@/components/coach-of-month/CoachOfMonthBoard";
+import { CoachOfMonthPublicPage } from "@/components/coach-of-month/CoachOfMonthPublicPage";
 
 export default function CoachOfMonthPage() {
-  return <CoachOfMonthBoard />;
+  return <CoachOfMonthPublicPage />;
 }

@@ -15,6 +15,7 @@ export type TranslationKey =
   | "shell.calendar"
   | "shell.profile"
   | "shell.coachOfMonth"
+  | "shell.coaches"
   | "shell.settings"
   | "shell.admin"
   | "shell.database"
@@ -29,6 +30,7 @@ export type TranslationKey =
   | "nav.calendar"
   | "nav.profile"
   | "nav.coachOfMonth"
+  | "nav.coaches"
   | "nav.settings"
   | "nav.admin"
   | "nav.database"
@@ -110,6 +112,14 @@ const dict: Dict = {
     it: "Allenatore del Mese",
     de: "Trainer des Monats",
   },
+  "shell.coaches": {
+    "pt-PT": "Treinadores",
+    en: "Coaches",
+    es: "Entrenadores",
+    fr: "Entraîneurs",
+    it: "Allenatori",
+    de: "Trainer",
+  },
   "shell.settings": { "pt-PT": "Definições", en: "Settings", es: "Ajustes", fr: "Paramètres", it: "Impostazioni", de: "Einstellungen" },
   "shell.admin": { "pt-PT": "Admin", en: "Admin", es: "Admin", fr: "Admin", it: "Admin", de: "Admin" },
   "shell.database": { "pt-PT": "Base de dados", en: "Database", es: "Base de datos", fr: "Base de données", it: "Database", de: "Datenbank" },
@@ -130,6 +140,14 @@ const dict: Dict = {
     fr: "Coach du Mois",
     it: "Allenatore del Mese",
     de: "Trainer des Monats",
+  },
+  "nav.coaches": {
+    "pt-PT": "Treinadores",
+    en: "Coaches",
+    es: "Entrenadores",
+    fr: "Entraîneurs",
+    it: "Allenatori",
+    de: "Trainer",
   },
   "nav.settings": { "pt-PT": "Definições", en: "Settings", es: "Ajustes", fr: "Paramètres", it: "Impostazioni", de: "Einstellungen" },
   "nav.admin": { "pt-PT": "Admin", en: "Admin", es: "Admin", fr: "Admin", it: "Admin", de: "Admin" },
