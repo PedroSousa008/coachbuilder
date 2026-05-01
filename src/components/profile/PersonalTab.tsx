@@ -5,6 +5,7 @@ import type { CoachProfileState } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { profileFieldClass, profileTextAreaClass } from "@/components/profile/field-styles";
+import { imageFileToCompressedJpegDataUrl } from "@/lib/profile-avatar-compress";
 
 /** undefined = sem alteração local; null = removida antes de gravar; string = data URL da pré-visualização. */
 type AvatarPending = string | null | undefined;
@@ -22,6 +23,7 @@ export function PersonalTab({ coachProfile, hydrated, onSave, avatarPending, set
   const [draft, setDraft] = useState(coachProfile);
   const [dirty, setDirty] = useState(false);
   const [hint, setHint] = useState<string | null>(null);
+  const [fileFeedback, setFileFeedback] = useState<{ kind: "busy" | "error"; text: string } | null>(null);
 
   useEffect(() => {
     if (!hydrated || dirty) return;
@@ -37,19 +39,22 @@ export function PersonalTab({ coachProfile, hydrated, onSave, avatarPending, set
     const looksLikeImage =
       file.type.startsWith("image/") || /\.(jpe?g|png|gif|webp|bmp|svg|heic|heif)$/i.test(file.name);
     if (!looksLikeImage) return;
-    if (file.size > 1_200_000) {
-      setHint("Imagem demasiado grande (máx. ~1,2 MB). Tenta redimensionar.");
-      window.setTimeout(() => setHint(null), 4000);
-      return;
-    }
-    const r = new FileReader();
-    r.onload = () => {
-      const url = typeof r.result === "string" ? r.result : "";
-      if (!url) return;
-      setAvatarPending(url);
-      setDirty(true);
-    };
-    r.readAsDataURL(file);
+
+    void (async () => {
+      setFileFeedback({ kind: "busy", text: "A optimizar a foto…" });
+      try {
+        const dataUrl = await imageFileToCompressedJpegDataUrl(file);
+        setFileFeedback(null);
+        setAvatarPending(dataUrl);
+        setDirty(true);
+      } catch {
+        setFileFeedback({
+          kind: "error",
+          text: "Não foi possível processar esta imagem. Tenta JPG ou PNG.",
+        });
+        window.setTimeout(() => setFileFeedback(null), 5000);
+      }
+    })();
   };
 
   return (
@@ -74,7 +79,8 @@ export function PersonalTab({ coachProfile, hydrated, onSave, avatarPending, set
             <div className="w-full space-y-2">
               <label className="text-xs font-medium text-zinc-500">Foto de perfil</label>
               <p className="text-[11px] text-zinc-600">
-                A pré-visualização actualiza já na capa; grava para persistir neste dispositivo e na nuvem.
+                Fotos grandes são reduzidas automaticamente. A pré-visualização actualiza já na capa; grava para
+                persistir neste dispositivo e na nuvem.
               </p>
               <input
                 type="file"
@@ -82,6 +88,15 @@ export function PersonalTab({ coachProfile, hydrated, onSave, avatarPending, set
                 className="block w-full text-sm text-zinc-400 file:mr-3 file:rounded-lg file:border-0 file:bg-accent/20 file:px-3 file:py-2 file:text-accent"
                 onChange={(e) => readAvatar(e.target.files?.[0] ?? null)}
               />
+              {fileFeedback ? (
+                <p
+                  className={
+                    fileFeedback.kind === "error" ? "text-xs text-red-400/90" : "text-xs text-zinc-500"
+                  }
+                >
+                  {fileFeedback.text}
+                </p>
+              ) : null}
               {previewAvatarUrl ? (
                 <button
                   type="button"
