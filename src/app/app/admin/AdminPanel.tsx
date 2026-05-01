@@ -163,6 +163,25 @@ type PersonalizationPayload = {
   error?: string;
 };
 
+type CoachMonthlyResultRow = {
+  userId: string;
+  coachName: string;
+  team: string;
+  monthLabel: string;
+  sequence: string;
+  games: number;
+  goalsFor: number;
+  goalsAgainst: number;
+};
+
+type CoachResultsPayload = {
+  ok?: boolean;
+  monthLabel?: string;
+  generatedAt?: string;
+  rows?: CoachMonthlyResultRow[];
+  error?: string;
+};
+
 type AdminTab = "overview" | "online" | "revenue" | "personalization" | "coachOfMonth";
 
 const REFRESH_OVERVIEW_MS = 45_000;
@@ -306,8 +325,12 @@ export function AdminPanel() {
   const [planDraft, setPlanDraft] = useState<Record<string, string>>({});
   const [priceDraft, setPriceDraft] = useState<Record<string, string>>({});
   const [coachOfMonthDraft, setCoachOfMonthDraft] = useState<CoachOfMonthContent>(defaultCoachOfMonthContent());
+  const [coachOfMonthPublished, setCoachOfMonthPublished] = useState<CoachOfMonthContent>(defaultCoachOfMonthContent());
   const [coachOfMonthSaving, setCoachOfMonthSaving] = useState(false);
   const [coachOfMonthUpdatedAt, setCoachOfMonthUpdatedAt] = useState<string | null>(null);
+  const [coachOfMonthEditing, setCoachOfMonthEditing] = useState(false);
+  const [coachOfMonthInnerTab, setCoachOfMonthInnerTab] = useState<"content" | "results">("content");
+  const [coachResults, setCoachResults] = useState<CoachResultsPayload | null>(null);
 
   const load = useCallback(async () => {
     setError(null);
@@ -392,7 +415,9 @@ export function AdminPanel() {
       const res = await fetch("/api/cloud/admin/coach-of-month", { credentials: "include" });
       const j = (await res.json()) as { ok?: boolean; payload?: unknown; updatedAt?: string | null };
       if (res.ok && j.ok) {
-        setCoachOfMonthDraft(normalizeCoachOfMonthContent(j.payload));
+        const normalized = normalizeCoachOfMonthContent(j.payload);
+        setCoachOfMonthDraft(normalized);
+        setCoachOfMonthPublished(normalized);
         setCoachOfMonthUpdatedAt(j.updatedAt ?? null);
       }
     } catch {
@@ -416,8 +441,11 @@ export function AdminPanel() {
           setError(j.error || "Não foi possível guardar Treinador do Mês.");
           return;
         }
-        setCoachOfMonthDraft(normalizeCoachOfMonthContent(j.payload));
+        const normalized = normalizeCoachOfMonthContent(j.payload);
+        setCoachOfMonthDraft(normalized);
+        setCoachOfMonthPublished(normalized);
         setCoachOfMonthUpdatedAt(j.updatedAt ?? null);
+        setCoachOfMonthEditing(false);
       } catch {
         setError("Erro de rede ao guardar Treinador do Mês.");
       } finally {
@@ -426,6 +454,16 @@ export function AdminPanel() {
     },
     []
   );
+
+  const loadCoachResults = useCallback(async () => {
+    try {
+      const res = await fetch("/api/cloud/admin/coach-results", { credentials: "include" });
+      const j = (await res.json()) as CoachResultsPayload;
+      if (res.ok && j.ok) setCoachResults(j);
+    } catch {
+      /* ignore */
+    }
+  }, []);
 
   const patchPersonalization = useCallback(
     async (id: string, body: Record<string, unknown>) => {
@@ -496,7 +534,8 @@ export function AdminPanel() {
   useEffect(() => {
     if (tab !== "coachOfMonth") return;
     void loadCoachOfMonth();
-  }, [tab, loadCoachOfMonth]);
+    void loadCoachResults();
+  }, [tab, loadCoachOfMonth, loadCoachResults]);
 
   const patchSubscription = useCallback(
     async (id: string, body: Record<string, unknown>) => {
@@ -538,6 +577,8 @@ export function AdminPanel() {
     await patchSubscription(id, { customMonthlyPriceEur: n });
   };
 
+  const coachOfMonthDirty = JSON.stringify(coachOfMonthDraft) !== JSON.stringify(coachOfMonthPublished);
+
   if (!authReady || loading) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center text-sm text-zinc-500">A carregar painel…</div>
@@ -568,7 +609,10 @@ export function AdminPanel() {
             if (tab === "online") void loadOnline();
             if (tab === "revenue") void loadRevenue();
             if (tab === "personalization") void loadPersonalization();
-            if (tab === "coachOfMonth") void loadCoachOfMonth();
+            if (tab === "coachOfMonth") {
+              void loadCoachOfMonth();
+              void loadCoachResults();
+            }
           }}
         >
           Atualizar agora
@@ -662,28 +706,77 @@ export function AdminPanel() {
       {tab === "coachOfMonth" ? (
         <section className="space-y-4" role="tabpanel" aria-labelledby="tab-coachOfMonth">
           <div className="rounded-xl border border-surface-border bg-surface-raised/20 p-4 text-xs text-zinc-500">
-            <p>
-              Esta secção controla a publicação global do ecrã <strong className="text-zinc-300">Treinador do Mês</strong>
-              {" "}para treinador, presidente e admin.
-            </p>
-            {coachOfMonthUpdatedAt ? (
-              <p className="mt-1">
-                Última publicação: {new Date(coachOfMonthUpdatedAt).toLocaleString("pt-PT")}
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p>
+                Esta secção controla a publicação global do ecrã{" "}
+                <strong className="text-zinc-300">Treinador do Mês</strong> para treinador, presidente e admin.
               </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="h-9 px-3 text-xs"
+                  onClick={() => {
+                    setCoachOfMonthEditing(true);
+                    setCoachOfMonthDraft(coachOfMonthPublished);
+                    setCoachOfMonthInnerTab("content");
+                  }}
+                >
+                  Editar
+                </Button>
+                <Button
+                  type="button"
+                  className="h-9 px-3 text-xs"
+                  disabled={!coachOfMonthEditing || !coachOfMonthDirty || coachOfMonthSaving}
+                  onClick={() => void saveCoachOfMonth(coachOfMonthDraft)}
+                >
+                  {coachOfMonthSaving ? "A guardar..." : "Guardar"}
+                </Button>
+              </div>
+            </div>
+            {coachOfMonthUpdatedAt ? (
+              <p className="mt-2">Última publicação: {new Date(coachOfMonthUpdatedAt).toLocaleString("pt-PT")}</p>
             ) : null}
           </div>
-          <CoachOfMonthAdminEditor
-            initial={coachOfMonthDraft}
-            coachOptions={users
-              .filter((u) => u.role !== "admin")
-              .map((u) => ({ id: u.id, name: u.name, email: u.email }))}
-            onSave={saveCoachOfMonth}
-            saving={coachOfMonthSaving}
-          />
-          <div>
-            <h3 className="mb-3 font-display text-lg font-semibold text-white">Pré-visualização</h3>
-            <CoachOfMonthBoard adminPreview={coachOfMonthDraft} />
+
+          <div className="flex gap-1 border-b border-surface-border">
+            <TabButton
+              id="coachMonth-content"
+              selected={coachOfMonthInnerTab === "content"}
+              onClick={() => setCoachOfMonthInnerTab("content")}
+            >
+              Conteúdo público
+            </TabButton>
+            <TabButton
+              id="coachMonth-results"
+              selected={coachOfMonthInnerTab === "results"}
+              onClick={() => {
+                setCoachOfMonthInnerTab("results");
+                void loadCoachResults();
+              }}
+            >
+              Tracking resultados (mês passado)
+            </TabButton>
           </div>
+
+          {coachOfMonthInnerTab === "content" ? (
+            <>
+              <CoachOfMonthAdminEditor
+                value={coachOfMonthDraft}
+                editable={coachOfMonthEditing}
+                coachOptions={users
+                  .filter((u) => u.role !== "admin")
+                  .map((u) => ({ id: u.id, name: u.name, email: u.email }))}
+                onChange={setCoachOfMonthDraft}
+              />
+              <div>
+                <h3 className="mb-3 font-display text-lg font-semibold text-white">Pré-visualização</h3>
+                <CoachOfMonthBoard adminPreview={coachOfMonthDraft} />
+              </div>
+            </>
+          ) : (
+            <CoachResultsTrackingTab payload={coachResults} />
+          )}
         </section>
       ) : null}
 
@@ -1415,6 +1508,55 @@ function PersonalizationTabContent({
           {rows.length === 0 ? (
             <p className="px-4 py-8 text-center text-sm text-zinc-500">
               Ainda não há pedidos de Full Personalization.
+            </p>
+          ) : null}
+        </CardContent>
+      </Card>
+    </section>
+  );
+}
+
+function CoachResultsTrackingTab({ payload }: { payload: CoachResultsPayload | null }) {
+  const rows = payload?.rows ?? [];
+  return (
+    <section className="space-y-4">
+      <div>
+        <h3 className="font-display text-lg font-semibold text-white">Resultados do mês passado</h3>
+        <p className="mt-1 text-sm text-zinc-500">
+          Fonte: jogos registados nas táticas + resultados por print no calendário (Jogos anteriores) + jogos
+          importados com marcador.
+        </p>
+        {payload?.monthLabel ? <p className="mt-1 text-xs text-zinc-600">Período: {payload.monthLabel}</p> : null}
+      </div>
+      <Card>
+        <CardContent className="overflow-x-auto p-0">
+          <table className="w-full min-w-[980px] text-left text-sm text-zinc-400">
+            <thead className="border-b border-surface-border bg-surface-raised/40 text-xs uppercase tracking-wide text-zinc-500">
+              <tr>
+                <th className="px-4 py-3">Treinador</th>
+                <th className="px-4 py-3">Equipa</th>
+                <th className="px-4 py-3">Resultados</th>
+                <th className="px-4 py-3">Jogos</th>
+                <th className="px-4 py-3">Golos marcados</th>
+                <th className="px-4 py-3">Golos sofridos</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.userId} className="border-b border-surface-border/60">
+                  <td className="px-4 py-3 font-medium text-zinc-200">{r.coachName}</td>
+                  <td className="px-4 py-3">{r.team}</td>
+                  <td className="px-4 py-3 font-mono text-xs text-zinc-300">{r.sequence}</td>
+                  <td className="px-4 py-3">{r.games}</td>
+                  <td className="px-4 py-3">{r.goalsFor}</td>
+                  <td className="px-4 py-3">{r.goalsAgainst}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {rows.length === 0 ? (
+            <p className="px-4 py-8 text-center text-sm text-zinc-500">
+              Sem dados de jogos no mês passado para os treinadores com workspace cloud.
             </p>
           ) : null}
         </CardContent>

@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/Input";
 import { imageFileToCompressedJpegDataUrl } from "@/lib/profile-avatar-compress";
 import {
   defaultCoachOfMonthContent,
-  normalizeCoachOfMonthContent,
   type CoachMonthWinner,
   type CoachOfMonthContent,
 } from "@/lib/coach-of-month";
@@ -30,17 +29,16 @@ function updateWinner(
 }
 
 export function CoachOfMonthAdminEditor({
-  initial,
+  value,
+  editable,
   coachOptions,
-  onSave,
-  saving,
+  onChange,
 }: {
-  initial: CoachOfMonthContent;
+  value: CoachOfMonthContent;
+  editable: boolean;
   coachOptions: CoachOption[];
-  onSave: (next: CoachOfMonthContent) => Promise<void> | void;
-  saving: boolean;
+  onChange: (next: CoachOfMonthContent) => void;
 }) {
-  const [draft, setDraft] = useState<CoachOfMonthContent>(normalizeCoachOfMonthContent(initial));
   const [fileHint, setFileHint] = useState<string | null>(null);
 
   const sortedCoaches = useMemo(
@@ -53,9 +51,8 @@ export function CoachOfMonthAdminEditor({
     [coachOptions]
   );
 
-  const setWinnerField = (id: CoachMonthWinner["id"], patch: Partial<CoachMonthWinner>) => {
-    setDraft((d) => updateWinner(d, id, (row) => ({ ...row, ...patch })));
-  };
+  const setWinnerField = (id: CoachMonthWinner["id"], patch: Partial<CoachMonthWinner>) =>
+    onChange(updateWinner(value, id, (row) => ({ ...row, ...patch })));
 
   const loadAsDataUrl = (id: CoachMonthWinner["id"], field: "photoUrl" | "clubLogoUrl", file: File | null) => {
     if (!file) return;
@@ -85,33 +82,37 @@ export function CoachOfMonthAdminEditor({
           <label className="space-y-1">
             <span className="text-xs text-zinc-500">Título</span>
             <Input
-              value={draft.headerTitle}
-              onChange={(e) => setDraft((d) => ({ ...d, headerTitle: e.target.value }))}
+              value={value.headerTitle}
+              onChange={(e) => onChange({ ...value, headerTitle: e.target.value })}
               placeholder="Melhores Treinadores do Mês"
+              disabled={!editable}
             />
           </label>
           <label className="space-y-1">
             <span className="text-xs text-zinc-500">Subtítulo</span>
             <Input
-              value={draft.headerSubtitle}
-              onChange={(e) => setDraft((d) => ({ ...d, headerSubtitle: e.target.value }))}
+              value={value.headerSubtitle}
+              onChange={(e) => onChange({ ...value, headerSubtitle: e.target.value })}
               placeholder="Reconhecer o mérito. Inspirar o futuro."
+              disabled={!editable}
             />
           </label>
           {fileHint ? <p className="text-xs text-zinc-500 md:col-span-2">{fileHint}</p> : null}
           <div className="flex flex-wrap gap-2 md:col-span-2">
-            <Button type="button" variant="secondary" onClick={() => setDraft(defaultCoachOfMonthContent())}>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => onChange(defaultCoachOfMonthContent())}
+              disabled={!editable}
+            >
               Repor template base
-            </Button>
-            <Button type="button" onClick={() => void onSave(draft)} disabled={saving}>
-              {saving ? "A guardar..." : "Guardar publicação"}
             </Button>
           </div>
         </CardContent>
       </Card>
 
       <div className="space-y-4">
-        {draft.winners.map((w) => (
+        {value.winners.map((w) => (
           <Card key={w.id} className="border-white/10 bg-surface-raised/30">
             <CardHeader>
               <CardTitle className="text-base">{w.ageGroup}</CardTitle>
@@ -123,6 +124,7 @@ export function CoachOfMonthAdminEditor({
                   value={w.coachUserId ?? ""}
                   onChange={(e) => setWinnerField(w.id, { coachUserId: e.target.value || undefined })}
                   className="h-11 w-full rounded-xl border border-surface-border bg-[#0c1014] px-4 text-sm text-zinc-200"
+                  disabled={!editable}
                 >
                   <option value="">Manual (sem ligação a conta)</option>
                   {sortedCoaches.map((coach) => (
@@ -134,38 +136,64 @@ export function CoachOfMonthAdminEditor({
               </label>
               <label className="space-y-1">
                 <span className="text-xs text-zinc-500">Ranking</span>
-                <Input value={w.rankLabel} onChange={(e) => setWinnerField(w.id, { rankLabel: e.target.value })} />
+                <Input
+                  value={w.rankLabel}
+                  onChange={(e) => setWinnerField(w.id, { rankLabel: e.target.value })}
+                  disabled={!editable}
+                />
               </label>
               <label className="space-y-1">
                 <span className="text-xs text-zinc-500">Nome mostrado</span>
-                <Input value={w.coachName} onChange={(e) => setWinnerField(w.id, { coachName: e.target.value })} />
+                <Input
+                  value={w.coachName}
+                  onChange={(e) => setWinnerField(w.id, { coachName: e.target.value })}
+                  disabled={!editable}
+                />
               </label>
               <label className="space-y-1">
                 <span className="text-xs text-zinc-500">Escalão</span>
-                <Input value={w.ageGroup} onChange={(e) => setWinnerField(w.id, { ageGroup: e.target.value })} />
+                <Input
+                  value={w.ageGroup}
+                  onChange={(e) => setWinnerField(w.id, { ageGroup: e.target.value })}
+                  disabled={!editable}
+                />
               </label>
               <label className="space-y-1">
                 <span className="text-xs text-zinc-500">Clube</span>
-                <Input value={w.clubName} onChange={(e) => setWinnerField(w.id, { clubName: e.target.value })} />
+                <Input
+                  value={w.clubName}
+                  onChange={(e) => setWinnerField(w.id, { clubName: e.target.value })}
+                  disabled={!editable}
+                />
               </label>
               <label className="space-y-1">
                 <span className="text-xs text-zinc-500">Logo do clube (URL / data URL)</span>
-                <Input value={w.clubLogoUrl ?? ""} onChange={(e) => setWinnerField(w.id, { clubLogoUrl: e.target.value })} />
+                <Input
+                  value={w.clubLogoUrl ?? ""}
+                  onChange={(e) => setWinnerField(w.id, { clubLogoUrl: e.target.value })}
+                  disabled={!editable}
+                />
                 <input
                   type="file"
                   accept="image/*"
                   className="block w-full text-xs text-zinc-500 file:rounded-lg file:border-0 file:bg-white/10 file:px-2.5 file:py-1.5 file:text-zinc-300"
                   onChange={(e) => loadAsDataUrl(w.id, "clubLogoUrl", e.target.files?.[0] ?? null)}
+                  disabled={!editable}
                 />
               </label>
               <label className="space-y-1 md:col-span-2">
                 <span className="text-xs text-zinc-500">Foto do treinador (URL / data URL)</span>
-                <Input value={w.photoUrl ?? ""} onChange={(e) => setWinnerField(w.id, { photoUrl: e.target.value })} />
+                <Input
+                  value={w.photoUrl ?? ""}
+                  onChange={(e) => setWinnerField(w.id, { photoUrl: e.target.value })}
+                  disabled={!editable}
+                />
                 <input
                   type="file"
                   accept="image/*"
                   className="block w-full text-xs text-zinc-500 file:rounded-lg file:border-0 file:bg-white/10 file:px-2.5 file:py-1.5 file:text-zinc-300"
                   onChange={(e) => loadAsDataUrl(w.id, "photoUrl", e.target.files?.[0] ?? null)}
+                  disabled={!editable}
                 />
               </label>
               <label className="space-y-1 md:col-span-2">
@@ -175,6 +203,7 @@ export function CoachOfMonthAdminEditor({
                   value={w.news}
                   onChange={(e) => setWinnerField(w.id, { news: e.target.value })}
                   className="w-full rounded-xl border border-surface-border bg-[#0c1014] px-4 py-2.5 text-sm text-zinc-200 placeholder:text-zinc-500"
+                  disabled={!editable}
                 />
               </label>
             </CardContent>
