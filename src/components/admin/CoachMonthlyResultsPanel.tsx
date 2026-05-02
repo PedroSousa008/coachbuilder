@@ -17,6 +17,8 @@ function defaultEscalaoSelection(): Record<string, boolean> {
 export type CoachMonthlyResultRow = {
   userId: string;
   coachName: string;
+  /** Nametag da conta (Prisma); pode faltar em respostas antigas em cache. */
+  nametag?: string;
   escalao: string;
   team: string;
   monthLabel: string;
@@ -121,10 +123,11 @@ export function CoachMonthlyResultsPanel({
       </div>
       <Card>
         <CardContent className="overflow-x-auto p-0">
-          <table className="w-full min-w-[1060px] text-left text-sm text-zinc-400">
+          <table className="w-full min-w-[1180px] text-left text-sm text-zinc-400">
             <thead className="border-b border-surface-border bg-surface-raised/40 text-xs uppercase tracking-wide text-zinc-500">
               <tr>
                 <th className="px-4 py-3">Treinador</th>
+                <th className="px-4 py-3">Nametag</th>
                 <th className="relative px-4 py-3">
                   <div className="inline-block text-left normal-case" ref={escalaoPopoverRef}>
                     <button
@@ -209,6 +212,9 @@ export function CoachMonthlyResultsPanel({
               {sortedRows.map((r) => (
                 <tr key={r.userId} className="border-b border-surface-border/60">
                   <td className="px-4 py-3 font-medium text-zinc-200">{r.coachName}</td>
+                  <td className="px-4 py-3 font-mono text-xs text-zinc-300">
+                    {(r.nametag ?? "").trim() || "—"}
+                  </td>
                   <td className="px-4 py-3 text-zinc-300">{r.escalao ?? "—"}</td>
                   <td className="px-4 py-3">{r.team}</td>
                   <td className="px-4 py-3 font-mono text-xs text-zinc-300">{r.sequence}</td>

@@ -18,6 +18,7 @@ type CoachOption = {
   id: string;
   name: string;
   email: string;
+  nametag: string | null;
 };
 
 function updateWinner(
@@ -146,7 +147,14 @@ export function CoachOfMonthAdminEditor({
                 <span className="text-xs text-zinc-500">Treinador (opcional)</span>
                 <select
                   value={w.coachUserId ?? ""}
-                  onChange={(e) => setWinnerField(w.id, { coachUserId: e.target.value || undefined })}
+                  onChange={(e) => {
+                    const id = e.target.value.trim() || undefined;
+                    const coach = id ? sortedCoaches.find((c) => c.id === id) : undefined;
+                    setWinnerField(w.id, {
+                      coachUserId: id,
+                      ...(coach ? { nametag: coach.nametag?.trim() ?? "" } : {}),
+                    });
+                  }}
                   className="h-11 w-full rounded-xl border border-surface-border bg-[#0c1014] px-4 text-sm text-zinc-200"
                   disabled={!editable}
                 >
@@ -171,6 +179,15 @@ export function CoachOfMonthAdminEditor({
                 <Input
                   value={w.coachName}
                   onChange={(e) => setWinnerField(w.id, { coachName: e.target.value })}
+                  disabled={!editable}
+                />
+              </label>
+              <label className="space-y-1">
+                <span className="text-xs text-zinc-500">Nametag</span>
+                <Input
+                  value={w.nametag}
+                  onChange={(e) => setWinnerField(w.id, { nametag: e.target.value })}
+                  placeholder="Ex.: CoachPedro (conta do treinador)"
                   disabled={!editable}
                 />
               </label>

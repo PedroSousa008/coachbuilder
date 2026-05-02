@@ -757,7 +757,7 @@ export function AdminPanel() {
                 editable={coachOfMonthEditing}
                 coachOptions={users
                   .filter((u) => u.role !== "admin")
-                  .map((u) => ({ id: u.id, name: u.name, email: u.email }))}
+                  .map((u) => ({ id: u.id, name: u.name, email: u.email, nametag: u.nametag }))}
                 onChange={setCoachOfMonthDraft}
               />
               <div>

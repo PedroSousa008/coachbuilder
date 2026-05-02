@@ -12,7 +12,7 @@ import {
 } from "@/lib/coach-of-month";
 import { canUseOwnerCoachTools } from "@/lib/owner-coach-tools-client";
 
-type ListedCoach = { id: string; name: string; email: string };
+type ListedCoach = { id: string; name: string; email: string; nametag: string | null };
 
 export function CoachOfMonthPublicPage() {
   const { user, authReady } = useAuth();
@@ -40,10 +40,15 @@ export function CoachOfMonthPublicPage() {
 
   const loadCoachOptions = useCallback(async () => {
     const res = await fetch("/api/cloud/admin/users", { credentials: "include" });
-    const j = (await res.json()) as { ok?: boolean; users?: { id: string; name: string; email: string; role: string }[] };
+    const j = (await res.json()) as {
+      ok?: boolean;
+      users?: { id: string; name: string; email: string; role: string; nametag: string | null }[];
+    };
     if (!res.ok || !j.ok || !j.users) return;
     setCoachOptions(
-      j.users.filter((u) => u.role !== "admin").map((u) => ({ id: u.id, name: u.name, email: u.email }))
+      j.users
+        .filter((u) => u.role !== "admin")
+        .map((u) => ({ id: u.id, name: u.name, email: u.email, nametag: u.nametag ?? null }))
     );
   }, []);
 

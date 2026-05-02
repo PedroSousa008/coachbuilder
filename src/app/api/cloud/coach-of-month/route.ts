@@ -23,7 +23,7 @@ async function resolveCoachDetails(content: CoachOfMonthContent): Promise<CoachO
 
   const users = await prisma.user.findMany({
     where: { id: { in: ids } },
-    select: { id: true, name: true, workspace: { select: { payload: true } } },
+    select: { id: true, name: true, nametag: true, workspace: { select: { payload: true } } },
   });
   const byId = new Map(
     users.map((u) => {
@@ -33,6 +33,7 @@ async function resolveCoachDetails(content: CoachOfMonthContent): Promise<CoachO
         u.id,
         {
           name: u.name ?? "",
+          nametag: u.nametag ?? "",
           profileName: profile?.name ?? "",
           profileClub: profile?.club ?? "",
           profileAvatar: profile?.avatarDataUrl ?? "",
@@ -44,9 +45,11 @@ async function resolveCoachDetails(content: CoachOfMonthContent): Promise<CoachO
   const winners: CoachMonthWinner[] = content.winners.map((winner) => {
     const linked = winner.coachUserId ? byId.get(winner.coachUserId) : null;
     if (!linked) return winner;
+    const accountNametag = linked.nametag.trim();
     return {
       ...winner,
       coachName: winner.coachName.trim() || linked.profileName.trim() || linked.name.trim() || winner.coachName,
+      nametag: winner.nametag.trim() || accountNametag,
       clubName: winner.clubName.trim() || linked.profileClub.trim() || winner.clubName,
       photoUrl: winner.photoUrl?.trim() || linked.profileAvatar.trim() || winner.photoUrl,
     };

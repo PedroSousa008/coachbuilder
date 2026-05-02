@@ -45,6 +45,9 @@ function WinnerCard({ winner }: { winner: CoachMonthWinner }) {
           )}
         </div>
         <p className="truncate text-base font-semibold text-white">{winner.coachName || "Treinador"}</p>
+        {winner.nametag?.trim() ? (
+          <p className="truncate text-xs font-medium text-amber-200/80">@{winner.nametag.trim()}</p>
+        ) : null}
         <div className="mt-1 flex items-center gap-2">
           {winner.clubLogoUrl?.trim() ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -71,7 +74,8 @@ function NewsRow({ winner }: { winner: CoachMonthWinner }) {
       </div>
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-semibold text-zinc-100">
-          {winner.coachName} · {winner.ageGroup} · {winner.clubName}
+          {winner.coachName}
+          {winner.nametag?.trim() ? ` · @${winner.nametag.trim()}` : ""} · {winner.ageGroup} · {winner.clubName}
         </p>
         <p className="mt-1 text-sm leading-relaxed text-zinc-400">{winner.news}</p>
       </div>

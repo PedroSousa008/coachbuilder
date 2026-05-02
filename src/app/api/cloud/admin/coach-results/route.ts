@@ -18,6 +18,7 @@ type MatchRow = {
 type CoachMonthlyResultRow = {
   userId: string;
   coachName: string;
+  nametag: string;
   escalao: string;
   team: string;
   monthLabel: string;
@@ -73,6 +74,7 @@ export async function GET() {
         id: true,
         name: true,
         email: true,
+        nametag: true,
         workspace: { select: { payload: true } },
       },
     });
@@ -88,6 +90,7 @@ export async function GET() {
       return {
         userId: u.id,
         coachName: s.coachProfile.name?.trim() || u.name?.trim() || u.email,
+        nametag: u.nametag?.trim() || "—",
         escalao,
         team: s.coachProfile.club?.trim() || "—",
         monthLabel: "Últimos 5 jogos (Calendário)",

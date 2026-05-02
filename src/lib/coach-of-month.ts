@@ -4,6 +4,8 @@ export type CoachMonthWinner = {
   id: CoachMonthAgeGroupId;
   coachUserId?: string;
   coachName: string;
+  /** Identificador curto na app (conta); editável ou preenchido a partir do utilizador ligado. */
+  nametag: string;
   ageGroup: string;
   clubName: string;
   clubLogoUrl?: string;
@@ -44,6 +46,7 @@ function baseWinner(id: CoachMonthAgeGroupId): CoachMonthWinner {
   return {
     id,
     coachName: "Treinador a anunciar",
+    nametag: "",
     ageGroup: AGE_GROUP_LABELS[id],
     clubName: "Clube",
     clubLogoUrl: "",
@@ -101,6 +104,7 @@ function normalizeWinner(raw: unknown, id: CoachMonthAgeGroupId): CoachMonthWinn
     id,
     coachUserId: maybeCoachId(o.coachUserId),
     coachName: text(o.coachName, fallback.coachName),
+    nametag: text(o.nametag, ""),
     ageGroup: text(o.ageGroup, fallback.ageGroup),
     clubName: text(o.clubName, fallback.clubName),
     clubLogoUrl: text(o.clubLogoUrl, ""),
