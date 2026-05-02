@@ -4,6 +4,7 @@ import { CLOUD_SERVER_UNAVAILABLE_MESSAGE, isCloudSyncEnabledServer } from "@/li
 import { requireAdminSession } from "@/lib/admin-guard";
 import { emptyWorkspaceSnapshot, parseWorkspacePayload } from "@/lib/workspace-snapshot";
 import { toPastClubPerspective } from "@/lib/past-club-results-utils";
+import { inferTeamEscalaoFromPlayers } from "@/lib/coach-team-escalao";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +18,7 @@ type MatchRow = {
 type CoachMonthlyResultRow = {
   userId: string;
   coachName: string;
+  escalao: string;
   team: string;
   monthLabel: string;
   sequence: string;
@@ -82,9 +84,11 @@ export async function GET() {
       const ga = matches.reduce((sum, m) => sum + m.ga, 0);
       const wins = matches.reduce((sum, m) => sum + (m.outcome === "V" ? 1 : 0), 0);
       const sequence = matches.length ? matches.map((m) => m.outcome).join(" - ") : "—";
+      const escalao = inferTeamEscalaoFromPlayers(s.players ?? []);
       return {
         userId: u.id,
         coachName: s.coachProfile.name?.trim() || u.name?.trim() || u.email,
+        escalao,
         team: s.coachProfile.club?.trim() || "—",
         monthLabel: "Últimos 5 jogos (Calendário)",
         sequence,

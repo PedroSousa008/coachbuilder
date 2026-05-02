@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/Card";
 export type CoachMonthlyResultRow = {
   userId: string;
   coachName: string;
+  escalao: string;
   team: string;
   monthLabel: string;
   sequence: string;
@@ -64,17 +65,19 @@ export function CoachMonthlyResultsPanel({
       <div>
         <h3 className="font-display text-lg font-semibold text-white">{title}</h3>
         <p className="mt-1 text-sm text-zinc-500">
-          Fonte: jogos registados nas táticas + resultados por print no calendário (Jogos anteriores) + jogos
-          importados com marcador.
+          Fonte: últimos 5 jogos no Calendário (Jogos anteriores). Escalão: média de idades dos jogadores da
+          equipa (data de nascimento ou idade guardada); se existir algum jogador com mais de 20 anos, conta como
+          Séniores.
         </p>
         {payload?.monthLabel ? <p className="mt-1 text-xs text-zinc-600">Período: {payload.monthLabel}</p> : null}
       </div>
       <Card>
         <CardContent className="overflow-x-auto p-0">
-          <table className="w-full min-w-[980px] text-left text-sm text-zinc-400">
+          <table className="w-full min-w-[1060px] text-left text-sm text-zinc-400">
             <thead className="border-b border-surface-border bg-surface-raised/40 text-xs uppercase tracking-wide text-zinc-500">
               <tr>
                 <th className="px-4 py-3">Treinador</th>
+                <th className="px-4 py-3">Escalão</th>
                 <th className="px-4 py-3">Equipa</th>
                 <th className="px-4 py-3">Resultados</th>
                 <th className="px-4 py-3">Jogos</th>
@@ -99,6 +102,7 @@ export function CoachMonthlyResultsPanel({
               {sortedRows.map((r) => (
                 <tr key={r.userId} className="border-b border-surface-border/60">
                   <td className="px-4 py-3 font-medium text-zinc-200">{r.coachName}</td>
+                  <td className="px-4 py-3 text-zinc-300">{r.escalao ?? "—"}</td>
                   <td className="px-4 py-3">{r.team}</td>
                   <td className="px-4 py-3 font-mono text-xs text-zinc-300">{r.sequence}</td>
                   <td className="px-4 py-3">{r.games}</td>
