@@ -95,11 +95,16 @@ export function HonorsTab({ coachProfile, onCommit }: Props) {
         return;
       }
     }
+    const fromCoachOfMonth = honors.filter((h) => h.origin === "coach_of_month");
     let next: CoachHonorEntry[];
     if (resolution === "drop-manual") {
-      next = [...filterManualRemovingConflictsWithGenerated(manual, generated), ...generated];
+      next = [
+        ...filterManualRemovingConflictsWithGenerated(manual, generated),
+        ...fromCoachOfMonth,
+        ...generated,
+      ];
     } else if (resolution === "keep-both") {
-      next = [...manual, ...generated];
+      next = [...manual, ...fromCoachOfMonth, ...generated];
     } else {
       next = mergeHonorsWithCareer(honors, seasons);
     }
@@ -209,7 +214,11 @@ export function HonorsTab({ coachProfile, onCommit }: Props) {
                 {selectedHonor.club || "—"} · {selectedHonor.ageGroup || "—"}
               </p>
               <p className="mt-1 text-xs text-zinc-600">
-                {selectedHonor.origin === "career" ? "Origem: Carreira" : "Origem: Manual"}
+                {selectedHonor.origin === "career"
+                  ? "Origem: Carreira"
+                  : selectedHonor.origin === "coach_of_month"
+                    ? "Origem: Treinador do Mês (automático)"
+                    : "Origem: Manual"}
               </p>
             </div>
             <Button type="button" variant="ghost" className="text-zinc-400" onClick={() => setSelectedHonorId(null)}>

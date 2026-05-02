@@ -178,13 +178,14 @@ export function CareerTab({ coachProfile, hydrated, onCommit }: Props) {
       return;
     }
     const manual = (coachProfile.honors ?? []).filter((h) => h.origin === "manual");
+    const fromCoachOfMonth = (coachProfile.honors ?? []).filter((h) => h.origin === "coach_of_month");
     const generated = buildCareerOriginatedHonors(seasons);
     let honors: CoachHonorEntry[];
     if (choice === "keep-both") {
-      honors = [...manual, ...generated];
+      honors = [...manual, ...fromCoachOfMonth, ...generated];
     } else {
       const filtered = filterManualRemovingConflictsWithGenerated(manual, generated);
-      honors = [...filtered, ...generated];
+      honors = [...filtered, ...fromCoachOfMonth, ...generated];
     }
     onCommit({
       ...pendingCommit,

@@ -133,9 +133,11 @@ export function mergeHonorsWithCareer(
   existing: CoachHonorEntry[] | undefined,
   seasons: CoachCareerSeason[] | undefined
 ): CoachHonorEntry[] {
-  const manual = (existing ?? []).filter((h) => h.origin === "manual");
+  const preserved = (existing ?? []).filter(
+    (h) => h.origin === "manual" || h.origin === "coach_of_month"
+  );
   const careerHonors = buildCareerOriginatedHonors(seasons ?? []);
-  return [...manual, ...careerHonors];
+  return [...preserved, ...careerHonors];
 }
 
 export type HonorConflict = {

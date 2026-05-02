@@ -719,7 +719,7 @@ export type CoachHonorCategory =
   | "individual"
   | "special";
 
-export type CoachHonorOrigin = "manual" | "career";
+export type CoachHonorOrigin = "manual" | "career" | "coach_of_month";
 
 export interface CoachHonorEntry {
   id: string;

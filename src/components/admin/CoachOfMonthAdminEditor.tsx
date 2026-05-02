@@ -122,6 +122,41 @@ export function CoachOfMonthAdminEditor({
               disabled={!editable}
             />
           </label>
+          <label className="space-y-1">
+            <span className="text-xs text-zinc-500">Mês do prémio (palmarés)</span>
+            <Input
+              type="number"
+              min={1}
+              max={12}
+              value={value.awardMonth}
+              onChange={(e) => {
+                const n = Number.parseInt(e.target.value, 10);
+                onChange({ ...value, awardMonth: Number.isFinite(n) ? Math.min(12, Math.max(1, n)) : value.awardMonth });
+              }}
+              disabled={!editable}
+            />
+          </label>
+          <label className="space-y-1">
+            <span className="text-xs text-zinc-500">Ano do prémio (palmarés)</span>
+            <Input
+              type="number"
+              min={2000}
+              max={2100}
+              value={value.awardYear}
+              onChange={(e) => {
+                const n = Number.parseInt(e.target.value, 10);
+                onChange({
+                  ...value,
+                  awardYear: Number.isFinite(n) ? Math.min(2100, Math.max(2000, n)) : value.awardYear,
+                });
+              }}
+              disabled={!editable}
+            />
+          </label>
+          <p className="text-xs text-zinc-600 md:col-span-2">
+            Ao guardares, cada vencedor com nametag de conta válida recebe no Perfil o troféu «Treinador do Mês» com
+            este mês/ano. Imagem: <code className="text-zinc-400">public/images/trophies/treinador-do-mes.png</code>
+          </p>
           {fileHint ? <p className="text-xs text-zinc-500 md:col-span-2">{fileHint}</p> : null}
           <div className="flex flex-wrap gap-2 md:col-span-2">
             <Button

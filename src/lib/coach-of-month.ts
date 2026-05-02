@@ -27,6 +27,10 @@ export type CoachOfMonthArchiveRow = {
 export type CoachOfMonthContent = {
   headerTitle: string;
   headerSubtitle: string;
+  /** Mês editorial do prémio (1–12), usado no palmarés. */
+  awardMonth: number;
+  /** Ano do prémio (ex.: 2026). */
+  awardYear: number;
   winners: CoachMonthWinner[];
   /** Linhas editáveis pelo owner: vencedores por mês (colunas = escalões). */
   winnersArchive: CoachOfMonthArchiveRow[];
@@ -78,9 +82,12 @@ export const COACH_MONTH_ARCHIVE_TABLE_HEADERS: { key: keyof CoachOfMonthArchive
 ];
 
 export function defaultCoachOfMonthContent(): CoachOfMonthContent {
+  const d = new Date();
   return {
     headerTitle: "Melhores Treinadores do Mês",
     headerSubtitle: "Reconhecer o mérito. Inspirar o futuro.",
+    awardMonth: d.getMonth() + 1,
+    awardYear: d.getFullYear(),
     winners: COACH_MONTH_IDS.map((id) => baseWinner(id)),
     winnersArchive: [coachArchiveEmptyRow()],
   };
@@ -112,6 +119,18 @@ function normalizeWinner(raw: unknown, id: CoachMonthAgeGroupId): CoachMonthWinn
     photoUrl: text(o.photoUrl, ""),
     news: text(o.news, fallback.news),
   };
+}
+
+function parseAwardMonth(v: unknown, fallback: number): number {
+  const n = typeof v === "number" ? v : Number.parseInt(String(v ?? ""), 10);
+  if (!Number.isFinite(n) || n < 1 || n > 12) return fallback;
+  return n;
+}
+
+function parseAwardYear(v: unknown, fallback: number): number {
+  const n = typeof v === "number" ? v : Number.parseInt(String(v ?? ""), 10);
+  if (!Number.isFinite(n) || n < 2000 || n > 2100) return fallback;
+  return n;
 }
 
 function normalizeArchiveRow(raw: unknown): CoachOfMonthArchiveRow {
@@ -147,6 +166,8 @@ export function normalizeCoachOfMonthContent(raw: unknown): CoachOfMonthContent 
   return {
     headerTitle: text(o.headerTitle, fallback.headerTitle),
     headerSubtitle: text(o.headerSubtitle, fallback.headerSubtitle),
+    awardMonth: parseAwardMonth(o.awardMonth, fallback.awardMonth),
+    awardYear: parseAwardYear(o.awardYear, fallback.awardYear),
     winners: COACH_MONTH_IDS.map((id) => normalizeWinner(byId.get(id), id)),
     winnersArchive,
   };

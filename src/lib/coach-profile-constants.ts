@@ -15,12 +15,18 @@ import type {
 export const NATIONAL_CHAMPIONSHIP_TROPHY_IMAGE_PATH = "/images/trophies/campeao-nacional.png";
 
 /**
+ * Treinador do Mês (palmarés automático). Coloca o ficheiro em `public/images/trophies/treinador-do-mes.png`.
+ */
+export const COACH_OF_MONTH_TROPHY_IMAGE_PATH = "/images/trophies/treinador-do-mes.png";
+
+/**
  * Troféus distritais: um PNG por AF (`afbraga.png`, `afporto.png`, …) em public/images/trophies/.
  */
 
 export function defaultHonorTrophySrc(
-  honor: Pick<CoachHonorEntry, "category" | "districtAssociationId" | "title">
+  honor: Pick<CoachHonorEntry, "category" | "districtAssociationId" | "title" | "origin">
 ): string | null {
+  if (honor.origin === "coach_of_month") return COACH_OF_MONTH_TROPHY_IMAGE_PATH;
   switch (honor.category) {
     case "league_district":
     case "league": {
