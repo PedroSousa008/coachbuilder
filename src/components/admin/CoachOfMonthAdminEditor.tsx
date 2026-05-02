@@ -154,8 +154,9 @@ export function CoachOfMonthAdminEditor({
             />
           </label>
           <p className="text-xs text-zinc-600 md:col-span-2">
-            Ao guardares, cada vencedor com nametag de conta válida recebe no Perfil o troféu «Treinador do Mês» com
-            este mês/ano. Imagem: <code className="text-zinc-400">public/images/trophies/treinador-do-mes.png</code>
+            Ao guardares, o título no palmarés fica «Treinador do Mês:» seguido do texto da coluna «Mês» no Histórico de
+            vencedores (a linha cujo mês/ano coincide com mês e ano do prémio acima; senão usa-se o formato automático).
+            Imagem: <code className="text-zinc-400">public/images/trophies/treinador-do-mes.png</code>
           </p>
           {fileHint ? <p className="text-xs text-zinc-500 md:col-span-2">{fileHint}</p> : null}
           <div className="flex flex-wrap gap-2 md:col-span-2">
