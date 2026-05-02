@@ -9,7 +9,7 @@ import {
   COACH_MONTH_ARCHIVE_TABLE_HEADERS,
   coachArchiveEmptyRow,
   defaultCoachOfMonthContent,
-  type CoachMonthArchiveRow,
+  type CoachOfMonthArchiveRow,
   type CoachMonthWinner,
   type CoachOfMonthContent,
 } from "@/lib/coach-of-month";
