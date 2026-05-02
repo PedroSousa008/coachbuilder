@@ -12,10 +12,22 @@ export type CoachMonthWinner = {
   news: string;
 };
 
+/** Uma linha do histórico de vencedores (por mês e escalão). */
+export type CoachOfMonthArchiveRow = {
+  monthLabel: string;
+  benjamin: string;
+  infantil: string;
+  iniciado: string;
+  junior: string;
+  juvenil: string;
+};
+
 export type CoachOfMonthContent = {
   headerTitle: string;
   headerSubtitle: string;
   winners: CoachMonthWinner[];
+  /** Linhas editáveis pelo owner: vencedores por mês (colunas = escalões). */
+  winnersArchive: CoachOfMonthArchiveRow[];
 };
 
 export const COACH_MONTH_IDS: CoachMonthAgeGroupId[] = ["benjamin", "infantil", "iniciado", "junior", "juvenil"];
@@ -41,11 +53,33 @@ function baseWinner(id: CoachMonthAgeGroupId): CoachMonthWinner {
   };
 }
 
+export function coachArchiveEmptyRow(): CoachOfMonthArchiveRow {
+  return {
+    monthLabel: "",
+    benjamin: "",
+    infantil: "",
+    iniciado: "",
+    junior: "",
+    juvenil: "",
+  };
+}
+
+/** Cabeçalhos da tabela “Histórico de vencedores” (UI + dados). */
+export const COACH_MONTH_ARCHIVE_TABLE_HEADERS: { key: keyof CoachOfMonthArchiveRow; label: string }[] = [
+  { key: "monthLabel", label: "Mês" },
+  { key: "benjamin", label: "Benjamin" },
+  { key: "infantil", label: "Infantil" },
+  { key: "iniciado", label: "Iniciado" },
+  { key: "junior", label: "Junior" },
+  { key: "juvenil", label: "Juvenil" },
+];
+
 export function defaultCoachOfMonthContent(): CoachOfMonthContent {
   return {
     headerTitle: "Melhores Treinadores do Mês",
     headerSubtitle: "Reconhecer o mérito. Inspirar o futuro.",
     winners: COACH_MONTH_IDS.map((id) => baseWinner(id)),
+    winnersArchive: [coachArchiveEmptyRow()],
   };
 }
 
@@ -76,6 +110,20 @@ function normalizeWinner(raw: unknown, id: CoachMonthAgeGroupId): CoachMonthWinn
   };
 }
 
+function normalizeArchiveRow(raw: unknown): CoachOfMonthArchiveRow {
+  const empty = coachArchiveEmptyRow();
+  if (!raw || typeof raw !== "object") return empty;
+  const r = raw as Record<string, unknown>;
+  return {
+    monthLabel: text(r.monthLabel, ""),
+    benjamin: text(r.benjamin, ""),
+    infantil: text(r.infantil, ""),
+    iniciado: text(r.iniciado, ""),
+    junior: text(r.junior, ""),
+    juvenil: text(r.juvenil, ""),
+  };
+}
+
 export function normalizeCoachOfMonthContent(raw: unknown): CoachOfMonthContent {
   const fallback = defaultCoachOfMonthContent();
   if (!raw || typeof raw !== "object") return fallback;
@@ -87,9 +135,15 @@ export function normalizeCoachOfMonthContent(raw: unknown): CoachOfMonthContent 
     const maybeId = (row as Record<string, unknown>).id;
     if (typeof maybeId === "string") byId.set(maybeId, row);
   }
+  let winnersArchive: CoachOfMonthArchiveRow[] = [];
+  if (Array.isArray(o.winnersArchive)) {
+    winnersArchive = o.winnersArchive.map(normalizeArchiveRow).slice(0, 240);
+  }
+  if (winnersArchive.length === 0) winnersArchive = [coachArchiveEmptyRow()];
   return {
     headerTitle: text(o.headerTitle, fallback.headerTitle),
     headerSubtitle: text(o.headerSubtitle, fallback.headerSubtitle),
     winners: COACH_MONTH_IDS.map((id) => normalizeWinner(byId.get(id), id)),
+    winnersArchive,
   };
 }

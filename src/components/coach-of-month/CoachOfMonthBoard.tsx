@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Sparkles, Trophy } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import {
+  COACH_MONTH_ARCHIVE_TABLE_HEADERS,
   defaultCoachOfMonthContent,
   normalizeCoachOfMonthContent,
   type CoachMonthWinner,
@@ -76,6 +77,10 @@ function NewsRow({ winner }: { winner: CoachMonthWinner }) {
       </div>
     </article>
   );
+}
+
+function cellShow(v: string): string {
+  return v.trim() || "—";
 }
 
 export function CoachOfMonthBoard({
@@ -170,6 +175,41 @@ export function CoachOfMonthBoard({
             {winners.map((winner) => (
               <NewsRow key={`news-${winner.id}`} winner={winner} />
             ))}
+          </CardContent>
+        </Card>
+      </section>
+
+      <section>
+        <Card className="border-white/10 bg-zinc-950/80">
+          <CardHeader className="border-white/10">
+            <CardTitle className="text-lg text-zinc-100">Histórico de vencedores</CardTitle>
+            <p className="text-sm font-normal text-zinc-500">
+              Vencedores por mês e escalão. A tabela é atualizada pelo administrador.
+            </p>
+          </CardHeader>
+          <CardContent className="overflow-x-auto p-0">
+            <table className="w-full min-w-[720px] text-left text-sm text-zinc-400">
+              <thead className="border-b border-white/10 bg-zinc-900/50 text-xs uppercase tracking-wide text-zinc-500">
+                <tr>
+                  {COACH_MONTH_ARCHIVE_TABLE_HEADERS.map((h) => (
+                    <th key={h.key} className="px-4 py-3 font-medium">
+                      {h.label}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {content.winnersArchive.map((row, idx) => (
+                  <tr key={`archive-${idx}`} className="border-b border-white/10 last:border-0">
+                    {COACH_MONTH_ARCHIVE_TABLE_HEADERS.map((h) => (
+                      <td key={h.key} className="px-4 py-3 text-zinc-200">
+                        {cellShow(row[h.key])}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </CardContent>
         </Card>
       </section>

@@ -6,7 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { imageFileToCompressedJpegDataUrl } from "@/lib/profile-avatar-compress";
 import {
+  COACH_MONTH_ARCHIVE_TABLE_HEADERS,
+  coachArchiveEmptyRow,
   defaultCoachOfMonthContent,
+  type CoachMonthArchiveRow,
   type CoachMonthWinner,
   type CoachOfMonthContent,
 } from "@/lib/coach-of-month";
@@ -25,6 +28,25 @@ function updateWinner(
   return {
     ...content,
     winners: content.winners.map((w) => (w.id === id ? apply(w) : w)),
+  };
+}
+
+function patchArchiveCell(
+  content: CoachOfMonthContent,
+  rowIndex: number,
+  key: keyof CoachOfMonthArchiveRow,
+  value: string
+): CoachOfMonthContent {
+  const rows = [...content.winnersArchive];
+  rows[rowIndex] = { ...rows[rowIndex], [key]: value };
+  return { ...content, winnersArchive: rows };
+}
+
+function removeArchiveRow(content: CoachOfMonthContent, rowIndex: number): CoachOfMonthContent {
+  if (content.winnersArchive.length <= 1) return content;
+  return {
+    ...content,
+    winnersArchive: content.winnersArchive.filter((_, i) => i !== rowIndex),
   };
 }
 
@@ -210,6 +232,70 @@ export function CoachOfMonthAdminEditor({
           </Card>
         ))}
       </div>
+
+      <Card className="border-white/10 bg-surface-raised/30">
+        <CardHeader>
+          <CardTitle className="text-base">Histórico de vencedores (tabela)</CardTitle>
+          <p className="text-sm font-normal text-zinc-500">
+            Uma linha por mês. Preenche o nome do vencedor (ou texto livre) por escalão. Na página pública, células
+            vazias mostram —. Podes adicionar linhas à medida que vais registando vencedores.
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="overflow-x-auto rounded-xl border border-white/10">
+            <table className="w-full min-w-[760px] text-left text-sm">
+              <thead className="border-b border-white/10 bg-zinc-900/40 text-xs uppercase tracking-wide text-zinc-500">
+                <tr>
+                  {COACH_MONTH_ARCHIVE_TABLE_HEADERS.map((h) => (
+                    <th key={h.key} className="px-3 py-2 font-medium">
+                      {h.label}
+                    </th>
+                  ))}
+                  <th className="w-24 px-3 py-2 font-medium" aria-label="Remover linha" />
+                </tr>
+              </thead>
+              <tbody>
+                {value.winnersArchive.map((row, rowIndex) => (
+                  <tr key={`archive-edit-${rowIndex}`} className="border-b border-white/10 last:border-0">
+                    {COACH_MONTH_ARCHIVE_TABLE_HEADERS.map((col) => (
+                      <td key={col.key} className="p-2 align-middle">
+                        <Input
+                          value={row[col.key]}
+                          onChange={(e) => onChange(patchArchiveCell(value, rowIndex, col.key, e.target.value))}
+                          disabled={!editable}
+                          className="h-9 min-w-[7rem] text-xs"
+                          placeholder="—"
+                        />
+                      </td>
+                    ))}
+                    <td className="p-2 align-middle">
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        className="h-9 px-2 text-[11px]"
+                        disabled={!editable || value.winnersArchive.length <= 1}
+                        onClick={() => onChange(removeArchiveRow(value, rowIndex))}
+                      >
+                        Remover
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={!editable}
+            onClick={() =>
+              onChange({ ...value, winnersArchive: [...value.winnersArchive, coachArchiveEmptyRow()] })
+            }
+          >
+            Adicionar linha (mês)
+          </Button>
+        </CardContent>
+      </Card>
     </div>
   );
 }
