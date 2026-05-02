@@ -1,5 +1,25 @@
 import type { Player } from "@/types";
 
+/** Labels devolvidos por `inferTeamEscalaoFromPlayers` (exceto «sem dados» `—`). */
+export const INFERRED_TEAM_ESCALAO_LABELS = [
+  "Benjamim",
+  "Infantil",
+  "Iniciado",
+  "Juvenil",
+  "Júnior",
+  "Séniores",
+] as const;
+
+const KNOWN_ESCALAO_SET = new Set<string>(INFERRED_TEAM_ESCALAO_LABELS);
+
+/** Chave estável para filtrar linhas da tabela admin (valores fora da lista caem em `—`). */
+export function normalizeEscalaoFilterKey(escalao: string | null | undefined): string {
+  const t = (escalao ?? "").trim();
+  if (!t || t === "—") return "—";
+  if (KNOWN_ESCALAO_SET.has(t)) return t;
+  return "—";
+}
+
 /** Idade em anos completos na data de referência (UTC). */
 export function playerAgeAt(player: Player, refMs: number): number | null {
   const dobRaw = player.dateOfBirth?.trim();

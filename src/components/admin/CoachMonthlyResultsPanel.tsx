@@ -1,7 +1,18 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Card, CardContent } from "@/components/ui/Card";
+import { INFERRED_TEAM_ESCALAO_LABELS, normalizeEscalaoFilterKey } from "@/lib/coach-team-escalao";
+
+const ESCALAO_FILTER_KEYS = [...INFERRED_TEAM_ESCALAO_LABELS, "—"] as const;
+
+function allEscaloesSelected(map: Record<string, boolean>): boolean {
+  return ESCALAO_FILTER_KEYS.every((k) => map[k]);
+}
+
+function defaultEscalaoSelection(): Record<string, boolean> {
+  return Object.fromEntries(ESCALAO_FILTER_KEYS.map((k) => [k, true]));
+}
 
 export type CoachMonthlyResultRow = {
   userId: string;
@@ -34,17 +45,43 @@ export function CoachMonthlyResultsPanel({
   const rows = payload?.rows ?? [];
   const [sortBy, setSortBy] = useState<"wins" | "goalsFor" | "goalsAgainst" | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [escalaoMenuOpen, setEscalaoMenuOpen] = useState(false);
+  const [selectedEscaloes, setSelectedEscaloes] = useState(defaultEscalaoSelection);
+  const escalaoPopoverRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!escalaoMenuOpen) return;
+    const onDoc = (e: MouseEvent) => {
+      const el = escalaoPopoverRef.current;
+      if (el && !el.contains(e.target as Node)) setEscalaoMenuOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setEscalaoMenuOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [escalaoMenuOpen]);
+
+  const escalaoFilterActive = !allEscaloesSelected(selectedEscaloes);
+
+  const escalaoFilteredRows = useMemo(() => {
+    return rows.filter((r) => selectedEscaloes[normalizeEscalaoFilterKey(r.escalao)]);
+  }, [rows, selectedEscaloes]);
 
   const sortedRows = useMemo(() => {
-    if (!sortBy) return rows;
-    const next = [...rows];
+    if (!sortBy) return escalaoFilteredRows;
+    const next = [...escalaoFilteredRows];
     next.sort((a, b) => {
       const diff = (a[sortBy] ?? 0) - (b[sortBy] ?? 0);
       if (diff !== 0) return sortDir === "desc" ? -diff : diff;
       return a.coachName.localeCompare(b.coachName, "pt-PT");
     });
     return next;
-  }, [rows, sortBy, sortDir]);
+  }, [escalaoFilteredRows, sortBy, sortDir]);
 
   const toggleSort = (field: "wins" | "goalsFor" | "goalsAgainst") => {
     if (sortBy === field) {
@@ -59,6 +96,17 @@ export function CoachMonthlyResultsPanel({
     if (sortBy !== field) return "↕";
     return sortDir === "desc" ? "↓" : "↑";
   };
+
+  const toggleEscalaoKey = (key: string) => {
+    setSelectedEscaloes((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const selectAllEscaloes = () => setSelectedEscaloes(defaultEscalaoSelection());
+  const clearEscalaoSelection = () =>
+    setSelectedEscaloes(Object.fromEntries(ESCALAO_FILTER_KEYS.map((k) => [k, false])));
+
+  const escalaoCheckboxLabel = (key: string) =>
+    key === "—" ? "Sem escalão (—)" : key;
 
   return (
     <section className="space-y-4">
@@ -77,7 +125,66 @@ export function CoachMonthlyResultsPanel({
             <thead className="border-b border-surface-border bg-surface-raised/40 text-xs uppercase tracking-wide text-zinc-500">
               <tr>
                 <th className="px-4 py-3">Treinador</th>
-                <th className="px-4 py-3">Escalão</th>
+                <th className="relative px-4 py-3">
+                  <div className="inline-block text-left normal-case" ref={escalaoPopoverRef}>
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-1.5 rounded px-1 py-0.5 text-xs font-semibold uppercase tracking-wide text-zinc-500 hover:bg-white/5 hover:text-zinc-300"
+                      aria-expanded={escalaoMenuOpen}
+                      aria-haspopup="true"
+                      onClick={() => setEscalaoMenuOpen((o) => !o)}
+                    >
+                      Escalão
+                      {escalaoFilterActive ? (
+                        <span className="rounded bg-amber-500/20 px-1.5 py-px text-[10px] font-medium normal-case text-amber-200">
+                          filtro
+                        </span>
+                      ) : null}
+                      <span className="text-[10px] opacity-70">{escalaoMenuOpen ? "▲" : "▼"}</span>
+                    </button>
+                    {escalaoMenuOpen ? (
+                      <div
+                        className="absolute left-2 top-full z-30 mt-1 w-[min(100vw-2rem,16rem)] rounded-lg border border-surface-border bg-zinc-900 py-2 shadow-xl"
+                        role="menu"
+                      >
+                        <p className="px-3 pb-2 text-[11px] leading-snug text-zinc-500">
+                          Mostrar apenas treinadores destes escalões:
+                        </p>
+                        <ul className="max-h-[min(60vh,22rem)] overflow-y-auto px-2">
+                          {ESCALAO_FILTER_KEYS.map((key) => (
+                            <li key={key}>
+                              <label className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-sm text-zinc-300 hover:bg-white/5">
+                                <input
+                                  type="checkbox"
+                                  className="h-3.5 w-3.5 rounded border-zinc-600 bg-zinc-800 text-amber-500 focus:ring-amber-500/40"
+                                  checked={!!selectedEscaloes[key]}
+                                  onChange={() => toggleEscalaoKey(key)}
+                                />
+                                <span>{escalaoCheckboxLabel(key)}</span>
+                              </label>
+                            </li>
+                          ))}
+                        </ul>
+                        <div className="mt-1 flex flex-wrap gap-2 border-t border-surface-border px-3 pt-2">
+                          <button
+                            type="button"
+                            className="text-[11px] text-amber-200/90 hover:underline"
+                            onClick={selectAllEscaloes}
+                          >
+                            Todos
+                          </button>
+                          <button
+                            type="button"
+                            className="text-[11px] text-zinc-500 hover:text-zinc-300 hover:underline"
+                            onClick={clearEscalaoSelection}
+                          >
+                            Nenhum
+                          </button>
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                </th>
                 <th className="px-4 py-3">Equipa</th>
                 <th className="px-4 py-3">Resultados</th>
                 <th className="px-4 py-3">Jogos</th>
@@ -116,6 +223,10 @@ export function CoachMonthlyResultsPanel({
           {rows.length === 0 ? (
             <p className="px-4 py-8 text-center text-sm text-zinc-500">
               Sem dados de jogos no mês passado para os treinadores com workspace cloud.
+            </p>
+          ) : sortedRows.length === 0 ? (
+            <p className="px-4 py-8 text-center text-sm text-zinc-500">
+              Nenhum treinador corresponde aos escalões selecionados. Ajusta o filtro no cabeçalho «Escalão».
             </p>
           ) : null}
         </CardContent>
