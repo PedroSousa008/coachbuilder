@@ -83,6 +83,8 @@ function cellShow(v: string): string {
   return v.trim() || "—";
 }
 
+const ARCHIVE_AGE_HEADERS = COACH_MONTH_ARCHIVE_TABLE_HEADERS.filter((h) => h.key !== "monthLabel");
+
 export function CoachOfMonthBoard({
   adminPreview,
   refetchKey = 0,
@@ -187,29 +189,67 @@ export function CoachOfMonthBoard({
               Vencedores por mês e escalão. A tabela é atualizada pelo administrador.
             </p>
           </CardHeader>
-          <CardContent className="overflow-x-auto p-0">
-            <table className="w-full min-w-[720px] text-left text-sm text-zinc-400">
-              <thead className="border-b border-white/10 bg-zinc-900/50 text-xs uppercase tracking-wide text-zinc-500">
-                <tr>
-                  {COACH_MONTH_ARCHIVE_TABLE_HEADERS.map((h) => (
-                    <th key={h.key} className="px-4 py-3 font-medium">
-                      {h.label}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {content.winnersArchive.map((row, idx) => (
-                  <tr key={`archive-${idx}`} className="border-b border-white/10 last:border-0">
+          <CardContent className="p-4 md:p-0">
+            <div className="space-y-3 md:hidden">
+              {content.winnersArchive.map((row, idx) => (
+                <div
+                  key={`archive-mobile-${idx}`}
+                  className="rounded-xl border border-white/10 bg-zinc-900/35 px-4 py-3 shadow-sm"
+                >
+                  <p className="text-xs font-medium text-zinc-500">Mês</p>
+                  <p className="mt-0.5 text-sm font-medium text-zinc-100">{cellShow(row.monthLabel)}</p>
+                  <dl className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    {ARCHIVE_AGE_HEADERS.map((h) => (
+                      <div key={h.key} className="min-w-0">
+                        <dt className="text-xs font-medium text-zinc-500">{h.label}</dt>
+                        <dd className="mt-0.5 break-words text-sm text-zinc-200">{cellShow(row[h.key])}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                </div>
+              ))}
+            </div>
+
+            <div
+              className="hidden md:block md:overflow-x-auto"
+              role="region"
+              aria-label="Tabela histórico de vencedores"
+            >
+              <table className="w-full min-w-[600px] table-fixed border-collapse text-left text-sm">
+                <colgroup>
+                  <col className="w-[22%]" />
+                  <col className="w-[15.5%]" />
+                  <col className="w-[15.5%]" />
+                  <col className="w-[15.5%]" />
+                  <col className="w-[15.5%]" />
+                  <col className="w-[15.5%]" />
+                </colgroup>
+                <thead>
+                  <tr className="border-b border-white/10 bg-zinc-900/50">
                     {COACH_MONTH_ARCHIVE_TABLE_HEADERS.map((h) => (
-                      <td key={h.key} className="px-4 py-3 text-zinc-200">
-                        {cellShow(row[h.key])}
-                      </td>
+                      <th
+                        key={h.key}
+                        scope="col"
+                        className="px-3 py-3 text-left text-[11px] font-semibold leading-snug text-zinc-400"
+                      >
+                        {h.label}
+                      </th>
                     ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="text-zinc-300">
+                  {content.winnersArchive.map((row, idx) => (
+                    <tr key={`archive-${idx}`} className="border-b border-white/10 last:border-0">
+                      {COACH_MONTH_ARCHIVE_TABLE_HEADERS.map((h) => (
+                        <td key={h.key} className="min-w-0 break-words px-3 py-3 align-top text-zinc-200">
+                          {cellShow(row[h.key])}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </CardContent>
         </Card>
       </section>

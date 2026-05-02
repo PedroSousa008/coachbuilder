@@ -50,6 +50,8 @@ function removeArchiveRow(content: CoachOfMonthContent, rowIndex: number): Coach
   };
 }
 
+const ARCHIVE_AGE_HEADERS = COACH_MONTH_ARCHIVE_TABLE_HEADERS.filter((h) => h.key !== "monthLabel");
+
 export function CoachOfMonthAdminEditor({
   value,
   editable,
@@ -242,37 +244,99 @@ export function CoachOfMonthAdminEditor({
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="overflow-x-auto rounded-xl border border-white/10">
-            <table className="w-full min-w-[760px] text-left text-sm">
-              <thead className="border-b border-white/10 bg-zinc-900/40 text-xs uppercase tracking-wide text-zinc-500">
-                <tr>
+          <div className="space-y-4 md:hidden">
+            {value.winnersArchive.map((row, rowIndex) => (
+              <div
+                key={`archive-mobile-edit-${rowIndex}`}
+                className="rounded-xl border border-white/10 bg-zinc-900/30 p-4 space-y-3"
+              >
+                <label className="block space-y-1">
+                  <span className="text-xs text-zinc-500">Mês</span>
+                  <Input
+                    value={row.monthLabel}
+                    onChange={(e) => onChange(patchArchiveCell(value, rowIndex, "monthLabel", e.target.value))}
+                    disabled={!editable}
+                    className="h-10 text-sm"
+                    placeholder="—"
+                  />
+                </label>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  {ARCHIVE_AGE_HEADERS.map((col) => (
+                    <label key={col.key} className="block min-w-0 space-y-1">
+                      <span className="text-xs text-zinc-500">{col.label}</span>
+                      <Input
+                        value={row[col.key]}
+                        onChange={(e) => onChange(patchArchiveCell(value, rowIndex, col.key, e.target.value))}
+                        disabled={!editable}
+                        className="h-10 text-sm"
+                        placeholder="—"
+                      />
+                    </label>
+                  ))}
+                </div>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="h-10 w-full text-sm"
+                  disabled={!editable || value.winnersArchive.length <= 1}
+                  onClick={() => onChange(removeArchiveRow(value, rowIndex))}
+                >
+                  Remover esta linha
+                </Button>
+              </div>
+            ))}
+          </div>
+
+          <div
+            className="hidden md:block md:overflow-x-auto md:rounded-xl md:border md:border-white/10"
+            role="region"
+            aria-label="Editar histórico de vencedores"
+          >
+            <table className="w-full min-w-[640px] table-fixed border-collapse text-left text-sm">
+              <colgroup>
+                <col className="w-[20%]" />
+                <col className="w-[14%]" />
+                <col className="w-[14%]" />
+                <col className="w-[14%]" />
+                <col className="w-[14%]" />
+                <col className="w-[14%]" />
+                <col className="w-[10%]" />
+              </colgroup>
+              <thead>
+                <tr className="border-b border-white/10 bg-zinc-900/40">
                   {COACH_MONTH_ARCHIVE_TABLE_HEADERS.map((h) => (
-                    <th key={h.key} className="px-3 py-2 font-medium">
+                    <th
+                      key={h.key}
+                      scope="col"
+                      className="px-2 py-2 text-left text-[11px] font-semibold leading-snug text-zinc-400"
+                    >
                       {h.label}
                     </th>
                   ))}
-                  <th className="w-24 px-3 py-2 font-medium" aria-label="Remover linha" />
+                  <th className="px-2 py-2 text-left text-[11px] font-semibold text-zinc-400" aria-label="Remover linha">
+                    Ações
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {value.winnersArchive.map((row, rowIndex) => (
                   <tr key={`archive-edit-${rowIndex}`} className="border-b border-white/10 last:border-0">
                     {COACH_MONTH_ARCHIVE_TABLE_HEADERS.map((col) => (
-                      <td key={col.key} className="p-2 align-middle">
+                      <td key={col.key} className="min-w-0 p-1.5 align-middle">
                         <Input
                           value={row[col.key]}
                           onChange={(e) => onChange(patchArchiveCell(value, rowIndex, col.key, e.target.value))}
                           disabled={!editable}
-                          className="h-9 min-w-[7rem] text-xs"
+                          className="h-9 w-full min-w-0 text-xs"
                           placeholder="—"
                         />
                       </td>
                     ))}
-                    <td className="p-2 align-middle">
+                    <td className="p-1.5 align-middle">
                       <Button
                         type="button"
                         variant="secondary"
-                        className="h-9 px-2 text-[11px]"
+                        className="h-9 w-full px-1.5 text-[10px] sm:text-[11px]"
                         disabled={!editable || value.winnersArchive.length <= 1}
                         onClick={() => onChange(removeArchiveRow(value, rowIndex))}
                       >
