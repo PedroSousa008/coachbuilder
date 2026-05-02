@@ -20,6 +20,9 @@ type Props = {
 
 function shelfCaption(honor: CoachHonorEntry | null): string {
   if (!honor) return "";
+  if (honor.origin === "coach_of_month") {
+    return honor.title.trim() || "Treinador do Mês";
+  }
   const ep = honor.seasonLabel.trim() || "—";
   const esc = honor.ageGroup.trim() || "—";
   const cl = honor.club.trim() || "—";
