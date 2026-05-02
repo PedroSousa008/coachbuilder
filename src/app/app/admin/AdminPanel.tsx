@@ -173,6 +173,7 @@ const REFRESH_OVERVIEW_MS = 45_000;
 const REFRESH_ONLINE_MS = 15_000;
 const REFRESH_REVENUE_MS = 60_000;
 const REFRESH_PERSONALIZATION_MS = 45_000;
+const REFRESH_COACH_RESULTS_MS = 12_000;
 
 function planLabel(plan: string): string {
   if (plan === "pro_monthly") return "Pro mensal";
@@ -520,6 +521,11 @@ export function AdminPanel() {
     if (tab !== "coachOfMonth") return;
     void loadCoachOfMonth();
     void loadCoachResults();
+    const t = window.setInterval(() => {
+      if (document.visibilityState !== "visible") return;
+      void loadCoachResults();
+    }, REFRESH_COACH_RESULTS_MS);
+    return () => window.clearInterval(t);
   }, [tab, loadCoachOfMonth, loadCoachResults]);
 
   const patchSubscription = useCallback(

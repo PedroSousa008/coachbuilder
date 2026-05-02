@@ -53,6 +53,15 @@ export default function TreinadoresPage() {
     })();
   }, [authReady, allowed, router, load, user?.role, refreshUserFromCloud]);
 
+  useEffect(() => {
+    if (!authReady || !allowed) return;
+    const id = window.setInterval(() => {
+      if (document.visibilityState !== "visible") return;
+      void load();
+    }, 12_000);
+    return () => window.clearInterval(id);
+  }, [authReady, allowed, load]);
+
   if (!authReady) {
     return <p className="text-sm text-zinc-500">A carregar…</p>;
   }

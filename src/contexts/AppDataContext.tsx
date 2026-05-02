@@ -1,5 +1,6 @@
 "use client";
 
+import { flushSync } from "react-dom";
 import {
   createContext,
   useCallback,
@@ -535,6 +536,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [lastReadMessageByConv, setLastReadMessageByConv] = useState<Record<string, string>>({});
   const messagesByConvRef = useRef(messagesByConv);
   messagesByConvRef.current = messagesByConv;
+  type WorkspacePushInputs = Parameters<typeof buildWorkspaceSnapshotV1>[0];
+  const workspacePushInputsRef = useRef<WorkspacePushInputs | null>(null);
+  /** When true, the next debounced cloud push effect run is skipped (immediate push just ran for the same dep change). */
+  const skipNextCloudDebouncedPushRef = useRef(false);
   const [trainingSessions, setTrainingSessions] = useState<TrainingSession[]>([]);
   const [trainingPlayerIdsBySession, setTrainingPlayerIdsBySession] = useState<Record<string, string[]>>({});
   const [fixtures, setFixtures] = useState<MatchFixture[]>([]);
@@ -765,8 +770,52 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     };
   }, [authReady, user?.id, ks, hydrated]);
 
+  workspacePushInputsRef.current = {
+    players,
+    staff,
+    teamRoles,
+    conversations,
+    messagesByConv,
+    trainingSessions,
+    trainingPlayerIdsBySession,
+    fixtures,
+    leagueTableUrl,
+    leagueTableRows,
+    leagueMatches,
+    leagueCompetitionName,
+    leagueTableLastFetched,
+    leagueTableFetchError,
+    leagueSetup,
+    pastClubResults,
+    coachProfile,
+    savedTactics,
+    tacticMatches,
+    tacticPlayerNotes,
+    savedTrainingExercises,
+    sketchArea,
+    teamCallup,
+  };
+
+  const pushCloudWorkspaceNow = useCallback(() => {
+    if (!shouldUseCloudClientApis(user) || !cloudRemoteReady || !hydrated || !user?.id) return;
+    const p = workspacePushInputsRef.current;
+    if (!p) return;
+    skipNextCloudDebouncedPushRef.current = true;
+    const snap = buildWorkspaceSnapshotV1(p);
+    void fetch("/api/cloud/workspace", {
+      method: "PUT",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ payload: snap }),
+    });
+  }, [user, cloudRemoteReady, hydrated]);
+
   useEffect(() => {
     if (!shouldUseCloudClientApis(user) || !cloudRemoteReady || !hydrated || !user?.id) return;
+    if (skipNextCloudDebouncedPushRef.current) {
+      skipNextCloudDebouncedPushRef.current = false;
+      return;
+    }
     const snap: WorkspaceSnapshotV1 = buildWorkspaceSnapshotV1({
       players,
       staff,
@@ -799,7 +848,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ payload: snap }),
       });
-    }, 2200);
+    }, 700);
     return () => window.clearTimeout(t);
   }, [
     cloudRemoteReady,
@@ -1031,9 +1080,12 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       dateOfBirth: input.dateOfBirth,
     };
     const tracked = withTrackedPlayerAge(p);
-    setPlayers((prev) => [...prev, tracked]);
+    flushSync(() => {
+      setPlayers((prev) => [...prev, tracked]);
+    });
+    pushCloudWorkspaceNow();
     return tracked;
-  }, []);
+  }, [pushCloudWorkspaceNow]);
 
   const addStaff = useCallback((input: NewStaffInput) => {
     const s: StaffMember = {
@@ -1055,41 +1107,47 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const updatePlayer = useCallback((id: string, patch: Partial<Omit<Player, "id">>) => {
-    setPlayers((prev) =>
-      prev.map((x) => {
-        if (x.id !== id) return x;
-        return withTrackedPlayerAge({ ...x, ...patch });
-      })
-    );
-  }, []);
+    flushSync(() => {
+      setPlayers((prev) =>
+        prev.map((x) => {
+          if (x.id !== id) return x;
+          return withTrackedPlayerAge({ ...x, ...patch });
+        })
+      );
+    });
+    pushCloudWorkspaceNow();
+  }, [pushCloudWorkspaceNow]);
 
   const removePlayer = useCallback((id: string) => {
-    setPlayers((prev) => prev.filter((x) => x.id !== id));
-    setTrainingPlayerIdsBySession((prev) => {
-      const next = { ...prev };
-      for (const k of Object.keys(next)) {
-        next[k] = next[k].filter((pid) => pid !== id);
-      }
-      return next;
+    flushSync(() => {
+      setPlayers((prev) => prev.filter((x) => x.id !== id));
+      setTrainingPlayerIdsBySession((prev) => {
+        const next = { ...prev };
+        for (const k of Object.keys(next)) {
+          next[k] = next[k].filter((pid) => pid !== id);
+        }
+        return next;
+      });
+      setConversations((prev) =>
+        prev.map((c) => ({
+          ...c,
+          participantIds: c.participantIds.filter((pid) => pid !== id),
+        }))
+      );
+      setTeamRoles((prev) => ({
+        captain: prev.captain === id ? null : prev.captain,
+        viceCaptain: prev.viceCaptain === id ? null : prev.viceCaptain,
+        thirdCaptain: prev.thirdCaptain === id ? null : prev.thirdCaptain,
+        fourthCaptain: prev.fourthCaptain === id ? null : prev.fourthCaptain,
+        penalties: prev.penalties.filter((pid) => pid !== id),
+        freeKickRight: prev.freeKickRight.filter((pid) => pid !== id),
+        freeKickLeft: prev.freeKickLeft.filter((pid) => pid !== id),
+        cornerRight: prev.cornerRight.filter((pid) => pid !== id),
+        cornerLeft: prev.cornerLeft.filter((pid) => pid !== id),
+      }));
     });
-    setConversations((prev) =>
-      prev.map((c) => ({
-        ...c,
-        participantIds: c.participantIds.filter((pid) => pid !== id),
-      }))
-    );
-    setTeamRoles((prev) => ({
-      captain: prev.captain === id ? null : prev.captain,
-      viceCaptain: prev.viceCaptain === id ? null : prev.viceCaptain,
-      thirdCaptain: prev.thirdCaptain === id ? null : prev.thirdCaptain,
-      fourthCaptain: prev.fourthCaptain === id ? null : prev.fourthCaptain,
-      penalties: prev.penalties.filter((pid) => pid !== id),
-      freeKickRight: prev.freeKickRight.filter((pid) => pid !== id),
-      freeKickLeft: prev.freeKickLeft.filter((pid) => pid !== id),
-      cornerRight: prev.cornerRight.filter((pid) => pid !== id),
-      cornerLeft: prev.cornerLeft.filter((pid) => pid !== id),
-    }));
-  }, []);
+    pushCloudWorkspaceNow();
+  }, [pushCloudWorkspaceNow]);
 
   const setTeamSingleRole = useCallback((role: TeamSingleRoleId, playerId: string | null) => {
     setTeamRoles((prev) => ({ ...prev, [role]: playerId }));
