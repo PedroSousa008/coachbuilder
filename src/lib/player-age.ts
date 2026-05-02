@@ -18,8 +18,17 @@ export function computeAgeFromDateOfBirth(dateOfBirth: string, now: Date = new D
   return age;
 }
 
+/** Formação a séniores — não limitar a escalões de adultos. */
+export const PLAYER_AGE_MIN = 4;
+export const PLAYER_AGE_MAX = 99;
+
+export function clampPlayerAge(n: number): number {
+  if (!Number.isFinite(n)) return PLAYER_AGE_MIN;
+  return Math.min(PLAYER_AGE_MAX, Math.max(PLAYER_AGE_MIN, Math.round(n)));
+}
+
 export function resolveTrackedPlayerAge(currentAge: number, dateOfBirth?: string): number {
   const computed = dateOfBirth ? computeAgeFromDateOfBirth(dateOfBirth) : null;
   const base = computed ?? currentAge;
-  return Math.min(45, Math.max(14, base));
+  return clampPlayerAge(base);
 }

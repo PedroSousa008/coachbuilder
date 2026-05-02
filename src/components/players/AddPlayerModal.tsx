@@ -6,7 +6,7 @@ import type { NewPlayerInput } from "@/contexts/AppDataContext";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { cn } from "@/lib/utils";
-import { computeAgeFromDateOfBirth } from "@/lib/player-age";
+import { clampPlayerAge, computeAgeFromDateOfBirth } from "@/lib/player-age";
 
 const POSITIONS: Position[] = [
   "GK",
@@ -57,7 +57,7 @@ export function AddPlayerModal({
     const n = name.trim();
     if (!n) return;
     const num = Math.min(99, Math.max(1, parseInt(number, 10) || 1));
-    const a = Math.min(45, Math.max(14, parseInt(age, 10) || 17));
+    const a = clampPlayerAge(parseInt(age, 10) || 17);
     const posList: Position[] = selectedPos.length > 0 ? selectedPos : ["CM"];
     const h = heightCm.trim() ? Math.min(220, Math.max(120, parseInt(heightCm, 10) || 170)) : undefined;
     const w = weightKg.trim() ? Math.min(150, Math.max(35, parseInt(weightKg, 10) || 70)) : undefined;
@@ -129,8 +129,8 @@ export function AddPlayerModal({
               <Input
                 id="np-age"
                 type="number"
-                min={14}
-                max={45}
+                min={4}
+                max={99}
                 value={age}
                 onChange={(e) => setAge(e.target.value)}
                 className="mt-1"
@@ -182,7 +182,7 @@ export function AddPlayerModal({
                   const dob = e.target.value;
                   setDateOfBirth(dob);
                   const computedAge = computeAgeFromDateOfBirth(dob);
-                  if (computedAge != null) setAge(String(Math.min(45, Math.max(14, computedAge))));
+                  if (computedAge != null) setAge(String(computedAge));
                 }}
                 className="mt-1"
               />

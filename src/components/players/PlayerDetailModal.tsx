@@ -30,7 +30,7 @@ import {
   EVALUATION_TESTS,
   EVALUATION_TEST_IDS,
 } from "@/lib/evaluation-tests";
-import { computeAgeFromDateOfBirth } from "@/lib/player-age";
+import { clampPlayerAge, computeAgeFromDateOfBirth } from "@/lib/player-age";
 import {
   PHOTO_FRAME_DEFAULT,
   normalizePlayerPhotoFrame,
@@ -300,7 +300,7 @@ export function PlayerDetailModal({
     const n = name.trim();
     if (!n) return;
     const num = Math.min(99, Math.max(1, parseInt(number, 10) || 1));
-    const a = Math.min(45, Math.max(14, parseInt(age, 10) || 17));
+    const a = clampPlayerAge(parseInt(age, 10) || 17);
     const h = heightCm.trim() ? Math.min(220, Math.max(120, parseInt(heightCm, 10) || 170)) : undefined;
     const w = weightKg.trim() ? Math.min(150, Math.max(35, parseInt(weightKg, 10) || 70)) : undefined;
     const posList: Position[] = selectedPos.length > 0 ? selectedPos : [player.position];
@@ -685,8 +685,8 @@ export function PlayerDetailModal({
                   <Input
                     id="pd-age"
                     type="number"
-                    min={14}
-                    max={45}
+                    min={4}
+                    max={99}
                     value={age}
                     onChange={(e) => setAge(e.target.value)}
                     className="mt-1"
@@ -738,7 +738,7 @@ export function PlayerDetailModal({
                       const dob = e.target.value;
                       setDateOfBirth(dob);
                       const computedAge = computeAgeFromDateOfBirth(dob);
-                      if (computedAge != null) setAge(String(Math.min(45, Math.max(14, computedAge))));
+                      if (computedAge != null) setAge(String(computedAge));
                     }}
                     className="mt-1"
                   />
@@ -881,7 +881,7 @@ export function PlayerDetailModal({
                   <tbody>
                     {EVALUATION_TESTS.map((t) => {
                       const raw = evaluationDraft[t.id] ?? "";
-                      const ageNum = Math.min(45, Math.max(14, parseInt(age, 10) || 17));
+                      const ageNum = clampPlayerAge(parseInt(age, 10) || 17);
                       const ai = raw.trim() ? computeAiOverallProvisional(t.id, raw, ageNum) : null;
                       return (
                         <tr key={t.id} className="border-b border-surface-border/60 last:border-0">
