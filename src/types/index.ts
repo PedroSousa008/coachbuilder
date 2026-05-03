@@ -289,6 +289,8 @@ export interface TeamCallupCalendarForm {
   jogo: string;
   jornada: string;
   data: string;
+  /** Hora de início do jogo (texto livre, ex.: 15:00). */
+  horaJogo: string;
   pontoEncontro: string;
   maps: string;
   horaEncontro: string;

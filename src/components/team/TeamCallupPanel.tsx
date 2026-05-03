@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useAppData } from "@/contexts/AppDataContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import type { TeamCallupCalendarForm } from "@/types";
@@ -33,6 +33,21 @@ export function TeamCallupPanel() {
     [setTeamCallup]
   );
 
+  /** Remove ids de jogadores que já não existem no plantel (liberta vagas nas 18 convocatórias). */
+  useEffect(() => {
+    const idSet = new Set(players.map((p) => p.id));
+    const nextIds = teamCallup.selectedPlayerIds.filter((id) => idSet.has(id));
+    if (nextIds.length === teamCallup.selectedPlayerIds.length) return;
+    setTeamCallup((prev) => {
+      const idOk = new Set(players.map((p) => p.id));
+      const nextObs = { ...prev.observationsByPlayerId };
+      for (const id of prev.selectedPlayerIds) {
+        if (!idOk.has(id)) delete nextObs[id];
+      }
+      return { ...prev, selectedPlayerIds: nextIds, observationsByPlayerId: nextObs };
+    });
+  }, [players, teamCallup.selectedPlayerIds, setTeamCallup]);
+
   const onLogoFile = useCallback(
     (file: File | null) => {
       if (!file) return;
@@ -51,18 +66,22 @@ export function TeamCallupPanel() {
     [isPt, setTeamCallup]
   );
 
-  const togglePlayer = (id: string) => {
-    setTeamCallup((prev) => {
-      const sel = prev.selectedPlayerIds;
-      if (sel.includes(id)) {
-        const nextObs = { ...prev.observationsByPlayerId };
-        delete nextObs[id];
-        return { ...prev, selectedPlayerIds: sel.filter((x) => x !== id), observationsByPlayerId: nextObs };
-      }
-      if (sel.length >= MAX_CALLUP) return prev;
-      return { ...prev, selectedPlayerIds: [...sel, id] };
-    });
-  };
+  const togglePlayer = useCallback(
+    (id: string) => {
+      const idSet = new Set(players.map((p) => p.id));
+      setTeamCallup((prev) => {
+        const sel = prev.selectedPlayerIds.filter((x) => idSet.has(x));
+        if (sel.includes(id)) {
+          const nextObs = { ...prev.observationsByPlayerId };
+          delete nextObs[id];
+          return { ...prev, selectedPlayerIds: sel.filter((x) => x !== id), observationsByPlayerId: nextObs };
+        }
+        if (sel.length >= MAX_CALLUP) return prev;
+        return { ...prev, selectedPlayerIds: [...sel, id] };
+      });
+    },
+    [players, setTeamCallup]
+  );
 
   const sortedSelected = useMemo(() => {
     const set = new Set(teamCallup.selectedPlayerIds);
@@ -82,6 +101,11 @@ export function TeamCallupPanel() {
   }, [sortedSelected, teamCallup.observationsByPlayerId]);
 
   const sortedAllForPicker = useMemo(() => [...players].sort((a, b) => a.number - b.number), [players]);
+
+  const validSelectedCount = useMemo(() => {
+    const idSet = new Set(players.map((p) => p.id));
+    return teamCallup.selectedPlayerIds.filter((id) => idSet.has(id)).length;
+  }, [players, teamCallup.selectedPlayerIds]);
 
   const printCallup = () => {
     window.print();
@@ -135,6 +159,14 @@ export function TeamCallupPanel() {
               <span className="text-xs text-zinc-400">Data</span>
               <Input value={f.data} onChange={(e) => setForm({ data: e.target.value })} placeholder={isPt ? "ex.: 26/04/2026" : "e.g. 2026-04-26"} />
             </label>
+            <label className="block space-y-1">
+              <span className="text-xs text-zinc-400">{isPt ? "Hora de Jogo" : "Kick-off time"}</span>
+              <Input
+                value={f.horaJogo}
+                onChange={(e) => setForm({ horaJogo: e.target.value })}
+                placeholder={isPt ? "ex.: 15:00" : "e.g. 3:00 PM"}
+              />
+            </label>
             <label className="block space-y-1 sm:col-span-2">
               <span className="text-xs text-zinc-400">Ponto de Encontro</span>
               <Input value={f.pontoEncontro} onChange={(e) => setForm({ pontoEncontro: e.target.value })} />
@@ -165,7 +197,7 @@ export function TeamCallupPanel() {
               </p>
             </div>
             <p className="text-sm font-medium text-accent">
-              {teamCallup.selectedPlayerIds.length}/{MAX_CALLUP}
+              {validSelectedCount}/{MAX_CALLUP}
             </p>
           </div>
           <div className="mt-4 overflow-x-auto rounded-xl border border-surface-border">
@@ -181,21 +213,29 @@ export function TeamCallupPanel() {
               <tbody>
                 {sortedAllForPicker.map((p) => {
                   const checked = teamCallup.selectedPlayerIds.includes(p.id);
-                  const disabled = !checked && teamCallup.selectedPlayerIds.length >= MAX_CALLUP;
+                  const disabled = !checked && validSelectedCount >= MAX_CALLUP;
                   return (
-                    <tr key={p.id} className="border-b border-surface-border/60 last:border-0">
-                      <td className="px-3 py-2">
+                    <tr
+                      key={p.id}
+                      className="cursor-pointer border-b border-surface-border/60 last:border-0 hover:bg-white/[0.04]"
+                      onClick={() => {
+                        if (disabled && !checked) return;
+                        togglePlayer(p.id);
+                      }}
+                    >
+                      <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
                         <input
                           type="checkbox"
                           checked={checked}
                           disabled={disabled}
                           onChange={() => togglePlayer(p.id)}
+                          onClick={(e) => e.stopPropagation()}
                           className="h-4 w-4 rounded border-surface-border"
                         />
                       </td>
                       <td className="px-3 py-2 font-mono text-zinc-300">{p.number}</td>
                       <td className="px-3 py-2 text-white">{p.name}</td>
-                      <td className="px-3 py-2">
+                      <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
                         {checked ? (
                           <Input
                             value={teamCallup.observationsByPlayerId[p.id] ?? ""}
@@ -264,6 +304,9 @@ export function TeamCallupPanel() {
             </div>
             <div>
               <span className="font-semibold">Data:</span> {f.data || "—"}
+            </div>
+            <div>
+              <span className="font-semibold">{isPt ? "Hora de Jogo:" : "Kick-off:"}</span> {f.horaJogo || "—"}
             </div>
             <div className="flex min-w-0 flex-col gap-y-0.5 print:gap-y-0">
               <div>
