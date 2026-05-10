@@ -8,6 +8,7 @@ import {
 } from "@/lib/workspace-snapshot";
 import type { Conversation, Message } from "@/types";
 import { dedupeMatches } from "@/lib/league-match-dedupe";
+import { mergePlayerRosterById } from "@/lib/workspace-merge-players";
 
 /** União por `id` na BD: o `incoming` atualiza o mesmo id; entidades só no `base` mantêm-se (evita apagar plantel/fotos). */
 function mergeEntitiesById<T extends { id: string }>(base: T[], overlay: T[]): T[] {
@@ -163,7 +164,7 @@ export function mergeWorkspacePayloadSafely(
   return {
     ...existing,
     ...incoming,
-    players: mergeEntitiesById(existing.players, incoming.players),
+    players: mergePlayerRosterById(existing.players, incoming.players),
     staff: mergeEntitiesById(existing.staff, incoming.staff),
     teamRoles: pickNonEmptyObject(incoming.teamRoles, existing.teamRoles),
     trainingSessions: mergeEntitiesById(existing.trainingSessions, incoming.trainingSessions),

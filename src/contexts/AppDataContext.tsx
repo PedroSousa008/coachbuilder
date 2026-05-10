@@ -63,7 +63,7 @@ import {
   migrateLegacyDataIfNeeded,
 } from "@/lib/user-storage-keys";
 import { safeLoadJSON, safeSaveJSON } from "@/lib/coachbuilder-persist";
-import { isCloudSyncEnabledClient, shouldUseCloudClientApis } from "@/lib/cloud-config";
+import { shouldUseCloudClientApis } from "@/lib/cloud-config";
 import {
   collectWorkspaceFromLocalStorage,
   mergeSketchArea,
@@ -73,6 +73,7 @@ import {
   type WorkspaceSnapshotV1,
 } from "@/lib/workspace-snapshot";
 import { buildWorkspaceSnapshotV1 } from "@/lib/build-workspace-snapshot";
+import { mergePlayerRosterById } from "@/lib/workspace-merge-players";
 import { emptySketchAreaState } from "@/lib/sketch-area";
 import { emptyTeamCallupState, mergeTeamCallup } from "@/lib/team-callup";
 import { useAuth } from "@/contexts/AuthContext";
@@ -213,7 +214,7 @@ function mergeWorkspaceSnapshotsClient(cloud: WorkspaceSnapshotV1, local: Worksp
   return {
     ...local,
     ...cloud,
-    players: mergeEntitiesById(local.players, cloud.players),
+    players: mergePlayerRosterById(local.players, cloud.players),
     staff: mergeEntitiesById(local.staff, cloud.staff),
     teamRoles: pickNonEmptyObject(cloud.teamRoles, local.teamRoles),
     conversations: mergeEntitiesById(local.conversations, cloud.conversations),
@@ -238,7 +239,10 @@ function mergeWorkspaceSnapshotsClient(cloud: WorkspaceSnapshotV1, local: Worksp
       url: pickNonEmptyString(cloud.league.url ?? "", local.league.url ?? ""),
       rows: pickNonEmptyArray(cloud.league.rows ?? [], local.league.rows ?? []),
       matches: dedupeMatches([...(cloud.league.matches ?? []), ...(local.league.matches ?? [])]),
-      pastClubResults: pickNonEmptyArray(cloud.league.pastClubResults ?? [], local.league.pastClubResults ?? []),
+      pastClubResults: mergeEntitiesById(
+        local.league.pastClubResults ?? [],
+        cloud.league.pastClubResults ?? []
+      ),
       competitionName: cloud.league.competitionName ?? local.league.competitionName ?? null,
       setup: cloud.league.setup ?? local.league.setup ?? null,
       lastFetched: cloud.league.lastFetched ?? local.league.lastFetched ?? null,
@@ -266,6 +270,25 @@ function mergeWorkspaceSnapshotsClient(cloud: WorkspaceSnapshotV1, local: Worksp
         Object.values(cloud.teamCallup.form).some((v) => String(v).trim() !== ""))
         ? mergeTeamCallup(cloud.teamCallup, emptyTeamCallupState())
         : mergeTeamCallup(local.teamCallup, emptyTeamCallupState()),
+  };
+}
+
+type WorkspaceLivePushInputs = Parameters<typeof buildWorkspaceSnapshotV1>[0];
+
+/** Junta o que está no `localStorage` com o estado React mais recente (ref), antes do merge com a cloud. */
+function localWorkspaceSnapshotBoostedWithLive(
+  userId: string,
+  live: WorkspaceLivePushInputs | null
+): WorkspaceSnapshotV1 {
+  const ls = collectWorkspaceFromLocalStorage(userId);
+  if (!live) return ls;
+  return {
+    ...ls,
+    players: mergePlayerRosterById(ls.players, live.players),
+    staff: mergeEntitiesById(ls.staff, live.staff),
+    trainingPlayers: mergeTrainingPlayerIdsBySession(ls.trainingPlayers, live.trainingPlayerIdsBySession),
+    trainingSessions: mergeEntitiesById(ls.trainingSessions, live.trainingSessions),
+    fixtures: mergeEntitiesById(ls.fixtures, live.fixtures),
   };
 }
 
@@ -612,8 +635,6 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [sketchArea, setSketchArea] = useState<SketchAreaState>(() => emptySketchAreaState());
   const [teamCallup, setTeamCallup] = useState<TeamCallupState>(() => emptyTeamCallupState());
 
-  const [cloudRemoteReady, setCloudRemoteReady] = useState(() => !isCloudSyncEnabledClient());
-
   useEffect(() => {
     const t = leagueTableUrl.trim();
     if (fpfSkipServerFetchUrlRef.current !== t) {
@@ -621,18 +642,6 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       fpfSkipServerFetchRef.current = false;
     }
   }, [leagueTableUrl]);
-
-  useEffect(() => {
-    if (!shouldUseCloudClientApis(user)) {
-      setCloudRemoteReady(true);
-      return;
-    }
-    if (!user?.id) {
-      setCloudRemoteReady(true);
-      return;
-    }
-    setCloudRemoteReady(false);
-  }, [user?.id, user]);
 
   useEffect(() => {
     if (!authReady) return;
@@ -729,7 +738,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         };
         if (cancelled) return;
         if (res.ok && data.ok && data.payload && snapshotHasMeaningfulData(data.payload)) {
-          const local = collectWorkspaceFromLocalStorage(user.id);
+          const local = localWorkspaceSnapshotBoostedWithLive(user.id, workspacePushInputsRef.current);
           /** Sempre fundir com o local quando este tem dados — evita apagar plantel após refresh se a versão do snapshot não coincidir (ex.: payload antigo na BD). */
           const s = snapshotHasMeaningfulData(local)
             ? mergeWorkspaceSnapshotsClient(data.payload, local)
@@ -799,7 +808,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
             });
           }
         } else {
-          const local = collectWorkspaceFromLocalStorage(user.id);
+          const local = localWorkspaceSnapshotBoostedWithLive(user.id, workspacePushInputsRef.current);
           if (snapshotHasMeaningfulData(local)) {
             await fetch("/api/cloud/workspace", {
               method: "PUT",
@@ -809,8 +818,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
             });
           }
         }
-      } finally {
-        if (!cancelled) setCloudRemoteReady(true);
+      } catch {
+        /* ignore: merge/push best-effort */
       }
     })();
     return () => {
@@ -845,7 +854,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   };
 
   const pushCloudWorkspaceNow = useCallback(() => {
-    if (!shouldUseCloudClientApis(user) || !cloudRemoteReady || !hydrated || !user?.id) return;
+    if (!shouldUseCloudClientApis(user) || !hydrated || !user?.id) return;
     const p = workspacePushInputsRef.current;
     if (!p) return;
     skipNextCloudDebouncedPushRef.current = true;
@@ -856,10 +865,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ payload: snap }),
     });
-  }, [user, cloudRemoteReady, hydrated]);
+  }, [user, hydrated]);
 
   useEffect(() => {
-    if (!shouldUseCloudClientApis(user) || !cloudRemoteReady || !hydrated || !user?.id) return;
+    if (!shouldUseCloudClientApis(user) || !hydrated || !user?.id) return;
     if (skipNextCloudDebouncedPushRef.current) {
       skipNextCloudDebouncedPushRef.current = false;
       return;
@@ -899,7 +908,6 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     }, 700);
     return () => window.clearTimeout(t);
   }, [
-    cloudRemoteReady,
     hydrated,
     user?.id,
     players,
@@ -2048,7 +2056,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         pastClubResults,
       } satisfies LeaguePersist);
     }
-    if (shouldUseCloudClientApis(user) && cloudRemoteReady && hydrated && user?.id) {
+    if (shouldUseCloudClientApis(user) && hydrated && user?.id) {
       const snap = buildWorkspaceSnapshotV1({
         players,
         staff,
@@ -2092,7 +2100,6 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     leagueSetup,
     pastClubResults,
     user,
-    cloudRemoteReady,
     players,
     staff,
     teamRoles,
