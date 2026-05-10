@@ -9,8 +9,6 @@ import { Input } from "@/components/ui/Input";
 import { Printer } from "lucide-react";
 
 const MAX_CALLUP = 18;
-const MAX_LOGO_BYTES = 450_000;
-
 type PrintRow = { number: string; name: string; obs: string };
 
 export function TeamCallupPanel() {
@@ -55,15 +53,11 @@ export function TeamCallupPanel() {
       const reader = new FileReader();
       reader.onload = () => {
         const dataUrl = String(reader.result ?? "");
-        if (dataUrl.length > MAX_LOGO_BYTES) {
-          alert(isPt ? "Imagem demasiado grande (máx. ~450 KB)." : "Image too large (max ~450 KB).");
-          return;
-        }
         setTeamCallup((prev) => ({ ...prev, clubLogoDataUrl: dataUrl }));
       };
       reader.readAsDataURL(file);
     },
-    [isPt, setTeamCallup]
+    [setTeamCallup]
   );
 
   const togglePlayer = useCallback(

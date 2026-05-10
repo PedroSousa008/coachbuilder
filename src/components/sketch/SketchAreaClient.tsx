@@ -48,7 +48,6 @@ import { PlayerPickerModal } from "@/components/players/PlayerPickerModal";
 import {
   EVENT_CATEGORY_LABELS,
   FILE_FOLDER_LABELS,
-  MAX_SKETCH_FILE_BYTES,
   NOTE_CATEGORY_LABELS,
   TASK_CATEGORY_LABELS,
 } from "./constants";
@@ -342,15 +341,12 @@ export function SketchAreaClient() {
       if (!files?.length) return;
       const now = new Date().toISOString();
       for (const file of Array.from(files)) {
-        let dataUrl: string | undefined;
-        if (file.size <= MAX_SKETCH_FILE_BYTES) {
-          dataUrl = await new Promise<string>((res, rej) => {
-            const r = new FileReader();
-            r.onload = () => res(String(r.result));
-            r.onerror = () => rej(new Error("read"));
-            r.readAsDataURL(file);
-          }).catch(() => undefined);
-        }
+        const dataUrl = await new Promise<string>((res, rej) => {
+          const r = new FileReader();
+          r.onload = () => res(String(r.result));
+          r.onerror = () => rej(new Error("read"));
+          r.readAsDataURL(file);
+        }).catch(() => undefined);
         const row: SketchFileEntry = {
           id: sketchUid("file"),
           name: file.name,

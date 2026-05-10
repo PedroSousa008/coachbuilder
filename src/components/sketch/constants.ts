@@ -47,5 +47,3 @@ export const FILE_FOLDER_LABELS: Record<SketchFileFolder, string> = {
   season_planning: "Planeamento da época",
   recruitment: "Recrutamento",
 };
-
-export const MAX_SKETCH_FILE_BYTES = 380_000;

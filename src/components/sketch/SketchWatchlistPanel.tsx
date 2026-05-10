@@ -26,8 +26,6 @@ import {
 import { topSketchQualitiesForPositions } from "@/lib/sketch-external-player-qualities";
 import { cn } from "@/lib/utils";
 
-const PLAYER_PHOTO_MAX_FILE_BYTES = 400_000;
-
 const SQUAD_POSITIONS: Position[] = [
   "GK",
   "CB",
@@ -313,12 +311,6 @@ export function SketchWatchlistPanel() {
     e.target.value = "";
     if (!file) return;
     if (!file.type.startsWith("image/")) return;
-    if (file.size > PLAYER_PHOTO_MAX_FILE_BYTES) {
-      window.alert(
-        `A imagem é demasiado grande. Usa um ficheiro até ~${Math.round(PLAYER_PHOTO_MAX_FILE_BYTES / 1024)} KB.`
-      );
-      return;
-    }
     const reader = new FileReader();
     reader.onload = () => {
       const s = typeof reader.result === "string" ? reader.result : "";
@@ -629,12 +621,6 @@ export function SketchWatchlistPanel() {
             const file = e.target.files?.[0];
             e.target.value = "";
             if (!file || !file.type.startsWith("image/")) return;
-            if (file.size > PLAYER_PHOTO_MAX_FILE_BYTES) {
-              window.alert(
-                `A imagem é demasiado grande. Usa um ficheiro até ~${Math.round(PLAYER_PHOTO_MAX_FILE_BYTES / 1024)} KB.`
-              );
-              return;
-            }
             const reader = new FileReader();
             reader.onload = () => {
               const s = typeof reader.result === "string" ? reader.result : "";

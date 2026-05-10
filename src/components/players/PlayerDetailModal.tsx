@@ -38,8 +38,6 @@ import {
 } from "@/lib/player-photo-frame";
 
 /** Limite para data URL guardada no jogador (local / sync). */
-const PLAYER_PHOTO_MAX_FILE_BYTES = 400_000;
-
 const POSITIONS: Position[] = [
   "GK",
   "CB",
@@ -363,12 +361,6 @@ export function PlayerDetailModal({
     e.target.value = "";
     if (!file) return;
     if (!file.type.startsWith("image/")) return;
-    if (file.size > PLAYER_PHOTO_MAX_FILE_BYTES) {
-      window.alert(
-        `A imagem é demasiado grande. Usa um ficheiro até ~${Math.round(PLAYER_PHOTO_MAX_FILE_BYTES / 1024)} KB.`
-      );
-      return;
-    }
     const reader = new FileReader();
     reader.onload = () => {
       const s = typeof reader.result === "string" ? reader.result : "";
@@ -612,7 +604,7 @@ export function PlayerDetailModal({
                 </div>
               ) : null}
               <p className="mt-1.5 text-[11px] text-zinc-600">
-                Aparece no cartão da equipa. Até ~{Math.round(PLAYER_PHOTO_MAX_FILE_BYTES / 1024)} KB (JPEG, PNG, WebP…).
+                Aparece no cartão da equipa (JPEG, PNG, WebP…).
               </p>
             </div>
           </div>
