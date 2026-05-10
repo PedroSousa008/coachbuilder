@@ -38,7 +38,6 @@ import type {
   SketchTaskPriority,
   SketchTaskRecurring,
   SketchStrokeTool,
-  SketchWatchlistEntry,
 } from "@/types";
 import { calendarDayLisbon } from "@/lib/lisbon-date";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
@@ -60,6 +59,7 @@ import {
 } from "./SketchBoardCanvas";
 import { SketchOpponentAnalysisPanel } from "./SketchOpponentAnalysisPanel";
 import { SketchWeeklyReportPanel } from "./SketchWeeklyReportPanel";
+import { SketchWatchlistPanel } from "./SketchWatchlistPanel";
 
 type TabId = "calendar" | "notes" | "tasks" | "files" | "board" | "watchlist" | "opponentAi" | "weeklyReport";
 
@@ -130,7 +130,7 @@ export function SketchAreaClient() {
   const [tab, setTab] = useState<TabId>(initialTab);
   const [calDay, setCalDay] = useState(() => todayDay());
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [pickerMode, setPickerMode] = useState<"event" | "note" | "task" | "watch" | "file_players" | null>(null);
+  const [pickerMode, setPickerMode] = useState<"event" | "note" | "task" | "file_players" | null>(null);
 
   const [evtForm, setEvtForm] = useState({
     title: "",
@@ -182,11 +182,6 @@ export function SketchAreaClient() {
   const [boardPitch] = useState<SketchPitchTemplate>("full");
   const [boardNote, setBoardNote] = useState("");
   const [selectedBoardPlayerId, setSelectedBoardPlayerId] = useState<string>("");
-  const [externalWatchForm, setExternalWatchForm] = useState({
-    name: "",
-    club: "",
-    position: "",
-  });
   const [boardExpanded, setBoardExpanded] = useState(false);
 
   const activeDraft = useMemo(() => {
@@ -450,50 +445,6 @@ export function SketchAreaClient() {
     window.print();
   }, []);
 
-  const addWatch = useCallback(
-    (player: Player) => {
-      if (sketchArea.watchlist.some((w) => w.playerId === player.id)) return;
-      const now = new Date().toISOString();
-      const row: SketchWatchlistEntry = {
-        id: sketchUid("watch"),
-        playerId: player.id,
-        focusTags: [],
-        latestNote: "",
-        nextAction: "",
-        clipLinks: [],
-        createdAt: now,
-        updatedAt: now,
-      };
-      setSketchArea((s) => ({ ...s, watchlist: [row, ...s.watchlist] }));
-    },
-    [setSketchArea, sketchArea.watchlist]
-  );
-
-  const addExternalWatch = useCallback(() => {
-    const name = externalWatchForm.name.trim();
-    if (!name) return;
-    const nameKey = name.toLowerCase();
-    const duplicate = sketchArea.watchlist.some(
-      (w) => !w.playerId && (w.externalPlayerName ?? "").trim().toLowerCase() === nameKey
-    );
-    if (duplicate) return;
-    const now = new Date().toISOString();
-    const row: SketchWatchlistEntry = {
-      id: sketchUid("watch"),
-      externalPlayerName: name,
-      externalClub: externalWatchForm.club.trim() || undefined,
-      externalPosition: externalWatchForm.position.trim() || undefined,
-      focusTags: [],
-      latestNote: "",
-      nextAction: "",
-      clipLinks: [],
-      createdAt: now,
-      updatedAt: now,
-    };
-    setSketchArea((s) => ({ ...s, watchlist: [row, ...s.watchlist] }));
-    setExternalWatchForm({ name: "", club: "", position: "" });
-  }, [externalWatchForm, setSketchArea, sketchArea.watchlist]);
-
   const openPicker = (mode: typeof pickerMode) => {
     setPickerMode(mode);
     setPickerOpen(true);
@@ -503,7 +454,6 @@ export function SketchAreaClient() {
     if (pickerMode === "event") setEvtForm((f) => ({ ...f, linkedPlayerId: p.id }));
     else if (pickerMode === "note") setNoteForm((f) => ({ ...f, linkedPlayerId: p.id }));
     else if (pickerMode === "task") setTaskForm((f) => ({ ...f, linkedPlayerId: p.id }));
-    else if (pickerMode === "watch") addWatch(p);
     else if (pickerMode === "file_players") {
       setFilePlayerIds((ids) => (ids.includes(p.id) ? ids.filter((x) => x !== p.id) : [...ids, p.id]));
     }
@@ -1333,158 +1283,7 @@ export function SketchAreaClient() {
         </Card>
       ) : null}
 
-      {tab === "watchlist" ? (
-        <div className="no-print space-y-4">
-          <div className="grid gap-4 rounded-2xl border border-surface-border bg-surface-raised/20 p-4 md:grid-cols-2">
-            <div className="space-y-3">
-              <p className="text-sm font-medium text-zinc-200">Adicionar da tua equipa</p>
-              <Button type="button" onClick={() => openPicker("watch")}>
-                <Plus className="mr-2 h-4 w-4" />
-                Adicionar jogador da equipa
-              </Button>
-            </div>
-            <div className="space-y-3">
-              <p className="text-sm font-medium text-zinc-200">Adicionar jogador externo (outras equipas)</p>
-              <div className="grid gap-2">
-                <Input
-                  value={externalWatchForm.name}
-                  onChange={(e) => setExternalWatchForm((f) => ({ ...f, name: e.target.value }))}
-                  placeholder="Nome do jogador"
-                />
-                <div className="grid gap-2 sm:grid-cols-2">
-                  <Input
-                    value={externalWatchForm.club}
-                    onChange={(e) => setExternalWatchForm((f) => ({ ...f, club: e.target.value }))}
-                    placeholder="Clube (opcional)"
-                  />
-                  <Input
-                    value={externalWatchForm.position}
-                    onChange={(e) => setExternalWatchForm((f) => ({ ...f, position: e.target.value }))}
-                    placeholder="Posição (opcional)"
-                  />
-                </div>
-                <Button type="button" variant="secondary" onClick={addExternalWatch}>
-                  Adicionar jogador externo
-                </Button>
-              </div>
-            </div>
-          </div>
-          <div className="grid gap-4 md:grid-cols-2">
-            {sketchArea.watchlist.map((w) => {
-              const pl = players.find((p) => p.id === w.playerId);
-              return (
-                <Card key={w.id}>
-                  <CardHeader className="flex flex-row items-start justify-between gap-2">
-                    <div>
-                      <CardTitle className="text-base">{pl?.name ?? w.externalPlayerName ?? "Jogador"}</CardTitle>
-                      {!pl && (w.externalClub || w.externalPosition) ? (
-                        <p className="mt-1 text-xs text-zinc-500">
-                          {[w.externalClub, w.externalPosition].filter(Boolean).join(" · ")}
-                        </p>
-                      ) : null}
-                      {!pl ? <Badge variant="muted">Externo</Badge> : null}
-                    </div>
-                    <button
-                      type="button"
-                      className="text-zinc-500 hover:text-red-400"
-                      onClick={() => setSketchArea((s) => ({ ...s, watchlist: s.watchlist.filter((x) => x.id !== w.id) }))}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </CardHeader>
-                  <CardContent className="space-y-2 text-sm">
-                    <label className="block text-xs text-zinc-500">Tags de foco (vírgula)</label>
-                    <Input
-                      value={w.focusTags.join(", ")}
-                      onChange={(e) => {
-                        const tags = e.target.value
-                          .split(",")
-                          .map((t) => t.trim())
-                          .filter(Boolean);
-                        setSketchArea((s) => ({
-                          ...s,
-                          watchlist: s.watchlist.map((x) => (x.id === w.id ? { ...x, focusTags: tags } : x)),
-                        }));
-                      }}
-                    />
-                    <label className="block text-xs text-zinc-500">Última nota</label>
-                    <textarea
-                      className="min-h-[56px] w-full rounded-xl border border-surface-border bg-surface-raised/50 px-3 py-2 text-sm"
-                      value={w.latestNote}
-                      onChange={(e) =>
-                        setSketchArea((s) => ({
-                          ...s,
-                          watchlist: s.watchlist.map((x) =>
-                            x.id === w.id ? { ...x, latestNote: e.target.value } : x
-                          ),
-                        }))
-                      }
-                    />
-                    <label className="block text-xs text-zinc-500">Próxima ação</label>
-                    <Input
-                      value={w.nextAction}
-                      onChange={(e) =>
-                        setSketchArea((s) => ({
-                          ...s,
-                          watchlist: s.watchlist.map((x) =>
-                            x.id === w.id ? { ...x, nextAction: e.target.value } : x
-                          ),
-                        }))
-                      }
-                    />
-                    <label className="block text-xs text-zinc-500">Lembrete</label>
-                    <Input
-                      value={w.reminderText ?? ""}
-                      onChange={(e) =>
-                        setSketchArea((s) => ({
-                          ...s,
-                          watchlist: s.watchlist.map((x) =>
-                            x.id === w.id ? { ...x, reminderText: e.target.value || undefined } : x
-                          ),
-                        }))
-                      }
-                    />
-                    <label className="block text-xs text-zinc-500">Nota de presença</label>
-                    <Input
-                      value={w.attendanceNote ?? ""}
-                      onChange={(e) =>
-                        setSketchArea((s) => ({
-                          ...s,
-                          watchlist: s.watchlist.map((x) =>
-                            x.id === w.id ? { ...x, attendanceNote: e.target.value || undefined } : x
-                          ),
-                        }))
-                      }
-                    />
-                    <label className="block text-xs text-zinc-500">Links de clips (um por linha)</label>
-                    <textarea
-                      className="min-h-[56px] w-full rounded-xl border border-surface-border bg-surface-raised/50 px-3 py-2 text-sm"
-                      value={w.clipLinks.join("\n")}
-                      onChange={(e) =>
-                        setSketchArea((s) => ({
-                          ...s,
-                          watchlist: s.watchlist.map((x) =>
-                            x.id === w.id
-                              ? {
-                                  ...x,
-                                  clipLinks: e.target.value
-                                    .split("\n")
-                                    .map((l) => l.trim())
-                                    .filter(Boolean),
-                                }
-                              : x
-                          ),
-                        }))
-                      }
-                    />
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-          {sketchArea.watchlist.length === 0 ? <p className="text-center text-sm text-zinc-500">Sem jogadores na lista de observação.</p> : null}
-        </div>
-      ) : null}
+      {tab === "watchlist" ? <SketchWatchlistPanel /> : null}
 
       {tab === "opponentAi" ? <SketchOpponentAnalysisPanel /> : null}
       {tab === "weeklyReport" ? <SketchWeeklyReportPanel /> : null}

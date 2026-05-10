@@ -55,6 +55,22 @@ export function playerHasPosition(p: Player, pos: Position): boolean {
   return getPlayerPositions(p).includes(pos);
 }
 
+/** Posição “principal” no sentido de ordenação de plantel (GK antes de ST, etc.). */
+export function primaryPositionFromList(positions: Position[]): Position {
+  if (!positions.length) return "CM";
+  let best = positions[0]!;
+  let bestIdx = positionOrderIndex(best);
+  for (let i = 1; i < positions.length; i++) {
+    const p = positions[i]!;
+    const idx = positionOrderIndex(p);
+    if (idx < bestIdx) {
+      best = p;
+      bestIdx = idx;
+    }
+  }
+  return best;
+}
+
 export type SquadSortBy = "number" | "position" | "name";
 
 export function sortSquadRoster(players: Player[], sortBy: SquadSortBy): Player[] {

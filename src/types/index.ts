@@ -241,6 +241,14 @@ export interface Player {
    * A “aceitação” é verificada na cloud: existe utilizador com esse `nametag`.
    */
   linkedNametag?: string;
+  /** Nacionalidade (texto livre). */
+  nationality?: string;
+  /** Valor de mercado / nota económica (texto livre, ex. «350k €»). */
+  marketValueNote?: string;
+  /** Clube de origem na observação / último clube conhecido (recrutamento). */
+  scoutedFromClub?: string;
+  /** Melhores qualidades destacadas na observação (rótulos em português). */
+  scoutingHighlights?: string[];
 }
 
 export interface StaffMember {
@@ -921,11 +929,31 @@ export interface SketchWatchlistEntry {
   /** External player profile (when scouting players from other teams). */
   externalPlayerName?: string;
   externalClub?: string;
+  /** Legado: posição em texto livre; preferir `externalPositions`. */
   externalPosition?: string;
+  /** Posições (plantel) para ficha, qualidades e promoção à equipa. */
+  externalPositions?: Position[];
+  /** ISO date YYYY-MM-DD */
+  dateOfBirth?: string;
+  heightCm?: number;
+  weightKg?: number;
+  preferredFoot?: PreferredFoot;
+  marketValueNote?: string;
+  nationality?: string;
+  externalPhotoUrl?: string;
+  externalPhotoFrame?: PlayerPhotoFrame;
+  /** Qualidades escolhidas a partir da tabela top-10 da posição principal. */
+  highlightQualities?: string[];
+  /** Qualidades extra escritas pelo utilizador. */
+  extraHighlightQualities?: string[];
   focusTags: string[];
   latestNote: string;
   nextAction: string;
   reminderText?: string;
+  /** Data do lembrete (YYYY-MM-DD) para criar/atualizar evento no calendário da Sketch Area. */
+  reminderDate?: string;
+  /** Id de `calendarEvents` quando o lembrete está ligado ao calendário. */
+  reminderCalendarEventId?: string;
   clipLinks: string[];
   attendanceNote?: string;
   createdAt: string;

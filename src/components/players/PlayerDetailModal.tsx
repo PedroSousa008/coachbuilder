@@ -97,6 +97,10 @@ export function PlayerDetailModal({
   const lookupGen = useRef(0);
   const [photoUrlDraft, setPhotoUrlDraft] = useState("");
   const [photoFrameDraft, setPhotoFrameDraft] = useState<PlayerPhotoFrame>(() => ({ ...PHOTO_FRAME_DEFAULT }));
+  const [nationalityDraft, setNationalityDraft] = useState("");
+  const [marketValueNoteDraft, setMarketValueNoteDraft] = useState("");
+  const [scoutedFromClubDraft, setScoutedFromClubDraft] = useState("");
+  const [scoutingHighlightsDraft, setScoutingHighlightsDraft] = useState("");
   /** Painel «Ajustar na moldura»: aberto ao escolher foto nova; fechado após Guardar; reabre com «Editar». */
   const [photoAdjustExpanded, setPhotoAdjustExpanded] = useState(false);
   /** Esconde nametag, foto e resumo (Overall / IMC) para dar espaço às tabs. */
@@ -144,6 +148,10 @@ export function PlayerDetailModal({
     setLinkedNametagDraft(player.linkedNametag ?? "");
     setPhotoUrlDraft(player.photoUrl ?? "");
     setPhotoFrameDraft(normalizePlayerPhotoFrame(player.photoFrame));
+    setNationalityDraft(player.nationality ?? "");
+    setMarketValueNoteDraft(player.marketValueNote ?? "");
+    setScoutedFromClubDraft(player.scoutedFromClub ?? "");
+    setScoutingHighlightsDraft((player.scoutingHighlights ?? []).join("\n"));
     setPhotoAdjustExpanded(false);
     setPlayerHeaderCollapsed(false);
     setNametagLookup("idle");
@@ -319,6 +327,10 @@ export function PlayerDetailModal({
       frameNorm.posX === PHOTO_FRAME_DEFAULT.posX &&
       frameNorm.posY === PHOTO_FRAME_DEFAULT.posY &&
       frameNorm.zoom === PHOTO_FRAME_DEFAULT.zoom;
+    const scoutingHighlights = scoutingHighlightsDraft
+      .split("\n")
+      .map((s) => s.trim())
+      .filter(Boolean);
 
     onSave(player.id, {
       name: n,
@@ -338,6 +350,10 @@ export function PlayerDetailModal({
       photoUrl: trimmedPhoto || undefined,
       photoFrame: trimmedPhoto && !photoFrameIsDefault ? frameNorm : undefined,
       ...(ln ? { linkedNametag: ln } : { linkedNametag: undefined }),
+      nationality: nationalityDraft.trim() || undefined,
+      marketValueNote: marketValueNoteDraft.trim() || undefined,
+      scoutedFromClub: scoutedFromClubDraft.trim() || undefined,
+      scoutingHighlights: scoutingHighlights.length ? scoutingHighlights : undefined,
     });
     setPhotoAdjustExpanded(false);
   };
@@ -773,6 +789,59 @@ export function PlayerDetailModal({
                       {p}
                     </button>
                   ))}
+                </div>
+              </div>
+              <div className="rounded-xl border border-surface-border/80 bg-black/20 p-3">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">Recrutamento / observação</p>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className="text-xs font-medium text-zinc-500" htmlFor="pd-nationality">
+                      Nacionalidade
+                    </label>
+                    <Input
+                      id="pd-nationality"
+                      value={nationalityDraft}
+                      onChange={(e) => setNationalityDraft(e.target.value)}
+                      className="mt-1"
+                      placeholder="—"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-zinc-500" htmlFor="pd-market">
+                      Valor de mercado
+                    </label>
+                    <Input
+                      id="pd-market"
+                      value={marketValueNoteDraft}
+                      onChange={(e) => setMarketValueNoteDraft(e.target.value)}
+                      className="mt-1"
+                      placeholder="Texto livre"
+                    />
+                  </div>
+                </div>
+                <div className="mt-3">
+                  <label className="text-xs font-medium text-zinc-500" htmlFor="pd-scouted-club">
+                    Clube de origem (observação)
+                  </label>
+                  <Input
+                    id="pd-scouted-club"
+                    value={scoutedFromClubDraft}
+                    onChange={(e) => setScoutedFromClubDraft(e.target.value)}
+                    className="mt-1"
+                    placeholder="—"
+                  />
+                </div>
+                <div className="mt-3">
+                  <label className="text-xs font-medium text-zinc-500" htmlFor="pd-highlights">
+                    Melhores qualidades (uma por linha)
+                  </label>
+                  <textarea
+                    id="pd-highlights"
+                    className="mt-1 min-h-[72px] w-full rounded-xl border border-surface-border bg-surface-raised/50 px-3 py-2 text-sm"
+                    value={scoutingHighlightsDraft}
+                    onChange={(e) => setScoutingHighlightsDraft(e.target.value)}
+                    placeholder="—"
+                  />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
