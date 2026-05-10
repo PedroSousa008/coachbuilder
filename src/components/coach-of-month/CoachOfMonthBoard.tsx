@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Sparkles, Trophy } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import {
@@ -101,6 +101,7 @@ export function CoachOfMonthBoard({
   const [loading, setLoading] = useState(!adminPreview);
   const [error, setError] = useState<string | null>(null);
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
+  const fetchGenRef = useRef(0);
 
   useEffect(() => {
     if (adminPreview) {
@@ -109,13 +110,19 @@ export function CoachOfMonthBoard({
       setError(null);
       return;
     }
-    let cancelled = false;
+    const ac = new AbortController();
+    const myGen = ++fetchGenRef.current;
     void (async () => {
       setLoading(true);
+      setError(null);
       try {
-        const res = await fetch("/api/cloud/coach-of-month", { credentials: "include" });
+        const res = await fetch("/api/cloud/coach-of-month", {
+          credentials: "include",
+          cache: "no-store",
+          signal: ac.signal,
+        });
         const data = (await res.json()) as CloudPayload;
-        if (cancelled) return;
+        if (myGen !== fetchGenRef.current) return;
         if (res.ok && data.ok) {
           setContent(normalizeCoachOfMonthContent(data.payload));
           setUpdatedAt(data.updatedAt ?? null);
@@ -123,15 +130,15 @@ export function CoachOfMonthBoard({
         } else {
           setError(data.error ?? "Não foi possível carregar este módulo.");
         }
-      } catch {
-        if (!cancelled) setError("Falha de rede ao carregar Treinador do Mês.");
+      } catch (e) {
+        if (myGen !== fetchGenRef.current) return;
+        if (e instanceof DOMException && e.name === "AbortError") return;
+        setError("Falha de rede ao carregar Treinador do Mês.");
       } finally {
-        if (!cancelled) setLoading(false);
+        if (myGen === fetchGenRef.current) setLoading(false);
       }
     })();
-    return () => {
-      cancelled = true;
-    };
+    return () => ac.abort();
   }, [adminPreview, refetchKey]);
 
   const winners = useMemo(() => content.winners.slice(0, 5), [content.winners]);

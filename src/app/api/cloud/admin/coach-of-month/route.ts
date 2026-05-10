@@ -23,11 +23,14 @@ export async function GET() {
     });
     const normalized = normalizeCoachOfMonthContent(row?.payload ?? defaultCoachOfMonthContent());
     const resolved = await resolveCoachOfMonthContent(normalized);
-    return NextResponse.json({
-      ok: true,
-      payload: resolved,
-      updatedAt: row?.updatedAt?.toISOString?.() ?? null,
-    });
+    return NextResponse.json(
+      {
+        ok: true,
+        payload: resolved,
+        updatedAt: row?.updatedAt?.toISOString?.() ?? null,
+      },
+      { headers: { "Cache-Control": "private, no-store, max-age=0" } }
+    );
   } catch (e) {
     console.error("[admin/coach-of-month GET]", e);
     return NextResponse.json({ ok: false, error: "Erro ao carregar conteúdo." }, { status: 500 });

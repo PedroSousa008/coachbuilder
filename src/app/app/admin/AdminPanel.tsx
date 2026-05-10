@@ -317,6 +317,8 @@ export function AdminPanel() {
   const [coachOfMonthEditing, setCoachOfMonthEditing] = useState(false);
   const [coachOfMonthInnerTab, setCoachOfMonthInnerTab] = useState<"content" | "results">("content");
   const [coachResults, setCoachResults] = useState<CoachResultsPayload | null>(null);
+  /** Evita mostrar conteúdo por defeito antes do GET admin devolver a publicação mais recente. */
+  const [coachMonthTabReady, setCoachMonthTabReady] = useState(false);
 
   const load = useCallback(async () => {
     setError(null);
@@ -518,14 +520,24 @@ export function AdminPanel() {
   }, [tab, loadPersonalization]);
 
   useEffect(() => {
-    if (tab !== "coachOfMonth") return;
-    void loadCoachOfMonth();
-    void loadCoachResults();
+    if (tab !== "coachOfMonth") {
+      setCoachMonthTabReady(false);
+      return;
+    }
+    setCoachMonthTabReady(false);
+    let cancelled = false;
+    void (async () => {
+      await Promise.all([loadCoachOfMonth(), loadCoachResults()]);
+      if (!cancelled) setCoachMonthTabReady(true);
+    })();
     const t = window.setInterval(() => {
       if (document.visibilityState !== "visible") return;
       void loadCoachResults();
     }, REFRESH_COACH_RESULTS_MS);
-    return () => window.clearInterval(t);
+    return () => {
+      cancelled = true;
+      window.clearInterval(t);
+    };
   }, [tab, loadCoachOfMonth, loadCoachResults]);
 
   const patchSubscription = useCallback(
@@ -601,8 +613,11 @@ export function AdminPanel() {
             if (tab === "revenue") void loadRevenue();
             if (tab === "personalization") void loadPersonalization();
             if (tab === "coachOfMonth") {
-              void loadCoachOfMonth();
-              void loadCoachResults();
+              setCoachMonthTabReady(false);
+              void (async () => {
+                await Promise.all([loadCoachOfMonth(), loadCoachResults()]);
+                setCoachMonthTabReady(true);
+              })();
             }
           }}
         >
@@ -694,7 +709,11 @@ export function AdminPanel() {
         />
       ) : null}
 
-      {tab === "coachOfMonth" ? (
+      {tab === "coachOfMonth" && !coachMonthTabReady ? (
+        <p className="text-sm text-zinc-500">A carregar a publicação mais recente do Treinador do Mês…</p>
+      ) : null}
+
+      {tab === "coachOfMonth" && coachMonthTabReady ? (
         <section className="space-y-4" role="tabpanel" aria-labelledby="tab-coachOfMonth">
           <div className="rounded-xl border border-surface-border bg-surface-raised/20 p-4 text-xs text-zinc-500">
             <div className="flex flex-wrap items-center justify-between gap-3">

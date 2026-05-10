@@ -23,12 +23,15 @@ export async function GET() {
     const raw = row?.payload ?? defaultCoachOfMonthContent();
     const normalized = normalizeCoachOfMonthContent(raw);
     const resolved = await resolveCoachOfMonthContent(normalized);
-    return NextResponse.json({
-      ok: true,
-      payload: resolved,
-      updatedAt: row?.updatedAt?.toISOString?.() ?? null,
-      source: row ? "db" : "default",
-    });
+    return NextResponse.json(
+      {
+        ok: true,
+        payload: resolved,
+        updatedAt: row?.updatedAt?.toISOString?.() ?? null,
+        source: row ? "db" : "default",
+      },
+      { headers: { "Cache-Control": "private, no-store, max-age=0" } }
+    );
   } catch (e) {
     console.error("[coach-of-month GET]", e);
     return NextResponse.json({ ok: false, error: "Erro ao carregar Treinador do Mês." }, { status: 500 });
