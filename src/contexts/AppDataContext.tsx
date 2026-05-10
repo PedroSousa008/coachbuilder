@@ -25,6 +25,7 @@ import type {
   MatchFixture,
   Message,
   Player,
+  PlayerPhotoFrame,
   Position,
   PreferredFoot,
   SketchAreaState,
@@ -55,6 +56,7 @@ import {
 } from "@/lib/group-chat-messages-pt";
 import { dedupeMatches } from "@/lib/league-match-dedupe";
 import { formatPlayerPositions } from "@/lib/player-positions";
+import { normalizePlayerPhotoFrame, PHOTO_FRAME_DEFAULT } from "@/lib/player-photo-frame";
 import {
   getAllUserDataKeys,
   mergeLegacyTacticsIfUserEmpty,
@@ -171,18 +173,54 @@ function pickNonEmptyString(incoming: string, existing: string): string {
   return incoming.trim() !== "" || existing.trim() === "" ? incoming : existing;
 }
 
+/** União por `id`: evita apagar plantel/staff/etc. quando a cloud traz só um subconjunto (corrida de sync). A cloud sobrescreve o mesmo `id`. */
+function mergeEntitiesById<T extends { id: string }>(local: T[], cloud: T[]): T[] {
+  const m = new Map<string, T>();
+  for (const x of local) {
+    if (x?.id) m.set(x.id, x);
+  }
+  for (const x of cloud) {
+    if (x?.id) m.set(x.id, x);
+  }
+  return Array.from(m.values());
+}
+
+function mergeMessagesByConvId(local: Record<string, Message[]>, cloud: Record<string, Message[]>): Record<string, Message[]> {
+  const keys = new Set([...Object.keys(local), ...Object.keys(cloud)]);
+  const out: Record<string, Message[]> = {};
+  for (const k of keys) {
+    const merged = mergeEntitiesById(local[k] ?? [], cloud[k] ?? []);
+    if (merged.length > 0) out[k] = merged;
+  }
+  return out;
+}
+
+function mergeTrainingPlayerIdsBySession(
+  local: Record<string, string[]>,
+  cloud: Record<string, string[]>
+): Record<string, string[]> {
+  const keys = new Set([...Object.keys(local), ...Object.keys(cloud)]);
+  const out: Record<string, string[]> = {};
+  for (const k of keys) {
+    const a = local[k] ?? [];
+    const b = cloud[k] ?? [];
+    out[k] = [...new Set([...a, ...b])];
+  }
+  return out;
+}
+
 function mergeWorkspaceSnapshotsClient(cloud: WorkspaceSnapshotV1, local: WorkspaceSnapshotV1): WorkspaceSnapshotV1 {
   return {
     ...local,
     ...cloud,
-    players: pickNonEmptyArray(cloud.players, local.players),
-    staff: pickNonEmptyArray(cloud.staff, local.staff),
+    players: mergeEntitiesById(local.players, cloud.players),
+    staff: mergeEntitiesById(local.staff, cloud.staff),
     teamRoles: pickNonEmptyObject(cloud.teamRoles, local.teamRoles),
-    conversations: pickNonEmptyArray(cloud.conversations, local.conversations),
-    messages: pickNonEmptyObject(cloud.messages, local.messages),
-    trainingSessions: pickNonEmptyArray(cloud.trainingSessions, local.trainingSessions),
-    trainingPlayers: pickNonEmptyObject(cloud.trainingPlayers, local.trainingPlayers),
-    fixtures: pickNonEmptyArray(cloud.fixtures, local.fixtures),
+    conversations: mergeEntitiesById(local.conversations, cloud.conversations),
+    messages: mergeMessagesByConvId(local.messages, cloud.messages),
+    trainingSessions: mergeEntitiesById(local.trainingSessions, cloud.trainingSessions),
+    trainingPlayers: mergeTrainingPlayerIdsBySession(local.trainingPlayers, cloud.trainingPlayers),
+    fixtures: mergeEntitiesById(local.fixtures, cloud.fixtures),
     coachProfile: {
       ...local.coachProfile,
       ...cloud.coachProfile,
@@ -206,10 +244,13 @@ function mergeWorkspaceSnapshotsClient(cloud: WorkspaceSnapshotV1, local: Worksp
       lastFetched: cloud.league.lastFetched ?? local.league.lastFetched ?? null,
       lastError: cloud.league.lastError ?? local.league.lastError ?? null,
     },
-    tactics: pickNonEmptyArray(cloud.tactics, local.tactics),
-    tacticMatches: pickNonEmptyArray(cloud.tacticMatches, local.tacticMatches),
-    tacticPlayerNotes: pickNonEmptyObject(cloud.tacticPlayerNotes, local.tacticPlayerNotes),
-    savedTrainingExercises: pickNonEmptyArray(cloud.savedTrainingExercises ?? [], local.savedTrainingExercises ?? []),
+    tactics: mergeEntitiesById(local.tactics, cloud.tactics),
+    tacticMatches: mergeEntitiesById(local.tacticMatches, cloud.tacticMatches),
+    tacticPlayerNotes: { ...local.tacticPlayerNotes, ...cloud.tacticPlayerNotes },
+    savedTrainingExercises: mergeEntitiesById(
+      local.savedTrainingExercises ?? [],
+      cloud.savedTrainingExercises ?? []
+    ),
     sketchArea:
       (cloud.sketchArea.calendarEvents.length > 0 ||
         cloud.sketchArea.notes.length > 0 ||
@@ -301,6 +342,13 @@ export type NewPlayerInput = {
   availability: Player["availability"];
   performance: Player["performance"];
   dateOfBirth?: string;
+  /** Um único persist + push cloud (evita corrida com updatePlayer a seguir). */
+  photoUrl?: string;
+  photoFrame?: PlayerPhotoFrame;
+  nationality?: string;
+  marketValueNote?: string;
+  scoutedFromClub?: string;
+  scoutingHighlights?: string[];
 };
 
 export type NewStaffInput = {
@@ -682,19 +730,19 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         if (cancelled) return;
         if (res.ok && data.ok && data.payload && snapshotHasMeaningfulData(data.payload)) {
           const local = collectWorkspaceFromLocalStorage(user.id);
-          const s =
-            snapshotHasMeaningfulData(local) && local.version === data.payload.version
-              ? mergeWorkspaceSnapshotsClient(data.payload, local)
-              : {
-                  ...data.payload,
-                  coachProfile: {
-                    ...data.payload.coachProfile,
-                    avatarDataUrl: pickFirstNonEmptyAvatarUrl(
-                      data.payload.coachProfile.avatarDataUrl,
-                      local.coachProfile.avatarDataUrl
-                    ),
-                  },
-                };
+          /** Sempre fundir com o local quando este tem dados — evita apagar plantel após refresh se a versão do snapshot não coincidir (ex.: payload antigo na BD). */
+          const s = snapshotHasMeaningfulData(local)
+            ? mergeWorkspaceSnapshotsClient(data.payload, local)
+            : {
+                ...data.payload,
+                coachProfile: {
+                  ...data.payload.coachProfile,
+                  avatarDataUrl: pickFirstNonEmptyAvatarUrl(
+                    data.payload.coachProfile.avatarDataUrl,
+                    local.coachProfile.avatarDataUrl
+                  ),
+                },
+              };
           const actorIdCloud = user?.id ?? mockCoach.id;
           let loadedConvs = s.conversations;
           if (!loadedConvs.some((c) => c.type === "group")) {
@@ -1065,6 +1113,12 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
   const addPlayer = useCallback((input: NewPlayerInput) => {
     const posList = input.positions?.length ? [...input.positions] : [input.position];
+    const trimmedPhoto = input.photoUrl?.trim();
+    const frameNorm = normalizePlayerPhotoFrame(input.photoFrame);
+    const photoFrameIsDefault =
+      frameNorm.posX === PHOTO_FRAME_DEFAULT.posX &&
+      frameNorm.posY === PHOTO_FRAME_DEFAULT.posY &&
+      frameNorm.zoom === PHOTO_FRAME_DEFAULT.zoom;
     const p: Player = {
       id: uid("pl"),
       name: input.name.trim(),
@@ -1078,6 +1132,16 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       availability: input.availability,
       performance: input.performance,
       dateOfBirth: input.dateOfBirth,
+      ...(trimmedPhoto
+        ? {
+            photoUrl: trimmedPhoto,
+            photoFrame: trimmedPhoto && !photoFrameIsDefault ? frameNorm : undefined,
+          }
+        : {}),
+      ...(input.nationality?.trim() ? { nationality: input.nationality.trim() } : {}),
+      ...(input.marketValueNote?.trim() ? { marketValueNote: input.marketValueNote.trim() } : {}),
+      ...(input.scoutedFromClub?.trim() ? { scoutedFromClub: input.scoutedFromClub.trim() } : {}),
+      ...(input.scoutingHighlights?.length ? { scoutingHighlights: [...input.scoutingHighlights] } : {}),
     };
     const tracked = withTrackedPlayerAge(p);
     flushSync(() => {

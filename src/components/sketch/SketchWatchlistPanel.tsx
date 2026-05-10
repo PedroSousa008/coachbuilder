@@ -129,7 +129,7 @@ const emptyExternalForm = (): ExternalFormState => ({
 });
 
 export function SketchWatchlistPanel() {
-  const { players, sketchArea, setSketchArea, addPlayer, updatePlayer } = useAppData();
+  const { players, sketchArea, setSketchArea, addPlayer } = useAppData();
   const [pickerOpen, setPickerOpen] = useState(false);
   const [extForm, setExtForm] = useState<ExternalFormState>(() => emptyExternalForm());
   const [extraQualityDraftByWatchId, setExtraQualityDraftByWatchId] = useState<Record<string, string>>({});
@@ -233,15 +233,8 @@ export function SketchWatchlistPanel() {
         availability: "available",
         performance: "steady",
         dateOfBirth: w.dateOfBirth,
-      });
-      const frameNorm = normalizePlayerPhotoFrame(w.externalPhotoFrame);
-      const photoFrameIsDefault =
-        frameNorm.posX === PHOTO_FRAME_DEFAULT.posX &&
-        frameNorm.posY === PHOTO_FRAME_DEFAULT.posY &&
-        frameNorm.zoom === PHOTO_FRAME_DEFAULT.zoom;
-      updatePlayer(p.id, {
         photoUrl: w.externalPhotoUrl?.trim() || undefined,
-        photoFrame: w.externalPhotoUrl?.trim() && !photoFrameIsDefault ? frameNorm : undefined,
+        photoFrame: w.externalPhotoFrame,
         nationality: w.nationality?.trim() || undefined,
         marketValueNote: w.marketValueNote?.trim() || undefined,
         scoutedFromClub: w.externalClub?.trim() || undefined,
@@ -255,7 +248,7 @@ export function SketchWatchlistPanel() {
         ),
       }));
     },
-    [addPlayer, players, setSketchArea, updatePlayer]
+    [addPlayer, players, setSketchArea]
   );
 
   const syncReminderToCalendar = useCallback(
