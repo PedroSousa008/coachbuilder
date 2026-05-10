@@ -11,6 +11,7 @@ import {
   type CoachOfMonthContent,
 } from "@/lib/coach-of-month";
 import { canUseOwnerCoachTools } from "@/lib/owner-coach-tools-client";
+import { writeCoachOfMonthClientCache } from "@/lib/coach-of-month-client-cache";
 
 type ListedCoach = { id: string; name: string; email: string; nametag: string | null };
 
@@ -30,11 +31,12 @@ export function CoachOfMonthPublicPage() {
 
   const loadAdminPayload = useCallback(async () => {
     const res = await fetch("/api/cloud/admin/coach-of-month", { credentials: "include" });
-    const j = (await res.json()) as { ok?: boolean; payload?: unknown };
+    const j = (await res.json()) as { ok?: boolean; payload?: unknown; updatedAt?: string | null };
     if (res.ok && j.ok) {
       const n = normalizeCoachOfMonthContent(j.payload);
       setDraft(n);
       setPublished(n);
+      writeCoachOfMonthClientCache(j.payload, j.updatedAt ?? null);
     }
   }, []);
 
@@ -72,7 +74,7 @@ export function CoachOfMonthPublicPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ payload: draft }),
       });
-      const j = (await res.json()) as { ok?: boolean; error?: string; payload?: unknown };
+      const j = (await res.json()) as { ok?: boolean; error?: string; payload?: unknown; updatedAt?: string | null };
       if (!res.ok || !j.ok) {
         setSaveHint(j.error ?? "Não foi possível guardar.");
         return;
@@ -80,6 +82,7 @@ export function CoachOfMonthPublicPage() {
       const n = normalizeCoachOfMonthContent(j.payload);
       setDraft(n);
       setPublished(n);
+      writeCoachOfMonthClientCache(j.payload, j.updatedAt ?? null);
       setEditing(false);
       setBoardKey((k) => k + 1);
     } catch {

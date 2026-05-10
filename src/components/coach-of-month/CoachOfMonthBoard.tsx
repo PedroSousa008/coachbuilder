@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Sparkles, Trophy } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import {
@@ -10,6 +10,7 @@ import {
   type CoachMonthWinner,
   type CoachOfMonthContent,
 } from "@/lib/coach-of-month";
+import { readCoachOfMonthClientCache, writeCoachOfMonthClientCache } from "@/lib/coach-of-month-client-cache";
 
 type CloudPayload = {
   ok?: boolean;
@@ -97,11 +98,23 @@ export function CoachOfMonthBoard({
   /** Incrementar após guardar na BD para voltar a pedir o conteúdo público resolvido. */
   refetchKey?: number;
 }) {
-  const [content, setContent] = useState<CoachOfMonthContent>(adminPreview ?? defaultCoachOfMonthContent());
+  const [content, setContent] = useState<CoachOfMonthContent>(() =>
+    adminPreview ? normalizeCoachOfMonthContent(adminPreview) : defaultCoachOfMonthContent()
+  );
   const [loading, setLoading] = useState(!adminPreview);
   const [error, setError] = useState<string | null>(null);
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
   const fetchGenRef = useRef(0);
+
+  /** Cache antes do primeiro paint (evita flash de placeholders). */
+  useLayoutEffect(() => {
+    if (adminPreview) return;
+    const hit = readCoachOfMonthClientCache();
+    if (!hit) return;
+    setContent(normalizeCoachOfMonthContent(hit.payload));
+    setUpdatedAt(hit.updatedAt);
+    setLoading(false);
+  }, [adminPreview]);
 
   useEffect(() => {
     if (adminPreview) {
@@ -112,9 +125,13 @@ export function CoachOfMonthBoard({
     }
     const ac = new AbortController();
     const myGen = ++fetchGenRef.current;
+    const hadCache = Boolean(readCoachOfMonthClientCache());
+    const silent = hadCache || refetchKey > 0;
     void (async () => {
-      setLoading(true);
-      setError(null);
+      if (!silent) {
+        setLoading(true);
+        setError(null);
+      }
       try {
         const res = await fetch("/api/cloud/coach-of-month", {
           credentials: "include",
@@ -124,16 +141,18 @@ export function CoachOfMonthBoard({
         const data = (await res.json()) as CloudPayload;
         if (myGen !== fetchGenRef.current) return;
         if (res.ok && data.ok) {
-          setContent(normalizeCoachOfMonthContent(data.payload));
+          const next = normalizeCoachOfMonthContent(data.payload);
+          setContent(next);
           setUpdatedAt(data.updatedAt ?? null);
           setError(null);
+          writeCoachOfMonthClientCache(data.payload, data.updatedAt ?? null);
         } else {
-          setError(data.error ?? "Não foi possível carregar este módulo.");
+          if (!hadCache) setError(data.error ?? "Não foi possível carregar este módulo.");
         }
       } catch (e) {
         if (myGen !== fetchGenRef.current) return;
         if (e instanceof DOMException && e.name === "AbortError") return;
-        setError("Falha de rede ao carregar Treinador do Mês.");
+        if (!hadCache) setError("Falha de rede ao carregar Treinador do Mês.");
       } finally {
         if (myGen === fetchGenRef.current) setLoading(false);
       }

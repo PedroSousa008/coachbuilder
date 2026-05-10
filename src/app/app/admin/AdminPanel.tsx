@@ -19,6 +19,7 @@ import { clsx } from "clsx";
 import { unpaidMonthlyPlanForCoachingRole } from "@/lib/subscription-access";
 import { CoachOfMonthAdminEditor } from "@/components/admin/CoachOfMonthAdminEditor";
 import { CoachOfMonthBoard } from "@/components/coach-of-month/CoachOfMonthBoard";
+import { writeCoachOfMonthClientCache } from "@/lib/coach-of-month-client-cache";
 import {
   defaultCoachOfMonthContent,
   normalizeCoachOfMonthContent,
@@ -319,6 +320,8 @@ export function AdminPanel() {
   const [coachResults, setCoachResults] = useState<CoachResultsPayload | null>(null);
   /** Evita mostrar conteúdo por defeito antes do GET admin devolver a publicação mais recente. */
   const [coachMonthTabReady, setCoachMonthTabReady] = useState(false);
+  /** Após o primeiro GET com sucesso (prefetch ao abrir o Admin), o separador abre sem esperar. */
+  const [coachMonthPrefetchDone, setCoachMonthPrefetchDone] = useState(false);
 
   const load = useCallback(async () => {
     setError(null);
@@ -407,6 +410,8 @@ export function AdminPanel() {
         setCoachOfMonthDraft(normalized);
         setCoachOfMonthPublished(normalized);
         setCoachOfMonthUpdatedAt(j.updatedAt ?? null);
+        writeCoachOfMonthClientCache(j.payload, j.updatedAt ?? null);
+        setCoachMonthPrefetchDone(true);
       }
     } catch {
       /* ignore */
@@ -433,6 +438,8 @@ export function AdminPanel() {
         setCoachOfMonthDraft(normalized);
         setCoachOfMonthPublished(normalized);
         setCoachOfMonthUpdatedAt(j.updatedAt ?? null);
+        writeCoachOfMonthClientCache(j.payload, j.updatedAt ?? null);
+        setCoachMonthPrefetchDone(true);
         setCoachOfMonthEditing(false);
       } catch {
         setError("Erro de rede ao guardar Treinador do Mês.");
@@ -487,9 +494,10 @@ export function AdminPanel() {
         await fetch("/api/cloud/auth/sync-admin-role", { method: "POST", credentials: "include" });
         await refreshUserFromCloud();
       }
+      void loadCoachOfMonth();
       await load();
     })();
-  }, [authReady, user?.role, user?.email, router, load, refreshUserFromCloud]);
+  }, [authReady, user?.role, user?.email, router, load, loadCoachOfMonth, refreshUserFromCloud]);
 
   useEffect(() => {
     if (!stats) return;
@@ -524,12 +532,18 @@ export function AdminPanel() {
       setCoachMonthTabReady(false);
       return;
     }
-    setCoachMonthTabReady(false);
     let cancelled = false;
-    void (async () => {
-      await Promise.all([loadCoachOfMonth(), loadCoachResults()]);
-      if (!cancelled) setCoachMonthTabReady(true);
-    })();
+    if (coachMonthPrefetchDone) {
+      setCoachMonthTabReady(true);
+      void loadCoachResults();
+      void loadCoachOfMonth();
+    } else {
+      setCoachMonthTabReady(false);
+      void (async () => {
+        await Promise.all([loadCoachOfMonth(), loadCoachResults()]);
+        if (!cancelled) setCoachMonthTabReady(true);
+      })();
+    }
     const t = window.setInterval(() => {
       if (document.visibilityState !== "visible") return;
       void loadCoachResults();
@@ -538,7 +552,7 @@ export function AdminPanel() {
       cancelled = true;
       window.clearInterval(t);
     };
-  }, [tab, loadCoachOfMonth, loadCoachResults]);
+  }, [tab, coachMonthPrefetchDone, loadCoachOfMonth, loadCoachResults]);
 
   const patchSubscription = useCallback(
     async (id: string, body: Record<string, unknown>) => {
@@ -613,11 +627,8 @@ export function AdminPanel() {
             if (tab === "revenue") void loadRevenue();
             if (tab === "personalization") void loadPersonalization();
             if (tab === "coachOfMonth") {
-              setCoachMonthTabReady(false);
-              void (async () => {
-                await Promise.all([loadCoachOfMonth(), loadCoachResults()]);
-                setCoachMonthTabReady(true);
-              })();
+              void loadCoachOfMonth();
+              void loadCoachResults();
             }
           }}
         >
