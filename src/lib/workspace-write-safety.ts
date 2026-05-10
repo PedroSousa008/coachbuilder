@@ -7,6 +7,31 @@ import {
   type WorkspaceSnapshotV1,
 } from "@/lib/workspace-snapshot";
 import type { Conversation, Message } from "@/types";
+import { dedupeMatches } from "@/lib/league-match-dedupe";
+
+/** União por `id` na BD: o `incoming` atualiza o mesmo id; entidades só no `base` mantêm-se (evita apagar plantel/fotos). */
+function mergeEntitiesById<T extends { id: string }>(base: T[], overlay: T[]): T[] {
+  const m = new Map<string, T>();
+  for (const x of base) {
+    if (x?.id) m.set(x.id, x);
+  }
+  for (const x of overlay) {
+    if (x?.id) m.set(x.id, x);
+  }
+  return Array.from(m.values());
+}
+
+function mergeTrainingPlayersMaps(
+  existing: Record<string, string[]>,
+  incoming: Record<string, string[]>
+): Record<string, string[]> {
+  const keys = new Set([...Object.keys(existing), ...Object.keys(incoming)]);
+  const out: Record<string, string[]> = {};
+  for (const k of keys) {
+    out[k] = [...new Set([...(existing[k] ?? []), ...(incoming[k] ?? [])])];
+  }
+  return out;
+}
 
 function timeMs(iso: string | undefined): number {
   if (!iso) return 0;
@@ -93,8 +118,13 @@ export function mergeWorkspacePayloadSafely(
     ...incomingLeague,
     url: pickNonEmptyString(incomingLeague.url ?? "", existingLeague.url ?? ""),
     rows: pickNonEmptyArray(incomingLeague.rows ?? [], existingLeague.rows ?? []),
-    matches: pickNonEmptyArray(incomingLeague.matches ?? [], existingLeague.matches ?? []),
-    pastClubResults: pickNonEmptyArray(incomingLeague.pastClubResults ?? [], existingLeague.pastClubResults ?? []),
+    matches: dedupeMatches(
+      mergeEntitiesById(existingLeague.matches ?? [], incomingLeague.matches ?? [])
+    ),
+    pastClubResults: mergeEntitiesById(
+      existingLeague.pastClubResults ?? [],
+      incomingLeague.pastClubResults ?? []
+    ),
     setup: incomingLeague.setup ?? existingLeague.setup ?? null,
     competitionName: incomingLeague.competitionName ?? existingLeague.competitionName ?? null,
     lastFetched: incomingLeague.lastFetched ?? existingLeague.lastFetched ?? null,
@@ -133,16 +163,19 @@ export function mergeWorkspacePayloadSafely(
   return {
     ...existing,
     ...incoming,
-    players: pickNonEmptyArray(incoming.players, existing.players),
-    staff: pickNonEmptyArray(incoming.staff, existing.staff),
+    players: mergeEntitiesById(existing.players, incoming.players),
+    staff: mergeEntitiesById(existing.staff, incoming.staff),
     teamRoles: pickNonEmptyObject(incoming.teamRoles, existing.teamRoles),
-    trainingSessions: pickNonEmptyArray(incoming.trainingSessions, existing.trainingSessions),
-    trainingPlayers: pickNonEmptyObject(incoming.trainingPlayers, existing.trainingPlayers),
-    fixtures: pickNonEmptyArray(incoming.fixtures, existing.fixtures),
-    tactics: pickNonEmptyArray(incoming.tactics, existing.tactics),
-    tacticMatches: pickNonEmptyArray(incoming.tacticMatches, existing.tacticMatches),
-    tacticPlayerNotes: pickNonEmptyObject(incoming.tacticPlayerNotes, existing.tacticPlayerNotes),
-    savedTrainingExercises: pickNonEmptyArray(incoming.savedTrainingExercises, existing.savedTrainingExercises),
+    trainingSessions: mergeEntitiesById(existing.trainingSessions, incoming.trainingSessions),
+    trainingPlayers: mergeTrainingPlayersMaps(existing.trainingPlayers, incoming.trainingPlayers),
+    fixtures: mergeEntitiesById(existing.fixtures, incoming.fixtures),
+    tactics: mergeEntitiesById(existing.tactics, incoming.tactics),
+    tacticMatches: mergeEntitiesById(existing.tacticMatches, incoming.tacticMatches),
+    tacticPlayerNotes: { ...existing.tacticPlayerNotes, ...incoming.tacticPlayerNotes },
+    savedTrainingExercises: mergeEntitiesById(
+      existing.savedTrainingExercises ?? [],
+      incoming.savedTrainingExercises ?? []
+    ),
     coachProfile: mergedCoachProfile,
     league: mergedLeague,
     sketchArea: mergedSketchArea,
