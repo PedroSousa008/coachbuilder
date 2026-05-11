@@ -65,8 +65,9 @@ export default function TeamPage() {
     updateStaff,
     removeStaff,
     tacticMatches,
+    hydrated,
   } = useAppData();
-  const { language } = useLanguage();
+  const { language, t } = useLanguage();
   const isPt = language === "pt-PT";
   const [q, setQ] = useState("");
   const [pos, setPos] = useState<Position | "all">("all");
@@ -221,6 +222,18 @@ export default function TeamPage() {
     addPlayer(input);
     setSortBy("number");
   };
+
+  if (!hydrated) {
+    return (
+      <div className="mx-auto flex max-w-6xl flex-col items-center justify-center gap-4 py-20 print:hidden">
+        <div
+          className="size-9 shrink-0 animate-spin rounded-full border-2 border-zinc-600 border-t-accent"
+          aria-hidden
+        />
+        <p className="text-sm text-zinc-400">{t("app.loading")}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-6xl space-y-8">

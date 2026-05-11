@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import { useAppData } from "@/contexts/AppDataContext";
 import { AppSidebar } from "./AppSidebar";
 import { AppHeader } from "./AppHeader";
 import { CustomPriceBanner } from "@/components/subscription/CustomPriceBanner";
@@ -35,10 +36,12 @@ function shellTitle(pathname: string, t: ReturnType<typeof useLanguage>["t"]): s
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { user } = useAuth();
+  const { user, authReady } = useAuth();
+  const { hydrated } = useAppData();
   const { t } = useLanguage();
   const presidentMode = isClubPresident(user) && isPresidentAppPath(pathname);
   const title = presidentMode ? presidentPageTitle(pathname) : shellTitle(pathname, t);
+  const showWorkspaceLoading = authReady && Boolean(user?.id) && !hydrated;
 
   return (
     <div
@@ -63,6 +66,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </div>
       <div className="px-4 py-6 lg:px-8 print:px-4 print:py-4">
         <div className="print:hidden">{!presidentMode ? <CustomPriceBanner /> : null}</div>
+        {showWorkspaceLoading ? (
+          <div
+            role="status"
+            aria-live="polite"
+            className="mb-4 flex items-center gap-2 rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-2.5 text-sm text-amber-100/95 print:hidden"
+          >
+            <span
+              className="inline-block size-3.5 shrink-0 animate-spin rounded-full border-2 border-amber-300/35 border-t-amber-100"
+              aria-hidden
+            />
+            <span>{t("app.loading")}</span>
+          </div>
+        ) : null}
         {children}
       </div>
     </div>

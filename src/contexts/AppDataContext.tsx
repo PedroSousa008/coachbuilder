@@ -275,11 +275,11 @@ function mergeWorkspaceSnapshotsClient(cloud: WorkspaceSnapshotV1, local: Worksp
 
 type WorkspaceLivePushInputs = Parameters<typeof buildWorkspaceSnapshotV1>[0];
 
-async function localWorkspaceSnapshotBoostedWithLive(
-  userId: string,
+/** Cruza o snapshot já lido do disco com o estado React atual (ref), sem nova ida ao storage. */
+function boostWorkspaceSnapshotWithLiveRef(
+  ls: WorkspaceSnapshotV1,
   live: WorkspaceLivePushInputs | null
-): Promise<WorkspaceSnapshotV1> {
-  const ls = await collectWorkspaceFromLocalStorage(userId);
+): WorkspaceSnapshotV1 {
   if (!live) return ls;
   return {
     ...ls,
@@ -713,7 +713,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           cloudBox.json.payload &&
           snapshotHasMeaningfulData(cloudBox.json.payload)
         ) {
-          const local = await localWorkspaceSnapshotBoostedWithLive(user.id, workspacePushInputsRef.current);
+          const local = boostWorkspaceSnapshotWithLiveRef(ls, workspacePushInputsRef.current);
           s = snapshotHasMeaningfulData(local)
             ? mergeWorkspaceSnapshotsClient(cloudBox.json.payload, local)
             : {
@@ -749,6 +749,19 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         );
         const cloudSetup = (s.league.setup as LeagueSetup | null | undefined) ?? null;
 
+        const snapshotToPersist: WorkspaceSnapshotV1 = {
+          ...s,
+          conversations: loadedConvs,
+          messages: loadedMsgs,
+          league: {
+            ...s.league,
+            matches: leagueMatchesDeduped,
+          },
+          savedTrainingExercises: s.savedTrainingExercises ?? [],
+          sketchArea: mergeSketchArea(s.sketchArea, emptySketchAreaState()),
+          teamCallup: mergedCallup,
+        };
+
         setPlayers((s.players ?? []).map(withTrackedPlayerAge));
         setStaff(s.staff ?? []);
         setTeamRoles(normalizeTeamRoles(s.teamRoles));
@@ -776,18 +789,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         setSketchArea(mergeSketchArea(s.sketchArea, emptySketchAreaState()));
         setTeamCallup(mergedCallup);
 
-        await writeWorkspaceSnapshotToLocalStorage(user.id, {
-          ...s,
-          conversations: loadedConvs,
-          messages: loadedMsgs,
-          league: {
-            ...s.league,
-            matches: leagueMatchesDeduped,
-          },
-          savedTrainingExercises: s.savedTrainingExercises ?? [],
-          sketchArea: mergeSketchArea(s.sketchArea, emptySketchAreaState()),
-          teamCallup: mergedCallup,
-        });
+        if (cancelled) return;
+        setHydrated(true);
+
+        void writeWorkspaceSnapshotToLocalStorage(user.id, snapshotToPersist).catch(() => {});
 
         if (
           cloudBox?.res.ok &&
@@ -796,16 +801,14 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           snapshotHasMeaningfulData(cloudBox.json.payload) &&
           s !== cloudBox.json.payload
         ) {
-          await fetch("/api/cloud/workspace", {
+          void fetch("/api/cloud/workspace", {
             method: "PUT",
             credentials: "include",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ payload: s }),
-          });
+          }).catch(() => {});
         }
       } catch {
-        /* best-effort bootstrap */
-      } finally {
         if (!cancelled) setHydrated(true);
       }
     })();
