@@ -680,9 +680,6 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
     void (async () => {
       try {
-        migrateLegacyDataIfNeeded(user.id);
-        mergeLegacyTacticsIfUserEmpty(user.id);
-
         const useCloud = shouldUseCloudClientApis(user);
         const cloudPromise = useCloud
           ? fetch("/api/cloud/workspace", { credentials: "include" }).then(async (res) => ({
@@ -691,11 +688,91 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
             }))
           : Promise.resolve(null);
 
+        migrateLegacyDataIfNeeded(user.id);
+        mergeLegacyTacticsIfUserEmpty(user.id);
+
         const [ls, lastRead] = await Promise.all([
           collectWorkspaceFromLocalStorage(user.id),
           loadPersistedJson<Record<string, string>>(ks.conversationLastReadMessageIds, {}),
         ]);
+        if (cancelled) return;
 
+        const pushSnapshotToState = (snap: WorkspaceSnapshotV1, readIds: Record<string, string>) => {
+          const actorId = user?.id ?? mockCoach.id;
+          let loadedConvs = snap.conversations;
+          if (!loadedConvs.some((c) => c.type === "group")) {
+            loadedConvs = [defaultGroup(actorId), ...loadedConvs];
+          }
+          const loadedMsgs = { ...snap.messages };
+          if (!loadedMsgs[SQUAD_GROUP_ID]) loadedMsgs[SQUAD_GROUP_ID] = [];
+          const leagueMatchesDeduped = dedupeMatches(snap.league.matches ?? []);
+          const mergedCallup = mergeTeamCallup(
+            (snap as Partial<{ teamCallup?: unknown }>).teamCallup,
+            emptyTeamCallupState()
+          );
+          const leagueSetupVal = (snap.league.setup as LeagueSetup | null | undefined) ?? null;
+
+          setPlayers((snap.players ?? []).map(withTrackedPlayerAge));
+          setStaff(snap.staff ?? []);
+          setTeamRoles(normalizeTeamRoles(snap.teamRoles));
+          setConversations(loadedConvs);
+          setMessagesByConv(loadedMsgs);
+          setLastReadMessageByConv(readIds);
+          setTrainingSessions(snap.trainingSessions);
+          setTrainingPlayerIdsBySession(snap.trainingPlayers);
+          setFixtures(snap.fixtures);
+          setCoachProfileState(
+            normalizeCoachProfileState({ ...defaultCoachProfile(), ...snap.coachProfile } as CoachProfileState)
+          );
+          setLeagueTableUrlState(snap.league.url ?? "");
+          setLeagueTableRows(snap.league.rows ?? []);
+          setLeagueMatches(leagueMatchesDeduped);
+          setLeagueCompetitionName(snap.league.competitionName ?? null);
+          setLeagueTableLastFetched(snap.league.lastFetched ?? null);
+          setLeagueTableFetchError(normalizeLeaguePersistFetchError(snap.league.lastError, leagueSetupVal));
+          setLeagueSetup(leagueSetupVal);
+          setPastClubResults(snap.league.pastClubResults ?? []);
+          setSavedTactics(snap.tactics);
+          setTacticMatches(snap.tacticMatches);
+          setTacticPlayerNotesState(snap.tacticPlayerNotes);
+          setSavedTrainingExercises(snap.savedTrainingExercises ?? []);
+          setSketchArea(mergeSketchArea(snap.sketchArea, emptySketchAreaState()));
+          setTeamCallup(mergedCallup);
+        };
+
+        const buildPersistPayload = (snap: WorkspaceSnapshotV1): WorkspaceSnapshotV1 => {
+          const actorId = user?.id ?? mockCoach.id;
+          let loadedConvs = snap.conversations;
+          if (!loadedConvs.some((c) => c.type === "group")) {
+            loadedConvs = [defaultGroup(actorId), ...loadedConvs];
+          }
+          const loadedMsgs = { ...snap.messages };
+          if (!loadedMsgs[SQUAD_GROUP_ID]) loadedMsgs[SQUAD_GROUP_ID] = [];
+          const leagueMatchesDeduped = dedupeMatches(snap.league.matches ?? []);
+          const mergedCallup = mergeTeamCallup(
+            (snap as Partial<{ teamCallup?: unknown }>).teamCallup,
+            emptyTeamCallupState()
+          );
+          return {
+            ...snap,
+            conversations: loadedConvs,
+            messages: loadedMsgs,
+            league: {
+              ...snap.league,
+              matches: leagueMatchesDeduped,
+            },
+            savedTrainingExercises: snap.savedTrainingExercises ?? [],
+            sketchArea: mergeSketchArea(snap.sketchArea, emptySketchAreaState()),
+            teamCallup: mergedCallup,
+          };
+        };
+
+        /** 1) Mostrar já o que está no disco (sem esperar pela rede). */
+        const localBoosted = boostWorkspaceSnapshotWithLiveRef(ls, workspacePushInputsRef.current);
+        pushSnapshotToState(localBoosted, lastRead);
+        if (!cancelled) setHydrated(true);
+
+        /** 2) Fundir com a cloud em segundo plano (GET já tinha começado em paralelo). */
         let cloudBox: { res: Response; json: { ok?: boolean; payload?: WorkspaceSnapshotV1 | null } } | null =
           null;
         try {
@@ -705,7 +782,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         }
         if (cancelled) return;
 
-        let s: WorkspaceSnapshotV1 = ls;
+        let cloudMerged = false;
+        let s: WorkspaceSnapshotV1 = localBoosted;
 
         if (
           cloudBox?.res.ok &&
@@ -726,6 +804,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
                   ),
                 },
               };
+          cloudMerged = true;
         } else if (useCloud && cloudBox?.res.ok && snapshotHasMeaningfulData(ls)) {
           void fetch("/api/cloud/workspace", {
             method: "PUT",
@@ -735,78 +814,19 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           });
         }
 
-        const actorId = user?.id ?? mockCoach.id;
-        let loadedConvs = s.conversations;
-        if (!loadedConvs.some((c) => c.type === "group")) {
-          loadedConvs = [defaultGroup(actorId), ...loadedConvs];
-        }
-        const loadedMsgs = { ...s.messages };
-        if (!loadedMsgs[SQUAD_GROUP_ID]) loadedMsgs[SQUAD_GROUP_ID] = [];
-        const leagueMatchesDeduped = dedupeMatches(s.league.matches ?? []);
-        const mergedCallup = mergeTeamCallup(
-          (s as Partial<{ teamCallup?: unknown }>).teamCallup,
-          emptyTeamCallupState()
-        );
-        const cloudSetup = (s.league.setup as LeagueSetup | null | undefined) ?? null;
+        if (cloudMerged) {
+          pushSnapshotToState(s, lastRead);
+          void writeWorkspaceSnapshotToLocalStorage(user.id, buildPersistPayload(s)).catch(() => {});
 
-        const snapshotToPersist: WorkspaceSnapshotV1 = {
-          ...s,
-          conversations: loadedConvs,
-          messages: loadedMsgs,
-          league: {
-            ...s.league,
-            matches: leagueMatchesDeduped,
-          },
-          savedTrainingExercises: s.savedTrainingExercises ?? [],
-          sketchArea: mergeSketchArea(s.sketchArea, emptySketchAreaState()),
-          teamCallup: mergedCallup,
-        };
-
-        setPlayers((s.players ?? []).map(withTrackedPlayerAge));
-        setStaff(s.staff ?? []);
-        setTeamRoles(normalizeTeamRoles(s.teamRoles));
-        setConversations(loadedConvs);
-        setMessagesByConv(loadedMsgs);
-        setLastReadMessageByConv(lastRead);
-        setTrainingSessions(s.trainingSessions);
-        setTrainingPlayerIdsBySession(s.trainingPlayers);
-        setFixtures(s.fixtures);
-        setCoachProfileState(
-          normalizeCoachProfileState({ ...defaultCoachProfile(), ...s.coachProfile } as CoachProfileState)
-        );
-        setLeagueTableUrlState(s.league.url ?? "");
-        setLeagueTableRows(s.league.rows ?? []);
-        setLeagueMatches(leagueMatchesDeduped);
-        setLeagueCompetitionName(s.league.competitionName ?? null);
-        setLeagueTableLastFetched(s.league.lastFetched ?? null);
-        setLeagueTableFetchError(normalizeLeaguePersistFetchError(s.league.lastError, cloudSetup));
-        setLeagueSetup(cloudSetup);
-        setPastClubResults(s.league.pastClubResults ?? []);
-        setSavedTactics(s.tactics);
-        setTacticMatches(s.tacticMatches);
-        setTacticPlayerNotesState(s.tacticPlayerNotes);
-        setSavedTrainingExercises(s.savedTrainingExercises ?? []);
-        setSketchArea(mergeSketchArea(s.sketchArea, emptySketchAreaState()));
-        setTeamCallup(mergedCallup);
-
-        if (cancelled) return;
-        setHydrated(true);
-
-        void writeWorkspaceSnapshotToLocalStorage(user.id, snapshotToPersist).catch(() => {});
-
-        if (
-          cloudBox?.res.ok &&
-          cloudBox.json?.ok &&
-          cloudBox.json.payload &&
-          snapshotHasMeaningfulData(cloudBox.json.payload) &&
-          s !== cloudBox.json.payload
-        ) {
-          void fetch("/api/cloud/workspace", {
-            method: "PUT",
-            credentials: "include",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ payload: s }),
-          }).catch(() => {});
+          const payload = cloudBox?.json?.payload;
+          if (payload && s !== payload) {
+            void fetch("/api/cloud/workspace", {
+              method: "PUT",
+              credentials: "include",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ payload: s }),
+            }).catch(() => {});
+          }
         }
       } catch {
         if (!cancelled) setHydrated(true);

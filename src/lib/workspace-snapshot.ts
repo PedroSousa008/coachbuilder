@@ -18,7 +18,8 @@ import type {
   TeamRoles,
   TrainingSession,
 } from "@/types";
-import { loadPersistedJson, savePersistedJson } from "@/lib/coachbuilder-persist";
+import { PERSIST_IDB_OVERFLOW_SUFFIX, safeLoadJSON, savePersistedJson } from "@/lib/coachbuilder-persist";
+import { idbKvGetMany } from "@/lib/coachbuilder-idb-kv";
 import { getAllUserDataKeys } from "@/lib/user-storage-keys";
 import { dedupeMatches } from "@/lib/league-match-dedupe";
 import { emptySketchAreaState } from "@/lib/sketch-area";
@@ -178,46 +179,73 @@ export async function writeWorkspaceSnapshotToLocalStorage(
   ]);
 }
 
+/** Lê JSON para uma chave já sabendo se há overflow e com um batch opcional do IndexedDB (uma transação). */
+function readStoredJson<T>(key: string, fallback: T, idbBatch: Map<string, string | null>): T {
+  if (typeof window === "undefined") return fallback;
+  try {
+    if (localStorage.getItem(key + PERSIST_IDB_OVERFLOW_SUFFIX) === "1") {
+      const raw = idbBatch.get(key);
+      if (!raw) return fallback;
+      try {
+        return JSON.parse(raw) as T;
+      } catch {
+        return fallback;
+      }
+    }
+  } catch {
+    /* ignore */
+  }
+  return safeLoadJSON(key, fallback);
+}
+
 /** Agrega o que está persistido no browser para este `userId` (localStorage + overflow no IndexedDB). */
 export async function collectWorkspaceFromLocalStorage(userId: string): Promise<WorkspaceSnapshotV1> {
   if (typeof window === "undefined") return emptyWorkspaceSnapshot();
   const e = emptyWorkspaceSnapshot();
   const ks = getAllUserDataKeys(userId);
-  const [
-    players,
-    staff,
-    teamRoles,
-    conversations,
-    messages,
-    trainingSessions,
-    trainingPlayers,
-    fixtures,
-    league,
-    coachPartial,
-    tactics,
-    tacticMatches,
-    tacticPlayerNotes,
-    savedTrainingExercises,
-    sketchRaw,
-    teamCallupRaw,
-  ] = await Promise.all([
-    loadPersistedJson<Player[]>(ks.players, []),
-    loadPersistedJson<StaffMember[]>(ks.staff, []),
-    loadPersistedJson<TeamRoles>(ks.teamRoles, e.teamRoles),
-    loadPersistedJson<Conversation[]>(ks.conversations, []),
-    loadPersistedJson<Record<string, Message[]>>(ks.messages, {}),
-    loadPersistedJson<TrainingSession[]>(ks.sessions, []),
-    loadPersistedJson<Record<string, string[]>>(ks.trainingPlayers, {}),
-    loadPersistedJson<MatchFixture[]>(ks.fixtures, []),
-    loadPersistedJson<Partial<LeaguePersistSnapshot>>(ks.league, {}),
-    loadPersistedJson<Partial<CoachProfileState>>(ks.coachProfile, {}),
-    loadPersistedJson<Tactic[]>(ks.tactics, []),
-    loadPersistedJson<TacticMatch[]>(ks.tacticMatches, []),
-    loadPersistedJson<Record<string, TacticPlayerAnalysisNote>>(ks.tacticPlayerNotes, {}),
-    loadPersistedJson<SavedTrainingExercise[]>(ks.savedTrainingExercises, []),
-    loadPersistedJson<unknown>(ks.sketchArea, null),
-    loadPersistedJson<unknown>(ks.teamCallup, null),
-  ]);
+  const persistKeys = [
+    ks.players,
+    ks.staff,
+    ks.teamRoles,
+    ks.conversations,
+    ks.messages,
+    ks.sessions,
+    ks.trainingPlayers,
+    ks.fixtures,
+    ks.league,
+    ks.coachProfile,
+    ks.tactics,
+    ks.tacticMatches,
+    ks.tacticPlayerNotes,
+    ks.savedTrainingExercises,
+    ks.sketchArea,
+    ks.teamCallup,
+  ];
+  let overflowKeys: string[] = [];
+  try {
+    overflowKeys = persistKeys.filter((k) => localStorage.getItem(k + PERSIST_IDB_OVERFLOW_SUFFIX) === "1");
+  } catch {
+    overflowKeys = [];
+  }
+  const idbBatch = overflowKeys.length > 0 ? await idbKvGetMany(overflowKeys) : new Map<string, string | null>();
+
+  const players = readStoredJson<Player[]>(ks.players, [], idbBatch);
+  const staff = readStoredJson<StaffMember[]>(ks.staff, [], idbBatch);
+  const teamRoles = readStoredJson<TeamRoles>(ks.teamRoles, e.teamRoles, idbBatch);
+  const conversations = readStoredJson<Conversation[]>(ks.conversations, [], idbBatch);
+  const messages = readStoredJson<Record<string, Message[]>>(ks.messages, {}, idbBatch);
+  const trainingSessions = readStoredJson<TrainingSession[]>(ks.sessions, [], idbBatch);
+  const trainingPlayers = readStoredJson<Record<string, string[]>>(ks.trainingPlayers, {}, idbBatch);
+  const fixtures = readStoredJson<MatchFixture[]>(ks.fixtures, [], idbBatch);
+  const league = readStoredJson<Partial<LeaguePersistSnapshot>>(ks.league, {}, idbBatch);
+  const coachPartial = readStoredJson<Partial<CoachProfileState>>(ks.coachProfile, {}, idbBatch);
+  const tactics = readStoredJson<Tactic[]>(ks.tactics, [], idbBatch);
+  const tacticMatches = readStoredJson<TacticMatch[]>(ks.tacticMatches, [], idbBatch);
+  const tacticPlayerNotes = readStoredJson<Record<string, TacticPlayerAnalysisNote>>(ks.tacticPlayerNotes, {}, idbBatch);
+  const savedTrainingExercises = readStoredJson<SavedTrainingExercise[]>(ks.savedTrainingExercises, [], idbBatch);
+  const sketchRaw = readStoredJson<unknown>(ks.sketchArea, null, idbBatch);
+  const teamCallupRaw = readStoredJson<unknown>(ks.teamCallup, null, idbBatch);
+
   return {
     version: WORKSPACE_SNAPSHOT_VERSION,
     players,
