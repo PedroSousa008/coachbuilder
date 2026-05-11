@@ -309,6 +309,9 @@ export const FULL_BACK_OVERLAP_WINGER_VIDEO_URL = "/videos/training/full-back-ov
 /** Vídeo do exercício "Exercício de Pressão". Coloca o ficheiro em `public/videos/training/pressing-exercise.mp4`. */
 export const PRESSING_EXERCISE_VIDEO_URL = "/videos/training/pressing-exercise.mp4";
 
+/** Vídeo do exercício "Circuito de Construção para Quebrar Linhas". `public/videos/training/circuito.mp4`. */
+export const CIRCUITO_CONSTRUCAO_QUEBRAR_LINHAS_VIDEO_URL = "/videos/training/circuito.mp4";
+
 export type TrainingThemeId =
   | "possession"
   | "transition"
@@ -2036,6 +2039,30 @@ const MAIN_DRILLS: MainDrillDef[] = [
     }),
   },
   {
+    themes: ["physical", "possession", "transition"],
+    title: "Circuito de Construção para Quebrar Linhas",
+    describe: (pl, m) => ({
+      description: `O exercício decorre com 2 bolas em simultâneo, uma em cada extremidade do campo, criando ritmo elevado e coordenação colectiva.
+A jogada começa nos defesas, que passam a bola ao médio interior que se aproxima para receber. Este devolve no central, que de seguida liga no 10, que se afasta para receber entre linhas.
+O 10 joga de frente no médio que aparece em apoio, e este coloca a bola pelo chão nas costas da defesa para o lateral que surge em overlap no corredor.
+Ao mesmo tempo, a mesma sequência acontece no lado oposto.
+O foco está na coordenação ofensiva, timing dos movimentos, jogo entre linhas e exploração da profundidade pelos laterais. (${m} min)`,
+      coachingPoints:
+        "Sincronizar os dois lados para não colidir no eixo; saída firme desde a defesa; o 10 desmarca cedo para receber entre linhas de frente ao jogo; médio de apoio domina o tempo antes do passe nas costas da linha; lateral explode no overlap só após a linha de passe estar livre; ritmo alto sem perder qualidade nos apoios — aquecimento, posse, transição, movimentação sem bola, quebrar linha, overlap e demarcação desde a defesa.",
+      setup:
+        "Campo completo ou dois grandes corredores paralelos; duas bolas activas em extremidades opostas; marcação opcional dos corredores de overlap e da zona entre linhas para o 10.",
+      groupSplit:
+        pl.length >= 18
+          ? "Dois circuitos paralelos (meio campo cada um); rotação por funções (defesa / MI / central / 10 / lateral) a cada 5–7 repetições."
+          : pl.length >= 12
+            ? "Um lado em execução plena e fila de espera dinâmica no outro; alternância rápida para manter intensidade."
+            : "Meio campo ou largura reduzida; menos jogadores por papel ou um neutro/fixador do treinador na saída.",
+      diagramHint:
+        "Defesa → médio interior → central → 10 entre linhas → médio apoio → passe em profundidade ao lateral em overlap; espelho simultâneo no outro lado com a 2.ª bola.",
+      videoUrl: CIRCUITO_CONSTRUCAO_QUEBRAR_LINHAS_VIDEO_URL,
+    }),
+  },
+  {
     themes: ["pressing", "defensive", "transition"],
     title: "Exercício de Pressão",
     describe: (_pl, m) => ({
@@ -2355,6 +2382,7 @@ const SINGLE_DRILL_15_MIN_TITLES = new Set<string>([
   "Combinações sob Pressão",
   "Movimentação dentro de Área em Cruzamentos",
   "Variação de Cruzamentos",
+  "Circuito de Construção para Quebrar Linhas",
 ]);
 const SINGLE_DRILL_10_MIN_TITLES = new Set<string>([
   "Ativação dos Passes",
@@ -2406,6 +2434,15 @@ function singleDrillProgressionVariationsForTitle(title: string): {
   progression: string;
   variations?: string;
 } {
+  if (title === "Circuito de Construção para Quebrar Linhas") {
+    return {
+      progression:
+        "Reduz a largura dos corredores de overlap para exigir passe em profundidade mais preciso; ou acrescenta um jogador que fecha o espaço ao 10 numa série; ou limite de 2 toques na zona média para acelerar decisões.",
+      variations:
+        "Espelhar obrigatoriamente pelo lado esquerdo na 2.ª série; ou exige passe entre linhas ao 10 sempre com o pé interior; ou após overlap só conta se houver terceiro homem na zona final.",
+    };
+  }
+
   const isOffensiveBetweenLines = title === "Passe Entre Linhas e Ataque";
   const isBetweenTheLines = title === "Passe Entre Linhas 7v3";
   const isDefensiveRecoveryOnCounterAttack = title === "Recuperação Defensiva no Contra Ataque";
@@ -2834,6 +2871,7 @@ export function getTrainingCatalogItems(players: Player[]): TrainingCatalogItem[
     "Passe e Movimentação": ["warmup", "possession"],
     "Variação de Posse de Bola com base na Pressão": ["warmup", "possession"],
     "Combinações e Passe de Rotura": ["warmup", "possession", "transition"],
+    "Circuito de Construção para Quebrar Linhas": ["warmup", "possession", "transition"],
     "Combinações sob Pressão": ["warmup", "possession"],
     "Drible Rápido e Passe": ["possession"],
     "Reação e Finalização": ["possession", "finishing"],
