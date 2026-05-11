@@ -42,6 +42,19 @@ export async function idbKvSet(key: string, value: string): Promise<void> {
   });
 }
 
+export async function idbKvDelete(key: string): Promise<void> {
+  const db = await openDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE, "readwrite");
+    tx.objectStore(STORE).delete(key);
+    tx.oncomplete = () => {
+      db.close();
+      resolve();
+    };
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
 export async function idbKvGetMany(keys: string[]): Promise<Map<string, string | null>> {
   const unique = [...new Set(keys.filter(Boolean))];
   if (unique.length === 0) return new Map();
