@@ -2,7 +2,9 @@
  * Contrato de persistência CoachBuilder
  * -----------------------------
  * Todos os dados da conta (jogadores, táticas, mensagens, jogos registados, etc.)
- * são guardados automaticamente no `localStorage` deste navegador, por utilizador.
+ * são guardados no `localStorage` deste navegador, por utilizador; se uma chave
+ * exceder a quota (~5 MB), o JSON completo dessa chave passa para **IndexedDB**
+ * (ver `savePersistedJson` / `loadPersistedJson`).
  *
  * - Atualizações do site / novos deploys na Vercel **não apagam** estes dados.
  * - Os dados mantêm-se enquanto não limpares dados do site, não mudares de navegador
@@ -16,6 +18,8 @@
  * workspace são também persistidos no servidor (ver `/api/cloud/*` e Prisma).
  */
 
+import { idbKvDelete, idbKvGet, idbKvSet } from "@/lib/coachbuilder-idb-kv";
+
 export const CURRENT_STORAGE_SCHEMA_VERSION = 1;
 
 const SCHEMA_VERSION_KEY = "coachbuilder-storage-schema-version";
@@ -27,6 +31,15 @@ export const AUTH_STORAGE_KEYS = {
 } as const;
 
 export type SaveResult = { ok: true } | { ok: false; reason: "quota" | "unknown" };
+
+/** Sufixo na mesma origem: valor em `localStorage` indica que o JSON completo está no IndexedDB. */
+export const PERSIST_IDB_OVERFLOW_SUFFIX = ":cb-idb-v1";
+
+function isQuotaError(e: unknown): boolean {
+  const name = e instanceof Error ? e.name : "";
+  const domName = typeof DOMException !== "undefined" && e instanceof DOMException ? e.name : "";
+  return name === "QuotaExceededError" || domName === "QuotaExceededError";
+}
 
 export function safeLoadJSON<T>(key: string, fallback: T): T {
   if (typeof window === "undefined") return fallback;
@@ -45,14 +58,71 @@ export function safeSaveJSON(key: string, value: unknown): SaveResult {
     localStorage.setItem(key, JSON.stringify(value));
     return { ok: true };
   } catch (e) {
-    const name = e instanceof Error ? e.name : "";
-    const domName = typeof DOMException !== "undefined" && e instanceof DOMException ? e.name : "";
-    if (name === "QuotaExceededError" || domName === "QuotaExceededError") {
+    if (isQuotaError(e)) {
       console.error("[CoachBuilder] localStorage cheio — não foi possível guardar.", key);
       return { ok: false, reason: "quota" };
     }
     console.error("[CoachBuilder] Falha ao guardar.", key, e);
     return { ok: false, reason: "unknown" };
+  }
+}
+
+/**
+ * Lê JSON: `localStorage` ou, se existir marcador de overflow, o blob no IndexedDB.
+ */
+export async function loadPersistedJson<T>(key: string, fallback: T): Promise<T> {
+  if (typeof window === "undefined") return fallback;
+  try {
+    if (localStorage.getItem(key + PERSIST_IDB_OVERFLOW_SUFFIX) === "1") {
+      const raw = await idbKvGet(key);
+      if (raw) {
+        try {
+          return JSON.parse(raw) as T;
+        } catch {
+          return fallback;
+        }
+      }
+      return fallback;
+    }
+    return safeLoadJSON(key, fallback);
+  } catch {
+    return fallback;
+  }
+}
+
+/**
+ * Grava JSON: tenta `localStorage`; se estourar quota, grava no IndexedDB e marca overflow (liberta a chave principal).
+ */
+export async function savePersistedJson(key: string, value: unknown): Promise<SaveResult> {
+  if (typeof window === "undefined") return { ok: true };
+  const raw = JSON.stringify(value);
+  try {
+    localStorage.setItem(key, raw);
+    try {
+      localStorage.removeItem(key + PERSIST_IDB_OVERFLOW_SUFFIX);
+    } catch {
+      /* ignore */
+    }
+    void idbKvDelete(key).catch(() => {});
+    return { ok: true };
+  } catch (e) {
+    if (!isQuotaError(e)) {
+      console.error("[CoachBuilder] Falha ao guardar.", key, e);
+      return { ok: false, reason: "unknown" };
+    }
+    try {
+      await idbKvSet(key, raw);
+      try {
+        localStorage.removeItem(key);
+      } catch {
+        /* ignore */
+      }
+      localStorage.setItem(key + PERSIST_IDB_OVERFLOW_SUFFIX, "1");
+      return { ok: true };
+    } catch (e2) {
+      console.error("[CoachBuilder] localStorage cheio e IndexedDB falhou — não foi possível guardar.", key, e2);
+      return { ok: false, reason: "quota" };
+    }
   }
 }
 

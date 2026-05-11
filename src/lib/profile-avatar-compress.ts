@@ -1,6 +1,13 @@
+export type JpegCompressOpts = {
+  /** Tamanho máximo do data URL (bytes aprox. em base64). */
+  maxOutputBytes?: number;
+  /** Lado máximo inicial (px) antes de reduzir. */
+  initialMaxSide?: number;
+};
+
 /** Alvo conservador para data URL em localStorage / payload JSON. */
-const MAX_OUTPUT_BYTES = 950_000;
-const INITIAL_MAX_SIDE = 640;
+const DEFAULT_MAX_OUTPUT_BYTES = 950_000;
+const DEFAULT_INITIAL_MAX_SIDE = 640;
 
 function dataUrlByteLength(dataUrl: string): number {
   const i = dataUrl.indexOf(",");
@@ -26,10 +33,16 @@ function loadImageFromFile(file: File): Promise<HTMLImageElement> {
 }
 
 /**
- * Redimensiona e exporta JPEG até caber em ~950 KB (base64 no data URL).
- * Usado para fotos de perfil; evita rejeitar ficheiros grandes da câmara.
+ * Redimensiona e exporta JPEG até caber no limite (por omissão ~950 KB).
+ * Usado para fotos de perfil e cartas de jogador.
  */
-export async function imageFileToCompressedJpegDataUrl(file: File): Promise<string> {
+export async function imageFileToCompressedJpegDataUrl(
+  file: File,
+  opts?: JpegCompressOpts
+): Promise<string> {
+  const MAX_OUTPUT_BYTES = opts?.maxOutputBytes ?? DEFAULT_MAX_OUTPUT_BYTES;
+  const INITIAL_MAX_SIDE = opts?.initialMaxSide ?? DEFAULT_INITIAL_MAX_SIDE;
+
   const img = await loadImageFromFile(file);
   const width = img.naturalWidth;
   const height = img.naturalHeight;

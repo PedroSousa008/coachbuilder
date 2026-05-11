@@ -62,7 +62,7 @@ import {
   mergeLegacyTacticsIfUserEmpty,
   migrateLegacyDataIfNeeded,
 } from "@/lib/user-storage-keys";
-import { safeLoadJSON, safeSaveJSON } from "@/lib/coachbuilder-persist";
+import { loadPersistedJson, savePersistedJson } from "@/lib/coachbuilder-persist";
 import { shouldUseCloudClientApis } from "@/lib/cloud-config";
 import {
   collectWorkspaceFromLocalStorage,
@@ -275,12 +275,11 @@ function mergeWorkspaceSnapshotsClient(cloud: WorkspaceSnapshotV1, local: Worksp
 
 type WorkspaceLivePushInputs = Parameters<typeof buildWorkspaceSnapshotV1>[0];
 
-/** Junta o que está no `localStorage` com o estado React mais recente (ref), antes do merge com a cloud. */
-function localWorkspaceSnapshotBoostedWithLive(
+async function localWorkspaceSnapshotBoostedWithLive(
   userId: string,
   live: WorkspaceLivePushInputs | null
-): WorkspaceSnapshotV1 {
-  const ls = collectWorkspaceFromLocalStorage(userId);
+): Promise<WorkspaceSnapshotV1> {
+  const ls = await collectWorkspaceFromLocalStorage(userId);
   if (!live) return ls;
   return {
     ...ls,
@@ -307,12 +306,12 @@ const defaultCoachProfile = (): CoachProfileState => ({
 /** Stable id for the default squad group chat (localStorage + UI). */
 export const SQUAD_GROUP_ID = "conv-squad";
 
-function loadJSON<T>(key: string, fallback: T): T {
-  return safeLoadJSON(key, fallback);
-}
-
 function saveJSON(key: string, value: unknown) {
-  safeSaveJSON(key, value);
+  void savePersistedJson(key, value).then((r) => {
+    if (!r.ok) {
+      console.warn("[CoachBuilder] Persistência falhou para a chave:", key, r.reason);
+    }
+  });
 }
 
 function uid(prefix: string) {
@@ -677,155 +676,144 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    migrateLegacyDataIfNeeded(user.id);
-    mergeLegacyTacticsIfUserEmpty(user.id);
-
-    const loadedPlayers = loadJSON<Player[]>(ks.players, []);
-    const loadedStaff = loadJSON<StaffMember[]>(ks.staff, []);
-    const loadedTeamRoles = normalizeTeamRoles(loadJSON<unknown>(ks.teamRoles, defaultTeamRoles()));
-    const actorId = user?.id ?? mockCoach.id;
-    let loadedConvs = loadJSON<Conversation[]>(ks.conversations, []);
-    if (!loadedConvs.some((c) => c.type === "group")) {
-      loadedConvs = [defaultGroup(actorId), ...loadedConvs];
-    }
-    const loadedMsgs = loadJSON<Record<string, Message[]>>(ks.messages, {});
-    if (!loadedMsgs[SQUAD_GROUP_ID]) {
-      loadedMsgs[SQUAD_GROUP_ID] = [];
-    }
-    setPlayers(loadedPlayers.map(withTrackedPlayerAge));
-    setStaff(loadedStaff);
-    setTeamRoles(loadedTeamRoles);
-    setConversations(loadedConvs);
-    setMessagesByConv(loadedMsgs);
-    setLastReadMessageByConv(loadJSON<Record<string, string>>(ks.conversationLastReadMessageIds, {}));
-    setTrainingSessions(loadJSON<TrainingSession[]>(ks.sessions, []));
-    setTrainingPlayerIdsBySession(loadJSON<Record<string, string[]>>(ks.trainingPlayers, {}));
-    setFixtures(loadJSON<MatchFixture[]>(ks.fixtures, []));
-    setCoachProfileState(
-      normalizeCoachProfileState({
-        ...defaultCoachProfile(),
-        ...loadJSON<Partial<CoachProfileState>>(ks.coachProfile, {}),
-      } as CoachProfileState)
-    );
-    const league = loadJSON<Partial<LeaguePersist>>(ks.league, {});
-    const loadedSetup = (league.setup as LeagueSetup | null | undefined) ?? null;
-    setLeagueTableUrlState(league.url ?? "");
-    setLeagueTableRows(league.rows ?? []);
-    setLeagueMatches(dedupeMatches(league.matches ?? []));
-    setLeagueCompetitionName(league.competitionName ?? null);
-    setLeagueTableLastFetched(league.lastFetched ?? null);
-    setLeagueTableFetchError(normalizeLeaguePersistFetchError(league.lastError, loadedSetup));
-    setLeagueSetup(loadedSetup);
-    setPastClubResults(Array.isArray(league.pastClubResults) ? league.pastClubResults : []);
-    setSavedTactics(loadJSON<Tactic[]>(ks.tactics, []));
-    setTacticMatches(loadJSON<TacticMatch[]>(ks.tacticMatches, []));
-    setTacticPlayerNotesState(loadJSON<Record<string, TacticPlayerAnalysisNote>>(ks.tacticPlayerNotes, {}));
-    setSavedTrainingExercises(loadJSON<SavedTrainingExercise[]>(ks.savedTrainingExercises, []));
-    setSketchArea(mergeSketchArea(loadJSON<unknown>(ks.sketchArea, null), emptySketchAreaState()));
-    setTeamCallup(mergeTeamCallup(loadJSON<unknown>(ks.teamCallup, null), emptyTeamCallupState()));
-    setHydrated(true);
-  }, [authReady, user?.id, ks]);
-
-  useEffect(() => {
-    if (!shouldUseCloudClientApis(user) || !authReady || !user?.id || !ks || !hydrated) return;
     let cancelled = false;
-    (async () => {
+
+    void (async () => {
       try {
-        const res = await fetch("/api/cloud/workspace", { credentials: "include" });
-        const data = (await res.json()) as {
-          ok?: boolean;
-          payload?: WorkspaceSnapshotV1 | null;
-        };
+        migrateLegacyDataIfNeeded(user.id);
+        mergeLegacyTacticsIfUserEmpty(user.id);
+
+        const useCloud = shouldUseCloudClientApis(user);
+        const cloudPromise = useCloud
+          ? fetch("/api/cloud/workspace", { credentials: "include" }).then(async (res) => ({
+              res,
+              json: (await res.json()) as { ok?: boolean; payload?: WorkspaceSnapshotV1 | null },
+            }))
+          : Promise.resolve(null);
+
+        const [ls, lastRead] = await Promise.all([
+          collectWorkspaceFromLocalStorage(user.id),
+          loadPersistedJson<Record<string, string>>(ks.conversationLastReadMessageIds, {}),
+        ]);
+
+        let cloudBox: { res: Response; json: { ok?: boolean; payload?: WorkspaceSnapshotV1 | null } } | null =
+          null;
+        try {
+          cloudBox = await cloudPromise;
+        } catch {
+          cloudBox = null;
+        }
         if (cancelled) return;
-        if (res.ok && data.ok && data.payload && snapshotHasMeaningfulData(data.payload)) {
-          const local = localWorkspaceSnapshotBoostedWithLive(user.id, workspacePushInputsRef.current);
-          /** Sempre fundir com o local quando este tem dados — evita apagar plantel após refresh se a versão do snapshot não coincidir (ex.: payload antigo na BD). */
-          const s = snapshotHasMeaningfulData(local)
-            ? mergeWorkspaceSnapshotsClient(data.payload, local)
+
+        let s: WorkspaceSnapshotV1 = ls;
+
+        if (
+          cloudBox?.res.ok &&
+          cloudBox.json?.ok &&
+          cloudBox.json.payload &&
+          snapshotHasMeaningfulData(cloudBox.json.payload)
+        ) {
+          const local = await localWorkspaceSnapshotBoostedWithLive(user.id, workspacePushInputsRef.current);
+          s = snapshotHasMeaningfulData(local)
+            ? mergeWorkspaceSnapshotsClient(cloudBox.json.payload, local)
             : {
-                ...data.payload,
+                ...cloudBox.json.payload,
                 coachProfile: {
-                  ...data.payload.coachProfile,
+                  ...cloudBox.json.payload.coachProfile,
                   avatarDataUrl: pickFirstNonEmptyAvatarUrl(
-                    data.payload.coachProfile.avatarDataUrl,
+                    cloudBox.json.payload.coachProfile.avatarDataUrl,
                     local.coachProfile.avatarDataUrl
                   ),
                 },
               };
-          const actorIdCloud = user?.id ?? mockCoach.id;
-          let loadedConvs = s.conversations;
-          if (!loadedConvs.some((c) => c.type === "group")) {
-            loadedConvs = [defaultGroup(actorIdCloud), ...loadedConvs];
-          }
-          const loadedMsgs = { ...s.messages };
-          if (!loadedMsgs[SQUAD_GROUP_ID]) loadedMsgs[SQUAD_GROUP_ID] = [];
-          const leagueMatchesDeduped = dedupeMatches(s.league.matches ?? []);
-          setPlayers((s.players ?? []).map(withTrackedPlayerAge));
-          setStaff(s.staff ?? []);
-          setTeamRoles(normalizeTeamRoles(s.teamRoles));
-          setConversations(loadedConvs);
-          setMessagesByConv(loadedMsgs);
-          setTrainingSessions(s.trainingSessions);
-          setTrainingPlayerIdsBySession(s.trainingPlayers);
-          setFixtures(s.fixtures);
-          setCoachProfileState(
-            normalizeCoachProfileState({ ...defaultCoachProfile(), ...s.coachProfile } as CoachProfileState)
-          );
-          const cloudSetup = (s.league.setup as LeagueSetup | null | undefined) ?? null;
-          setLeagueTableUrlState(s.league.url ?? "");
-          setLeagueTableRows(s.league.rows ?? []);
-          setLeagueMatches(leagueMatchesDeduped);
-          setLeagueCompetitionName(s.league.competitionName ?? null);
-          setLeagueTableLastFetched(s.league.lastFetched ?? null);
-          setLeagueTableFetchError(normalizeLeaguePersistFetchError(s.league.lastError, cloudSetup));
-          setLeagueSetup(cloudSetup);
-          setPastClubResults(s.league.pastClubResults ?? []);
-          setSavedTactics(s.tactics);
-          setTacticMatches(s.tacticMatches);
-          setTacticPlayerNotesState(s.tacticPlayerNotes);
-          setSavedTrainingExercises(s.savedTrainingExercises ?? []);
-          setSketchArea(mergeSketchArea(s.sketchArea, emptySketchAreaState()));
-          const mergedCallup = mergeTeamCallup((s as Partial<{ teamCallup?: unknown }>).teamCallup, emptyTeamCallupState());
-          setTeamCallup(mergedCallup);
-          writeWorkspaceSnapshotToLocalStorage(user.id, {
-            ...s,
-            conversations: loadedConvs,
-            messages: loadedMsgs,
-            league: {
-              ...s.league,
-              matches: leagueMatchesDeduped,
-            },
-            savedTrainingExercises: s.savedTrainingExercises ?? [],
-            sketchArea: mergeSketchArea(s.sketchArea, emptySketchAreaState()),
-            teamCallup: mergedCallup,
+        } else if (useCloud && cloudBox?.res.ok && snapshotHasMeaningfulData(ls)) {
+          void fetch("/api/cloud/workspace", {
+            method: "PUT",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ payload: ls }),
           });
-          if (s !== data.payload) {
-            await fetch("/api/cloud/workspace", {
-              method: "PUT",
-              credentials: "include",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ payload: s }),
-            });
-          }
-        } else {
-          const local = localWorkspaceSnapshotBoostedWithLive(user.id, workspacePushInputsRef.current);
-          if (snapshotHasMeaningfulData(local)) {
-            await fetch("/api/cloud/workspace", {
-              method: "PUT",
-              credentials: "include",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ payload: local }),
-            });
-          }
+        }
+
+        const actorId = user?.id ?? mockCoach.id;
+        let loadedConvs = s.conversations;
+        if (!loadedConvs.some((c) => c.type === "group")) {
+          loadedConvs = [defaultGroup(actorId), ...loadedConvs];
+        }
+        const loadedMsgs = { ...s.messages };
+        if (!loadedMsgs[SQUAD_GROUP_ID]) loadedMsgs[SQUAD_GROUP_ID] = [];
+        const leagueMatchesDeduped = dedupeMatches(s.league.matches ?? []);
+        const mergedCallup = mergeTeamCallup(
+          (s as Partial<{ teamCallup?: unknown }>).teamCallup,
+          emptyTeamCallupState()
+        );
+        const cloudSetup = (s.league.setup as LeagueSetup | null | undefined) ?? null;
+
+        setPlayers((s.players ?? []).map(withTrackedPlayerAge));
+        setStaff(s.staff ?? []);
+        setTeamRoles(normalizeTeamRoles(s.teamRoles));
+        setConversations(loadedConvs);
+        setMessagesByConv(loadedMsgs);
+        setLastReadMessageByConv(lastRead);
+        setTrainingSessions(s.trainingSessions);
+        setTrainingPlayerIdsBySession(s.trainingPlayers);
+        setFixtures(s.fixtures);
+        setCoachProfileState(
+          normalizeCoachProfileState({ ...defaultCoachProfile(), ...s.coachProfile } as CoachProfileState)
+        );
+        setLeagueTableUrlState(s.league.url ?? "");
+        setLeagueTableRows(s.league.rows ?? []);
+        setLeagueMatches(leagueMatchesDeduped);
+        setLeagueCompetitionName(s.league.competitionName ?? null);
+        setLeagueTableLastFetched(s.league.lastFetched ?? null);
+        setLeagueTableFetchError(normalizeLeaguePersistFetchError(s.league.lastError, cloudSetup));
+        setLeagueSetup(cloudSetup);
+        setPastClubResults(s.league.pastClubResults ?? []);
+        setSavedTactics(s.tactics);
+        setTacticMatches(s.tacticMatches);
+        setTacticPlayerNotesState(s.tacticPlayerNotes);
+        setSavedTrainingExercises(s.savedTrainingExercises ?? []);
+        setSketchArea(mergeSketchArea(s.sketchArea, emptySketchAreaState()));
+        setTeamCallup(mergedCallup);
+
+        await writeWorkspaceSnapshotToLocalStorage(user.id, {
+          ...s,
+          conversations: loadedConvs,
+          messages: loadedMsgs,
+          league: {
+            ...s.league,
+            matches: leagueMatchesDeduped,
+          },
+          savedTrainingExercises: s.savedTrainingExercises ?? [],
+          sketchArea: mergeSketchArea(s.sketchArea, emptySketchAreaState()),
+          teamCallup: mergedCallup,
+        });
+
+        if (
+          cloudBox?.res.ok &&
+          cloudBox.json?.ok &&
+          cloudBox.json.payload &&
+          snapshotHasMeaningfulData(cloudBox.json.payload) &&
+          s !== cloudBox.json.payload
+        ) {
+          await fetch("/api/cloud/workspace", {
+            method: "PUT",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ payload: s }),
+          });
         }
       } catch {
-        /* ignore: merge/push best-effort */
+        /* best-effort bootstrap */
+      } finally {
+        if (!cancelled) setHydrated(true);
       }
     })();
+
     return () => {
       cancelled = true;
     };
-  }, [authReady, user?.id, ks, hydrated]);
+  }, [authReady, user?.id, ks]);
 
   workspacePushInputsRef.current = {
     players,

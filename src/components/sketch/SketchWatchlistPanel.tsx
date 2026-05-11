@@ -25,6 +25,7 @@ import {
 } from "@/lib/player-photo-frame";
 import { topSketchQualitiesForPositions } from "@/lib/sketch-external-player-qualities";
 import { cn } from "@/lib/utils";
+import { imageFileToCompressedJpegDataUrl } from "@/lib/profile-avatar-compress";
 
 const SQUAD_POSITIONS: Position[] = [
   "GK",
@@ -299,19 +300,22 @@ export function SketchWatchlistPanel() {
     [setSketchArea]
   );
 
-  const onExternalPhotoFile = useCallback((e: ChangeEvent<HTMLInputElement>) => {
+  const onExternalPhotoFile = useCallback(async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
     if (!file.type.startsWith("image/")) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const s = typeof reader.result === "string" ? reader.result : "";
+    try {
+      const s = await imageFileToCompressedJpegDataUrl(file, {
+        maxOutputBytes: 340_000,
+        initialMaxSide: 480,
+      });
       if (s) {
         setExtForm((f) => ({ ...f, photoUrl: s, photoFrame: { ...PHOTO_FRAME_DEFAULT } }));
       }
-    };
-    reader.readAsDataURL(file);
+    } catch {
+      /* ignore */
+    }
   }, []);
 
   const formQualityOptions = useMemo(
@@ -610,16 +614,19 @@ export function SketchWatchlistPanel() {
             patchRow({ extraHighlightQualities: [...cur, q] });
           };
 
-          const onRowPhotoFile = (e: ChangeEvent<HTMLInputElement>) => {
+          const onRowPhotoFile = async (e: ChangeEvent<HTMLInputElement>) => {
             const file = e.target.files?.[0];
             e.target.value = "";
             if (!file || !file.type.startsWith("image/")) return;
-            const reader = new FileReader();
-            reader.onload = () => {
-              const s = typeof reader.result === "string" ? reader.result : "";
+            try {
+              const s = await imageFileToCompressedJpegDataUrl(file, {
+                maxOutputBytes: 340_000,
+                initialMaxSide: 480,
+              });
               if (s) patchRow({ externalPhotoUrl: s, externalPhotoFrame: { ...PHOTO_FRAME_DEFAULT } });
-            };
-            reader.readAsDataURL(file);
+            } catch {
+              /* ignore */
+            }
           };
 
           return (

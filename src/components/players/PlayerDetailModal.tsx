@@ -36,6 +36,7 @@ import {
   normalizePlayerPhotoFrame,
   photoFrameImgStyle,
 } from "@/lib/player-photo-frame";
+import { imageFileToCompressedJpegDataUrl } from "@/lib/profile-avatar-compress";
 
 /** Limite para data URL guardada no jogador (local / sync). */
 const POSITIONS: Position[] = [
@@ -356,21 +357,24 @@ export function PlayerDetailModal({
     setPhotoAdjustExpanded(false);
   };
 
-  const onPhotoFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+  const onPhotoFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
     if (!file.type.startsWith("image/")) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const s = typeof reader.result === "string" ? reader.result : "";
+    try {
+      const s = await imageFileToCompressedJpegDataUrl(file, {
+        maxOutputBytes: 340_000,
+        initialMaxSide: 480,
+      });
       if (s) {
         setPhotoUrlDraft(s);
         setPhotoFrameDraft({ ...PHOTO_FRAME_DEFAULT });
         setPhotoAdjustExpanded(true);
       }
-    };
-    reader.readAsDataURL(file);
+    } catch {
+      /* ficheiro inválido ou canvas indisponível */
+    }
   };
 
   const setStat = (id: keyof PlayerQualities, v: number) => {

@@ -7,6 +7,7 @@ import type { TeamCallupCalendarForm } from "@/types";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Printer } from "lucide-react";
+import { imageFileToCompressedJpegDataUrl } from "@/lib/profile-avatar-compress";
 
 const MAX_CALLUP = 18;
 type PrintRow = { number: string; name: string; obs: string };
@@ -47,15 +48,18 @@ export function TeamCallupPanel() {
   }, [players, teamCallup.selectedPlayerIds, setTeamCallup]);
 
   const onLogoFile = useCallback(
-    (file: File | null) => {
+    async (file: File | null) => {
       if (!file) return;
       if (!file.type.startsWith("image/")) return;
-      const reader = new FileReader();
-      reader.onload = () => {
-        const dataUrl = String(reader.result ?? "");
+      try {
+        const dataUrl = await imageFileToCompressedJpegDataUrl(file, {
+          maxOutputBytes: 280_000,
+          initialMaxSide: 400,
+        });
         setTeamCallup((prev) => ({ ...prev, clubLogoDataUrl: dataUrl }));
-      };
-      reader.readAsDataURL(file);
+      } catch {
+        /* ignore */
+      }
     },
     [setTeamCallup]
   );

@@ -18,7 +18,7 @@ import type {
   TeamRoles,
   TrainingSession,
 } from "@/types";
-import { safeLoadJSON, safeSaveJSON } from "@/lib/coachbuilder-persist";
+import { loadPersistedJson, savePersistedJson } from "@/lib/coachbuilder-persist";
 import { getAllUserDataKeys } from "@/lib/user-storage-keys";
 import { dedupeMatches } from "@/lib/league-match-dedupe";
 import { emptySketchAreaState } from "@/lib/sketch-area";
@@ -151,43 +151,83 @@ export function snapshotHasMeaningfulData(s: WorkspaceSnapshotV1 | null | undefi
   return false;
 }
 
-/** Agrega o que está no `localStorage` para este `userId` (só no cliente). */
-export function writeWorkspaceSnapshotToLocalStorage(userId: string, s: WorkspaceSnapshotV1): void {
+/** Grava o snapshot no browser (localStorage e, se necessário, IndexedDB por chave). */
+export async function writeWorkspaceSnapshotToLocalStorage(
+  userId: string,
+  s: WorkspaceSnapshotV1
+): Promise<void> {
   if (typeof window === "undefined") return;
   const ks = getAllUserDataKeys(userId);
-  safeSaveJSON(ks.players, s.players);
-  safeSaveJSON(ks.staff, s.staff);
-  safeSaveJSON(ks.teamRoles, s.teamRoles);
-  safeSaveJSON(ks.conversations, s.conversations);
-  safeSaveJSON(ks.messages, s.messages);
-  safeSaveJSON(ks.sessions, s.trainingSessions);
-  safeSaveJSON(ks.trainingPlayers, s.trainingPlayers);
-  safeSaveJSON(ks.fixtures, s.fixtures);
-  safeSaveJSON(ks.league, s.league);
-  safeSaveJSON(ks.coachProfile, s.coachProfile);
-  safeSaveJSON(ks.tactics, s.tactics);
-  safeSaveJSON(ks.tacticMatches, s.tacticMatches);
-  safeSaveJSON(ks.tacticPlayerNotes, s.tacticPlayerNotes);
-  safeSaveJSON(ks.savedTrainingExercises, s.savedTrainingExercises);
-  safeSaveJSON(ks.sketchArea, s.sketchArea);
-  safeSaveJSON(ks.teamCallup, s.teamCallup);
+  await Promise.all([
+    savePersistedJson(ks.players, s.players),
+    savePersistedJson(ks.staff, s.staff),
+    savePersistedJson(ks.teamRoles, s.teamRoles),
+    savePersistedJson(ks.conversations, s.conversations),
+    savePersistedJson(ks.messages, s.messages),
+    savePersistedJson(ks.sessions, s.trainingSessions),
+    savePersistedJson(ks.trainingPlayers, s.trainingPlayers),
+    savePersistedJson(ks.fixtures, s.fixtures),
+    savePersistedJson(ks.league, s.league),
+    savePersistedJson(ks.coachProfile, s.coachProfile),
+    savePersistedJson(ks.tactics, s.tactics),
+    savePersistedJson(ks.tacticMatches, s.tacticMatches),
+    savePersistedJson(ks.tacticPlayerNotes, s.tacticPlayerNotes),
+    savePersistedJson(ks.savedTrainingExercises, s.savedTrainingExercises),
+    savePersistedJson(ks.sketchArea, s.sketchArea),
+    savePersistedJson(ks.teamCallup, s.teamCallup),
+  ]);
 }
 
-export function collectWorkspaceFromLocalStorage(userId: string): WorkspaceSnapshotV1 {
+/** Agrega o que está persistido no browser para este `userId` (localStorage + overflow no IndexedDB). */
+export async function collectWorkspaceFromLocalStorage(userId: string): Promise<WorkspaceSnapshotV1> {
   if (typeof window === "undefined") return emptyWorkspaceSnapshot();
   const e = emptyWorkspaceSnapshot();
   const ks = getAllUserDataKeys(userId);
-  const league = safeLoadJSON<Partial<LeaguePersistSnapshot>>(ks.league, {});
+  const [
+    players,
+    staff,
+    teamRoles,
+    conversations,
+    messages,
+    trainingSessions,
+    trainingPlayers,
+    fixtures,
+    league,
+    coachPartial,
+    tactics,
+    tacticMatches,
+    tacticPlayerNotes,
+    savedTrainingExercises,
+    sketchRaw,
+    teamCallupRaw,
+  ] = await Promise.all([
+    loadPersistedJson<Player[]>(ks.players, []),
+    loadPersistedJson<StaffMember[]>(ks.staff, []),
+    loadPersistedJson<TeamRoles>(ks.teamRoles, e.teamRoles),
+    loadPersistedJson<Conversation[]>(ks.conversations, []),
+    loadPersistedJson<Record<string, Message[]>>(ks.messages, {}),
+    loadPersistedJson<TrainingSession[]>(ks.sessions, []),
+    loadPersistedJson<Record<string, string[]>>(ks.trainingPlayers, {}),
+    loadPersistedJson<MatchFixture[]>(ks.fixtures, []),
+    loadPersistedJson<Partial<LeaguePersistSnapshot>>(ks.league, {}),
+    loadPersistedJson<Partial<CoachProfileState>>(ks.coachProfile, {}),
+    loadPersistedJson<Tactic[]>(ks.tactics, []),
+    loadPersistedJson<TacticMatch[]>(ks.tacticMatches, []),
+    loadPersistedJson<Record<string, TacticPlayerAnalysisNote>>(ks.tacticPlayerNotes, {}),
+    loadPersistedJson<SavedTrainingExercise[]>(ks.savedTrainingExercises, []),
+    loadPersistedJson<unknown>(ks.sketchArea, null),
+    loadPersistedJson<unknown>(ks.teamCallup, null),
+  ]);
   return {
     version: WORKSPACE_SNAPSHOT_VERSION,
-    players: safeLoadJSON<Player[]>(ks.players, []),
-    staff: safeLoadJSON<StaffMember[]>(ks.staff, []),
-    teamRoles: safeLoadJSON<TeamRoles>(ks.teamRoles, e.teamRoles),
-    conversations: safeLoadJSON<Conversation[]>(ks.conversations, []),
-    messages: safeLoadJSON<Record<string, Message[]>>(ks.messages, {}),
-    trainingSessions: safeLoadJSON<TrainingSession[]>(ks.sessions, []),
-    trainingPlayers: safeLoadJSON<Record<string, string[]>>(ks.trainingPlayers, {}),
-    fixtures: safeLoadJSON<MatchFixture[]>(ks.fixtures, []),
+    players,
+    staff,
+    teamRoles,
+    conversations,
+    messages,
+    trainingSessions,
+    trainingPlayers,
+    fixtures,
     league: {
       url: league.url ?? "",
       rows: league.rows ?? [],
@@ -203,14 +243,14 @@ export function collectWorkspaceFromLocalStorage(userId: string): WorkspaceSnaps
       club: "",
       role: "Head Coach",
       email: "",
-      ...safeLoadJSON<Partial<CoachProfileState>>(ks.coachProfile, {}),
+      ...coachPartial,
     } satisfies CoachProfileState,
-    tactics: safeLoadJSON<Tactic[]>(ks.tactics, []),
-    tacticMatches: safeLoadJSON<TacticMatch[]>(ks.tacticMatches, []),
-    tacticPlayerNotes: safeLoadJSON<Record<string, TacticPlayerAnalysisNote>>(ks.tacticPlayerNotes, {}),
-    savedTrainingExercises: safeLoadJSON<SavedTrainingExercise[]>(ks.savedTrainingExercises, []),
-    sketchArea: mergeSketchArea(safeLoadJSON<unknown>(ks.sketchArea, null), emptySketchAreaState()),
-    teamCallup: mergeTeamCallup(safeLoadJSON<unknown>(ks.teamCallup, null), emptyTeamCallupState()),
+    tactics,
+    tacticMatches,
+    tacticPlayerNotes,
+    savedTrainingExercises,
+    sketchArea: mergeSketchArea(sketchRaw, emptySketchAreaState()),
+    teamCallup: mergeTeamCallup(teamCallupRaw, emptyTeamCallupState()),
   };
 }
 

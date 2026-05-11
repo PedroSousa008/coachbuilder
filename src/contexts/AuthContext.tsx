@@ -268,7 +268,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           foundLocal &&
           (await verifyPassword(password, foundLocal.salt, foundLocal.passwordHash))
         ) {
-          const snap = collectWorkspaceFromLocalStorage(foundLocal.id);
+          const snap = await collectWorkspaceFromLocalStorage(foundLocal.id);
           const m = await fetch("/api/cloud/auth/migrate", {
             method: "POST",
             credentials: "include",
