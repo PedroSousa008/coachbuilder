@@ -59,6 +59,7 @@ import {
 } from "./SketchBoardCanvas";
 import { SketchOpponentAnalysisPanel } from "./SketchOpponentAnalysisPanel";
 import { SketchWeeklyReportPanel } from "./SketchWeeklyReportPanel";
+import { SketchWatchlistPanel } from "./SketchWatchlistPanel";
 import { SketchCaptationsPanel } from "./SketchCaptationsPanel";
 
 type TabId =
