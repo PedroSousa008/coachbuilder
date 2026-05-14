@@ -157,7 +157,9 @@ export function mergeWorkspacePayloadSafely(
     (incoming.sketchArea?.tasks?.length ?? 0) > 0 ||
     (incoming.sketchArea?.files?.length ?? 0) > 0 ||
     (incoming.sketchArea?.boardDrafts?.length ?? 0) > 0 ||
-    (incoming.sketchArea?.watchlist?.length ?? 0) > 0
+    (incoming.sketchArea?.watchlist?.length ?? 0) > 0 ||
+    (incoming.sketchArea?.scoutingProfiles?.length ?? 0) > 0 ||
+    Boolean(incoming.sketchArea?.scoutingBoard?.players?.some((p) => p.playerId))
       ? incoming.sketchArea
       : existing.sketchArea;
 

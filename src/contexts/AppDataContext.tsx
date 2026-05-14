@@ -67,6 +67,7 @@ import { shouldUseCloudClientApis } from "@/lib/cloud-config";
 import {
   collectWorkspaceFromLocalStorage,
   mergeSketchArea,
+  mergeSketchAreaState,
   pickFirstNonEmptyAvatarUrl,
   snapshotHasMeaningfulData,
   writeWorkspaceSnapshotToLocalStorage,
@@ -255,15 +256,7 @@ function mergeWorkspaceSnapshotsClient(cloud: WorkspaceSnapshotV1, local: Worksp
       local.savedTrainingExercises ?? [],
       cloud.savedTrainingExercises ?? []
     ),
-    sketchArea:
-      (cloud.sketchArea.calendarEvents.length > 0 ||
-        cloud.sketchArea.notes.length > 0 ||
-        cloud.sketchArea.tasks.length > 0 ||
-        cloud.sketchArea.files.length > 0 ||
-        cloud.sketchArea.boardDrafts.length > 0 ||
-        cloud.sketchArea.watchlist.length > 0)
-        ? mergeSketchArea(cloud.sketchArea, emptySketchAreaState())
-        : mergeSketchArea(local.sketchArea, emptySketchAreaState()),
+    sketchArea: mergeSketchAreaState(local.sketchArea, cloud.sketchArea),
     teamCallup:
       (cloud.teamCallup.selectedPlayerIds.length > 0 ||
         Boolean(cloud.teamCallup.clubLogoDataUrl) ||

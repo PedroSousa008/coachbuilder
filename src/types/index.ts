@@ -922,6 +922,60 @@ export interface SketchBoardDraft {
   updatedAt: string;
 }
 
+/** Estado do fluxo de observação / captação na Sketch Area. */
+export type SketchScoutingObservationStatus =
+  | "observed"
+  | "analyzing"
+  | "priority"
+  | "interested"
+  | "rejected"
+  | "signed";
+
+export interface SketchScoutingObservationNote {
+  id: string;
+  text: string;
+  /** ISO instant */
+  createdAt: string;
+}
+
+/** Blocos de atributos 1–99 (scouting manual, independente das qualidades FIFA). */
+export type SketchScoutingAttributeScores = Record<string, number>;
+
+export interface SketchScoutingProfile {
+  id: string;
+  fullName: string;
+  photoUrl?: string;
+  /** ISO YYYY-MM-DD */
+  dateOfBirth?: string;
+  nationality?: string;
+  heightCm?: number;
+  weightKg?: number;
+  preferredFoot?: PreferredFoot;
+  currentClub?: string;
+  positions: Position[];
+  /** Escalão / categoria (texto livre, ex. Sub-19). */
+  ageCategory?: string;
+  status: SketchScoutingObservationStatus;
+  /** Chaves de qualidade FIFA (opcional) para cruzar com overall do plantel. */
+  qualityStatIds?: QualityStatId[];
+  technique: SketchScoutingAttributeScores;
+  tactical: SketchScoutingAttributeScores;
+  physical: SketchScoutingAttributeScores;
+  mental: SketchScoutingAttributeScores;
+  /** Perfis táticos (playmaker, box-to-box, …). */
+  tacticalRoleTags: string[];
+  observations: SketchScoutingObservationNote[];
+  watchlistPriority?: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SketchScoutingBoardState {
+  formation: FormationId;
+  players: PitchPlayer[];
+  updatedAt: string;
+}
+
 export interface SketchWatchlistEntry {
   id: string;
   /** Team player id (when linked to your own squad). */
@@ -967,4 +1021,8 @@ export interface SketchAreaState {
   files: SketchFileEntry[];
   boardDrafts: SketchBoardDraft[];
   watchlist: SketchWatchlistEntry[];
+  /** Perfis de jogadores observados / captação. */
+  scoutingProfiles: SketchScoutingProfile[];
+  /** Quadro táctico sandbox (igual ao das Táticas, persistido no workspace). */
+  scoutingBoard: SketchScoutingBoardState;
 }

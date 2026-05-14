@@ -586,14 +586,15 @@ export function AdminDatabaseClient() {
 
       <Sector
         id="sketch"
-        title="Sketch Area (calendário, notas, tarefas, ficheiros, quadros, watchlist)"
+        title="Sketch Area (calendário, notas, tarefas, ficheiros, quadros, watchlist, captações)"
         count={
           sketchArea.calendarEvents.length +
           sketchArea.notes.length +
           sketchArea.tasks.length +
           sketchArea.files.length +
           sketchArea.boardDrafts.length +
-          sketchArea.watchlist.length
+          sketchArea.watchlist.length +
+          (sketchArea.scoutingProfiles?.length ?? 0)
         }
       >
         <div className="space-y-4">
@@ -604,6 +605,7 @@ export function AdminDatabaseClient() {
             <Badge variant="muted">Ficheiros {sketchArea.files.length}</Badge>
             <Badge variant="muted">Quadros {sketchArea.boardDrafts.length}</Badge>
             <Badge variant="muted">Watchlist {sketchArea.watchlist.length}</Badge>
+            <Badge variant="muted">Captações {sketchArea.scoutingProfiles?.length ?? 0}</Badge>
           </div>
           <JsonBlock value={sketchArea} />
         </div>

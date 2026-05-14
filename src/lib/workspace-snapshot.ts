@@ -24,6 +24,12 @@ import { getAllUserDataKeys } from "@/lib/user-storage-keys";
 import { dedupeMatches } from "@/lib/league-match-dedupe";
 import { emptySketchAreaState } from "@/lib/sketch-area";
 import { emptyTeamCallupState, mergeTeamCallup } from "@/lib/team-callup";
+import {
+  mergeScoutingBoards,
+  mergeSketchEntsById,
+  normalizeScoutingBoardFromStorage,
+  normalizeScoutingProfile,
+} from "@/lib/sketch-scouting";
 
 export const WORKSPACE_SNAPSHOT_VERSION = 1 as const;
 
@@ -143,7 +149,9 @@ export function snapshotHasMeaningfulData(s: WorkspaceSnapshotV1 | null | undefi
       sk.tasks.length > 0 ||
       sk.files.length > 0 ||
       sk.boardDrafts.length > 0 ||
-      sk.watchlist.length > 0)
+      sk.watchlist.length > 0 ||
+      (sk.scoutingProfiles?.length ?? 0) > 0 ||
+      (sk.scoutingBoard?.players?.some((p) => p.playerId) ?? false))
   )
     return true;
   const tc = s.teamCallup;
@@ -364,6 +372,11 @@ export function mergeSketchArea(raw: unknown, fallback: SketchAreaState): Sketch
   if (!raw || typeof raw !== "object") return fallback;
   const u = raw as Record<string, unknown>;
   const base = emptySketchAreaState();
+  const profilesRaw = Array.isArray(u.scoutingProfiles) ? (u.scoutingProfiles as unknown[]) : null;
+  const profiles = profilesRaw
+    ? (profilesRaw.map((x) => normalizeScoutingProfile(x)).filter(Boolean) as SketchAreaState["scoutingProfiles"])
+    : base.scoutingProfiles;
+  const scoutingBoard = normalizeScoutingBoardFromStorage(u.scoutingBoard);
   return {
     calendarEvents: Array.isArray(u.calendarEvents) ? (u.calendarEvents as SketchAreaState["calendarEvents"]) : base.calendarEvents,
     notes: Array.isArray(u.notes) ? (u.notes as SketchAreaState["notes"]) : base.notes,
@@ -371,5 +384,23 @@ export function mergeSketchArea(raw: unknown, fallback: SketchAreaState): Sketch
     files: Array.isArray(u.files) ? (u.files as SketchAreaState["files"]) : base.files,
     boardDrafts: Array.isArray(u.boardDrafts) ? (u.boardDrafts as SketchAreaState["boardDrafts"]) : base.boardDrafts,
     watchlist: Array.isArray(u.watchlist) ? (u.watchlist as SketchAreaState["watchlist"]) : base.watchlist,
+    scoutingProfiles: profiles,
+    scoutingBoard,
+  };
+}
+
+/** União local + cloud para toda a Sketch Area (evita perder captação num dos lados). */
+export function mergeSketchAreaState(local: SketchAreaState, cloud: SketchAreaState): SketchAreaState {
+  const a = mergeSketchArea(local, emptySketchAreaState());
+  const b = mergeSketchArea(cloud, emptySketchAreaState());
+  return {
+    calendarEvents: mergeSketchEntsById(a.calendarEvents, b.calendarEvents),
+    notes: mergeSketchEntsById(a.notes, b.notes),
+    tasks: mergeSketchEntsById(a.tasks, b.tasks),
+    files: mergeSketchEntsById(a.files, b.files),
+    boardDrafts: mergeSketchEntsById(a.boardDrafts, b.boardDrafts),
+    watchlist: mergeSketchEntsById(a.watchlist, b.watchlist),
+    scoutingProfiles: mergeSketchEntsById(a.scoutingProfiles, b.scoutingProfiles),
+    scoutingBoard: mergeScoutingBoards(a.scoutingBoard, b.scoutingBoard),
   };
 }

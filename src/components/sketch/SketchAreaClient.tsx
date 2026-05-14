@@ -20,6 +20,7 @@ import {
   Users,
   Sparkles,
   FileBarChart,
+  UserRoundSearch,
 } from "lucide-react";
 import { useAppData } from "@/contexts/AppDataContext";
 import type {
@@ -58,9 +59,18 @@ import {
 } from "./SketchBoardCanvas";
 import { SketchOpponentAnalysisPanel } from "./SketchOpponentAnalysisPanel";
 import { SketchWeeklyReportPanel } from "./SketchWeeklyReportPanel";
-import { SketchWatchlistPanel } from "./SketchWatchlistPanel";
+import { SketchCaptationsPanel } from "./SketchCaptationsPanel";
 
-type TabId = "calendar" | "notes" | "tasks" | "files" | "board" | "watchlist" | "opponentAi" | "weeklyReport";
+type TabId =
+  | "calendar"
+  | "notes"
+  | "tasks"
+  | "files"
+  | "board"
+  | "watchlist"
+  | "opponentAi"
+  | "weeklyReport"
+  | "captations";
 
 const TABS: { id: TabId; label: string; icon: typeof Calendar }[] = [
   { id: "calendar", label: "Calendário", icon: Calendar },
@@ -71,6 +81,7 @@ const TABS: { id: TabId; label: string; icon: typeof Calendar }[] = [
   { id: "watchlist", label: "Observação", icon: Users },
   { id: "opponentAi", label: "Análise Adversário AI", icon: Sparkles },
   { id: "weeklyReport", label: "Relatório 30 dias", icon: FileBarChart },
+  { id: "captations", label: "Captações", icon: UserRoundSearch },
 ];
 
 const FORMS_TOOLS: { id: SketchStrokeTool; label: string }[] = [
@@ -104,19 +115,19 @@ export function SketchAreaClient() {
   const searchParams = useSearchParams();
   const tabParam = searchParams.get("tab");
   const initialTab: TabId =
-    tabParam === "notes" ||
-    tabParam === "tasks" ||
-    tabParam === "files" ||
-    tabParam === "board" ||
-    tabParam === "watchlist" ||
-    tabParam === "opponent-ai" ||
-    tabParam === "weekly-report"
-      ? tabParam === "opponent-ai"
-        ? "opponentAi"
-        : tabParam === "weekly-report"
-          ? "weeklyReport"
-          : tabParam
-      : "calendar";
+    tabParam === "opponent-ai"
+      ? "opponentAi"
+      : tabParam === "weekly-report"
+        ? "weeklyReport"
+        : tabParam === "captations" || tabParam === "captacoes"
+          ? "captations"
+          : tabParam === "notes" ||
+              tabParam === "tasks" ||
+              tabParam === "files" ||
+              tabParam === "board" ||
+              tabParam === "watchlist"
+            ? tabParam
+            : "calendar";
 
   const {
     players,
@@ -1283,6 +1294,7 @@ export function SketchAreaClient() {
 
       {tab === "opponentAi" ? <SketchOpponentAnalysisPanel /> : null}
       {tab === "weeklyReport" ? <SketchWeeklyReportPanel /> : null}
+      {tab === "captations" ? <SketchCaptationsPanel /> : null}
     </div>
   );
 }
