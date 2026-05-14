@@ -23,6 +23,11 @@ export function inferOutcome(teamGoals: number, opponentGoals: number): "win" | 
   return "draw";
 }
 
+/** Resultado para estatísticas: deriva sempre do marcador (robusto a `outcome` em falta ou dados antigos). */
+export function matchOutcomeForStats(m: TacticMatch): "win" | "draw" | "loss" {
+  return inferOutcome(m.teamGoals, m.opponentGoals);
+}
+
 export function emptyPlayerAgg(): PlayerMatchAgg {
   return { games: 0, goals: 0, assists: 0, yellowCards: 0, redCards: 0, minutes: 0 };
 }
@@ -43,8 +48,9 @@ export function tallyForTactic(matches: TacticMatch[], tacticId: string): Tactic
   let losses = 0;
   let draws = 0;
   for (const x of m) {
-    if (x.outcome === "win") wins++;
-    else if (x.outcome === "loss") losses++;
+    const o = matchOutcomeForStats(x);
+    if (o === "win") wins++;
+    else if (o === "loss") losses++;
     else draws++;
   }
   return { matchesUsed: m.length, wins, losses, draws };
@@ -105,7 +111,10 @@ export function lastMatchesSorted(matches: TacticMatch[]): TacticMatch[] {
 
 export function formLastN(matches: TacticMatch[], n: number): ("W" | "D" | "L")[] {
   const sorted = lastMatchesSorted(matches);
-  return sorted.slice(0, n).map((m) => (m.outcome === "win" ? "W" : m.outcome === "loss" ? "L" : "D"));
+  return sorted.slice(0, n).map((m) => {
+    const o = matchOutcomeForStats(m);
+    return o === "win" ? "W" : o === "loss" ? "L" : "D";
+  });
 }
 
 export function computeCoachPerformance(
@@ -113,9 +122,15 @@ export function computeCoachPerformance(
   matches: TacticMatch[],
   players: Player[]
 ): CoachPerformanceSummary {
-  const wins = matches.filter((m) => m.outcome === "win").length;
-  const losses = matches.filter((m) => m.outcome === "loss").length;
-  const draws = matches.filter((m) => m.outcome === "draw").length;
+  let wins = 0;
+  let losses = 0;
+  let draws = 0;
+  for (const m of matches) {
+    const o = matchOutcomeForStats(m);
+    if (o === "win") wins++;
+    else if (o === "loss") losses++;
+    else draws++;
+  }
   const goalsFor = matches.reduce((s, m) => s + m.teamGoals, 0);
   const goalsAgainst = matches.reduce((s, m) => s + m.opponentGoals, 0);
   const cleanSheets = matches.filter((m) => m.opponentGoals === 0).length;

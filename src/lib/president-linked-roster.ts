@@ -2,6 +2,7 @@ import type { CoachHonorEntry, CoachProfileState, Player, TacticMatch, TrainingS
 import type { PresidentCoach, PresidentLinkedStaff, PresidentPlayer } from "@/types/president-club";
 import type { WorkspaceSnapshotV1 } from "@/lib/workspace-snapshot";
 import { formatPlayerPositions } from "@/lib/player-positions";
+import { matchOutcomeForStats } from "@/lib/tactics-match-stats";
 
 export type PresidentPlayerTopStat = {
   id: string;
@@ -18,7 +19,7 @@ export function winPctFromTacticMatches(matches: TacticMatch[]): number {
   if (!matches.length) return 0;
   let wins = 0;
   for (const m of matches) {
-    if (m.outcome === "win") wins += 1;
+    if (matchOutcomeForStats(m) === "win") wins += 1;
   }
   return Math.round((wins / matches.length) * 100);
 }

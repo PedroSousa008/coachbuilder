@@ -168,7 +168,7 @@ export function buildCoachDirectoryRow(args: {
     teamHistory: teamHistorySummary(cp),
     lastClub: lastClubLabel(cp),
     winPct,
-    matchesWithResult: matches.filter((m) => m.outcome === "win" || m.outcome === "draw" || m.outcome === "loss").length,
+    matchesWithResult: matches.length,
     honorCount,
     careerSeasonsCount,
     employmentStatus: emp,

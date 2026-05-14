@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { useAppData } from "@/contexts/AppDataContext";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { matchOutcomeForStats } from "@/lib/tactics-match-stats";
 
 const positions: (Position | "all")[] = [
   "all",
@@ -163,8 +164,9 @@ export default function TeamPage() {
         row.yellowCards += line.yellowCards;
         row.redCards += line.redCards;
         row.minutes += line.minutesPlayed;
-        if (m.outcome === "win") row.wins += 1;
-        else if (m.outcome === "draw") row.draws += 1;
+        const o = matchOutcomeForStats(m);
+        if (o === "win") row.wins += 1;
+        else if (o === "draw") row.draws += 1;
         else row.losses += 1;
         byId.set(line.playerId, row);
       }

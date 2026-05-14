@@ -13,6 +13,8 @@ import { CareerTab } from "@/components/profile/CareerTab";
 import { HonorsTab } from "@/components/profile/HonorsTab";
 import { CoachingProfessionalsTab } from "@/components/profile/CoachingProfessionalsTab";
 import type { CoachProfileState } from "@/types";
+import { computeCoachPerformance } from "@/lib/tactics-match-stats";
+import { aggregateCareerSeasons, aggregatePastClubResults, combineTacticsAndCareer } from "@/lib/coach-career-aggregates";
 
 const TABS = ["performance", "personal", "career", "honors", "coaching"] as const;
 type ProfileTabId = (typeof TABS)[number];
@@ -49,6 +51,13 @@ export function CoachProfileApp() {
   const { user } = useAuth();
   const { coachProfile, setCoachProfile, hydrated, savedTactics, tacticMatches, trainingSessions, players, pastClubResults } =
     useAppData();
+
+  const profileGlobalGames = useMemo(() => {
+    const coachPerf = computeCoachPerformance(savedTactics, tacticMatches, players);
+    const careerAgg = aggregateCareerSeasons(coachProfile.careerSeasons);
+    const calendarAgg = aggregatePastClubResults(pastClubResults);
+    return combineTacticsAndCareer(coachPerf, careerAgg, calendarAgg).matches;
+  }, [savedTactics, tacticMatches, players, coachProfile.careerSeasons, pastClubResults]);
 
   const commitProfile = useCallback(
     (patch: Partial<CoachProfileState>) => {
@@ -160,9 +169,8 @@ export function CoachProfileApp() {
                   <Badge variant={mockCoach.plan === "pro" ? "accent" : "default"}>
                     {mockCoach.plan === "pro" ? "Coach Pro" : "Plano Free"}
                   </Badge>
-                  <span className="text-xs text-zinc-600">
-                    {savedTactics.length} táticas · {trainingSessions.length} sessões ·{" "}
-                    {tacticMatches.length + pastClubResults.length} jogos
+                  <span className="text-xs text-zinc-600" title="Total na Visão global: jogos das táticas + épocas da carreira + resultados do calendário (print).">
+                    {savedTactics.length} táticas · {trainingSessions.length} sessões · {profileGlobalGames} jogos (total)
                   </span>
                 </div>
               </div>
@@ -171,10 +179,15 @@ export function CoachProfileApp() {
               {[
                 { label: "Táticas", value: savedTactics.length },
                 { label: "Sessões", value: trainingSessions.length },
-                { label: "Jogos", value: tacticMatches.length + pastClubResults.length },
+                {
+                  label: "Jogos (total)",
+                  value: profileGlobalGames,
+                  title: "Igual à secção Desempenho — Visão global: táticas + carreira + calendário (print).",
+                },
               ].map((s) => (
                 <div
                   key={s.label}
+                  title={"title" in s ? s.title : undefined}
                   className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-center backdrop-blur-md"
                 >
                   <p className="font-display text-xl font-semibold text-white">{s.value}</p>

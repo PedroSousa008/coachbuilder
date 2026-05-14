@@ -43,7 +43,7 @@ import type {
   StandingsTeamRow,
   PastClubResult,
 } from "@/types";
-import { tallyForTactic } from "@/lib/tactics-match-stats";
+import { inferOutcome, tallyForTactic } from "@/lib/tactics-match-stats";
 import { mockCoach } from "@/data/mock";
 import { clipPreviewLine, messagePreviewLine } from "@/lib/chat-attachments";
 import { cloudDmConversationId } from "@/lib/dm-conversation-id";
@@ -1087,14 +1087,18 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const upsertTacticMatch = useCallback((match: TacticMatch) => {
+    const normalized: TacticMatch = {
+      ...match,
+      outcome: inferOutcome(match.teamGoals, match.opponentGoals),
+    };
     setTacticMatches((prev) => {
-      const i = prev.findIndex((m) => m.id === match.id);
+      const i = prev.findIndex((m) => m.id === normalized.id);
       if (i >= 0) {
         const next = [...prev];
-        next[i] = match;
+        next[i] = normalized;
         return next;
       }
-      return [...prev, match];
+      return [...prev, normalized];
     });
   }, []);
 

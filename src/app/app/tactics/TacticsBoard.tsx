@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/Button";
 import { PlayerPickerModal } from "@/components/players/PlayerPickerModal";
 import { useAppData } from "@/contexts/AppDataContext";
 import { playerEligibleForTacticsSlot } from "@/lib/tactics-slot-positions";
-import { lastMatchesSorted, tallyForTactic, winRatePercent } from "@/lib/tactics-match-stats";
+import { lastMatchesSorted, matchOutcomeForStats, tallyForTactic, winRatePercent } from "@/lib/tactics-match-stats";
 import { PlayerTacticInsightModal } from "@/components/tactics/PlayerTacticInsightModal";
 import { TacticMatchEditorModal } from "@/components/tactics/TacticMatchEditorModal";
 import { StyleOfPlayHelperModal } from "@/components/tactics/StyleOfPlayHelperModal";
@@ -571,7 +571,10 @@ export function TacticsBoard() {
                         <span className="shrink-0 font-semibold text-white">
                           {m.teamGoals}–{m.opponentGoals}
                           <span className="ml-2 text-xs font-normal text-zinc-500">
-                            {m.outcome === "win" ? "V" : m.outcome === "loss" ? "D" : "E"}
+                            {(() => {
+                              const o = matchOutcomeForStats(m);
+                              return o === "win" ? "V" : o === "loss" ? "D" : "E";
+                            })()}
                           </span>
                         </span>
                       </button>

@@ -1,5 +1,6 @@
 import type { Player, TacticMatch } from "@/types";
 import { calendarDayLisbon } from "@/lib/lisbon-date";
+import { matchOutcomeForStats } from "@/lib/tactics-match-stats";
 
 export type WeeklyReportMatchAgg = {
   id: string;
@@ -161,7 +162,7 @@ function summarizeMatches(matches: TacticMatch[]): WeeklyReportMatchAgg[] {
     id: m.id,
     date: ymdKeyFromMatch(m),
     opponent: m.opponent,
-    outcome: m.outcome,
+    outcome: matchOutcomeForStats(m),
     teamGoals: m.teamGoals,
     opponentGoals: m.opponentGoals,
   }));
@@ -214,8 +215,9 @@ function aggregatePlayers(matches: TacticMatch[]): WeeklyReportPlayerAgg[] {
       row.yellowCards += line.yellowCards;
       row.redCards += line.redCards;
       row.minutes += line.minutesPlayed;
-      if (m.outcome === "win") row.wins += 1;
-      else if (m.outcome === "draw") row.draws += 1;
+      const o = matchOutcomeForStats(m);
+      if (o === "win") row.wins += 1;
+      else if (o === "draw") row.draws += 1;
       else row.losses += 1;
       byId.set(line.playerId, row);
     }
