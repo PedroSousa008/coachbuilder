@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type ChangeEvent } from "react";
 import {
   AlertTriangle,
   GitCompare,
@@ -35,9 +35,10 @@ import {
 } from "@/data/formations";
 import { playerEligibleForTacticsSlot } from "@/lib/tactics-slot-positions";
 import { formatPlayerPositions, primaryPositionFromList } from "@/lib/player-positions";
+import { computeAgeFromDateOfBirth } from "@/lib/player-age";
+import { imageFileToCompressedJpegDataUrl } from "@/lib/profile-avatar-compress";
 import { cn } from "@/lib/utils";
 import {
-  ageFromDateOfBirthIso,
   cloneFormationPitchPlayers,
   createDefaultScoutingProfile,
   daysSinceObservation,
@@ -79,6 +80,132 @@ const POS_SHORT: Record<Position, string> = {
   RW: "ED",
   ST: "PL",
 };
+
+const BIRTH_MONTHS_PT: { value: string; label: string }[] = [
+  { value: "01", label: "Janeiro" },
+  { value: "02", label: "Fevereiro" },
+  { value: "03", label: "Março" },
+  { value: "04", label: "Abril" },
+  { value: "05", label: "Maio" },
+  { value: "06", label: "Junho" },
+  { value: "07", label: "Julho" },
+  { value: "08", label: "Agosto" },
+  { value: "09", label: "Setembro" },
+  { value: "10", label: "Outubro" },
+  { value: "11", label: "Novembro" },
+  { value: "12", label: "Dezembro" },
+];
+
+function parseStoredDob(iso?: string): { d: string; m: string; y: string } {
+  if (!iso || !/^\d{4}-\d{2}-\d{2}$/.test(iso.trim())) return { d: "", m: "", y: "" };
+  return { y: iso.slice(0, 4), m: iso.slice(5, 7), d: iso.slice(8, 10) };
+}
+
+function tryIsoFromParts(d: string, m: string, y: string): string | undefined {
+  const di = Number(d);
+  const mi = Number(m);
+  const yi = Number(y);
+  if (!Number.isFinite(di) || !Number.isFinite(mi) || !Number.isFinite(yi)) return undefined;
+  if (mi < 1 || mi > 12 || di < 1 || di > 31) return undefined;
+  const maxY = new Date().getFullYear();
+  if (yi < 1920 || yi > maxY) return undefined;
+  const dt = new Date(yi, mi - 1, di);
+  if (dt.getFullYear() !== yi || dt.getMonth() !== mi - 1 || dt.getDate() !== di) return undefined;
+  return `${String(yi).padStart(4, "0")}-${String(mi).padStart(2, "0")}-${String(di).padStart(2, "0")}`;
+}
+
+function ScoutingDobTriplet({
+  storedIso,
+  onCommit,
+}: {
+  storedIso?: string;
+  onCommit: (iso: string | undefined) => void;
+}) {
+  const [d, setD] = useState("");
+  const [m, setM] = useState("");
+  const [y, setY] = useState("");
+
+  useEffect(() => {
+    const p = parseStoredDob(storedIso);
+    setD(p.d);
+    setM(p.m);
+    setY(p.y);
+  }, [storedIso]);
+
+  const push = (nextD: string, nextM: string, nextY: string) => {
+    setD(nextD);
+    setM(nextM);
+    setY(nextY);
+    if (!nextD.trim() && !nextM.trim() && !nextY.trim()) {
+      onCommit(undefined);
+      return;
+    }
+    const iso = tryIsoFromParts(nextD.trim(), nextM.trim(), nextY.trim());
+    if (iso) onCommit(iso);
+  };
+
+  const age = storedIso ? computeAgeFromDateOfBirth(storedIso) : null;
+  const invalidFilled = Boolean(d.trim() && m.trim() && y.trim() && !tryIsoFromParts(d.trim(), m.trim(), y.trim()));
+
+  return (
+    <div className="space-y-2 sm:col-span-2 lg:col-span-3">
+      <div className="text-xs text-zinc-500">Data de nascimento</div>
+      <div className="flex flex-wrap items-end gap-2">
+        <div className="min-w-[5rem] flex-1">
+          <label className="text-[10px] text-zinc-500">Dia</label>
+          <Input
+            inputMode="numeric"
+            autoComplete="bday-day"
+            placeholder="Dia"
+            maxLength={2}
+            className="mt-0.5"
+            value={d}
+            onChange={(e) => {
+              const raw = e.target.value.replace(/\D/g, "").slice(0, 2);
+              push(raw, m, y);
+            }}
+          />
+        </div>
+        <div className="min-w-[9rem] flex-[1.25]">
+          <label className="text-[10px] text-zinc-500">Mês</label>
+          <select
+            className="mt-0.5 h-10 w-full rounded-lg border border-surface-border bg-surface-raised px-2 text-sm text-white"
+            value={m}
+            onChange={(e) => push(d, e.target.value, y)}
+          >
+            <option value="">—</option>
+            {BIRTH_MONTHS_PT.map((mo) => (
+              <option key={mo.value} value={mo.value}>
+                {mo.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="min-w-[5.5rem] flex-1">
+          <label className="text-[10px] text-zinc-500">Ano</label>
+          <Input
+            inputMode="numeric"
+            autoComplete="bday-year"
+            placeholder="Ano"
+            maxLength={4}
+            className="mt-0.5"
+            value={y}
+            onChange={(e) => {
+              const raw = e.target.value.replace(/\D/g, "").slice(0, 4);
+              push(d, m, raw);
+            }}
+          />
+        </div>
+        <p className="pb-2 text-sm tabular-nums text-zinc-300">
+          Idade: <span className="font-medium text-white">{age != null ? age : "—"}</span>
+        </p>
+      </div>
+      {invalidFilled ? (
+        <p className="text-[11px] text-amber-200/90">Esta combinação dia/mês/ano não é válida no calendário.</p>
+      ) : null}
+    </div>
+  );
+}
 
 function safeFormationId(f: FormationId | string): FormationId {
   return f in FORMATION_LAYOUTS ? (f as FormationId) : "4-3-3";
@@ -261,7 +388,7 @@ export function SketchCaptationsPanel() {
       if (fStatus && p.status !== fStatus) return false;
       if (fFoot && p.preferredFoot !== fFoot) return false;
       if (fCat.trim() && !(p.ageCategory ?? "").toLowerCase().includes(fCat.trim().toLowerCase())) return false;
-      const age = ageFromDateOfBirthIso(p.dateOfBirth);
+      const age = p.dateOfBirth ? computeAgeFromDateOfBirth(p.dateOfBirth) : null;
       if (amin != null && Number.isFinite(amin) && (age == null || age < amin)) return false;
       if (amax != null && Number.isFinite(amax) && (age == null || age > amax)) return false;
       if (minOv != null && Number.isFinite(minOv) && scoutingProfilePillars(p).overall < minOv) return false;
@@ -543,7 +670,7 @@ export function SketchCaptationsPanel() {
               <p className="text-sm text-zinc-500">Sem resultados. Ajusta filtros ou adiciona um perfil.</p>
             ) : (
               filteredProfiles.map((p) => {
-                const age = ageFromDateOfBirthIso(p.dateOfBirth);
+                const age = p.dateOfBirth ? computeAgeFromDateOfBirth(p.dateOfBirth) : null;
                 const pill = scoutingProfilePillars(p);
                 const active = p.id === selectedId;
                 return (
@@ -654,7 +781,7 @@ export function SketchCaptationsPanel() {
               </CardHeader>
               <CardContent className="space-y-6 pt-4">
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  <label className="text-xs text-zinc-500">
+                  <label className="text-xs text-zinc-500 sm:col-span-2 lg:col-span-3">
                     Nome
                     <Input
                       className="mt-1"
@@ -662,23 +789,63 @@ export function SketchCaptationsPanel() {
                       onChange={(e) => updateProfile(selected.id, { fullName: e.target.value })}
                     />
                   </label>
-                  <label className="text-xs text-zinc-500 sm:col-span-2">
-                    URL da fotografia
+                </div>
+
+                <div className="flex flex-col gap-3 border-b border-white/5 pb-4 sm:flex-row">
+                  <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-white/10 bg-zinc-800">
+                    {selected.photoUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element -- data URL do upload local
+                      <img
+                        src={selected.photoUrl}
+                        alt=""
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <span className="text-lg font-bold text-zinc-500">{initials(selected.fullName)}</span>
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1 space-y-2">
+                    <p className="text-xs font-medium text-zinc-400">Fotografia</p>
+                    <p className="text-[11px] text-zinc-500">Carrega uma imagem do dispositivo (como na Observação / equipa).</p>
                     <Input
-                      className="mt-1"
-                      value={selected.photoUrl ?? ""}
-                      onChange={(e) => updateProfile(selected.id, { photoUrl: e.target.value || undefined })}
-                      placeholder="https://…"
+                      type="file"
+                      accept="image/*"
+                      className="block w-full text-xs text-zinc-500 file:mr-2 file:rounded-lg file:border-0 file:bg-white/10 file:px-2.5 file:py-1.5 file:text-zinc-300"
+                      onChange={async (e: ChangeEvent<HTMLInputElement>) => {
+                        const file = e.target.files?.[0];
+                        e.target.value = "";
+                        if (!file || !file.type.startsWith("image/")) return;
+                        try {
+                          const s = await imageFileToCompressedJpegDataUrl(file, {
+                            maxOutputBytes: 340_000,
+                            initialMaxSide: 480,
+                          });
+                          if (s) updateProfile(selected.id, { photoUrl: s });
+                        } catch {
+                          /* ignore */
+                        }
+                      }}
                     />
-                  </label>
-                  <label className="text-xs text-zinc-500">
-                    Data nasc. (AAAA-MM-DD)
-                    <Input
-                      className="mt-1"
-                      value={selected.dateOfBirth ?? ""}
-                      onChange={(e) => updateProfile(selected.id, { dateOfBirth: e.target.value || undefined })}
-                    />
-                  </label>
+                    {selected.photoUrl ? (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        className="text-xs"
+                        onClick={() => updateProfile(selected.id, { photoUrl: undefined })}
+                      >
+                        Remover foto
+                      </Button>
+                    ) : null}
+                  </div>
+                </div>
+
+                <ScoutingDobTriplet
+                  storedIso={selected.dateOfBirth}
+                  onCommit={(iso) => updateProfile(selected.id, { dateOfBirth: iso })}
+                />
+
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   <label className="text-xs text-zinc-500">
                     Nacionalidade
                     <Input

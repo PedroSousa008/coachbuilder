@@ -15,6 +15,7 @@ import { FORMATION_LAYOUTS } from "@/data/formations";
 import { calendarDayLisbon } from "@/lib/lisbon-date";
 import { mergeQualities } from "@/lib/player-qualities";
 import { computePlayerOverall } from "@/lib/player-insights";
+import { clampPlayerAge, computeAgeFromDateOfBirth } from "@/lib/player-age";
 
 const BOARD_PREFIX = "scouting-board";
 
@@ -205,20 +206,6 @@ export function normalizeScoutingProfile(raw: unknown): SketchScoutingProfile | 
   };
 }
 
-export function ageFromDateOfBirthIso(dob?: string, refMs = Date.now()): number | null {
-  if (!dob || dob.length < 10) return null;
-  const y = Number(dob.slice(0, 4));
-  const m = Number(dob.slice(5, 7)) - 1;
-  const d = Number(dob.slice(8, 10));
-  if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) return null;
-  const birth = new Date(y, m, d);
-  const ref = new Date(refMs);
-  let age = ref.getFullYear() - birth.getFullYear();
-  const md = ref.getMonth() - birth.getMonth();
-  if (md < 0 || (md === 0 && ref.getDate() < birth.getDate())) age -= 1;
-  return age >= 0 && age < 80 ? age : null;
-}
-
 function averageScores(s: SketchScoutingAttributeScores): number {
   const vals = Object.values(s).filter((n) => typeof n === "number" && Number.isFinite(n));
   if (!vals.length) return 0;
@@ -285,7 +272,8 @@ export function squadPlayerComparablePillars(p: Player): {
 /** `Player` sintético para picker / elegibilidade de posição no quadro táctico. */
 export function scoutingProfileToPickerPlayer(p: SketchScoutingProfile): Player {
   const primary = p.positions[0] ?? "CM";
-  const age = ageFromDateOfBirthIso(p.dateOfBirth) ?? 18;
+  const computedAge = p.dateOfBirth ? computeAgeFromDateOfBirth(p.dateOfBirth) : null;
+  const age = clampPlayerAge(computedAge ?? 18);
   return {
     id: `${SCOUTING_PLAYER_ID_PREFIX}${p.id}`,
     name: p.fullName.trim() || "Observado",
