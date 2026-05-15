@@ -121,6 +121,14 @@ export const DEFAULT_TRAINING_EXERCISE_AGE_MAP: TrainingExerciseAgeMap = {
     "juvenil",
     "senior",
   ],
+  "Saída de Jogo com Finalização Rápida": [
+    "benjamin",
+    "infantil",
+    "iniciado",
+    "junior",
+    "juvenil",
+    "senior",
+  ],
 };
 
 export function isTrainingAgeGroupId(value: unknown): value is TrainingAgeGroupId {

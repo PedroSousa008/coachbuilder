@@ -312,6 +312,9 @@ export const PRESSING_EXERCISE_VIDEO_URL = "/videos/training/pressing-exercise.m
 /** Vídeo do exercício "Circuito de Construção para Quebrar Linhas". `public/videos/training/circuito.mp4`. */
 export const CIRCUITO_CONSTRUCAO_QUEBRAR_LINHAS_VIDEO_URL = "/videos/training/circuito.mp4";
 
+/** Vídeo do exercício "Saída de Jogo com Finalização Rápida". `public/videos/training/kick-off.mp4`. */
+export const KICK_OFF_FAST_FINISH_VIDEO_URL = "/videos/training/kick-off.mp4";
+
 export type TrainingThemeId =
   | "possession"
   | "transition"
@@ -2063,6 +2066,25 @@ O foco está na coordenação ofensiva, timing dos movimentos, jogo entre linhas
     }),
   },
   {
+    themes: ["transition", "possession", "finishing", "wide"],
+    title: "Saída de Jogo com Finalização Rápida",
+    describe: (_pl, m) => ({
+      description: `O pontapé de saída começa com a equipa a atrair o adversário para um dos lados do campo. Nesse lado, abrem o extremo e um dos médios-centro, simulando que a jogada será desenvolvida por aí. Enquanto isso, no lado oposto, fica o extremo mais rápido isolado e preparado para atacar a profundidade.
+A bola sai do centro para o médio do lado oposto, que finge virar o jogo para o lado mais povoado, mas joga no avançado, que inicialmente simulou uma corrida em profundidade e trava para dar apoio frontal. O avançado, de costas, toca de primeira no médio que vem de frente.
+Enquanto os jogadores do lado da bola continuam as movimentações para atrair vários adversários, o extremo rápido do lado contrário faz uma desmarcação silenciosa para o centro da área. O médio coloca então uma bola aérea nas costas da defesa para esse extremo receber e finalizar rapidamente.
+Caso não haja golo, é fundamental a equipa manter-se subida e compacta para garantir a recuperação da segunda bola e continuar a pressão ofensiva. (${m} min)`,
+      coachingPoints:
+        "Bola parada e transição: atração credível no lado da bola (extremo + médio a aproximarem) antes de ligar o corredor oposto; médio do lado fraco finge viragem com corpo aberto e passa no avançado no timing certo; avançado de costas com primeiro toque limpo para o médio em apoio frontal; extremo rápido desmarca em silêncio para o centro da área — sem antecipar o cruzamento; bola aérea com peso e timing nas costas da linha; após remate ou defesa, bloco alto e compacto para segunda bola e pressão contínua.",
+      setup:
+        "Meio campo ou terço defensivo + transição (~55×45 m); baliza + GR (ou simulação de pontapé de saída); adversário com 4–6 jogadores a saltar para o lado da bola; cones opcionais para corredores de atração e zona de desmarcação do extremo; bolas extra junto ao centro do campo.",
+      groupSplit:
+        "Cadeia fixa por bloco: GR + centrais + médios (lado da bola e lado oposto) + extremos + avançado + trinco; rotação de papéis ao intervalo (extremo rápido, médio que cruza, avançado de apoio).",
+      diagramHint:
+        "Pontapé → atração num flanco (extremo + MC); médio oposto finge viragem → avançado (falso profundo + apoio de costas) → médio frontal; extremo rápido desmarca ao centro; bola aérea nas costas → finalização; seta de bloco alto para 2.ª bola.",
+      videoUrl: KICK_OFF_FAST_FINISH_VIDEO_URL,
+    }),
+  },
+  {
     themes: ["pressing", "defensive", "transition"],
     title: "Exercício de Pressão",
     describe: (_pl, m) => ({
@@ -2383,6 +2405,7 @@ const SINGLE_DRILL_15_MIN_TITLES = new Set<string>([
   "Movimentação dentro de Área em Cruzamentos",
   "Variação de Cruzamentos",
   "Circuito de Construção para Quebrar Linhas",
+  "Saída de Jogo com Finalização Rápida",
 ]);
 const SINGLE_DRILL_10_MIN_TITLES = new Set<string>([
   "Ativação dos Passes",
@@ -2440,6 +2463,15 @@ function singleDrillProgressionVariationsForTitle(title: string): {
         "Reduz a largura dos corredores de overlap para exigir passe em profundidade mais preciso; ou acrescenta um jogador que fecha o espaço ao 10 numa série; ou limite de 2 toques na zona média para acelerar decisões.",
       variations:
         "Espelhar obrigatoriamente pelo lado esquerdo na 2.ª série; ou exige passe entre linhas ao 10 sempre com o pé interior; ou após overlap só conta se houver terceiro homem na zona final.",
+    };
+  }
+
+  if (title === "Saída de Jogo com Finalização Rápida") {
+    return {
+      progression:
+        "Adversário com linha mais alta no lado da atração para forçar timing do passe ao avançado; ou máximo 8 s desde o pontapé até ao cruzamento; ou após finalização obrigar recuperação da 2.ª bola em ≤6 s com bloco compacto.",
+      variations:
+        "Espelhar toda a sequência pelo lado esquerdo; ou cruzamento obrigatoriamente em passe rasteiro (sem elevação) numa série; ou extremo rápido só pode finalizar de primeira; ou médio do lado oposto com 2 toques máx. antes de ligar o avançado.",
     };
   }
 
@@ -2872,6 +2904,7 @@ export function getTrainingCatalogItems(players: Player[]): TrainingCatalogItem[
     "Variação de Posse de Bola com base na Pressão": ["warmup", "possession"],
     "Combinações e Passe de Rotura": ["warmup", "possession", "transition"],
     "Circuito de Construção para Quebrar Linhas": ["warmup", "possession", "transition"],
+    "Saída de Jogo com Finalização Rápida": ["transition", "finishing", "setPiece", "goalKick"],
     "Combinações sob Pressão": ["warmup", "possession"],
     "Drible Rápido e Passe": ["possession"],
     "Reação e Finalização": ["possession", "finishing"],
