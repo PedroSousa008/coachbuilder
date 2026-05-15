@@ -44,6 +44,7 @@ const TRAINING_EXERCISE_PRINT_IMAGE_BY_TITLE: Record<string, string> = {
   "Variação de Posse de Bola com base na Pressão": "variacao-jogo.png",
   "Circuito de Construção para Quebrar Linhas": "circuito.png",
   "Saída de Jogo com Finalização Rápida": "kick-off.png",
+  "Rondo com Variação do Jogo": "virar-jogo-rondo.png",
   "Combinações e Passe de Rotura": "passe-rotura.png",
   "Combinações sob Pressão": "combinacoes-pressao.png",
   "(2+1)v1 Transition": "2+1v1-transition.png",

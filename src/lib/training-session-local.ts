@@ -315,6 +315,9 @@ export const CIRCUITO_CONSTRUCAO_QUEBRAR_LINHAS_VIDEO_URL = "/videos/training/ci
 /** Vídeo do exercício "Saída de Jogo com Finalização Rápida". `public/videos/training/kick-off.mp4`. */
 export const KICK_OFF_FAST_FINISH_VIDEO_URL = "/videos/training/kick-off.mp4";
 
+/** Vídeo do exercício "Rondo com Variação do Jogo". `public/videos/training/virar-jogo-rondo.mp4`. */
+export const VIRAR_JOGO_RONDO_VIDEO_URL = "/videos/training/virar-jogo-rondo.mp4";
+
 export type TrainingThemeId =
   | "possession"
   | "transition"
@@ -2085,6 +2088,30 @@ Caso não haja golo, é fundamental a equipa manter-se subida e compacta para ga
     }),
   },
   {
+    themes: ["possession", "transition", "pressing", "physical"],
+    title: "Rondo com Variação do Jogo",
+    describe: (pl, m) => ({
+      description: `O exercício é composto por 2 quadrados e 3 equipas de 4 jogadores. No quadrado ativo jogam 4 jogadores em posse contra 2 defensores. No quadrado oposto ficam 2 jogadores da terceira equipa à espera da variação, sempre ativos e preparados para receber.
+Os outros 2 jogadores dessa equipa posicionam-se abertos em zonas laterais, simulando extremos e promovendo jogo aberto. Já os 2 jogadores restantes da equipa que defende ocupam o setor intermédio, preparados para reagir à mudança de corredor.
+A equipa em posse deve realizar 7 passes consecutivos e depois obrigatoriamente ligar num dos jogadores abertos para virar o jogo para o outro quadrado. Numa progressão do exercício, essa variação só pode ser feita através de passe rasteiro entre linhas.
+A equipa defensora procura recuperar antes da sequência de passes e da mudança de corredor. Quando recupera, deve virar imediatamente o jogo para o outro lado e reorganizar-se nas posições da equipa que perdeu a bola.
+O foco está na posse sob pressão, mudança rápida de corredor, ocupação da largura e reação à transição. (${m} min)`,
+      coachingPoints:
+        "Aquecimento, posse e transição: contagem clara dos 7 passes antes da viragem; extremos abertos com corpo aberto e linha de passe sempre visível; 2 à espera no quadrado oposto em movimento (não estáticos); defensores no quadrado com pressão coordenada sem faltas; setor intermédio fecha o eixo mas não bloqueia a viragem lateral; após recuperação, primeiro passe imediato para o outro quadrado e reorganização rápida de funções (posse / defesa / variação).",
+      setup:
+        "Dois quadrados adjacentes ou opostos (~12×12 m cada, ajustável); 3 equipas × 4 jogadores (coletes); zonas laterais marcadas para os «extremos»; faixa intermédia entre quadrados para os 2 defensores de apoio; bolas extra em cada quadrado.",
+      groupSplit:
+        pl.length >= 12
+          ? "12 jogadores: 4v2 no quadrado ativo + 2 à espera + 2 laterais + 2 no setor intermédio; rotação de equipas (posse / pressão / variação) a cada 3–4 minutos."
+          : pl.length >= 10
+            ? "Reduz para 3v2 no quadrado ativo e 1 extremo + 1 à espera; mantém a regra dos 7 passes e viragem obrigatória."
+            : "Espaço único menor; treinador como neutro na viragem ou para completar o quarteto da equipa de variação.",
+      diagramHint:
+        "Quadrado A: 4v2 → 7 passes → passe ao extremo → quadrado B (2 à espera + receção); defesa: 2 no A + 2 no meio; recuperação → viragem imediata para o outro quadrado e troca de papéis.",
+      videoUrl: VIRAR_JOGO_RONDO_VIDEO_URL,
+    }),
+  },
+  {
     themes: ["pressing", "defensive", "transition"],
     title: "Exercício de Pressão",
     describe: (_pl, m) => ({
@@ -2406,6 +2433,7 @@ const SINGLE_DRILL_15_MIN_TITLES = new Set<string>([
   "Variação de Cruzamentos",
   "Circuito de Construção para Quebrar Linhas",
   "Saída de Jogo com Finalização Rápida",
+  "Rondo com Variação do Jogo",
 ]);
 const SINGLE_DRILL_10_MIN_TITLES = new Set<string>([
   "Ativação dos Passes",
@@ -2472,6 +2500,15 @@ function singleDrillProgressionVariationsForTitle(title: string): {
         "Adversário com linha mais alta no lado da atração para forçar timing do passe ao avançado; ou máximo 8 s desde o pontapé até ao cruzamento; ou após finalização obrigar recuperação da 2.ª bola em ≤6 s com bloco compacto.",
       variations:
         "Espelhar toda a sequência pelo lado esquerdo; ou cruzamento obrigatoriamente em passe rasteiro (sem elevação) numa série; ou extremo rápido só pode finalizar de primeira; ou médio do lado oposto com 2 toques máx. antes de ligar o avançado.",
+    };
+  }
+
+  if (title === "Rondo com Variação do Jogo") {
+    return {
+      progression:
+        "Variação obrigatória só com passe rasteiro entre linhas (como na progressão descrita); ou sobe a meta para 10 passes antes da viragem; ou após recuperação a equipa que roubou tem máximo 6 s para ligar o outro quadrado.",
+      variations:
+        "Viragem só pelo extremo da direita durante 2 minutos e depois só pela esquerda; ou 2 toques máx. no quadrado ativo após a receção no 2.º quadrado; ou golo/ponto extra se a viragem vier em ≤3 passes após os 7 obrigatórios.",
     };
   }
 
@@ -2905,6 +2942,7 @@ export function getTrainingCatalogItems(players: Player[]): TrainingCatalogItem[
     "Combinações e Passe de Rotura": ["warmup", "possession", "transition"],
     "Circuito de Construção para Quebrar Linhas": ["warmup", "possession", "transition"],
     "Saída de Jogo com Finalização Rápida": ["transition", "finishing", "setPiece", "goalKick"],
+    "Rondo com Variação do Jogo": ["warmup", "possession", "transition", "pressing"],
     "Combinações sob Pressão": ["warmup", "possession"],
     "Drible Rápido e Passe": ["possession"],
     "Reação e Finalização": ["possession", "finishing"],
