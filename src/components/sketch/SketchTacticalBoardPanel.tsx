@@ -99,6 +99,10 @@ export function SketchTacticalBoardPanel() {
   const [expanded, setExpanded] = useState(false);
   const [metaOpen, setMetaOpen] = useState(false);
   const [selection, setSelection] = useState<BoardSelection | null>(null);
+  const [showDeleteOption, setShowDeleteOption] = useState(false);
+  const lastSelectRef = useRef<{ key: string; at: number } | null>(null);
+
+  const SELECT_DOUBLE_MS = 1000;
 
   const [undoStack, setUndoStack] = useState<BoardHistorySnapshot[]>([]);
   const [redoStack, setRedoStack] = useState<BoardHistorySnapshot[]>([]);
@@ -241,6 +245,22 @@ export function SketchTacticalBoardPanel() {
 
   const selectionMode = tool === "select" && !playing;
 
+  const applyBoardSelection = useCallback((next: BoardSelection | null) => {
+    if (!next) {
+      setSelection(null);
+      setShowDeleteOption(false);
+      lastSelectRef.current = null;
+      return;
+    }
+    const key = next.kind === "stroke" ? `stroke:${next.index}` : `text:${next.id}`;
+    const now = Date.now();
+    const last = lastSelectRef.current;
+    const isDoubleTap = last?.key === key && now - last.at < SELECT_DOUBLE_MS;
+    lastSelectRef.current = { key, at: now };
+    setSelection(next);
+    setShowDeleteOption(isDoubleTap);
+  }, []);
+
   const deleteSelection = useCallback(() => {
     if (!selection || !activeFrame) return;
     pushHistory();
@@ -252,6 +272,8 @@ export function SketchTacticalBoardPanel() {
       applyFrame(activeFrame.strokes, next);
     }
     setSelection(null);
+    setShowDeleteOption(false);
+    lastSelectRef.current = null;
   }, [selection, activeFrame, pushHistory, applyFrame]);
 
   const displayStrokes = playStrokes ?? activeFrame?.strokes ?? [];
@@ -314,9 +336,9 @@ export function SketchTacticalBoardPanel() {
       pushHistory();
       saveTexts([...activeFrame.texts, row]);
       setEditingTextId(id);
-      setSelection(null);
+      applyBoardSelection(null);
     },
-    [activeFrame, playing, color, pushHistory, saveTexts]
+    [activeFrame, playing, color, pushHistory, saveTexts, applyBoardSelection]
   );
 
   const finishEditingText = useCallback(() => {
@@ -522,7 +544,7 @@ export function SketchTacticalBoardPanel() {
             className={cn("relative", expanded && "flex min-h-0 flex-1 flex-col")}
             onPointerDown={(e) => {
               if (e.target !== e.currentTarget) return;
-              if (selectionMode) setSelection(null);
+              if (selectionMode) applyBoardSelection(null);
             }}
           >
             <SketchBoardCanvas
@@ -537,7 +559,7 @@ export function SketchTacticalBoardPanel() {
                     ? "playerToken"
                     : (tool as SketchStrokeTool)
               }
-              color={tool === "numbered" ? numberedColor : color}
+              color={tool === "numbered" || tool === "playerToken" ? numberedColor : color}
               lineWidth={lineWidth}
               expanded={expanded}
               selectionMode={selectionMode}
@@ -545,13 +567,13 @@ export function SketchTacticalBoardPanel() {
               onPlaceText={handlePlaceText}
               onSelectStroke={(index) => {
                 if (index == null) {
-                  setSelection(null);
+                  applyBoardSelection(null);
                   return;
                 }
                 const s = activeFrame.strokes[index];
                 if (!s) return;
                 const pt = strokeAnchorPoint(s);
-                setSelection({ kind: "stroke", index, x: pt.x, y: pt.y });
+                applyBoardSelection({ kind: "stroke", index, x: pt.x, y: pt.y });
               }}
               readOnly={playing}
               pitchColorPresetId={pitchPreset}
@@ -573,13 +595,13 @@ export function SketchTacticalBoardPanel() {
               onEditingDone={finishEditingText}
               onSelectText={(id, anchor) => {
                 if (id == null) {
-                  setSelection(null);
+                  applyBoardSelection(null);
                   return;
                 }
-                setSelection({ kind: "text", id, x: anchor.x, y: anchor.y });
+                applyBoardSelection({ kind: "text", id, x: anchor.x, y: anchor.y });
               }}
             />
-            {selection && !playing ? (
+            {showDeleteOption && selection && !playing ? (
               <button
                 type="button"
                 className="absolute z-30 rounded-md border border-red-500/50 bg-red-600 px-2 py-1 text-[11px] font-semibold text-white shadow-lg hover:bg-red-500"
@@ -611,7 +633,7 @@ export function SketchTacticalBoardPanel() {
                 active={tool === "select"}
                 onClick={() => {
                   setTool("select");
-                  setSelection(null);
+                  applyBoardSelection(null);
                 }}
                 label="Seleccionar"
               />

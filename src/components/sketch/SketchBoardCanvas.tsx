@@ -50,6 +50,26 @@ export function numberedDiskLabelTextColor(hex: string): string {
   return L > 0.55 ? "#171717" : "#ffffff";
 }
 
+function diskOutlineStroke(hex: string): string {
+  return numberedDiskLabelTextColor(hex) === "#ffffff" ? "rgba(255,255,255,0.88)" : "rgba(0,0,0,0.55)";
+}
+
+function fillWithAlpha(hex: string, alpha: number): string {
+  const n = hex.replace("#", "").trim();
+  const full =
+    n.length === 3
+      ? n
+          .split("")
+          .map((c) => c + c)
+          .join("")
+      : n.slice(0, 6);
+  if (full.length !== 6) return hex;
+  const r = parseInt(full.slice(0, 2), 16);
+  const g = parseInt(full.slice(2, 4), 16);
+  const b = parseInt(full.slice(4, 6), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
 function drawNumberedDisk(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -62,7 +82,7 @@ function drawNumberedDisk(
   ctx.arc(x, y, r, 0, Math.PI * 2);
   ctx.fillStyle = color;
   ctx.fill();
-  ctx.strokeStyle = "rgba(255,255,255,0.88)";
+  ctx.strokeStyle = diskOutlineStroke(color);
   ctx.lineWidth = boardSc(2);
   ctx.stroke();
   ctx.fillStyle = numberedDiskLabelTextColor(color);
@@ -389,14 +409,14 @@ function drawStrokes(ctx: CanvasRenderingContext2D, strokes: SketchStroke[]) {
 
     if (s.tool === "cone") {
       const [x, y] = pts[pts.length - 1]!;
-      ctx.fillStyle = "#f4f4f5";
-      ctx.strokeStyle = "#111827";
+      ctx.fillStyle = s.color;
+      ctx.strokeStyle = diskOutlineStroke(s.color);
       ctx.lineWidth = boardSc(1.2);
       ctx.beginPath();
       ctx.ellipse(x, y + boardSc(2), boardSc(8.5), boardSc(5.5), 0, 0, Math.PI * 2);
       ctx.fill();
       ctx.stroke();
-      ctx.fillStyle = "#0f172a";
+      ctx.fillStyle = numberedDiskLabelTextColor(s.color);
       ctx.beginPath();
       ctx.ellipse(x, y - boardSc(0.5), boardSc(2.6), boardSc(1.6), 0, 0, Math.PI * 2);
       ctx.fill();
@@ -404,8 +424,8 @@ function drawStrokes(ctx: CanvasRenderingContext2D, strokes: SketchStroke[]) {
     }
     if (s.tool === "coneTall") {
       const [x, y] = pts[pts.length - 1]!;
-      ctx.fillStyle = "#f97316";
-      ctx.strokeStyle = "#111827";
+      ctx.fillStyle = s.color;
+      ctx.strokeStyle = diskOutlineStroke(s.color);
       ctx.lineWidth = boardSc(1.4);
       ctx.beginPath();
       ctx.moveTo(x, y - boardSc(16));
@@ -414,7 +434,7 @@ function drawStrokes(ctx: CanvasRenderingContext2D, strokes: SketchStroke[]) {
       ctx.closePath();
       ctx.fill();
       ctx.stroke();
-      ctx.fillStyle = "#0f172a";
+      ctx.fillStyle = numberedDiskLabelTextColor(s.color);
       ctx.beginPath();
       ctx.ellipse(x, y - boardSc(14), boardSc(2.8), boardSc(1.8), 0, 0, Math.PI * 2);
       ctx.fill();
@@ -436,14 +456,15 @@ function drawStrokes(ctx: CanvasRenderingContext2D, strokes: SketchStroke[]) {
       const r = boardSc(14);
       const num = s.playerNumber ?? 0;
       const name = s.playerName ?? "Jogador";
+      const labelColor = numberedDiskLabelTextColor(s.color);
       ctx.beginPath();
       ctx.arc(x, y, r, 0, Math.PI * 2);
-      ctx.fillStyle = "#f8fafc";
+      ctx.fillStyle = s.color;
       ctx.fill();
-      ctx.strokeStyle = "#111827";
+      ctx.strokeStyle = diskOutlineStroke(s.color);
       ctx.lineWidth = boardSc(2);
       ctx.stroke();
-      ctx.fillStyle = "#111827";
+      ctx.fillStyle = labelColor;
       const numSize = boardSc(num > 9 ? 11 : 12);
       ctx.font = `700 ${numSize}px system-ui, -apple-system, sans-serif`;
       ctx.textAlign = "center";
@@ -468,14 +489,15 @@ function drawStrokes(ctx: CanvasRenderingContext2D, strokes: SketchStroke[]) {
     if (s.tool === "ball") {
       const [x, y] = pts[pts.length - 1]!;
       const r = boardSc(9);
+      const mark = numberedDiskLabelTextColor(s.color);
       ctx.beginPath();
       ctx.arc(x, y, r, 0, Math.PI * 2);
-      ctx.fillStyle = "#f8fafc";
+      ctx.fillStyle = s.color;
       ctx.fill();
-      ctx.strokeStyle = "#111827";
+      ctx.strokeStyle = diskOutlineStroke(s.color);
       ctx.lineWidth = boardSc(1.5);
       ctx.stroke();
-      ctx.fillStyle = "#111827";
+      ctx.fillStyle = mark;
       ctx.beginPath();
       ctx.arc(x, y, boardSc(2.2), 0, Math.PI * 2);
       ctx.fill();
@@ -537,8 +559,8 @@ function drawStrokes(ctx: CanvasRenderingContext2D, strokes: SketchStroke[]) {
       const topLift = boardSc(4) * scale;
       const x0 = x - w / 2;
       const y0 = y - h / 2;
-      ctx.strokeStyle = "#f4f4f5";
-      ctx.fillStyle = "rgba(244,244,245,0.28)";
+      ctx.strokeStyle = s.color;
+      ctx.fillStyle = fillWithAlpha(s.color, 0.35);
       ctx.lineWidth = boardSc(2);
       ctx.beginPath();
       ctx.moveTo(x0, y0 + h);
@@ -557,8 +579,8 @@ function drawStrokes(ctx: CanvasRenderingContext2D, strokes: SketchStroke[]) {
       const x0 = x - w / 2;
       const y0 = y - h / 2;
       const cx = x;
-      ctx.strokeStyle = "#f4f4f5";
-      ctx.fillStyle = "rgba(244,244,245,0.35)";
+      ctx.strokeStyle = s.color;
+      ctx.fillStyle = fillWithAlpha(s.color, 0.4);
       ctx.lineWidth = boardSc(2);
       ctx.beginPath();
       ctx.ellipse(cx, y0 + h * 0.12, w * 0.18, h * 0.08, 0, 0, Math.PI * 2);
@@ -579,8 +601,8 @@ function drawStrokes(ctx: CanvasRenderingContext2D, strokes: SketchStroke[]) {
       const [x, y] = pts[pts.length - 1]!;
       const h = boardSc(26);
       const yTop = y - h / 2;
-      ctx.strokeStyle = "#f4f4f5";
-      ctx.fillStyle = "rgba(244,244,245,0.9)";
+      ctx.strokeStyle = s.color;
+      ctx.fillStyle = fillWithAlpha(s.color, 0.85);
       ctx.lineWidth = boardSc(2);
       ctx.beginPath();
       ctx.moveTo(x, yTop);
@@ -606,7 +628,7 @@ function drawStrokes(ctx: CanvasRenderingContext2D, strokes: SketchStroke[]) {
       const startY = y - (Math.sin(ang) * len) / 2;
       const endX = x + (Math.cos(ang) * len) / 2;
       const endY = y + (Math.sin(ang) * len) / 2;
-      ctx.strokeStyle = "#f4f4f5";
+      ctx.strokeStyle = s.color;
       ctx.lineWidth = boardSc(2);
       ctx.beginPath();
       ctx.moveTo(startX + nx * half, startY + ny * half);
