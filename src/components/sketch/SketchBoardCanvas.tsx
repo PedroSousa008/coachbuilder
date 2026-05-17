@@ -1,10 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useRef } from "react";
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef } from "react";
 import type { SketchPitchTemplate, SketchStroke, SketchStrokeTool } from "@/types";
 import { cn } from "@/lib/utils";
+import { newElementId, PITCH_COLOR_PRESETS } from "@/lib/sketch-board";
 
-export const BOARD_COLORS = ["#e4e4e7", "#22c55e", "#f59e0b", "#ef4444", "#3b82f6", "#a855f7"];
+export type SketchBoardCanvasHandle = {
+  exportPng: () => string | null;
+};
+
+export const BOARD_COLORS = ["#ef4444", "#e4e4e7", "#22c55e", "#f59e0b", "#3b82f6", "#a855f7", "#f8fafc", "#171717"];
 
 /** Paleta para discos numerados (estilo tactical board): cada cor tem sequência 1→24 independente. */
 export const NUMBERED_DISK_COLORS = [
@@ -64,11 +69,18 @@ function drawNumberedDisk(
 }
 
 /** Relva riscada + linhas FIFA (105×68 m) em vista de cima; balizas à esquerda/direita. */
-const GRASS_A = "#1e6b3d";
-const GRASS_B = "#143d26";
+const DEFAULT_GRASS_A = "#1a3d2e";
+const DEFAULT_GRASS_B = "#0f2419";
 const LINE = "rgba(248, 250, 252, 0.94)";
 
-function drawPitchBackground(ctx: CanvasRenderingContext2D, w: number, h: number, tpl: SketchPitchTemplate) {
+function drawPitchBackground(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  tpl: SketchPitchTemplate,
+  grassA = DEFAULT_GRASS_A,
+  grassB = DEFAULT_GRASS_B
+) {
   const m = Math.max(16, Math.min(28, Math.round(Math.min(w, h) * 0.04)));
   const xL = m;
   const xR = w - m;
@@ -80,7 +92,7 @@ function drawPitchBackground(ctx: CanvasRenderingContext2D, w: number, h: number
   const cy = (yT + yB) / 2;
 
   if (tpl === "half") {
-    drawHalfPitchBackground(ctx, w, h);
+    drawHalfPitchBackground(ctx, w, h, grassA, grassB);
     return;
   }
 
@@ -89,7 +101,7 @@ function drawPitchBackground(ctx: CanvasRenderingContext2D, w: number, h: number
   for (let i = 0; i < stripes; i++) {
     const x0 = xL + (i * pitchW) / stripes;
     const x1 = xL + ((i + 1) * pitchW) / stripes;
-    ctx.fillStyle = i % 2 === 0 ? GRASS_A : GRASS_B;
+    ctx.fillStyle = i % 2 === 0 ? grassA : grassB;
     ctx.fillRect(x0, yT, x1 - x0 + 0.5, pitchH);
   }
 
@@ -198,7 +210,13 @@ function drawFullPitchBackground(
  * Meio-campo: só uma metade (52,5×68 m), golo à esquerda e linha de meio à direita.
  * Círculo central como semicírculo na linha de meio-campo.
  */
-function drawHalfPitchBackground(ctx: CanvasRenderingContext2D, w: number, h: number) {
+function drawHalfPitchBackground(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  grassA = DEFAULT_GRASS_A,
+  grassB = DEFAULT_GRASS_B
+) {
   const m = Math.max(16, Math.min(28, Math.round(Math.min(w, h) * 0.04)));
   const xL = m;
   const xR = w - m;
@@ -215,7 +233,7 @@ function drawHalfPitchBackground(ctx: CanvasRenderingContext2D, w: number, h: nu
   for (let i = 0; i < stripes; i++) {
     const x0 = xL + (i * pitchW) / stripes;
     const x1 = xL + ((i + 1) * pitchW) / stripes;
-    ctx.fillStyle = i % 2 === 0 ? GRASS_A : GRASS_B;
+    ctx.fillStyle = i % 2 === 0 ? grassA : grassB;
     ctx.fillRect(x0, yT, x1 - x0 + 0.5, pitchH);
   }
 
@@ -280,6 +298,54 @@ function drawHalfPitchBackground(ctx: CanvasRenderingContext2D, w: number, h: nu
   ctx.strokeStyle = LINE;
   ctx.lineWidth = Math.max(1, pitchW * 0.0018);
   ctx.strokeRect(xL - gW * 0.35, cy - wGoal / 2, gW * 0.85, wGoal);
+}
+
+const TWO_POINT_LINE_TOOLS = new Set<SketchStrokeTool>(["line", "lineDashed", "lineArrow"]);
+const CURVE_LINE_TOOLS = new Set<SketchStrokeTool>(["curve", "curveArrow"]);
+
+function quadControlFromEndpoints(x1: number, y1: number, x2: number, y2: number): [number, number] {
+  const mx = (x1 + x2) / 2;
+  const my = (y1 + y2) / 2;
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const len = Math.hypot(dx, dy) || 1;
+  const off = Math.min(48, len * 0.35);
+  return [mx - (dy / len) * off, my + (dx / len) * off];
+}
+
+function drawArrowHead(ctx: CanvasRenderingContext2D, x1: number, y1: number, x2: number, y2: number, size = 10) {
+  const ang = Math.atan2(y2 - y1, x2 - x1);
+  ctx.beginPath();
+  ctx.moveTo(x2, y2);
+  ctx.lineTo(x2 - size * Math.cos(ang - Math.PI / 6), y2 - size * Math.sin(ang - Math.PI / 6));
+  ctx.moveTo(x2, y2);
+  ctx.lineTo(x2 - size * Math.cos(ang + Math.PI / 6), y2 - size * Math.sin(ang + Math.PI / 6));
+  ctx.stroke();
+}
+
+function drawLineStroke(ctx: CanvasRenderingContext2D, s: SketchStroke) {
+  const pts = s.points;
+  if (pts.length < 2) return;
+  const [x1, y1] = pts[0]!;
+  const [x2, y2] = pts[pts.length - 1]!;
+  const dashed = s.tool === "lineDashed" || s.lineStyle === "dashed";
+  ctx.setLineDash(dashed ? [10, 7] : []);
+  if (CURVE_LINE_TOOLS.has(s.tool)) {
+    const [cx, cy] = quadControlFromEndpoints(x1, y1, x2, y2);
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.quadraticCurveTo(cx, cy, x2, y2);
+    ctx.stroke();
+  } else {
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.stroke();
+  }
+  ctx.setLineDash([]);
+  if (s.tool === "lineArrow" || s.tool === "curveArrow") {
+    drawArrowHead(ctx, x1, y1, x2, y2, Math.max(8, s.lineWidth * 3));
+  }
 }
 
 function drawCornerArcs(
@@ -532,6 +598,11 @@ function drawStrokes(ctx: CanvasRenderingContext2D, strokes: SketchStroke[]) {
       continue;
     }
 
+    if (TWO_POINT_LINE_TOOLS.has(s.tool) || CURVE_LINE_TOOLS.has(s.tool)) {
+      drawLineStroke(ctx, s);
+      continue;
+    }
+
     if (pts.length < 2) continue;
 
     // Shapes/tools above use click-to-place (single point). Only freehand draw uses a polyline here.
@@ -544,37 +615,42 @@ function drawStrokes(ctx: CanvasRenderingContext2D, strokes: SketchStroke[]) {
   }
 }
 
-export function SketchBoardCanvas({
-  pitchTemplate,
-  strokes,
-  onStrokesChange,
-  tool,
-  color,
-  lineWidth,
-  expanded = false,
-  nextNumberLabel,
-  canPlaceNumbered = true,
-  playerTokenDraft,
-  dragMode = false,
-}: {
-  pitchTemplate: SketchPitchTemplate;
-  strokes: SketchStroke[];
-  onStrokesChange: (next: SketchStroke[]) => void;
-  tool: SketchStrokeTool;
-  color: string;
-  lineWidth: number;
-  /** Taller canvas (fullscreen / mobile drawing area). */
-  expanded?: boolean;
-  /** Próximo número a colocar quando `tool === "numbered"` (1–24). */
-  nextNumberLabel?: number;
-  /** Se false, não aceita novos discos numerados (já atingiu 24 nesta cor). */
-  canPlaceNumbered?: boolean;
-  /** Novo token de jogador a colocar (click-to-place). */
-  playerTokenDraft?: { playerId: string; number: number; name: string } | null;
-  /** Move objects around instead of placing/drawing. */
-  dragMode?: boolean;
-}) {
-  const ref = useRef<HTMLCanvasElement>(null);
+export const SketchBoardCanvas = forwardRef<
+  SketchBoardCanvasHandle,
+  {
+    pitchTemplate: SketchPitchTemplate;
+    strokes: SketchStroke[];
+    onStrokesChange: (next: SketchStroke[]) => void;
+    tool: SketchStrokeTool;
+    color: string;
+    lineWidth: number;
+    expanded?: boolean;
+    nextNumberLabel?: number;
+    canPlaceNumbered?: boolean;
+    playerTokenDraft?: { playerId: string; number: number; name: string } | null;
+    dragMode?: boolean;
+    pitchColorPresetId?: string;
+    readOnly?: boolean;
+  }
+>(function SketchBoardCanvas(
+  {
+    pitchTemplate,
+    strokes,
+    onStrokesChange,
+    tool,
+    color,
+    lineWidth,
+    expanded = false,
+    nextNumberLabel,
+    canPlaceNumbered = true,
+    playerTokenDraft,
+    dragMode = false,
+    pitchColorPresetId = "app",
+    readOnly = false,
+  },
+  imperativeRef
+) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const currentStroke = useRef<SketchStroke | null>(null);
   const activePointerId = useRef<number | null>(null);
@@ -582,22 +658,29 @@ export function SketchBoardCanvas({
   const draggingOffset = useRef<{ dx: number; dy: number }>({ dx: 0, dy: 0 });
   const strokesRef = useRef(strokes);
   strokesRef.current = strokes;
+  const dragPreviewStrokes = useRef<SketchStroke[] | null>(null);
+
+  const pitchColors = PITCH_COLOR_PRESETS.find((p) => p.id === pitchColorPresetId) ?? PITCH_COLOR_PRESETS[0]!;
+
+  useImperativeHandle(imperativeRef, () => ({
+    exportPng: () => canvasRef.current?.toDataURL("image/png") ?? null,
+  }));
 
   const redraw = useCallback(() => {
-    const c = ref.current;
+    const c = canvasRef.current;
     if (!c) return;
     const ctx = c.getContext("2d");
     if (!ctx) return;
-    // c.width/height are buffer pixels; ctx is scaled by dpr so drawing uses CSS pixels (same as pointer coords).
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     const w = c.width / dpr;
     const h = c.height / dpr;
     if (w < 1 || h < 1) return;
     ctx.clearRect(0, 0, w, h);
-    drawPitchBackground(ctx, w, h, pitchTemplate);
-    drawStrokes(ctx, strokes);
+    drawPitchBackground(ctx, w, h, pitchTemplate, pitchColors.grassA, pitchColors.grassB);
+    const visible = dragPreviewStrokes.current ?? strokes;
+    drawStrokes(ctx, visible);
     if (currentStroke.current) drawStrokes(ctx, [currentStroke.current]);
-  }, [pitchTemplate, strokes]);
+  }, [pitchTemplate, strokes, pitchColors.grassA, pitchColors.grassB]);
 
   useEffect(() => {
     redraw();
@@ -606,7 +689,7 @@ export function SketchBoardCanvas({
   useEffect(() => {
     const ro = new ResizeObserver(() => {
       const wrap = wrapRef.current;
-      const c = ref.current;
+      const c = canvasRef.current;
       if (!wrap || !c) return;
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       const w = Math.floor(wrap.clientWidth);
@@ -626,7 +709,7 @@ export function SketchBoardCanvas({
   }, [redraw, expanded]);
 
   const pos = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    const c = ref.current;
+    const c = canvasRef.current;
     if (!c) return { x: 0, y: 0 };
     const r = c.getBoundingClientRect();
     return { x: e.clientX - r.left, y: e.clientY - r.top };
@@ -637,7 +720,9 @@ export function SketchBoardCanvas({
     activePointerId.current = null;
     const fin = currentStroke.current;
     currentStroke.current = null;
-    if (fin.points.length >= (fin.tool === "draw" ? 2 : 1)) {
+    const minPts =
+      fin.tool === "draw" ? 2 : TWO_POINT_LINE_TOOLS.has(fin.tool) || CURVE_LINE_TOOLS.has(fin.tool) ? 2 : 1;
+    if (fin.points.length >= minPts) {
       onStrokesChange([...strokesRef.current, fin]);
     }
     redraw();
@@ -679,6 +764,7 @@ export function SketchBoardCanvas({
   };
 
   const onPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (readOnly) return;
     if (e.button !== 0 && e.pointerType === "mouse") return;
     if (tool === "numbered" && (!canPlaceNumbered || nextNumberLabel == null)) return;
     e.preventDefault();
@@ -695,10 +781,11 @@ export function SketchBoardCanvas({
           const [px, py] = s.points[s.points.length - 1]!;
           return Math.hypot(px - x, py - y) <= estimateHitRadius(s.tool);
         });
-      if (!hit) return;
-      draggingTokenStrokeId.current = hit.i;
-      const [px, py] = hit.s.points[hit.s.points.length - 1]!;
-      draggingOffset.current = { dx: x - px, dy: y - py };
+      if (hit) {
+        draggingTokenStrokeId.current = hit.i;
+        const [px, py] = hit.s.points[hit.s.points.length - 1]!;
+        draggingOffset.current = { dx: x - px, dy: y - py };
+      }
       return;
     }
     if (tool === "playerToken") {
@@ -720,11 +807,23 @@ export function SketchBoardCanvas({
         color: color,
         lineWidth,
         points: [[x, y]],
+        elementId: newElementId(),
         playerId: playerTokenDraft.playerId,
         playerNumber: playerTokenDraft.number,
         playerName: playerTokenDraft.name,
       };
       onStrokesChange([...strokesRef.current, token]);
+      return;
+    }
+    if (TWO_POINT_LINE_TOOLS.has(tool) || CURVE_LINE_TOOLS.has(tool)) {
+      currentStroke.current = {
+        tool,
+        color,
+        lineWidth,
+        points: [[x, y]],
+        lineStyle: tool === "lineDashed" ? "dashed" : "solid",
+      };
+      redraw();
       return;
     }
     if (clickPlaceTools.has(tool)) {
@@ -735,6 +834,7 @@ export function SketchBoardCanvas({
           color,
           lineWidth,
           points: [[x, y]],
+          elementId: tool === "ball" ? newElementId() : undefined,
         },
       ]);
       return;
@@ -744,7 +844,9 @@ export function SketchBoardCanvas({
       color,
       lineWidth,
       points: [[x, y]],
-      ...(tool === "numbered" && nextNumberLabel != null ? { label: nextNumberLabel } : {}),
+      ...(tool === "numbered" && nextNumberLabel != null
+        ? { label: nextNumberLabel, elementId: newElementId() }
+        : {}),
     };
     redraw();
   };
@@ -757,6 +859,8 @@ export function SketchBoardCanvas({
     const s = currentStroke.current;
     if (tool === "draw") {
       s.points.push([x, y]);
+    } else if (TWO_POINT_LINE_TOOLS.has(tool) || CURVE_LINE_TOOLS.has(tool)) {
+      s.points = [s.points[0]!, [x, y]];
     } else {
       s.points = [s.points[0]!, [x, y]];
     }
@@ -773,7 +877,15 @@ export function SketchBoardCanvas({
     const s = next[idx];
     if (!s || !draggableTools.has(s.tool)) return;
     next[idx] = { ...s, points: [[x - draggingOffset.current.dx, y - draggingOffset.current.dy]] };
-    onStrokesChange(next);
+    dragPreviewStrokes.current = next;
+    redraw();
+  };
+
+  const commitDragIfNeeded = () => {
+    if (dragPreviewStrokes.current) {
+      onStrokesChange(dragPreviewStrokes.current);
+      dragPreviewStrokes.current = null;
+    }
   };
 
   const onPointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -783,8 +895,10 @@ export function SketchBoardCanvas({
     } catch {
       /* already released */
     }
+    const wasDragging = draggingTokenStrokeId.current != null;
     draggingTokenStrokeId.current = null;
-    finishStroke();
+    if (wasDragging) commitDragIfNeeded();
+    else finishStroke();
   };
 
   const onPointerCancel = (e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -795,6 +909,7 @@ export function SketchBoardCanvas({
       /* ignore */
     }
     draggingTokenStrokeId.current = null;
+    dragPreviewStrokes.current = null;
     finishStroke();
   };
 
@@ -804,7 +919,7 @@ export function SketchBoardCanvas({
       className={expanded ? "flex min-h-0 w-full flex-1 flex-col" : "w-full"}
     >
       <canvas
-        ref={ref}
+        ref={canvasRef}
         className={cn(
           "touch-none rounded-xl border border-surface-border bg-[#0a0f0c]",
           dragMode ? "cursor-grab" : tool === "numbered" && !canPlaceNumbered ? "cursor-not-allowed" : "cursor-crosshair"
@@ -823,4 +938,6 @@ export function SketchBoardCanvas({
       />
     </div>
   );
-}
+});
+
+SketchBoardCanvas.displayName = "SketchBoardCanvas";

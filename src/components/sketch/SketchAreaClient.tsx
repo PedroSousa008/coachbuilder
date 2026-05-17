@@ -4,15 +4,12 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
-  ArrowLeft,
   Calendar,
   CheckCircle2,
   Circle,
   ClipboardList,
   FolderOpen,
   LayoutGrid,
-  Maximize2,
-  Minimize2,
   PenLine,
   Pin,
   Plus,
@@ -25,20 +22,17 @@ import {
 import { useAppData } from "@/contexts/AppDataContext";
 import type {
   Player,
-  SketchBoardDraft,
   SketchCalendarEvent,
   SketchCalendarEventCategory,
   SketchFileEntry,
   SketchFileFolder,
   SketchFileVisibility,
-  SketchPitchTemplate,
   SketchStaffNote,
   SketchStaffNoteCategory,
   SketchTask,
   SketchTaskCategory,
   SketchTaskPriority,
   SketchTaskRecurring,
-  SketchStrokeTool,
 } from "@/types";
 import { calendarDayLisbon } from "@/lib/lisbon-date";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
@@ -53,10 +47,7 @@ import {
   TASK_CATEGORY_LABELS,
 } from "./constants";
 import { cn } from "@/lib/utils";
-import {
-  BOARD_COLORS,
-  SketchBoardCanvas,
-} from "./SketchBoardCanvas";
+import { SketchTacticalBoardPanel } from "./SketchTacticalBoardPanel";
 import { SketchOpponentAnalysisPanel } from "./SketchOpponentAnalysisPanel";
 import { SketchMonthlyReportPanel } from "./SketchMonthlyReportPanel";
 import { SketchWatchlistPanel } from "./SketchWatchlistPanel";
@@ -83,19 +74,6 @@ const TABS: { id: TabId; label: string; icon: typeof Calendar }[] = [
   { id: "opponentAi", label: "Análise Adversário AI", icon: Sparkles },
   { id: "weeklyReport", label: "Relatório mensal", icon: FileBarChart },
   { id: "captations", label: "Captações", icon: UserRoundSearch },
-];
-
-const FORMS_TOOLS: { id: SketchStrokeTool; label: string }[] = [
-  { id: "ball", label: "Bola" },
-  { id: "circle", label: "Círculo" },
-  { id: "square", label: "Quadrado" },
-  { id: "triangle", label: "Triângulo" },
-  { id: "cone", label: "Cone" },
-  { id: "mannequin", label: "Manequim" },
-  { id: "poleBase", label: "Estaca base" },
-  { id: "ladder", label: "Escada" },
-  { id: "arrow", label: "Seta" },
-  { id: "goal", label: "Baliza" },
 ];
 
 function sketchUid(prefix: string) {
@@ -184,31 +162,6 @@ export function SketchAreaClient() {
   const [fileVis, setFileVis] = useState<SketchFileVisibility>("private");
   const [fileReviewLater, setFileReviewLater] = useState(false);
   const [filePlayerIds, setFilePlayerIds] = useState<string[]>([]);
-
-  const [boardDraftId, setBoardDraftId] = useState<string | null>(null);
-  const [boardTool, setBoardTool] = useState<SketchStrokeTool>("draw");
-  const [boardPanel, setBoardPanel] = useState<"player" | "draw" | "forms" | "drag">("draw");
-  const [boardColor, setBoardColor] = useState(BOARD_COLORS[0]!);
-  const [boardLine, setBoardLine] = useState(3);
-  const [boardPitch] = useState<SketchPitchTemplate>("full");
-  const [boardNote, setBoardNote] = useState("");
-  const [selectedBoardPlayerId, setSelectedBoardPlayerId] = useState<string>("");
-  const [boardExpanded, setBoardExpanded] = useState(false);
-
-  const activeDraft = useMemo(() => {
-    if (sketchArea.boardDrafts.length === 0) return null;
-    const id = boardDraftId ?? sketchArea.boardDrafts[0]!.id;
-    return sketchArea.boardDrafts.find((d) => d.id === id) ?? sketchArea.boardDrafts[0]!;
-  }, [sketchArea.boardDrafts, boardDraftId]);
-
-  useEffect(() => {
-    setBoardColor((c) => (BOARD_COLORS.includes(c) ? c : BOARD_COLORS[0]!));
-  }, [boardTool]);
-
-  const selectedBoardPlayer = useMemo(
-    () => players.find((p) => p.id === selectedBoardPlayerId) ?? null,
-    [players, selectedBoardPlayerId]
-  );
 
   const eventsForDay = useMemo(
     () =>
@@ -407,52 +360,6 @@ export function SketchAreaClient() {
     window.setTimeout(() => w.print(), 650);
   }, []);
 
-  const ensureDraft = useCallback(() => {
-    if (sketchArea.boardDrafts.length > 0) return;
-    const now = new Date().toISOString();
-    const d: SketchBoardDraft = {
-      id: sketchUid("draft"),
-      title: "Session sketch 1",
-      pitchTemplate: boardPitch,
-      strokes: [],
-      updatedAt: now,
-    };
-    setSketchArea((s) => ({ ...s, boardDrafts: [d] }));
-    setBoardDraftId(d.id);
-  }, [boardPitch, setSketchArea, sketchArea.boardDrafts.length]);
-
-  const saveBoardStrokes = useCallback(
-    (strokes: SketchBoardDraft["strokes"]) => {
-      if (!activeDraft) return;
-      const now = new Date().toISOString();
-      setSketchArea((s) => ({
-        ...s,
-        boardDrafts: s.boardDrafts.map((d) =>
-          d.id === activeDraft.id ? { ...d, strokes, pitchTemplate: boardPitch, noteAttached: boardNote || undefined, updatedAt: now } : d
-        ),
-      }));
-    },
-    [activeDraft, boardNote, boardPitch, setSketchArea]
-  );
-
-  const newDraft = useCallback(() => {
-    const now = new Date().toISOString();
-    const d: SketchBoardDraft = {
-      id: sketchUid("draft"),
-      title: `Sketch ${sketchArea.boardDrafts.length + 1}`,
-      pitchTemplate: boardPitch,
-      strokes: [],
-      noteAttached: boardNote || undefined,
-      updatedAt: now,
-    };
-    setSketchArea((s) => ({ ...s, boardDrafts: [d, ...s.boardDrafts] }));
-    setBoardDraftId(d.id);
-  }, [boardNote, boardPitch, setSketchArea, sketchArea.boardDrafts.length]);
-
-  const printBoard = useCallback(() => {
-    window.print();
-  }, []);
-
   const openPicker = (mode: typeof pickerMode) => {
     setPickerMode(mode);
     setPickerOpen(true);
@@ -471,40 +378,10 @@ export function SketchAreaClient() {
 
   const playerName = (id: string) => players.find((x) => x.id === id)?.name ?? id.slice(0, 6);
 
-  useEffect(() => {
-    if (!activeDraft) return;
-    if (activeDraft.pitchTemplate !== "full") {
-      setSketchArea((s) => ({
-        ...s,
-        boardDrafts: s.boardDrafts.map((d) => (d.id === activeDraft.id ? { ...d, pitchTemplate: "full" } : d)),
-      }));
-    }
-    setBoardNote(activeDraft.noteAttached ?? "");
-  }, [activeDraft?.id, setSketchArea]);
-
-  useEffect(() => {
-    if (tab !== "board") setBoardExpanded(false);
-  }, [tab]);
-
-  useEffect(() => {
-    if (!boardExpanded) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prev;
-    };
-  }, [boardExpanded]);
 
   return (
-    <div
-      className={cn(
-        "mx-auto max-w-6xl space-y-6 print:max-w-none",
-        boardExpanded &&
-          tab === "board" &&
-          "fixed inset-0 z-[100] m-0 flex max-h-[100dvh] max-w-none flex-col overflow-hidden bg-[#0a0d10] p-3 sm:p-4"
-      )}
-    >
-      <div className={cn("no-print", boardExpanded && tab === "board" && "hidden")}>
+    <div className="mx-auto max-w-6xl space-y-6 print:max-w-none">
+      <div className="no-print">
         <h2 className="font-display text-xl font-semibold text-white">Sketch Area</h2>
         <p className="mt-1 max-w-3xl text-sm text-zinc-500">
           Planeamento diário, notas rápidas, tarefas, ficheiros, sketches táticos e observação de jogadores — o teu
@@ -1067,229 +944,9 @@ export function SketchAreaClient() {
       ) : null}
 
       {tab === "board" ? (
-        <Card
-          className={cn(
-            "print:border-0",
-            boardExpanded &&
-              "flex min-h-0 flex-1 flex-col overflow-hidden border-0 bg-transparent shadow-none ring-0"
-          )}
-        >
-          {boardExpanded ? (
-            <div className="no-print mb-3 flex shrink-0 flex-wrap items-center gap-2 border-b border-surface-border pb-3">
-              <Link
-                href="/app"
-                className="inline-flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-zinc-300 transition-colors hover:bg-white/5 hover:text-white"
-              >
-                <ArrowLeft className="h-4 w-4 shrink-0" strokeWidth={2} />
-                Voltar à app
-              </Link>
-              <Button
-                type="button"
-                variant="secondary"
-                className="text-xs"
-                onClick={() => setBoardExpanded(false)}
-              >
-                <Minimize2 className="mr-1.5 h-3.5 w-3.5" strokeWidth={2} />
-                Sair do ecrã inteiro
-              </Button>
-              <p className="ml-auto hidden text-[11px] text-zinc-500 sm:block">
-                Touch-friendly drawing · pinch outside to scroll the page when not fullscreen
-              </p>
-            </div>
-          ) : null}
-          <CardHeader className="no-print flex flex-row flex-wrap items-center justify-between gap-3">
-            <CardTitle>Quadro de sketch</CardTitle>
-            <div className="flex flex-wrap gap-2">
-              <Button type="button" variant="secondary" className="text-xs" onClick={() => ensureDraft()}>
-                Iniciar draft
-              </Button>
-              <Button type="button" variant="secondary" className="text-xs" onClick={newDraft}>
-                Novo quadro
-              </Button>
-              <Button type="button" className="text-xs" onClick={printBoard}>
-                Imprimir / PDF
-              </Button>
-              {sketchArea.boardDrafts.length > 0 && activeDraft ? (
-                <Button
-                  type="button"
-                  variant="secondary"
-                  className="text-xs"
-                  onClick={() => setBoardExpanded((v) => !v)}
-                >
-                  {boardExpanded ? (
-                    <>
-                      <Minimize2 className="mr-1.5 h-3.5 w-3.5" strokeWidth={2} />
-                      Minimizar
-                    </>
-                  ) : (
-                    <>
-                      <Maximize2 className="mr-1.5 h-3.5 w-3.5" strokeWidth={2} />
-                      Ecrã inteiro
-                    </>
-                  )}
-                </Button>
-              ) : null}
-            </div>
-          </CardHeader>
-          <CardContent
-            className={cn("space-y-4", boardExpanded && "flex min-h-0 flex-1 flex-col overflow-hidden")}
-          >
-            {sketchArea.boardDrafts.length > 0 && activeDraft ? (
-              <>
-                <div className="no-print flex flex-wrap gap-2">
-                  <select
-                    className="h-9 rounded-lg border border-surface-border bg-surface-raised px-2 text-sm"
-                    value={activeDraft.id}
-                    onChange={(e) => setBoardDraftId(e.target.value)}
-                  >
-                    {sketchArea.boardDrafts.map((d) => (
-                      <option key={d.id} value={d.id}>
-                        {d.title}
-                      </option>
-                    ))}
-                  </select>
-                  {([
-                    { id: "player", label: "Jogador" },
-                    { id: "draw", label: "Desenhar" },
-                    { id: "forms", label: "Formas/Ferramentas" },
-                    { id: "drag", label: "Mover" },
-                  ] as const).map(({ id, label }) => (
-                    <Button
-                      key={id}
-                      type="button"
-                      variant={boardPanel === id ? "primary" : "secondary"}
-                      className="text-xs"
-                      onClick={() => {
-                        setBoardPanel(id);
-                        if (id === "draw") setBoardTool("draw");
-                        if (id === "player") setBoardTool("playerToken");
-                        if (id === "forms") setBoardTool("ball");
-                      }}
-                    >
-                      {label}
-                    </Button>
-                  ))}
-                </div>
-                {boardPanel === "player" ? (
-                  <div className="no-print space-y-2 rounded-xl border border-surface-border bg-surface-raised/20 p-3">
-                    <p className="text-xs text-zinc-500">
-                      Escolhe um jogador e clica no campo para o colocar. Em modo Jogador também podes arrastar os jogadores já colocados.
-                    </p>
-                    <div className="max-h-36 space-y-1 overflow-auto pr-1">
-                      {players.map((p) => (
-                        <button
-                          key={p.id}
-                          type="button"
-                          className={cn(
-                            "flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-left text-sm",
-                            selectedBoardPlayerId === p.id ? "bg-accent/15 text-accent" : "text-zinc-300 hover:bg-white/5"
-                          )}
-                          onClick={() => {
-                            setSelectedBoardPlayerId(p.id);
-                            setBoardTool("playerToken");
-                          }}
-                        >
-                          <span>{p.name}</span>
-                          <Badge variant="muted">#{p.number}</Badge>
-                        </button>
-                      ))}
-                      {players.length === 0 ? <p className="text-xs text-zinc-500">Sem jogadores na equipa.</p> : null}
-                    </div>
-                  </div>
-                ) : null}
-                {boardPanel === "forms" ? (
-                  <div className="no-print space-y-2 rounded-xl border border-surface-border bg-surface-raised/20 p-3">
-                    <p className="text-xs text-zinc-500">Seleciona uma forma ou material para desenhar no board.</p>
-                    <div className="flex flex-wrap gap-2">
-                      {FORMS_TOOLS.map(({ id, label }) => (
-                        <Button
-                          key={id}
-                          type="button"
-                          variant={boardTool === id ? "primary" : "secondary"}
-                          className="text-xs"
-                          onClick={() => setBoardTool(id)}
-                        >
-                          {label}
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-                ) : null}
-                <div className="no-print flex flex-wrap items-center gap-1">
-                  {BOARD_COLORS.map((c) => (
-                    <button
-                      key={c}
-                      type="button"
-                      className="h-7 w-7 rounded-full border border-zinc-600"
-                      style={{ backgroundColor: c, boxShadow: boardColor === c ? "0 0 0 2px white" : undefined }}
-                      onClick={() => setBoardColor(c)}
-                      aria-label={`cor ${c}`}
-                    />
-                  ))}
-                  <Input
-                    type="range"
-                    min={1}
-                    max={8}
-                    value={boardLine}
-                    onChange={(e) => setBoardLine(Number(e.target.value))}
-                    className="w-28"
-                  />
-                </div>
-                <textarea
-                  className="no-print min-h-[64px] w-full rounded-xl border border-surface-border bg-surface-raised/50 px-3 py-2 text-sm"
-                  placeholder="Note beside sketch (saved with this board)"
-                  value={boardNote}
-                  onChange={(e) => setBoardNote(e.target.value)}
-                  onBlur={() => {
-                    if (!activeDraft) return;
-                    const now = new Date().toISOString();
-                    setSketchArea((s) => ({
-                      ...s,
-                      boardDrafts: s.boardDrafts.map((d) =>
-                        d.id === activeDraft.id ? { ...d, noteAttached: boardNote || undefined, updatedAt: now } : d
-                      ),
-                    }));
-                  }}
-                />
-                <div
-                  id="sketch-print-area"
-                  className={cn(boardExpanded && "flex min-h-0 flex-1 flex-col")}
-                >
-                  <SketchBoardCanvas
-                    pitchTemplate={boardPitch}
-                    strokes={activeDraft.strokes}
-                    onStrokesChange={saveBoardStrokes}
-                    tool={boardTool}
-                    color={boardColor}
-                    lineWidth={boardLine}
-                    expanded={boardExpanded}
-                    dragMode={boardPanel === "drag"}
-                    playerTokenDraft={
-                      boardTool === "playerToken" && selectedBoardPlayer
-                        ? {
-                            playerId: selectedBoardPlayer.id,
-                            number: selectedBoardPlayer.number,
-                            name: selectedBoardPlayer.name,
-                          }
-                        : null
-                    }
-                  />
-                </div>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  className="no-print text-xs"
-                  onClick={() => saveBoardStrokes([])}
-                >
-                  Limpar traços
-                </Button>
-              </>
-            ) : (
-              <p className="text-sm text-zinc-500">Clica em “Iniciar draft” para abrir o quadro.</p>
-            )}
-          </CardContent>
-        </Card>
+        <SketchTacticalBoardPanel />
       ) : null}
+
 
       {tab === "watchlist" ? <SketchWatchlistPanel /> : null}
 

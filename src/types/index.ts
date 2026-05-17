@@ -888,6 +888,11 @@ export type SketchPitchTemplate = "blank" | "half" | "full";
 export type SketchStrokeTool =
   | "draw"
   | "arrow"
+  | "line"
+  | "lineDashed"
+  | "lineArrow"
+  | "curve"
+  | "curveArrow"
   | "circle"
   | "cone"
   | "player"
@@ -902,12 +907,17 @@ export type SketchStrokeTool =
   | "poleBase"
   | "ball";
 
+export type SketchLineStyle = "solid" | "dashed";
+
 export interface SketchStroke {
+  /** Identificador estável para animação entre frames (jogadores, bola, etc.). */
+  elementId?: string;
   tool: SketchStrokeTool;
   color: string;
   lineWidth: number;
   points: [number, number][];
-  /** Só para `numbered`: número dentro do círculo (1–24). */
+  lineStyle?: SketchLineStyle;
+  /** Só para `numbered` / genérico: número dentro do círculo (1–24). */
   label?: number;
   /** Só para `playerToken`: número + nome do jogador. */
   playerId?: string;
@@ -915,12 +925,40 @@ export interface SketchStroke {
   playerName?: string;
 }
 
+export interface SketchBoardText {
+  id: string;
+  x: number;
+  y: number;
+  text: string;
+  color: string;
+  fontSize?: number;
+}
+
+export interface SketchBoardFrame {
+  id: string;
+  label: string;
+  strokes: SketchStroke[];
+  texts: SketchBoardText[];
+  /** Duração deste frame na reprodução (ms). */
+  durationMs: number;
+}
+
 export interface SketchBoardDraft {
   id: string;
   title: string;
   pitchTemplate: SketchPitchTemplate;
+  /** @deprecated Usar `frames`; mantido para migração e espelho do frame activo. */
   strokes: SketchStroke[];
+  frames?: SketchBoardFrame[];
+  /** Cor principal do relvado (hex). */
+  pitchColor?: string;
   noteAttached?: string;
+  category?: string;
+  objective?: string;
+  ageGroup?: string;
+  playerCount?: number;
+  duration?: string;
+  coachNotes?: string;
   updatedAt: string;
 }
 
