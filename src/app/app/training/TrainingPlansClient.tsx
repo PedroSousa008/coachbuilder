@@ -329,6 +329,31 @@ export function TrainingPlansClient() {
     window.open(videoUrl, "_blank", "noopener,noreferrer");
   }, []);
 
+  const deleteCoachSketchExercise = useCallback(
+    (exerciseId: string, title: string) => {
+      if (
+        !confirm(
+          `Apagar «${title}»?\n\nO exercício, o vídeo e a imagem deixam de aparecer nos Treinos. Esta ação não pode ser desfeita.`
+        )
+      ) {
+        return;
+      }
+      const catalogId = `coach-sketch:${exerciseId}`;
+      removeSavedTrainingExercise(exerciseId);
+      setManualSelectedCatalogIds((prev) => {
+        const next = { ...prev };
+        for (const c of MANUAL_CATEGORY_ORDER) {
+          const list = next[c] ?? [];
+          if (list.includes(catalogId)) {
+            next[c] = list.filter((id) => id !== catalogId);
+          }
+        }
+        return next;
+      });
+    },
+    [removeSavedTrainingExercise]
+  );
+
   const filteredSaved = useMemo(() => {
     const list = [...savedTrainingExercises].sort(
       (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
@@ -906,8 +931,19 @@ export function TrainingPlansClient() {
                             </div>
                           ) : null}
                         </div>
-                        {!item.isCoachSketchExercise ? (
-                          <div className="mt-4 flex justify-end">
+                        <div className="mt-4 flex justify-end gap-2">
+                          {item.isCoachSketchExercise && item.coachSavedExerciseId ? (
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              className="text-xs text-red-300 hover:bg-red-500/10"
+                              onClick={() =>
+                                deleteCoachSketchExercise(item.coachSavedExerciseId!, item.title)
+                              }
+                            >
+                              Apagar
+                            </Button>
+                          ) : (
                             <Button
                               type="button"
                               variant="secondary"
@@ -916,8 +952,8 @@ export function TrainingPlansClient() {
                             >
                               Guardar exercício
                             </Button>
-                          </div>
-                        ) : null}
+                          )}
+                        </div>
                       </li>
                     );
                   })}
