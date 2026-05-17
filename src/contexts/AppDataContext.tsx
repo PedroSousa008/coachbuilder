@@ -75,6 +75,7 @@ import {
 } from "@/lib/workspace-snapshot";
 import { buildWorkspaceSnapshotV1 } from "@/lib/build-workspace-snapshot";
 import { mergePlayerRosterById } from "@/lib/workspace-merge-players";
+import { mergeSavedTrainingExercises } from "@/lib/merge-saved-training-exercises";
 import { emptySketchAreaState } from "@/lib/sketch-area";
 import { emptyTeamCallupState, mergeTeamCallup } from "@/lib/team-callup";
 import { useAuth } from "@/contexts/AuthContext";
@@ -252,7 +253,7 @@ function mergeWorkspaceSnapshotsClient(cloud: WorkspaceSnapshotV1, local: Worksp
     tactics: mergeEntitiesById(local.tactics, cloud.tactics),
     tacticMatches: mergeEntitiesById(local.tacticMatches, cloud.tacticMatches),
     tacticPlayerNotes: { ...local.tacticPlayerNotes, ...cloud.tacticPlayerNotes },
-    savedTrainingExercises: mergeEntitiesById(
+    savedTrainingExercises: mergeSavedTrainingExercises(
       local.savedTrainingExercises ?? [],
       cloud.savedTrainingExercises ?? []
     ),

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { encodeLocalPublicPath } from "@/lib/public-asset-url";
 import {
-  getCoachExerciseVideoDataUrl,
+  ensureCoachExerciseVideoPlaybackUrl,
   isCoachExerciseVideoUrl,
   parseCoachExerciseVideoId,
 } from "@/lib/training-exercise-media";
@@ -67,14 +67,15 @@ export function TrainingVideoEmbed({
     const exerciseId = parseCoachExerciseVideoId(videoUrl);
     if (!exerciseId) {
       setCoachVideoSrc(fallbackVideoDataUrl ?? null);
+      setCoachVideoLoading(false);
+      if (!fallbackVideoDataUrl) setMediaFailed(true);
       return;
     }
     let cancelled = false;
     setCoachVideoLoading(true);
     setMediaFailed(false);
-    void getCoachExerciseVideoDataUrl(exerciseId).then((dataUrl) => {
+    void ensureCoachExerciseVideoPlaybackUrl(exerciseId, fallbackVideoDataUrl).then((src) => {
       if (cancelled) return;
-      const src = dataUrl ?? fallbackVideoDataUrl ?? null;
       setCoachVideoSrc(src);
       setCoachVideoLoading(false);
       if (!src) setMediaFailed(true);
@@ -87,15 +88,7 @@ export function TrainingVideoEmbed({
   if (isYoutube) {
     return (
       <div className="mt-3 overflow-hidden rounded-xl border border-surface-border bg-black/40">
-        <div className="relative aspect-video w-full">
-          <iframe
-            title={title}
-            className="absolute inset-0 h-full w-full"
-            src={`https://www.youtube-nocookie.com/embed/${ytId}`}
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-            allowFullScreen
-          />
-        </div>
+        <CoachYoutubeIframe title={title} ytId={ytId} />
       </div>
     );
   }
@@ -106,8 +99,12 @@ export function TrainingVideoEmbed({
       ? videoUrl.trim()
       : encodeLocalPublicPath(videoUrl.startsWith("/") ? videoUrl.trim() : `/${videoUrl.trim()}`);
   const src = raw;
-  const isLocalFile = !isCoachVideo && src?.startsWith("/");
-  const videoMime = src?.startsWith("data:") ? mimeFromDataUrl(src) : undefined;
+  const isLocalFile = !isCoachVideo && Boolean(src?.startsWith("/"));
+  const videoMime = src?.startsWith("data:")
+    ? mimeFromDataUrl(src)
+    : src?.startsWith("blob:")
+      ? "video/webm"
+      : undefined;
 
   return (
     <div className="mt-3 space-y-2 rounded-xl border border-surface-border bg-surface-raised/30 p-3">
@@ -122,10 +119,11 @@ export function TrainingVideoEmbed({
         </p>
       ) : (
         <video
+          key={src}
           className="w-full max-h-[360px] rounded-lg bg-black"
           controls
           playsInline
-          preload="metadata"
+          preload="auto"
           title={title}
           onError={() => setMediaFailed(true)}
         >
@@ -142,6 +140,20 @@ export function TrainingVideoEmbed({
           {isLocalFile ? "Abrir vídeo noutro separador" : "Abrir vídeo"}
         </a>
       ) : null}
+    </div>
+  );
+}
+
+function CoachYoutubeIframe({ title, ytId }: { title: string; ytId: string }) {
+  return (
+    <div className="relative aspect-video w-full">
+      <iframe
+        title={title}
+        className="absolute inset-0 h-full w-full"
+        src={`https://www.youtube-nocookie.com/embed/${ytId}`}
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+        allowFullScreen
+      />
     </div>
   );
 }

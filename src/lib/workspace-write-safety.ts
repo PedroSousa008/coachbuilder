@@ -9,6 +9,7 @@ import {
 import type { Conversation, Message } from "@/types";
 import { dedupeMatches } from "@/lib/league-match-dedupe";
 import { mergePlayerRosterById } from "@/lib/workspace-merge-players";
+import { mergeSavedTrainingExercises } from "@/lib/merge-saved-training-exercises";
 
 /** União por `id` na BD: o `incoming` atualiza o mesmo id; entidades só no `base` mantêm-se (evita apagar plantel/fotos). */
 function mergeEntitiesById<T extends { id: string }>(base: T[], overlay: T[]): T[] {
@@ -175,7 +176,7 @@ export function mergeWorkspacePayloadSafely(
     tactics: mergeEntitiesById(existing.tactics, incoming.tactics),
     tacticMatches: mergeEntitiesById(existing.tacticMatches, incoming.tacticMatches),
     tacticPlayerNotes: { ...existing.tacticPlayerNotes, ...incoming.tacticPlayerNotes },
-    savedTrainingExercises: mergeEntitiesById(
+    savedTrainingExercises: mergeSavedTrainingExercises(
       existing.savedTrainingExercises ?? [],
       incoming.savedTrainingExercises ?? []
     ),

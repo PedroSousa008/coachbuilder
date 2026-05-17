@@ -423,8 +423,12 @@ export function SketchTacticalBoardPanel() {
         addSavedTrainingExercise(payload);
         setSaveTrainingOpen(false);
         setSaveTrainingNotice(`«${payload.title}» foi adicionado a Treinos → Todos os exercícios.`);
-      } catch {
-        alert("Não foi possível guardar o exercício. Tenta outro browser ou reduz o número de frames.");
+      } catch (err) {
+        const msg =
+          err instanceof Error && err.message
+            ? err.message
+            : "Não foi possível guardar o exercício. Usa Chrome ou Edge no computador e tenta outra vez.";
+        alert(msg);
       } finally {
         setSaveTrainingBusy(false);
       }
