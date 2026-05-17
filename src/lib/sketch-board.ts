@@ -5,6 +5,19 @@ export const BOARD_CANVAS_WIDTH = 2240;
 export const BOARD_CANVAS_HEIGHT = 1348;
 export const BOARD_CANVAS_ASPECT = BOARD_CANVAS_WIDTH / BOARD_CANVAS_HEIGHT;
 
+/** Dimensões típicas do canvas antes do quadro fixo 2240×1348. */
+export const BOARD_REFERENCE_WIDTH = 1790;
+export const BOARD_REFERENCE_HEIGHT = 770;
+
+/** Escala uniforme para ícones/jogadores vs. o campo anterior. */
+export const BOARD_ELEMENT_SCALE = Math.sqrt(
+  (BOARD_CANVAS_WIDTH / BOARD_REFERENCE_WIDTH) * (BOARD_CANVAS_HEIGHT / BOARD_REFERENCE_HEIGHT)
+);
+
+export function boardSc(value: number): number {
+  return value * BOARD_ELEMENT_SCALE;
+}
+
 export const SKETCH_BOARD_CATEGORIES_PT = [
   "Organização ofensiva",
   "Organização defensiva",
@@ -205,14 +218,14 @@ const LINE_LIKE_TOOLS = new Set<SketchStrokeTool>([
 ]);
 
 function hitRadiusForTool(tool: SketchStrokeTool): number {
-  if (tool === "goal") return 28;
-  if (tool === "miniGoal") return 18;
-  if (tool === "ladder" || tool === "leader") return 28;
-  if (tool === "mannequin") return 24;
-  if (tool === "playerToken") return 20;
-  if (tool === "cone" || tool === "coneTall" || tool === "ball") return 16;
-  if (LINE_LIKE_TOOLS.has(tool)) return 14;
-  return 14;
+  if (tool === "goal") return boardSc(28);
+  if (tool === "miniGoal") return boardSc(18);
+  if (tool === "ladder" || tool === "leader") return boardSc(28);
+  if (tool === "mannequin") return boardSc(24);
+  if (tool === "playerToken") return boardSc(20);
+  if (tool === "cone" || tool === "coneTall" || tool === "ball") return boardSc(16);
+  if (LINE_LIKE_TOOLS.has(tool)) return boardSc(14);
+  return boardSc(14);
 }
 
 /** Devolve o índice do elemento clicado (de cima para baixo), ou null. */

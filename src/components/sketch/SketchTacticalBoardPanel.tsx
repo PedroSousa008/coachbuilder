@@ -47,6 +47,7 @@ import {
   updateDraftFrame,
   BOARD_CANVAS_HEIGHT,
   BOARD_CANVAS_WIDTH,
+  boardSc,
   strokeAnchorPoint,
   type BoardHistorySnapshot,
   type SketchBoardPlaybackSpeed,
@@ -90,7 +91,8 @@ export function SketchTacticalBoardPanel() {
   const [frameId, setFrameId] = useState<string | null>(null);
   const [tool, setTool] = useState<BoardTool>("select");
   const [color, setColor] = useState(BOARD_COLORS[0]!);
-  const [lineWidth, setLineWidth] = useState(3);
+  const [lineWidth, setLineWidth] = useState(() => Math.round(boardSc(3)));
+  const [editingTextId, setEditingTextId] = useState<string | null>(null);
   const [pitchPreset, setPitchPreset] = useState("app");
   const [selectedPlayerId, setSelectedPlayerId] = useState("");
   const [numberedColor, setNumberedColor] = useState(NUMBERED_DISK_COLORS[0]!);
@@ -297,20 +299,37 @@ export function SketchTacticalBoardPanel() {
     a.click();
   };
 
-  const placeTextAt = (clientX: number, clientY: number, wrap: HTMLElement) => {
-    const r = wrap.getBoundingClientRect();
-    const row: SketchBoardText = {
-      id: boardUid("txt"),
-      x: clientX - r.left,
-      y: clientY - r.top,
-      text: "",
-      color,
-      fontSize: 12,
-    };
-    pushHistory();
-    saveTexts([...(activeFrame?.texts ?? []), row]);
-    setTool("select");
-  };
+  const handlePlaceText = useCallback(
+    (x: number, y: number) => {
+      if (!activeFrame || playing) return;
+      const id = boardUid("txt");
+      const row: SketchBoardText = {
+        id,
+        x,
+        y,
+        text: "",
+        color,
+        fontSize: Math.round(boardSc(13)),
+      };
+      pushHistory();
+      saveTexts([...activeFrame.texts, row]);
+      setEditingTextId(id);
+      setSelection(null);
+    },
+    [activeFrame, playing, color, pushHistory, saveTexts]
+  );
+
+  const finishEditingText = useCallback(() => {
+    if (!editingTextId || !activeFrame) {
+      setEditingTextId(null);
+      return;
+    }
+    const row = activeFrame.texts.find((t) => t.id === editingTextId);
+    if (row && !row.text.trim()) {
+      saveTexts(activeFrame.texts.filter((t) => t.id !== editingTextId));
+    }
+    setEditingTextId(null);
+  }, [editingTextId, activeFrame, saveTexts]);
 
   const printBoard = () => window.print();
 
@@ -503,10 +522,6 @@ export function SketchTacticalBoardPanel() {
             className={cn("relative", expanded && "flex min-h-0 flex-1 flex-col")}
             onPointerDown={(e) => {
               if (e.target !== e.currentTarget) return;
-              if (tool === "text" && !playing) {
-                placeTextAt(e.clientX, e.clientY, e.currentTarget);
-                return;
-              }
               if (selectionMode) setSelection(null);
             }}
           >
@@ -526,6 +541,8 @@ export function SketchTacticalBoardPanel() {
               lineWidth={lineWidth}
               expanded={expanded}
               selectionMode={selectionMode}
+              textPlaceMode={tool === "text" && !playing}
+              onPlaceText={handlePlaceText}
               onSelectStroke={(index) => {
                 if (index == null) {
                   setSelection(null);
@@ -550,9 +567,10 @@ export function SketchTacticalBoardPanel() {
               texts={activeFrame.texts}
               readOnly={playing}
               onChange={saveTexts}
-              placeMode={tool === "text" && !playing}
               selectMode={selectionMode}
               selectedTextId={selection?.kind === "text" ? selection.id : null}
+              editingTextId={editingTextId}
+              onEditingDone={finishEditingText}
               onSelectText={(id, anchor) => {
                 if (id == null) {
                   setSelection(null);

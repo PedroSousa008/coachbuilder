@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import {
   BOARD_CANVAS_HEIGHT,
   BOARD_CANVAS_WIDTH,
+  boardSc,
   hitTestStrokeIndex,
   newElementId,
   PITCH_COLOR_PRESETS,
@@ -49,8 +50,6 @@ export function numberedDiskLabelTextColor(hex: string): string {
   return L > 0.55 ? "#171717" : "#ffffff";
 }
 
-const NUMBERED_DISK_RADIUS = 14;
-
 function drawNumberedDisk(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -58,16 +57,16 @@ function drawNumberedDisk(
   color: string,
   label: number
 ) {
-  const r = NUMBERED_DISK_RADIUS;
+  const r = boardSc(14);
   ctx.beginPath();
   ctx.arc(x, y, r, 0, Math.PI * 2);
   ctx.fillStyle = color;
   ctx.fill();
   ctx.strokeStyle = "rgba(255,255,255,0.88)";
-  ctx.lineWidth = 2;
+  ctx.lineWidth = boardSc(2);
   ctx.stroke();
   ctx.fillStyle = numberedDiskLabelTextColor(color);
-  const size = label > 9 ? 12 : 13;
+  const size = boardSc(label > 9 ? 12 : 13);
   ctx.font = `700 ${size}px system-ui, -apple-system, sans-serif`;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
@@ -315,7 +314,7 @@ function quadControlFromEndpoints(x1: number, y1: number, x2: number, y2: number
   const dx = x2 - x1;
   const dy = y2 - y1;
   const len = Math.hypot(dx, dy) || 1;
-  const off = Math.min(48, len * 0.35);
+  const off = Math.min(boardSc(48), len * 0.35);
   return [mx - (dy / len) * off, my + (dx / len) * off];
 }
 
@@ -335,7 +334,8 @@ function drawLineStroke(ctx: CanvasRenderingContext2D, s: SketchStroke) {
   const [x1, y1] = pts[0]!;
   const [x2, y2] = pts[pts.length - 1]!;
   const dashed = s.tool === "lineDashed" || s.lineStyle === "dashed";
-  ctx.setLineDash(dashed ? [10, 7] : []);
+  ctx.lineWidth = Math.max(1, boardSc(s.lineWidth));
+  ctx.setLineDash(dashed ? [boardSc(10), boardSc(7)] : []);
   if (CURVE_LINE_TOOLS.has(s.tool)) {
     const [cx, cy] = quadControlFromEndpoints(x1, y1, x2, y2);
     ctx.beginPath();
@@ -350,7 +350,7 @@ function drawLineStroke(ctx: CanvasRenderingContext2D, s: SketchStroke) {
   }
   ctx.setLineDash([]);
   if (s.tool === "lineArrow" || s.tool === "curveArrow") {
-    drawArrowHead(ctx, x1, y1, x2, y2, Math.max(8, s.lineWidth * 3));
+    drawArrowHead(ctx, x1, y1, x2, y2, Math.max(boardSc(8), boardSc(s.lineWidth) * 3));
   }
 }
 
@@ -381,7 +381,7 @@ function drawCornerArcs(
 function drawStrokes(ctx: CanvasRenderingContext2D, strokes: SketchStroke[]) {
   for (const s of strokes) {
     ctx.strokeStyle = s.color;
-    ctx.lineWidth = s.lineWidth;
+    ctx.lineWidth = Math.max(1, boardSc(s.lineWidth));
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
     const pts = s.points;
@@ -391,14 +391,14 @@ function drawStrokes(ctx: CanvasRenderingContext2D, strokes: SketchStroke[]) {
       const [x, y] = pts[pts.length - 1]!;
       ctx.fillStyle = "#f4f4f5";
       ctx.strokeStyle = "#111827";
-      ctx.lineWidth = 1.2;
+      ctx.lineWidth = boardSc(1.2);
       ctx.beginPath();
-      ctx.ellipse(x, y + 2, 8.5, 5.5, 0, 0, Math.PI * 2);
+      ctx.ellipse(x, y + boardSc(2), boardSc(8.5), boardSc(5.5), 0, 0, Math.PI * 2);
       ctx.fill();
       ctx.stroke();
       ctx.fillStyle = "#0f172a";
       ctx.beginPath();
-      ctx.ellipse(x, y - 0.5, 2.6, 1.6, 0, 0, Math.PI * 2);
+      ctx.ellipse(x, y - boardSc(0.5), boardSc(2.6), boardSc(1.6), 0, 0, Math.PI * 2);
       ctx.fill();
       continue;
     }
@@ -406,24 +406,25 @@ function drawStrokes(ctx: CanvasRenderingContext2D, strokes: SketchStroke[]) {
       const [x, y] = pts[pts.length - 1]!;
       ctx.fillStyle = "#f97316";
       ctx.strokeStyle = "#111827";
-      ctx.lineWidth = 1.4;
+      ctx.lineWidth = boardSc(1.4);
       ctx.beginPath();
-      ctx.moveTo(x, y - 16);
-      ctx.lineTo(x + 9, y + 10);
-      ctx.lineTo(x - 9, y + 10);
+      ctx.moveTo(x, y - boardSc(16));
+      ctx.lineTo(x + boardSc(9), y + boardSc(10));
+      ctx.lineTo(x - boardSc(9), y + boardSc(10));
       ctx.closePath();
       ctx.fill();
       ctx.stroke();
       ctx.fillStyle = "#0f172a";
       ctx.beginPath();
-      ctx.ellipse(x, y - 14, 2.8, 1.8, 0, 0, Math.PI * 2);
+      ctx.ellipse(x, y - boardSc(14), boardSc(2.8), boardSc(1.8), 0, 0, Math.PI * 2);
       ctx.fill();
       continue;
     }
     if (s.tool === "player") {
       const [x, y] = pts[pts.length - 1]!;
+      const r = boardSc(12);
       ctx.beginPath();
-      ctx.arc(x, y, 12, 0, Math.PI * 2);
+      ctx.arc(x, y, r, 0, Math.PI * 2);
       ctx.fillStyle = s.color + "99";
       ctx.fill();
       ctx.strokeStyle = s.color;
@@ -432,28 +433,31 @@ function drawStrokes(ctx: CanvasRenderingContext2D, strokes: SketchStroke[]) {
     }
     if (s.tool === "playerToken") {
       const [x, y] = pts[pts.length - 1]!;
-      const r = 14;
+      const r = boardSc(14);
       const num = s.playerNumber ?? 0;
-      const name = s.playerName ?? "Player";
+      const name = s.playerName ?? "Jogador";
       ctx.beginPath();
       ctx.arc(x, y, r, 0, Math.PI * 2);
       ctx.fillStyle = "#f8fafc";
       ctx.fill();
       ctx.strokeStyle = "#111827";
-      ctx.lineWidth = 2;
+      ctx.lineWidth = boardSc(2);
       ctx.stroke();
       ctx.fillStyle = "#111827";
-      ctx.font = `700 ${num > 9 ? 11 : 12}px system-ui, -apple-system, sans-serif`;
+      const numSize = boardSc(num > 9 ? 11 : 12);
+      ctx.font = `700 ${numSize}px system-ui, -apple-system, sans-serif`;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText(String(num), x, y);
-      ctx.font = "600 11px system-ui, -apple-system, sans-serif";
+      const nameSize = boardSc(11);
+      ctx.font = `600 ${nameSize}px system-ui, -apple-system, sans-serif`;
       ctx.fillStyle = "#f8fafc";
       ctx.strokeStyle = "rgba(0,0,0,0.65)";
-      ctx.lineWidth = 3;
+      ctx.lineWidth = boardSc(3);
       ctx.textBaseline = "top";
-      ctx.strokeText(name, x, y + r + 4);
-      ctx.fillText(name, x, y + r + 4);
+      const nameY = y + r + boardSc(4);
+      ctx.strokeText(name, x, nameY);
+      ctx.fillText(name, x, nameY);
       continue;
     }
     if (s.tool === "numbered" && s.label != null) {
@@ -463,25 +467,24 @@ function drawStrokes(ctx: CanvasRenderingContext2D, strokes: SketchStroke[]) {
     }
     if (s.tool === "ball") {
       const [x, y] = pts[pts.length - 1]!;
-      const r = 9;
+      const r = boardSc(9);
       ctx.beginPath();
       ctx.arc(x, y, r, 0, Math.PI * 2);
       ctx.fillStyle = "#f8fafc";
       ctx.fill();
       ctx.strokeStyle = "#111827";
-      ctx.lineWidth = 1.5;
+      ctx.lineWidth = boardSc(1.5);
       ctx.stroke();
-      // Simple football patches
       ctx.fillStyle = "#111827";
       ctx.beginPath();
-      ctx.arc(x, y, 2.2, 0, Math.PI * 2);
+      ctx.arc(x, y, boardSc(2.2), 0, Math.PI * 2);
       ctx.fill();
       for (let i = 0; i < 5; i++) {
         const a = (Math.PI * 2 * i) / 5 - Math.PI / 2;
-        const px = x + Math.cos(a) * 4.5;
-        const py = y + Math.sin(a) * 4.5;
+        const px = x + Math.cos(a) * boardSc(4.5);
+        const py = y + Math.sin(a) * boardSc(4.5);
         ctx.beginPath();
-        ctx.arc(px, py, 1.3, 0, Math.PI * 2);
+        ctx.arc(px, py, boardSc(1.3), 0, Math.PI * 2);
         ctx.fill();
       }
       continue;
@@ -489,54 +492,54 @@ function drawStrokes(ctx: CanvasRenderingContext2D, strokes: SketchStroke[]) {
     if (s.tool === "circle") {
       const [x, y] = pts[pts.length - 1]!;
       ctx.beginPath();
-      ctx.arc(x, y, 10, 0, Math.PI * 2);
+      ctx.arc(x, y, boardSc(10), 0, Math.PI * 2);
       ctx.stroke();
       continue;
     }
     if (s.tool === "square") {
       const [x, y] = pts[pts.length - 1]!;
-      const size = 18;
+      const size = boardSc(18);
       ctx.strokeRect(x - size / 2, y - size / 2, size, size);
       continue;
     }
     if (s.tool === "triangle") {
       const [x, y] = pts[pts.length - 1]!;
       ctx.beginPath();
-      ctx.moveTo(x, y - 11);
-      ctx.lineTo(x - 10, y + 8);
-      ctx.lineTo(x + 10, y + 8);
+      ctx.moveTo(x, y - boardSc(11));
+      ctx.lineTo(x - boardSc(10), y + boardSc(8));
+      ctx.lineTo(x + boardSc(10), y + boardSc(8));
       ctx.closePath();
       ctx.stroke();
       continue;
     }
     if (s.tool === "arrow") {
       const [x, y] = pts[pts.length - 1]!;
-      const x2 = x + 22;
+      const x2 = x + boardSc(22);
       const y2 = y;
       ctx.beginPath();
-      ctx.moveTo(x - 12, y);
+      ctx.moveTo(x - boardSc(12), y);
       ctx.lineTo(x2, y2);
       ctx.stroke();
       ctx.beginPath();
       ctx.moveTo(x2, y2);
-      ctx.lineTo(x2 - 8, y2 - 4);
+      ctx.lineTo(x2 - boardSc(8), y2 - boardSc(4));
       ctx.moveTo(x2, y2);
-      ctx.lineTo(x2 - 8, y2 + 4);
+      ctx.lineTo(x2 - boardSc(8), y2 + boardSc(4));
       ctx.stroke();
       continue;
     }
     if (s.tool === "goal" || s.tool === "miniGoal") {
       const [x, y] = pts[pts.length - 1]!;
       const scale = s.tool === "miniGoal" ? 0.55 : 1;
-      const w = 30 * scale;
-      const h = 14 * scale;
-      const depth = 8 * scale;
-      const topLift = 4 * scale;
+      const w = boardSc(30) * scale;
+      const h = boardSc(14) * scale;
+      const depth = boardSc(8) * scale;
+      const topLift = boardSc(4) * scale;
       const x0 = x - w / 2;
       const y0 = y - h / 2;
       ctx.strokeStyle = "#f4f4f5";
       ctx.fillStyle = "rgba(244,244,245,0.28)";
-      ctx.lineWidth = 2;
+      ctx.lineWidth = boardSc(2);
       ctx.beginPath();
       ctx.moveTo(x0, y0 + h);
       ctx.lineTo(x0 + w, y0 + h);
@@ -549,14 +552,14 @@ function drawStrokes(ctx: CanvasRenderingContext2D, strokes: SketchStroke[]) {
     }
     if (s.tool === "mannequin") {
       const [x, y] = pts[pts.length - 1]!;
-      const w = 16;
-      const h = 34;
+      const w = boardSc(16);
+      const h = boardSc(34);
       const x0 = x - w / 2;
       const y0 = y - h / 2;
       const cx = x;
       ctx.strokeStyle = "#f4f4f5";
       ctx.fillStyle = "rgba(244,244,245,0.35)";
-      ctx.lineWidth = 2;
+      ctx.lineWidth = boardSc(2);
       ctx.beginPath();
       ctx.ellipse(cx, y0 + h * 0.12, w * 0.18, h * 0.08, 0, 0, Math.PI * 2);
       ctx.stroke();
@@ -574,19 +577,19 @@ function drawStrokes(ctx: CanvasRenderingContext2D, strokes: SketchStroke[]) {
     }
     if (s.tool === "poleBase") {
       const [x, y] = pts[pts.length - 1]!;
-      const h = 26;
+      const h = boardSc(26);
       const yTop = y - h / 2;
       ctx.strokeStyle = "#f4f4f5";
       ctx.fillStyle = "rgba(244,244,245,0.9)";
-      ctx.lineWidth = 2;
+      ctx.lineWidth = boardSc(2);
       ctx.beginPath();
       ctx.moveTo(x, yTop);
       ctx.lineTo(x, yTop + h * 0.78);
       ctx.stroke();
       ctx.beginPath();
       ctx.moveTo(x, yTop + h * 0.78);
-      ctx.lineTo(x - 7, yTop + h);
-      ctx.lineTo(x + 7, yTop + h);
+      ctx.lineTo(x - boardSc(7), yTop + h);
+      ctx.lineTo(x + boardSc(7), yTop + h);
       ctx.closePath();
       ctx.fill();
       ctx.stroke();
@@ -595,16 +598,16 @@ function drawStrokes(ctx: CanvasRenderingContext2D, strokes: SketchStroke[]) {
     if (s.tool === "ladder" || s.tool === "leader") {
       const [x, y] = pts[pts.length - 1]!;
       const ang = -Math.PI / 4;
-      const len = 36;
+      const len = boardSc(36);
       const nx = -Math.sin(ang);
       const ny = Math.cos(ang);
-      const half = 8;
+      const half = boardSc(8);
       const startX = x - (Math.cos(ang) * len) / 2;
       const startY = y - (Math.sin(ang) * len) / 2;
       const endX = x + (Math.cos(ang) * len) / 2;
       const endY = y + (Math.sin(ang) * len) / 2;
       ctx.strokeStyle = "#f4f4f5";
-      ctx.lineWidth = 2;
+      ctx.lineWidth = boardSc(2);
       ctx.beginPath();
       ctx.moveTo(startX + nx * half, startY + ny * half);
       ctx.lineTo(endX + nx * half, endY + ny * half);
@@ -655,6 +658,8 @@ export const SketchBoardCanvas = forwardRef<
     dragMode?: boolean;
     selectionMode?: boolean;
     onSelectStroke?: (index: number | null, anchor: { x: number; y: number }) => void;
+    textPlaceMode?: boolean;
+    onPlaceText?: (x: number, y: number) => void;
     pitchColorPresetId?: string;
     readOnly?: boolean;
   }
@@ -673,6 +678,8 @@ export const SketchBoardCanvas = forwardRef<
     dragMode = false,
     selectionMode = false,
     onSelectStroke,
+    textPlaceMode = false,
+    onPlaceText,
     pitchColorPresetId = "app",
     readOnly = false,
   },
@@ -787,23 +794,27 @@ export const SketchBoardCanvas = forwardRef<
   ]);
 
   const estimateHitRadius = (toolId: SketchStrokeTool) => {
-    if (toolId === "goal") return 28;
-    if (toolId === "miniGoal") return 18;
-    if (toolId === "ladder") return 28;
-    if (toolId === "mannequin") return 24;
-    if (toolId === "playerToken" || toolId === "cone" || toolId === "coneTall" || toolId === "ball") return 16;
-    return 14;
+    if (toolId === "goal") return boardSc(28);
+    if (toolId === "miniGoal") return boardSc(18);
+    if (toolId === "ladder") return boardSc(28);
+    if (toolId === "mannequin") return boardSc(24);
+    if (toolId === "playerToken" || toolId === "cone" || toolId === "coneTall" || toolId === "ball") return boardSc(16);
+    return boardSc(14);
   };
 
   const onPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (readOnly) return;
     if (e.button !== 0 && e.pointerType === "mouse") return;
     if (tool === "numbered" && (!canPlaceNumbered || nextNumberLabel == null)) return;
+    const { x, y } = pos(e);
+    if (textPlaceMode) {
+      onPlaceText?.(x, y);
+      return;
+    }
     e.preventDefault();
     const canvas = e.currentTarget;
     canvas.setPointerCapture(e.pointerId);
     activePointerId.current = e.pointerId;
-    const { x, y } = pos(e);
     if (selectionMode) {
       const hit = hitTestStrokeIndex(strokesRef.current, x, y);
       onSelectStroke?.(hit, { x, y });
@@ -840,7 +851,7 @@ export const SketchBoardCanvas = forwardRef<
         .find(({ s }) => {
           if (s.tool !== "playerToken" || s.points.length < 1) return false;
           const [px, py] = s.points[s.points.length - 1]!;
-          return Math.hypot(px - x, py - y) <= 18;
+          return Math.hypot(px - x, py - y) <= boardSc(18);
         })?.i;
       if (hitIndex != null) {
         draggingTokenStrokeId.current = hitIndex;
@@ -971,11 +982,13 @@ export const SketchBoardCanvas = forwardRef<
         ref={canvasRef}
         className={cn(
           "h-full w-full touch-none rounded-xl border border-surface-border bg-[#0a0f0c]",
-          selectionMode || dragMode
-            ? "cursor-pointer"
-            : tool === "numbered" && !canPlaceNumbered
-              ? "cursor-not-allowed"
-              : "cursor-crosshair"
+          textPlaceMode
+            ? "cursor-text"
+            : selectionMode || dragMode
+              ? "cursor-pointer"
+              : tool === "numbered" && !canPlaceNumbered
+                ? "cursor-not-allowed"
+                : "cursor-crosshair"
         )}
         style={{ touchAction: "none" }}
         onPointerDown={onPointerDown}
