@@ -88,9 +88,10 @@ export function buildFullSessionDocumentHtml(params: {
         b.phase === "warmup" ? "Aquecimento" : b.phase === "cooldown" ? "Finalização" : "Bloco principal";
       const imageRelPath = trainingExercisePrintImageForTitle(b.title);
       const encodedRel = imageRelPath ? encodeLocalPublicPath(imageRelPath) : null;
-      const exerciseImageSrc =
-        b.printImageSrc ??
-        (encodedRel && assetBaseUrl ? `${assetBaseUrl}${encodedRel}` : encodedRel);
+      const catalogImageSrc =
+        encodedRel && assetBaseUrl ? `${assetBaseUrl}${encodedRel}` : encodedRel;
+      /** Quadro tático: printImageSrc. Resto: pasta training-exercises por título. */
+      const exerciseImageSrc = b.printImageSrc ?? catalogImageSrc;
       const playerCount = Math.max(playerLines.length, 1);
       const backMetrics = computeBackPageTableMetrics(playerCount);
       return `

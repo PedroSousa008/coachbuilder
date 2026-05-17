@@ -30,6 +30,7 @@ import {
   type TrainingCatalogItem,
 } from "@/lib/training-session-local";
 import { coachSketchExercisesToCatalogItems } from "@/lib/coach-training-catalog";
+import { getCoachExercisePrintImageSrc } from "@/lib/coach-exercise-print-image";
 import { Bookmark, PlayCircle, Search } from "lucide-react";
 import {
   TRAINING_AGE_GROUP_LABELS,
@@ -253,7 +254,9 @@ export function TrainingPlansClient() {
           groupSplit: item.groupSplit,
           diagramHint: item.diagramHint,
           videoUrl: item.videoUrl,
-          printImageSrc: item.printImageDataUrl,
+          ...(item.isCoachSketchExercise && item.coachSavedExerciseId
+            ? { coachSketchExerciseId: item.coachSavedExerciseId }
+            : {}),
         });
       }
     }
@@ -517,15 +520,29 @@ export function TrainingPlansClient() {
     openPrintableHtml(html);
   }, [singleDrill, coachPrintName]);
 
-  const printManualPlan = useCallback(() => {
+  const printManualPlan = useCallback(async () => {
     if (!manualPlanReady) return;
     const sortedForPrint = sortSquadRoster(selectedPlayers, "position");
     const playerLines = sortedForPrint.map((p) => `#${p.number} ${p.name} — ${formatPlayerPositions(p)}`);
     const assetBaseUrl = window.location.origin;
+
+    const blocksForPrint = await Promise.all(
+      manualPlanBlocks.map(async (b) => {
+        if (!b.coachSketchExerciseId) return b;
+        const catalogItem = manualCatalogById.get(`coach-sketch:${b.coachSketchExerciseId}`);
+        const saved = savedTrainingExercises.find((e) => e.id === b.coachSketchExerciseId);
+        const printImageSrc = await getCoachExercisePrintImageSrc(
+          b.coachSketchExerciseId,
+          catalogItem?.printImageDataUrl ?? saved?.printImageDataUrl
+        );
+        return printImageSrc ? { ...b, printImageSrc } : b;
+      })
+    );
+
     const plan: AiFullTrainingSession = {
       sessionTitle: `Sessão manual · ${manualPlanDurationMin} min`,
       summary: `Sessão construída manualmente por tópicos. Escalão selecionado: ${TRAINING_AGE_GROUP_LABELS[selectedAgeGroup]}.`,
-      blocks: manualPlanBlocks,
+      blocks: blocksForPrint,
       closingNotes: "Plano manual criado pelo treinador a partir do catálogo de exercícios.",
     };
     const html = buildFullSessionDocumentHtml({
@@ -539,9 +556,11 @@ export function TrainingPlansClient() {
     openPrintableHtml(html);
   }, [
     coachPrintName,
+    manualCatalogById,
     manualPlanBlocks,
     manualPlanDurationMin,
     manualPlanReady,
+    savedTrainingExercises,
     selectedAgeGroup,
     selectedPlayers,
   ]);

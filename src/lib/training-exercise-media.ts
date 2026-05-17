@@ -194,6 +194,8 @@ export function revokeCoachExerciseVideoPlaybackUrl(exerciseId: string) {
 
 export async function deleteCoachExerciseVideo(exerciseId: string): Promise<void> {
   revokeCachedUrl(exerciseId);
+  const { deleteCoachExercisePrintImage } = await import("@/lib/coach-exercise-print-image");
+  await deleteCoachExercisePrintImage(exerciseId).catch(() => {});
   await deleteCoachExercisePlayback(exerciseId).catch(() => {});
   const key = legacyPersistKey(exerciseId);
   if (typeof window !== "undefined") {

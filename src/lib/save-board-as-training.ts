@@ -4,6 +4,7 @@ import type { SketchBoardPlaybackSpeed } from "@/lib/sketch-board";
 import { boardUid, normalizeBoardDraft } from "@/lib/sketch-board";
 import { boardFramesCompositeDataUrl } from "@/lib/sketch-board-export";
 import { saveBoardExercisePlayback } from "@/lib/save-board-playback";
+import { storeCoachExercisePrintImage } from "@/lib/coach-exercise-print-image";
 import { coachExerciseVideoUrl, inlineVideoDataUrlIfFits } from "@/lib/training-exercise-media";
 import { getCoachExercisePlayback } from "@/lib/coach-exercise-playback-store";
 import type { NewSavedTrainingExerciseInput } from "@/types";
@@ -32,6 +33,9 @@ export async function buildSavedExerciseFromBoardDraft(
   const exerciseId = boardUid("svtex");
 
   const printImageDataUrl = boardFramesCompositeDataUrl(frames, boardRenderOpts);
+  if (printImageDataUrl) {
+    await storeCoachExercisePrintImage(exerciseId, printImageDataUrl);
+  }
   const playbackKind = await saveBoardExercisePlayback(exerciseId, frames, boardRenderOpts, playSpeed);
 
   let videoDataUrlStored = "";

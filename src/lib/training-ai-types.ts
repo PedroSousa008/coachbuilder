@@ -16,8 +16,13 @@ export type AiTrainingBlock = {
   diagramHint?: string;
   /** URL pública (ex. `/videos/.../ficheiro.mp4`) ou link YouTube. */
   videoUrl?: string;
-  /** Imagem do exercício (data URL ou caminho) para PDF — ex. quadro tático. */
+  /**
+   * Imagem para PDF — só exercícios do quadro tático (Sketch Area).
+   * Catálogo built-in: usar sempre PNG em `public/images/training-exercises/` por título.
+   */
   printImageSrc?: string;
+  /** ID do exercício guardado (`coach-sketch:…`) — resolve imagem de impressão em IDB. */
+  coachSketchExerciseId?: string;
 };
 
 export type AiFullTrainingSession = {
