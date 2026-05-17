@@ -86,7 +86,7 @@ export function buildFullSessionDocumentHtml(params: {
     .map((b, i) => {
       const phase =
         b.phase === "warmup" ? "Aquecimento" : b.phase === "cooldown" ? "Finalização" : "Bloco principal";
-      const imageRelPath = trainingExercisePrintImageForTitle(b.title);
+      const imageRelPath = trainingExercisePrintImageForTitle(b.title, b.videoUrl);
       const encodedRel = imageRelPath ? encodeLocalPublicPath(imageRelPath) : null;
       const catalogImageSrc =
         encodedRel && assetBaseUrl ? `${assetBaseUrl}${encodedRel}` : encodedRel;
@@ -108,7 +108,7 @@ export function buildFullSessionDocumentHtml(params: {
                 ? `<figure class="exercise-image-wrap">
             <img class="exercise-image" src="${esc(exerciseImageSrc)}" alt="Imagem do exercício ${esc(
                     b.title
-                  )}" onerror="this.style.display='none';" />
+                  )}" />
             <figcaption>Imagem do exercício</figcaption>
           </figure>`
                 : `<div class="image-fallback">Sem imagem associada a este exercício.</div>`
@@ -247,7 +247,7 @@ export function buildSingleDrillDocumentHtml(params: {
   coachPrintName?: string;
 }): string {
   const { drill, generatedAt, assetBaseUrl, coachPrintName } = params;
-  const imageRelPath = trainingExercisePrintImageForTitle(drill.title);
+  const imageRelPath = trainingExercisePrintImageForTitle(drill.title, drill.videoUrl);
   const encodedRel = imageRelPath ? encodeLocalPublicPath(imageRelPath) : null;
   const exerciseImageSrc = encodedRel && assetBaseUrl ? `${assetBaseUrl}${encodedRel}` : encodedRel;
   const drillBackMetrics = computeBackPageTableMetrics(14);
@@ -331,7 +331,7 @@ export function buildSingleDrillDocumentHtml(params: {
           ? `<figure class="exercise-image-wrap">
       <img class="exercise-image" src="${esc(exerciseImageSrc)}" alt="Imagem do exercício ${esc(
               drill.title
-            )}" onerror="this.style.display='none';" />
+            )}" />
       <figcaption>Imagem do exercício</figcaption>
     </figure>`
           : `<div class="image-fallback">Sem imagem associada a este exercício.</div>`
