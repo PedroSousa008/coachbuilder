@@ -48,7 +48,6 @@ import {
   type BoardHistorySnapshot,
   type SketchBoardPlaybackSpeed,
 } from "@/lib/sketch-board";
-import { sketchUid } from "./sketch-utils";
 
 type BoardTool =
   | "select"
@@ -177,7 +176,7 @@ export function SketchTacticalBoardPanel() {
     if (sketchArea.boardDrafts.length > 0) return;
     const now = new Date().toISOString();
     const d: SketchBoardDraft = normalizeBoardDraft({
-      id: sketchUid("board"),
+      id: boardUid("board"),
       title: "Novo exercício",
       pitchTemplate: "full",
       strokes: [],
@@ -191,7 +190,7 @@ export function SketchTacticalBoardPanel() {
   const newDraft = () => {
     const now = new Date().toISOString();
     const d: SketchBoardDraft = normalizeBoardDraft({
-      id: sketchUid("board"),
+      id: boardUid("board"),
       title: `Exercício ${sketchArea.boardDrafts.length + 1}`,
       pitchTemplate: "full",
       strokes: [],
