@@ -11,6 +11,7 @@ import type {
   SavedTrainingExercise,
   StaffMember,
   SketchAreaState,
+  SketchMonthlyReportNotes,
   Tactic,
   TacticMatch,
   TacticPlayerAnalysisNote,
@@ -377,10 +378,12 @@ export function mergeSketchArea(raw: unknown, fallback: SketchAreaState): Sketch
     ? (profilesRaw.map((x) => normalizeScoutingProfile(x)).filter(Boolean) as SketchAreaState["scoutingProfiles"])
     : base.scoutingProfiles;
   const scoutingBoard = normalizeScoutingBoardFromStorage(u.scoutingBoard);
-  const monthlyRaw = Array.isArray(u.monthlyReportNotes) ? (u.monthlyReportNotes as SketchAreaState["monthlyReportNotes"]) : [];
+  const monthlyRaw: SketchMonthlyReportNotes[] = Array.isArray(u.monthlyReportNotes)
+    ? (u.monthlyReportNotes as SketchMonthlyReportNotes[])
+    : [];
   const monthlyReportNotes = monthlyRaw.filter(
-    (n): n is NonNullable<SketchAreaState["monthlyReportNotes"]>[number] =>
-      !!n && typeof n === "object" && typeof (n as { monthKey?: string }).monthKey === "string"
+    (n): n is SketchMonthlyReportNotes =>
+      !!n && typeof n === "object" && typeof n.monthKey === "string"
   );
 
   return {
@@ -414,9 +417,9 @@ export function mergeSketchAreaState(local: SketchAreaState, cloud: SketchAreaSt
 }
 
 function mergeMonthlyReportNotes(
-  a: NonNullable<SketchAreaState["monthlyReportNotes"]>,
-  b: NonNullable<SketchAreaState["monthlyReportNotes"]>
-): NonNullable<SketchAreaState["monthlyReportNotes"]> {
+  a: SketchMonthlyReportNotes[],
+  b: SketchMonthlyReportNotes[]
+): SketchMonthlyReportNotes[] {
   const byKey = new Map<string, (typeof a)[number]>();
   for (const n of [...a, ...b]) {
     const prev = byKey.get(n.monthKey);
