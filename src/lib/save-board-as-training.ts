@@ -2,15 +2,10 @@ import type { SketchBoardDraft, SavedExerciseCategory } from "@/types";
 import type { BoardRenderOptions } from "@/components/sketch/SketchBoardCanvas";
 import type { SketchBoardPlaybackSpeed } from "@/lib/sketch-board";
 import { boardUid, normalizeBoardDraft } from "@/lib/sketch-board";
-import {
-  boardFramesCompositeDataUrl,
-  exportBoardVideoForFrames,
-} from "@/lib/sketch-board-export";
-import {
-  COACH_EXERCISE_INLINE_VIDEO_MAX_CHARS,
-  coachExerciseVideoUrl,
-  storeCoachExerciseVideo,
-} from "@/lib/training-exercise-media";
+import { boardFramesCompositeDataUrl } from "@/lib/sketch-board-export";
+import { saveBoardExercisePlayback } from "@/lib/save-board-playback";
+import { coachExerciseVideoUrl, inlineVideoDataUrlIfFits } from "@/lib/training-exercise-media";
+import { getCoachExercisePlayback } from "@/lib/coach-exercise-playback-store";
 import type { NewSavedTrainingExerciseInput } from "@/types";
 
 export type SaveBoardTrainingFormInput = {
@@ -37,8 +32,15 @@ export async function buildSavedExerciseFromBoardDraft(
   const exerciseId = boardUid("svtex");
 
   const printImageDataUrl = boardFramesCompositeDataUrl(frames, boardRenderOpts);
-  const videoBlob = await exportBoardVideoForFrames(frames, boardRenderOpts, playSpeed);
-  const videoDataUrlStored = await storeCoachExerciseVideo(exerciseId, videoBlob);
+  const playbackKind = await saveBoardExercisePlayback(exerciseId, frames, boardRenderOpts, playSpeed);
+
+  let videoDataUrlStored = "";
+  if (playbackKind === "video") {
+    const record = await getCoachExercisePlayback(exerciseId);
+    if (record?.kind === "video") {
+      videoDataUrlStored = await inlineVideoDataUrlIfFits(record.blob);
+    }
+  }
 
   const explanation = form.explanation.trim();
 
@@ -53,10 +55,7 @@ export async function buildSavedExerciseFromBoardDraft(
       ? "Ver explicação do exercício no quadro tático e no vídeo de demonstração."
       : "Exercício criado no quadro tático da Sketch Area.",
     videoUrl: coachExerciseVideoUrl(exerciseId),
-    videoDataUrl:
-      videoDataUrlStored.length <= COACH_EXERCISE_INLINE_VIDEO_MAX_CHARS
-        ? videoDataUrlStored
-        : undefined,
+    videoDataUrl: videoDataUrlStored || undefined,
     fromSketchBoard: true,
     printImageDataUrl: printImageDataUrl || undefined,
     sketchBoardDraftId: normalized.id,

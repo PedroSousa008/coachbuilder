@@ -7,22 +7,15 @@ import {
   type SketchBoardPlaybackSpeed,
 } from "@/lib/sketch-board";
 import { renderBoardFrame, type BoardRenderOptions } from "@/components/sketch/SketchBoardCanvas";
+import { pickRecordablePlayableMimeType } from "@/lib/sketch-board-playback-detect";
 
 /** Resolução de gravação (metade do quadro — mais fiável no MediaRecorder). */
 const RECORD_W = Math.round(BOARD_CANVAS_WIDTH / 2);
 const RECORD_H = Math.round(BOARD_CANVAS_HEIGHT / 2);
-const RECORD_FPS = 24;
+const RECORD_FPS = 20;
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
-}
-
-function pickVideoMimeType(): string {
-  const candidates = ["video/webm;codecs=vp8", "video/webm;codecs=vp9", "video/webm"];
-  for (const mime of candidates) {
-    if (typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported(mime)) return mime;
-  }
-  return "video/webm";
 }
 
 function attachRecordingCanvas(): {
@@ -89,14 +82,21 @@ function textsForBlend(from: SketchBoardFrame, to: SketchBoardFrame, t: number):
 async function recordCanvasStream(
   drawLoop: (ctx: CanvasRenderingContext2D) => Promise<void>
 ): Promise<Blob> {
+  const mimeType = pickRecordablePlayableMimeType();
+  if (!mimeType) {
+    throw new Error("video-recording-unavailable");
+  }
+
   const { canvas, ctx, cleanup } = attachRecordingCanvas();
-  const mimeType = pickVideoMimeType();
   const stream = canvas.captureStream(RECORD_FPS);
 
-  const recorder = new MediaRecorder(stream, {
-    mimeType,
-    videoBitsPerSecond: 4_000_000,
-  });
+  const recorderOptions: MediaRecorderOptions = { videoBitsPerSecond: 2_500_000 };
+  if (MediaRecorder.isTypeSupported(mimeType)) {
+    recorderOptions.mimeType = mimeType;
+  }
+
+  const recorder = new MediaRecorder(stream, recorderOptions);
+  const effectiveMime = recorder.mimeType || mimeType;
 
   const chunks: BlobPart[] = [];
   recorder.ondataavailable = (e) => {
@@ -105,7 +105,7 @@ async function recordCanvasStream(
 
   const blobReady = new Promise<Blob>((resolve, reject) => {
     recorder.onstop = () => {
-      const type = mimeType.split(";")[0] || "video/webm";
+      const type = effectiveMime.split(";")[0] || "video/mp4";
       resolve(new Blob(chunks, { type }));
     };
     recorder.onerror = () => reject(new Error("MediaRecorder failed"));

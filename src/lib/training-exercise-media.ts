@@ -5,10 +5,12 @@ import {
 } from "@/lib/coachbuilder-persist";
 import { idbKvDelete } from "@/lib/coachbuilder-idb-kv";
 import {
-  deleteCoachExerciseVideoBlob,
-  getCoachExerciseVideoBlob,
-  putCoachExerciseVideoBlob,
-} from "@/lib/coach-exercise-video-store";
+  deleteCoachExercisePlayback,
+  getCoachExercisePlayback,
+  type CoachExerciseFramesPlaybackRecord,
+  type CoachExerciseVideoPlaybackRecord,
+} from "@/lib/coach-exercise-playback-store";
+import { canPlayVideoMime } from "@/lib/sketch-board-playback-detect";
 
 export const COACH_EXERCISE_VIDEO_SCHEME = "coach-exercise-video:";
 
@@ -17,8 +19,11 @@ export const COACH_EXERCISE_INLINE_VIDEO_MAX_CHARS = 3_500_000;
 
 const LEGACY_VIDEO_PERSIST_PREFIX = "coachbuilder-coach-exercise-video-";
 
-/** Cópia em memória (object URL) logo após guardar — reprodução imediata na mesma sessão. */
 const playbackUrlCache = new Map<string, string>();
+
+export type CoachExerciseResolvedPlayback =
+  | { kind: "video"; src: string; mime?: string }
+  | { kind: "frames"; record: CoachExerciseFramesPlaybackRecord };
 
 export function coachExerciseVideoUrl(exerciseId: string): string {
   return `${COACH_EXERCISE_VIDEO_SCHEME}${exerciseId}`;
@@ -50,6 +55,16 @@ function revokeCachedUrl(exerciseId: string) {
   playbackUrlCache.delete(exerciseId);
 }
 
+async function dataUrlToBlob(dataUrl: string): Promise<Blob | null> {
+  try {
+    const res = await fetch(dataUrl);
+    const blob = await res.blob();
+    return blob.size > 0 ? blob : null;
+  } catch {
+    return null;
+  }
+}
+
 function blobToDataUrl(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -66,126 +81,109 @@ function blobToDataUrl(blob: Blob): Promise<string> {
   });
 }
 
-async function dataUrlToBlob(dataUrl: string): Promise<Blob | null> {
-  try {
-    const res = await fetch(dataUrl);
-    const blob = await res.blob();
-    return blob.size > 0 ? blob : null;
-  } catch {
-    return null;
-  }
-}
-
-/** Confirma que o blob é um vídeo reproduzível antes de o considerar guardado. */
-export async function verifyCoachExerciseVideoBlob(blob: Blob): Promise<void> {
-  if (blob.size < 2048) {
-    throw new Error("O vídeo gravado está vazio. Usa Chrome ou Edge no computador.");
-  }
-  const url = URL.createObjectURL(blob);
-  try {
-    await new Promise<void>((resolve, reject) => {
-      const v = document.createElement("video");
-      v.muted = true;
-      v.playsInline = true;
-      v.preload = "auto";
-      const done = (ok: boolean) => {
-        v.removeAttribute("src");
-        v.load();
-        if (ok) resolve();
-        else reject(new Error("O vídeo não é válido para reprodução."));
-      };
-      v.onloadedmetadata = () => {
-        if (v.duration > 0.05 && v.videoWidth > 0) done(true);
-        else done(false);
-      };
-      v.onerror = () => done(false);
-      v.src = url;
-    });
-  } finally {
-    URL.revokeObjectURL(url);
-  }
-}
-
-/**
- * Guarda o vídeo (blob binário em IDB) e devolve data URL só para cópia no workspace se couber.
- */
-export async function storeCoachExerciseVideo(exerciseId: string, blob: Blob): Promise<string> {
-  await verifyCoachExerciseVideoBlob(blob);
-  await putCoachExerciseVideoBlob(exerciseId, blob);
-
-  revokeCachedUrl(exerciseId);
-  playbackUrlCache.set(exerciseId, URL.createObjectURL(blob));
-
-  const readBack = await getCoachExerciseVideoBlob(exerciseId);
-  if (!readBack || readBack.size < 2048) {
-    throw new Error("O vídeo não ficou guardado neste dispositivo.");
-  }
-
-  const dataUrl = await blobToDataUrl(blob);
-  const legacyKey = legacyPersistKey(exerciseId);
-  if (dataUrl.length <= 3_500_000) {
-    void savePersistedJson(legacyKey, dataUrl);
-  }
-
-  return dataUrl;
-}
-
 async function loadLegacyDataUrl(exerciseId: string): Promise<string | null> {
   return loadPersistedJson<string | null>(legacyPersistKey(exerciseId), null);
 }
 
-/**
- * URL para `<video src>` — mesmo ficheiro que foi gravado (blob → object URL).
- */
-export async function getCoachExerciseVideoPlaybackUrl(exerciseId: string): Promise<string | null> {
-  const cached = playbackUrlCache.get(exerciseId);
-  if (cached) return cached;
-
-  let blob = await getCoachExerciseVideoBlob(exerciseId);
-  if (!blob) {
-    const legacy = await loadLegacyDataUrl(exerciseId);
-    if (legacy) {
-      blob = await dataUrlToBlob(legacy);
-      if (blob) {
-        await putCoachExerciseVideoBlob(exerciseId, blob).catch(() => {});
-      } else {
-        return legacy.startsWith("data:") ? legacy : null;
-      }
-    }
+function videoSrcFromRecord(record: CoachExerciseVideoPlaybackRecord): string | null {
+  const mime = record.mime || record.blob.type || "video/mp4";
+  if (!canPlayVideoMime(mime) && !canPlayVideoMime(record.blob.type)) {
+    return null;
   }
-
-  if (!blob || blob.size < 512) return null;
-
-  const url = URL.createObjectURL(blob);
-  playbackUrlCache.set(exerciseId, url);
+  const cached = playbackUrlCache.get(record.id);
+  if (cached) return cached;
+  const url = URL.createObjectURL(record.blob);
+  playbackUrlCache.set(record.id, url);
   return url;
 }
 
-/**
- * URL para reprodução — IDB primeiro; migra fallback data URL do exercício se existir.
- */
-export async function ensureCoachExerciseVideoPlaybackUrl(
+export async function resolveCoachExercisePlayback(
   exerciseId: string,
-  fallbackDataUrl?: string
-): Promise<string | null> {
-  const fromStore = await getCoachExerciseVideoPlaybackUrl(exerciseId);
-  if (fromStore) return fromStore;
-
-  if (!fallbackDataUrl?.startsWith("data:")) return null;
-
-  const blob = await dataUrlToBlob(fallbackDataUrl);
-  if (blob && blob.size > 2048) {
-    try {
-      await putCoachExerciseVideoBlob(exerciseId, blob);
-      return getCoachExerciseVideoPlaybackUrl(exerciseId);
-    } catch {
-      return fallbackDataUrl;
+  fallbackVideoDataUrl?: string
+): Promise<CoachExerciseResolvedPlayback | null> {
+  const stored = await getCoachExercisePlayback(exerciseId);
+  if (stored?.kind === "frames") {
+    return { kind: "frames", record: stored };
+  }
+  if (stored?.kind === "video") {
+    const src = videoSrcFromRecord(stored);
+    if (src) {
+      return { kind: "video", src, mime: stored.mime };
     }
   }
-  return fallbackDataUrl;
+
+  if (fallbackVideoDataUrl?.startsWith("data:")) {
+    const blob = await dataUrlToBlob(fallbackVideoDataUrl);
+    if (blob && blob.size > 512) {
+      const mime = blob.type || "video/webm";
+      if (canPlayVideoMime(mime)) {
+        const url = URL.createObjectURL(blob);
+        playbackUrlCache.set(exerciseId, url);
+        return { kind: "video", src: url, mime };
+      }
+    }
+    if (canPlayVideoMime("video/webm") || fallbackVideoDataUrl.startsWith("data:video/mp4")) {
+      return { kind: "video", src: fallbackVideoDataUrl, mime: mimeFromDataUrl(fallbackVideoDataUrl) };
+    }
+  }
+
+  const legacy = await loadLegacyDataUrl(exerciseId);
+  if (legacy?.startsWith("data:") && legacy !== fallbackVideoDataUrl) {
+    return resolveCoachExercisePlayback(exerciseId, legacy);
+  }
+
+  return null;
 }
 
-/** @deprecated Usar ensureCoachExerciseVideoPlaybackUrl */
+function mimeFromDataUrl(dataUrl: string): string | undefined {
+  const m = /^data:([^;,]+)/.exec(dataUrl);
+  return m?.[1];
+}
+
+export async function inlineVideoDataUrlIfFits(blob: Blob): Promise<string> {
+  try {
+    const dataUrl = await blobToDataUrl(blob);
+    return dataUrl.length <= COACH_EXERCISE_INLINE_VIDEO_MAX_CHARS ? dataUrl : "";
+  } catch {
+    return "";
+  }
+}
+
+/** @deprecated Usar saveBoardExercisePlayback */
+export async function storeCoachExerciseVideo(exerciseId: string, blob: Blob): Promise<string> {
+  const { putCoachExercisePlayback } = await import("@/lib/coach-exercise-playback-store");
+  const record: CoachExerciseVideoPlaybackRecord = {
+    id: exerciseId,
+    kind: "video",
+    blob,
+    mime: blob.type || "video/mp4",
+    size: blob.size,
+    savedAt: new Date().toISOString(),
+  };
+  await putCoachExercisePlayback(record);
+  revokeCachedUrl(exerciseId);
+  playbackUrlCache.set(exerciseId, URL.createObjectURL(blob));
+
+  const dataUrl = await blobToDataUrl(blob);
+  if (dataUrl.length <= 3_500_000) {
+    void savePersistedJson(legacyPersistKey(exerciseId), dataUrl);
+  }
+  return dataUrl;
+}
+
+export async function ensureCoachExerciseVideoPlaybackUrl(
+  exerciseId: string,
+  fallbackVideoDataUrl?: string
+): Promise<string | null> {
+  const resolved = await resolveCoachExercisePlayback(exerciseId, fallbackVideoDataUrl);
+  if (resolved?.kind === "video") return resolved.src;
+  return null;
+}
+
+export async function getCoachExerciseVideoPlaybackUrl(exerciseId: string): Promise<string | null> {
+  return ensureCoachExerciseVideoPlaybackUrl(exerciseId);
+}
+
 export async function getCoachExerciseVideoDataUrl(exerciseId: string): Promise<string | null> {
   return getCoachExerciseVideoPlaybackUrl(exerciseId);
 }
@@ -196,7 +194,7 @@ export function revokeCoachExerciseVideoPlaybackUrl(exerciseId: string) {
 
 export async function deleteCoachExerciseVideo(exerciseId: string): Promise<void> {
   revokeCachedUrl(exerciseId);
-  await deleteCoachExerciseVideoBlob(exerciseId).catch(() => {});
+  await deleteCoachExercisePlayback(exerciseId).catch(() => {});
   const key = legacyPersistKey(exerciseId);
   if (typeof window !== "undefined") {
     try {
