@@ -1,7 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { encodeLocalPublicPath } from "@/lib/public-asset-url";
+import {
+  getCoachExerciseVideoDataUrl,
+  isCoachExerciseVideoUrl,
+  parseCoachExerciseVideoId,
+} from "@/lib/training-exercise-media";
 
 function youtubeVideoId(raw: string): string | null {
   const trimmed = raw.trim();
@@ -39,8 +44,36 @@ export function TrainingVideoEmbed({
   title?: string;
 }) {
   const [mediaFailed, setMediaFailed] = useState(false);
+  const [coachVideoSrc, setCoachVideoSrc] = useState<string | null>(null);
+  const [coachVideoLoading, setCoachVideoLoading] = useState(false);
   const ytId = useMemo(() => youtubeVideoId(videoUrl), [videoUrl]);
   const isYoutube = ytId !== null;
+  const isCoachVideo = isCoachExerciseVideoUrl(videoUrl);
+
+  useEffect(() => {
+    if (!isCoachVideo) {
+      setCoachVideoSrc(null);
+      setCoachVideoLoading(false);
+      return;
+    }
+    const exerciseId = parseCoachExerciseVideoId(videoUrl);
+    if (!exerciseId) {
+      setCoachVideoSrc(null);
+      return;
+    }
+    let cancelled = false;
+    setCoachVideoLoading(true);
+    setMediaFailed(false);
+    void getCoachExerciseVideoDataUrl(exerciseId).then((dataUrl) => {
+      if (cancelled) return;
+      setCoachVideoSrc(dataUrl);
+      setCoachVideoLoading(false);
+      if (!dataUrl) setMediaFailed(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [videoUrl, isCoachVideo]);
 
   if (isYoutube) {
     return (
@@ -58,23 +91,24 @@ export function TrainingVideoEmbed({
     );
   }
 
-  const raw =
-    videoUrl.startsWith("http://") || videoUrl.startsWith("https://")
+  const raw = isCoachVideo
+    ? coachVideoSrc
+    : videoUrl.startsWith("http://") || videoUrl.startsWith("https://") || videoUrl.startsWith("data:")
       ? videoUrl.trim()
       : encodeLocalPublicPath(videoUrl.startsWith("/") ? videoUrl.trim() : `/${videoUrl.trim()}`);
   const src = raw;
+  const isLocalFile = !isCoachVideo && src?.startsWith("/");
 
   return (
     <div className="mt-3 space-y-2 rounded-xl border border-surface-border bg-surface-raised/30 p-3">
       <p className="text-xs font-medium text-zinc-400">Vídeo de explicação</p>
-      {mediaFailed ? (
+      {coachVideoLoading ? (
+        <p className="py-8 text-center text-sm text-zinc-500">A carregar vídeo…</p>
+      ) : mediaFailed || !src ? (
         <p className="text-sm text-amber-200/90">
-          Não foi possível carregar o ficheiro. Coloca o MP4 na pasta{" "}
-          <code className="rounded bg-zinc-800 px-1 py-0.5 text-xs text-zinc-300">
-            public{src.startsWith("/") ? src : `/${src}`}
-          </code>{" "}
-          (URL na app: <code className="rounded bg-zinc-800 px-1 py-0.5 text-xs">{src}</code>) ou substitui por um link
-          YouTube no código.
+          {isCoachVideo
+            ? "Vídeo do exercício não encontrado neste dispositivo. Guarda novamente a partir do quadro tático."
+            : "Não foi possível carregar o ficheiro. Coloca o MP4 na pasta public ou substitui por um link YouTube."}
         </p>
       ) : (
         <video
@@ -88,14 +122,16 @@ export function TrainingVideoEmbed({
           <source src={src} />
         </video>
       )}
-      <a
-        href={src}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="inline-block text-xs text-accent hover:underline"
-      >
-        Abrir vídeo noutro separador
-      </a>
+      {src && !isCoachVideo ? (
+        <a
+          href={src}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-block text-xs text-accent hover:underline"
+        >
+          {isLocalFile ? "Abrir vídeo noutro separador" : "Abrir vídeo"}
+        </a>
+      ) : null}
     </div>
   );
 }

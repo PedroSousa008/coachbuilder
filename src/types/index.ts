@@ -372,6 +372,14 @@ export interface SavedTrainingExercise {
   objective?: string;
   /** Fase do bloco quando guardado a partir de uma sessão completa. */
   sourcePhase?: "warmup" | "main" | "cooldown";
+  /** Criado a partir do quadro tático (Sketch Area); só visível para este treinador. */
+  fromSketchBoard?: boolean;
+  /** Temas seleccionados no formulário «Guardar Treino». */
+  themes?: SavedExerciseCategory[];
+  /** Imagem composta dos frames para impressão em sessões. */
+  printImageDataUrl?: string;
+  /** Ligação ao rascunho do quadro (evita duplicados). */
+  sketchBoardDraftId?: string;
 }
 
 export type NewSavedTrainingExerciseInput = {
@@ -388,6 +396,11 @@ export type NewSavedTrainingExerciseInput = {
   variations?: string;
   objective?: string;
   sourcePhase?: "warmup" | "main" | "cooldown";
+  fromSketchBoard?: boolean;
+  themes?: SavedExerciseCategory[];
+  printImageDataUrl?: string;
+  sketchBoardDraftId?: string;
+  id?: string;
 };
 
 export type DrillCategory =

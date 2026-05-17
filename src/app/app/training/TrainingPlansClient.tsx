@@ -29,6 +29,7 @@ import {
   getTrainingCatalogItems,
   type TrainingCatalogItem,
 } from "@/lib/training-session-local";
+import { coachSketchExercisesToCatalogItems } from "@/lib/coach-training-catalog";
 import { Bookmark, PlayCircle, Search } from "lucide-react";
 import {
   TRAINING_AGE_GROUP_LABELS,
@@ -183,7 +184,11 @@ export function TrainingPlansClient() {
   const selectedAgeGroup: TrainingAgeGroupId = coachProfile.trainingSquadAgeGroup ?? "juvenil";
   const exerciseAgeMap: TrainingExerciseAgeMap | undefined = coachProfile.trainingExerciseAgeMap;
 
-  const trainingCatalog = useMemo(() => getTrainingCatalogItems(selectedPlayers), [selectedPlayers]);
+  const trainingCatalog = useMemo(() => {
+    const builtIn = getTrainingCatalogItems(selectedPlayers);
+    const coachSketch = coachSketchExercisesToCatalogItems(savedTrainingExercises);
+    return [...coachSketch, ...builtIn];
+  }, [selectedPlayers, savedTrainingExercises]);
 
   const setSelectedAgeGroup = useCallback(
     (ageGroup: TrainingAgeGroupId) => {
@@ -248,6 +253,7 @@ export function TrainingPlansClient() {
           groupSplit: item.groupSplit,
           diagramHint: item.diagramHint,
           videoUrl: item.videoUrl,
+          printImageSrc: item.printImageDataUrl,
         });
       }
     }
@@ -757,9 +763,9 @@ export function TrainingPlansClient() {
             <CardHeader>
               <CardTitle>Todos os exercícios</CardTitle>
               <p className="text-sm text-zinc-500">
-                Todos os modelos do motor local (aquecimento, blocos principais com ou sem vídeo, volta à calma).
-                Filtra por uma ou mais categorias; sem nenhuma selecção vês a lista completa. A bola com a lupa mostra
-                a explicação; «Guardar exercício» envia para «Meus exercícios» com o mesmo detalhe que os outros.
+                Modelos do motor local e exercícios que criaste no quadro tático (só tu vês os teus). Filtra por tema;
+                a bola com a lupa mostra a explicação. Os teus exercícios do quadro já incluem vídeo e imagem para
+                impressão em sessões.
               </p>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -809,9 +815,16 @@ export function TrainingPlansClient() {
                       >
                         <div className="flex flex-wrap items-baseline justify-between gap-2">
                           <h3 className="font-display text-base font-semibold text-white">{item.title}</h3>
-                          <Badge variant="muted" className="text-[10px]">
-                            {phaseLabel(item.phase)} · {item.durationMin} min
-                          </Badge>
+                          <div className="flex flex-wrap gap-1">
+                            {item.isCoachSketchExercise ? (
+                              <Badge variant="muted" className="text-[10px] text-accent">
+                                O teu quadro
+                              </Badge>
+                            ) : null}
+                            <Badge variant="muted" className="text-[10px]">
+                              {phaseLabel(item.phase)} · {item.durationMin} min
+                            </Badge>
+                          </div>
                         </div>
                         <div className="mt-2 flex flex-wrap gap-1">
                           {item.filterCategories.map((c) => (
@@ -893,16 +906,18 @@ export function TrainingPlansClient() {
                             </div>
                           ) : null}
                         </div>
-                        <div className="mt-4 flex justify-end">
-                          <Button
-                            type="button"
-                            variant="secondary"
-                            className="text-xs"
-                            onClick={() => openSaveFromCatalogItem(item)}
-                          >
-                            Guardar exercício
-                          </Button>
-                        </div>
+                        {!item.isCoachSketchExercise ? (
+                          <div className="mt-4 flex justify-end">
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              className="text-xs"
+                              onClick={() => openSaveFromCatalogItem(item)}
+                            >
+                              Guardar exercício
+                            </Button>
+                          </div>
+                        ) : null}
                       </li>
                     );
                   })}

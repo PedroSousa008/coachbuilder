@@ -2879,6 +2879,11 @@ export type TrainingCatalogItem = {
   /** Filtros na aba «Todos os exercícios» (OR). */
   filterCategories: readonly SavedExerciseCategory[];
   defaultSaveCategory: SavedExerciseCategory;
+  /** Exercício criado pelo treinador no quadro tático. */
+  isCoachSketchExercise?: boolean;
+  /** Imagem composta dos frames (data URL) para impressão. */
+  printImageDataUrl?: string;
+  coachSavedExerciseId?: string;
 };
 
 /**

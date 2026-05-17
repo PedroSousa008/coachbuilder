@@ -1834,7 +1834,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const addSavedTrainingExercise = useCallback((input: NewSavedTrainingExerciseInput) => {
     const now = new Date().toISOString();
     const row: SavedTrainingExercise = {
-      id: uid("svtex"),
+      id: input.id ?? uid("svtex"),
       title: input.title.trim(),
       category: input.category,
       coachNotes: "",
@@ -1851,8 +1851,24 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       variations: input.variations,
       objective: input.objective,
       sourcePhase: input.sourcePhase,
+      fromSketchBoard: input.fromSketchBoard,
+      themes: input.themes,
+      printImageDataUrl: input.printImageDataUrl,
+      sketchBoardDraftId: input.sketchBoardDraftId,
     };
-    setSavedTrainingExercises((prev) => [row, ...prev]);
+    setSavedTrainingExercises((prev) => {
+      if (input.sketchBoardDraftId) {
+        const old = prev.find((e) => e.sketchBoardDraftId === input.sketchBoardDraftId);
+        if (old && old.id !== row.id) {
+          void import("@/lib/training-exercise-media").then(({ deleteCoachExerciseVideo }) =>
+            deleteCoachExerciseVideo(old.id)
+          );
+        }
+        const withoutDup = prev.filter((e) => e.sketchBoardDraftId !== input.sketchBoardDraftId);
+        return [row, ...withoutDup];
+      }
+      return [row, ...prev];
+    });
     return row;
   }, []);
 
@@ -1874,6 +1890,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   );
 
   const removeSavedTrainingExercise = useCallback((id: string) => {
+    void import("@/lib/training-exercise-media").then(({ deleteCoachExerciseVideo }) =>
+      deleteCoachExerciseVideo(id)
+    );
     setSavedTrainingExercises((prev) => prev.filter((x) => x.id !== id));
   }, []);
 

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
+  Bookmark,
   Copy,
   Download,
   Maximize2,
@@ -36,6 +37,9 @@ import {
   exportBoardAnimationVideo,
 } from "@/lib/sketch-board-export";
 import { SketchBoardTextLayer } from "./SketchBoardTextLayer";
+import { SaveBoardTrainingModal } from "./SaveBoardTrainingModal";
+import { buildSavedExerciseFromBoardDraft } from "@/lib/save-board-as-training";
+import type { SaveBoardTrainingFormInput } from "@/lib/save-board-as-training";
 import { cn } from "@/lib/utils";
 import {
   boardUid,
@@ -90,7 +94,7 @@ type BoardSelection =
   | { kind: "text"; id: string; x: number; y: number };
 
 export function SketchTacticalBoardPanel() {
-  const { players, sketchArea, setSketchArea } = useAppData();
+  const { players, sketchArea, setSketchArea, addSavedTrainingExercise } = useAppData();
   const canvasRef = useRef<SketchBoardCanvasHandle>(null);
 
   const [draftId, setDraftId] = useState<string | null>(null);
@@ -117,6 +121,9 @@ export function SketchTacticalBoardPanel() {
   const [playSpeed, setPlaySpeed] = useState<SketchBoardPlaybackSpeed>("normal");
   const [playStrokes, setPlayStrokes] = useState<SketchStroke[] | null>(null);
   const [mediaExporting, setMediaExporting] = useState(false);
+  const [saveTrainingOpen, setSaveTrainingOpen] = useState(false);
+  const [saveTrainingBusy, setSaveTrainingBusy] = useState(false);
+  const [saveTrainingNotice, setSaveTrainingNotice] = useState<string | null>(null);
 
   const activeDraftRaw = useMemo(() => {
     if (sketchArea.boardDrafts.length === 0) return null;
@@ -401,6 +408,30 @@ export function SketchTacticalBoardPanel() {
 
   const printBoard = () => window.print();
 
+  const handleSaveTraining = useCallback(
+    async (form: SaveBoardTrainingFormInput) => {
+      if (!activeDraft) return;
+      setSaveTrainingBusy(true);
+      setSaveTrainingNotice(null);
+      try {
+        const payload = await buildSavedExerciseFromBoardDraft(
+          activeDraft,
+          form,
+          boardRenderOpts,
+          playSpeed
+        );
+        addSavedTrainingExercise(payload);
+        setSaveTrainingOpen(false);
+        setSaveTrainingNotice(`«${payload.title}» foi adicionado a Treinos → Todos os exercícios.`);
+      } catch {
+        alert("Não foi possível guardar o exercício. Tenta outro browser ou reduz o número de frames.");
+      } finally {
+        setSaveTrainingBusy(false);
+      }
+    },
+    [activeDraft, boardRenderOpts, playSpeed, addSavedTrainingExercise]
+  );
+
   if (!activeDraft || !activeFrame) {
     return (
       <Card className="border-surface-border bg-surface-raised/25">
@@ -479,6 +510,15 @@ export function SketchTacticalBoardPanel() {
         <Button type="button" variant="secondary" className="text-xs" onClick={printBoard}>
           PDF
         </Button>
+        <Button
+          type="button"
+          variant="primary"
+          className="text-xs"
+          onClick={() => setSaveTrainingOpen(true)}
+        >
+          <Bookmark className="h-3.5 w-3.5" />
+          Guardar Treino
+        </Button>
         <Button type="button" variant="secondary" className="text-xs" onClick={newDraft}>
           <Plus className="h-3.5 w-3.5" />
           Novo
@@ -488,6 +528,20 @@ export function SketchTacticalBoardPanel() {
           {expanded ? "Sair" : "Ecrã inteiro"}
         </Button>
       </div>
+
+      {saveTrainingNotice ? (
+        <p className="no-print rounded-xl border border-accent/30 bg-accent/10 px-3 py-2 text-sm text-accent">
+          {saveTrainingNotice}
+        </p>
+      ) : null}
+
+      <SaveBoardTrainingModal
+        open={saveTrainingOpen}
+        defaultTitle={activeDraft.title}
+        saving={saveTrainingBusy}
+        onClose={() => !saveTrainingBusy && setSaveTrainingOpen(false)}
+        onSubmit={(form) => void handleSaveTraining(form)}
+      />
 
       {metaOpen ? (
         <Card className="no-print border-surface-border bg-surface-raised/20">

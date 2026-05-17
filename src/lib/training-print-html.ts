@@ -89,7 +89,8 @@ export function buildFullSessionDocumentHtml(params: {
       const imageRelPath = trainingExercisePrintImageForTitle(b.title);
       const encodedRel = imageRelPath ? encodeLocalPublicPath(imageRelPath) : null;
       const exerciseImageSrc =
-        encodedRel && assetBaseUrl ? `${assetBaseUrl}${encodedRel}` : encodedRel;
+        b.printImageSrc ??
+        (encodedRel && assetBaseUrl ? `${assetBaseUrl}${encodedRel}` : encodedRel);
       const playerCount = Math.max(playerLines.length, 1);
       const backMetrics = computeBackPageTableMetrics(playerCount);
       return `

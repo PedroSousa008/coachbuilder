@@ -16,6 +16,8 @@ export type AiTrainingBlock = {
   diagramHint?: string;
   /** URL pública (ex. `/videos/.../ficheiro.mp4`) ou link YouTube. */
   videoUrl?: string;
+  /** Imagem do exercício (data URL ou caminho) para PDF — ex. quadro tático. */
+  printImageSrc?: string;
 };
 
 export type AiFullTrainingSession = {
