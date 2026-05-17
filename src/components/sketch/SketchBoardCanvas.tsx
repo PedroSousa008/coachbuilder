@@ -3,7 +3,13 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef } from "react";
 import type { SketchPitchTemplate, SketchStroke, SketchStrokeTool } from "@/types";
 import { cn } from "@/lib/utils";
-import { newElementId, PITCH_COLOR_PRESETS } from "@/lib/sketch-board";
+import {
+  BOARD_CANVAS_HEIGHT,
+  BOARD_CANVAS_WIDTH,
+  hitTestStrokeIndex,
+  newElementId,
+  PITCH_COLOR_PRESETS,
+} from "@/lib/sketch-board";
 
 export type SketchBoardCanvasHandle = {
   exportPng: () => string | null;
@@ -383,7 +389,6 @@ function drawStrokes(ctx: CanvasRenderingContext2D, strokes: SketchStroke[]) {
 
     if (s.tool === "cone") {
       const [x, y] = pts[pts.length - 1]!;
-      // Flat marker cone with top hole.
       ctx.fillStyle = "#f4f4f5";
       ctx.strokeStyle = "#111827";
       ctx.lineWidth = 1.2;
@@ -394,6 +399,24 @@ function drawStrokes(ctx: CanvasRenderingContext2D, strokes: SketchStroke[]) {
       ctx.fillStyle = "#0f172a";
       ctx.beginPath();
       ctx.ellipse(x, y - 0.5, 2.6, 1.6, 0, 0, Math.PI * 2);
+      ctx.fill();
+      continue;
+    }
+    if (s.tool === "coneTall") {
+      const [x, y] = pts[pts.length - 1]!;
+      ctx.fillStyle = "#f97316";
+      ctx.strokeStyle = "#111827";
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(x, y - 16);
+      ctx.lineTo(x + 9, y + 10);
+      ctx.lineTo(x - 9, y + 10);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = "#0f172a";
+      ctx.beginPath();
+      ctx.ellipse(x, y - 14, 2.8, 1.8, 0, 0, Math.PI * 2);
       ctx.fill();
       continue;
     }
@@ -502,12 +525,13 @@ function drawStrokes(ctx: CanvasRenderingContext2D, strokes: SketchStroke[]) {
       ctx.stroke();
       continue;
     }
-    if (s.tool === "goal") {
+    if (s.tool === "goal" || s.tool === "miniGoal") {
       const [x, y] = pts[pts.length - 1]!;
-      const w = 30;
-      const h = 14;
-      const depth = 8;
-      const topLift = 4;
+      const scale = s.tool === "miniGoal" ? 0.55 : 1;
+      const w = 30 * scale;
+      const h = 14 * scale;
+      const depth = 8 * scale;
+      const topLift = 4 * scale;
       const x0 = x - w / 2;
       const y0 = y - h / 2;
       ctx.strokeStyle = "#f4f4f5";
@@ -629,6 +653,8 @@ export const SketchBoardCanvas = forwardRef<
     canPlaceNumbered?: boolean;
     playerTokenDraft?: { playerId: string; number: number; name: string } | null;
     dragMode?: boolean;
+    selectionMode?: boolean;
+    onSelectStroke?: (index: number | null, anchor: { x: number; y: number }) => void;
     pitchColorPresetId?: string;
     readOnly?: boolean;
   }
@@ -645,6 +671,8 @@ export const SketchBoardCanvas = forwardRef<
     canPlaceNumbered = true,
     playerTokenDraft,
     dragMode = false,
+    selectionMode = false,
+    onSelectStroke,
     pitchColorPresetId = "app",
     readOnly = false,
   },
@@ -663,7 +691,11 @@ export const SketchBoardCanvas = forwardRef<
   const pitchColors = PITCH_COLOR_PRESETS.find((p) => p.id === pitchColorPresetId) ?? PITCH_COLOR_PRESETS[0]!;
 
   useImperativeHandle(imperativeRef, () => ({
-    exportPng: () => canvasRef.current?.toDataURL("image/png") ?? null,
+    exportPng: () => {
+      const c = canvasRef.current;
+      if (!c) return null;
+      return c.toDataURL("image/png");
+    },
   }));
 
   const redraw = useCallback(() => {
@@ -687,32 +719,26 @@ export const SketchBoardCanvas = forwardRef<
   }, [redraw]);
 
   useEffect(() => {
-    const ro = new ResizeObserver(() => {
-      const wrap = wrapRef.current;
-      const c = canvasRef.current;
-      if (!wrap || !c) return;
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      const w = Math.floor(wrap.clientWidth);
-      const h = expanded
-        ? Math.max(280, Math.floor(wrap.clientHeight))
-        : Math.floor(Math.min(420, wrap.clientWidth * 0.58));
-      c.width = w * dpr;
-      c.height = h * dpr;
-      c.style.width = `${w}px`;
-      c.style.height = `${h}px`;
-      const ctx = c.getContext("2d");
-      if (ctx) ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      redraw();
-    });
-    if (wrapRef.current) ro.observe(wrapRef.current);
-    return () => ro.disconnect();
-  }, [redraw, expanded]);
+    const c = canvasRef.current;
+    if (!c) return;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    c.width = BOARD_CANVAS_WIDTH * dpr;
+    c.height = BOARD_CANVAS_HEIGHT * dpr;
+    const ctx = c.getContext("2d");
+    if (ctx) ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    redraw();
+  }, [redraw]);
 
   const pos = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const c = canvasRef.current;
     if (!c) return { x: 0, y: 0 };
     const r = c.getBoundingClientRect();
-    return { x: e.clientX - r.left, y: e.clientY - r.top };
+    const scaleX = BOARD_CANVAS_WIDTH / r.width;
+    const scaleY = BOARD_CANVAS_HEIGHT / r.height;
+    return {
+      x: (e.clientX - r.left) * scaleX,
+      y: (e.clientY - r.top) * scaleY,
+    };
   };
 
   const finishStroke = () => {
@@ -730,15 +756,18 @@ export const SketchBoardCanvas = forwardRef<
 
   const draggableTools = new Set<SketchStrokeTool>([
     "playerToken",
+    "numbered",
     "ball",
     "circle",
     "square",
     "triangle",
     "cone",
+    "coneTall",
     "mannequin",
     "poleBase",
     "ladder",
     "goal",
+    "miniGoal",
     "arrow",
   ]);
 
@@ -748,19 +777,22 @@ export const SketchBoardCanvas = forwardRef<
     "square",
     "triangle",
     "cone",
+    "coneTall",
     "mannequin",
     "poleBase",
     "ladder",
     "goal",
+    "miniGoal",
     "arrow",
   ]);
 
   const estimateHitRadius = (toolId: SketchStrokeTool) => {
-    if (toolId === "goal") return 24;
-    if (toolId === "ladder") return 24;
-    if (toolId === "mannequin") return 20;
-    if (toolId === "playerToken" || toolId === "cone" || toolId === "ball") return 14;
-    return 12;
+    if (toolId === "goal") return 28;
+    if (toolId === "miniGoal") return 18;
+    if (toolId === "ladder") return 28;
+    if (toolId === "mannequin") return 24;
+    if (toolId === "playerToken" || toolId === "cone" || toolId === "coneTall" || toolId === "ball") return 16;
+    return 14;
   };
 
   const onPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -772,6 +804,19 @@ export const SketchBoardCanvas = forwardRef<
     canvas.setPointerCapture(e.pointerId);
     activePointerId.current = e.pointerId;
     const { x, y } = pos(e);
+    if (selectionMode) {
+      const hit = hitTestStrokeIndex(strokesRef.current, x, y);
+      onSelectStroke?.(hit, { x, y });
+      if (hit != null) {
+        const s = strokesRef.current[hit]!;
+        if (draggableTools.has(s.tool) && s.points.length > 0) {
+          const [px, py] = s.points[s.points.length - 1]!;
+          draggingTokenStrokeId.current = hit;
+          draggingOffset.current = { dx: x - px, dy: y - py };
+        }
+      }
+      return;
+    }
     if (dragMode) {
       const hit = [...strokesRef.current]
         .map((s, i) => ({ s, i }))
@@ -834,7 +879,7 @@ export const SketchBoardCanvas = forwardRef<
           color,
           lineWidth,
           points: [[x, y]],
-          elementId: tool === "ball" ? newElementId() : undefined,
+          elementId: newElementId(),
         },
       ]);
       return;
@@ -916,13 +961,21 @@ export const SketchBoardCanvas = forwardRef<
   return (
     <div
       ref={wrapRef}
-      className={expanded ? "flex min-h-0 w-full flex-1 flex-col" : "w-full"}
+      className={cn(
+        "mx-auto w-full max-w-full",
+        expanded ? "flex min-h-0 flex-1 flex-col justify-center" : "max-h-[min(72vh,1348px)]"
+      )}
+      style={{ aspectRatio: `${BOARD_CANVAS_WIDTH} / ${BOARD_CANVAS_HEIGHT}` }}
     >
       <canvas
         ref={canvasRef}
         className={cn(
-          "touch-none rounded-xl border border-surface-border bg-[#0a0f0c]",
-          dragMode ? "cursor-grab" : tool === "numbered" && !canPlaceNumbered ? "cursor-not-allowed" : "cursor-crosshair"
+          "h-full w-full touch-none rounded-xl border border-surface-border bg-[#0a0f0c]",
+          selectionMode || dragMode
+            ? "cursor-pointer"
+            : tool === "numbered" && !canPlaceNumbered
+              ? "cursor-not-allowed"
+              : "cursor-crosshair"
         )}
         style={{ touchAction: "none" }}
         onPointerDown={onPointerDown}

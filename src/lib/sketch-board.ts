@@ -1,4 +1,9 @@
-import type { SketchBoardDraft, SketchBoardFrame, SketchBoardText, SketchStroke } from "@/types";
+import type { SketchBoardDraft, SketchBoardFrame, SketchBoardText, SketchStroke, SketchStrokeTool } from "@/types";
+
+/** Dimensões lógicas do quadro tático (proporção do campo). */
+export const BOARD_CANVAS_WIDTH = 2240;
+export const BOARD_CANVAS_HEIGHT = 1348;
+export const BOARD_CANVAS_ASPECT = BOARD_CANVAS_WIDTH / BOARD_CANVAS_HEIGHT;
 
 export const SKETCH_BOARD_CATEGORIES_PT = [
   "Organização ofensiva",
@@ -175,6 +180,73 @@ export function cloneBoardSnapshot(strokes: SketchStroke[], texts: SketchBoardTe
 
 export function ensureStrokeIds(strokes: SketchStroke[]): SketchStroke[] {
   return strokes.map((s) => (s.elementId ? s : { ...s, elementId: newElementId() }));
+}
+
+function distPointToSegment(px: number, py: number, x1: number, y1: number, x2: number, y2: number): number {
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const lenSq = dx * dx + dy * dy;
+  if (lenSq < 1e-6) return Math.hypot(px - x1, py - y1);
+  let t = ((px - x1) * dx + (py - y1) * dy) / lenSq;
+  t = Math.max(0, Math.min(1, t));
+  const lx = x1 + t * dx;
+  const ly = y1 + t * dy;
+  return Math.hypot(px - lx, py - ly);
+}
+
+const LINE_LIKE_TOOLS = new Set<SketchStrokeTool>([
+  "line",
+  "lineDashed",
+  "lineArrow",
+  "curve",
+  "curveArrow",
+  "draw",
+  "arrow",
+]);
+
+function hitRadiusForTool(tool: SketchStrokeTool): number {
+  if (tool === "goal") return 28;
+  if (tool === "miniGoal") return 18;
+  if (tool === "ladder" || tool === "leader") return 28;
+  if (tool === "mannequin") return 24;
+  if (tool === "playerToken") return 20;
+  if (tool === "cone" || tool === "coneTall" || tool === "ball") return 16;
+  if (LINE_LIKE_TOOLS.has(tool)) return 14;
+  return 14;
+}
+
+/** Devolve o índice do elemento clicado (de cima para baixo), ou null. */
+export function hitTestStrokeIndex(strokes: SketchStroke[], x: number, y: number): number | null {
+  for (let i = strokes.length - 1; i >= 0; i--) {
+    const s = strokes[i]!;
+    const pts = s.points;
+    if (pts.length < 1) continue;
+    const tol = hitRadiusForTool(s.tool);
+
+    if (LINE_LIKE_TOOLS.has(s.tool) && pts.length >= 2) {
+      for (let j = 0; j < pts.length - 1; j++) {
+        const [x1, y1] = pts[j]!;
+        const [x2, y2] = pts[j + 1]!;
+        if (distPointToSegment(x, y, x1, y1, x2, y2) <= tol) return i;
+      }
+      continue;
+    }
+
+    const [px, py] = pts[pts.length - 1]!;
+    if (Math.hypot(px - x, py - y) <= tol) return i;
+  }
+  return null;
+}
+
+export function strokeAnchorPoint(stroke: SketchStroke): { x: number; y: number } {
+  const pts = stroke.points;
+  if (pts.length < 1) return { x: 0, y: 0 };
+  if (LINE_LIKE_TOOLS.has(stroke.tool) && pts.length >= 2) {
+    const [a, b] = [pts[0]!, pts[pts.length - 1]!];
+    return { x: (a[0] + b[0]) / 2, y: (a[1] + b[1]) / 2 };
+  }
+  const [x, y] = pts[pts.length - 1]!;
+  return { x, y };
 }
 
 export function nextGenericNumber(strokes: SketchStroke[]): number {

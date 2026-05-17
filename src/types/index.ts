@@ -901,6 +901,8 @@ export type SketchStrokeTool =
   | "square"
   | "triangle"
   | "goal"
+  | "miniGoal"
+  | "coneTall"
   | "leader"
   | "ladder"
   | "mannequin"

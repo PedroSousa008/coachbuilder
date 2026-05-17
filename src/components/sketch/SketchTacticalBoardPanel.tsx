@@ -45,6 +45,9 @@ import {
   PLAYBACK_SPEED_MS,
   SKETCH_BOARD_CATEGORIES_PT,
   updateDraftFrame,
+  BOARD_CANVAS_HEIGHT,
+  BOARD_CANVAS_WIDTH,
+  strokeAnchorPoint,
   type BoardHistorySnapshot,
   type SketchBoardPlaybackSpeed,
 } from "@/lib/sketch-board";
@@ -66,8 +69,18 @@ const LINE_TOOLS: { id: SketchStrokeTool; label: string }[] = [
 const EQUIP_TOOLS: { id: SketchStrokeTool; label: string }[] = [
   { id: "ball", label: "Bola" },
   { id: "cone", label: "Cone" },
+  { id: "coneTall", label: "Cone alto" },
   { id: "goal", label: "Baliza" },
+  { id: "miniGoal", label: "Mini baliza" },
+  { id: "ladder", label: "Escada" },
+  { id: "poleBase", label: "Estaca" },
+  { id: "mannequin", label: "Manequim" },
+  { id: "circle", label: "Círculo" },
 ];
+
+type BoardSelection =
+  | { kind: "stroke"; index: number; x: number; y: number }
+  | { kind: "text"; id: string; x: number; y: number };
 
 export function SketchTacticalBoardPanel() {
   const { players, sketchArea, setSketchArea } = useAppData();
@@ -83,6 +96,7 @@ export function SketchTacticalBoardPanel() {
   const [numberedColor, setNumberedColor] = useState(NUMBERED_DISK_COLORS[0]!);
   const [expanded, setExpanded] = useState(false);
   const [metaOpen, setMetaOpen] = useState(false);
+  const [selection, setSelection] = useState<BoardSelection | null>(null);
 
   const [undoStack, setUndoStack] = useState<BoardHistorySnapshot[]>([]);
   const [redoStack, setRedoStack] = useState<BoardHistorySnapshot[]>([]);
@@ -223,7 +237,20 @@ export function SketchTacticalBoardPanel() {
 
   const selectedPlayer = players.find((p) => p.id === selectedPlayerId) ?? null;
 
-  const dragMode = tool === "select";
+  const selectionMode = tool === "select" && !playing;
+
+  const deleteSelection = useCallback(() => {
+    if (!selection || !activeFrame) return;
+    pushHistory();
+    if (selection.kind === "stroke") {
+      const next = activeFrame.strokes.filter((_, i) => i !== selection.index);
+      applyFrame(next, activeFrame.texts);
+    } else {
+      const next = activeFrame.texts.filter((t) => t.id !== selection.id);
+      applyFrame(activeFrame.strokes, next);
+    }
+    setSelection(null);
+  }, [selection, activeFrame, pushHistory, applyFrame]);
 
   const displayStrokes = playStrokes ?? activeFrame?.strokes ?? [];
 
@@ -474,9 +501,13 @@ export function SketchTacticalBoardPanel() {
           <div
             data-board-wrap
             className={cn("relative", expanded && "flex min-h-0 flex-1 flex-col")}
-            onClick={(e) => {
-              if (tool !== "text" || playing) return;
-              placeTextAt(e.clientX, e.clientY, e.currentTarget);
+            onPointerDown={(e) => {
+              if (e.target !== e.currentTarget) return;
+              if (tool === "text" && !playing) {
+                placeTextAt(e.clientX, e.clientY, e.currentTarget);
+                return;
+              }
+              if (selectionMode) setSelection(null);
             }}
           >
             <SketchBoardCanvas
@@ -494,7 +525,17 @@ export function SketchTacticalBoardPanel() {
               color={tool === "numbered" ? numberedColor : color}
               lineWidth={lineWidth}
               expanded={expanded}
-              dragMode={dragMode && !playing}
+              selectionMode={selectionMode}
+              onSelectStroke={(index) => {
+                if (index == null) {
+                  setSelection(null);
+                  return;
+                }
+                const s = activeFrame.strokes[index];
+                if (!s) return;
+                const pt = strokeAnchorPoint(s);
+                setSelection({ kind: "stroke", index, x: pt.x, y: pt.y });
+              }}
               readOnly={playing}
               pitchColorPresetId={pitchPreset}
               nextNumberLabel={tool === "numbered" ? nextNumber : undefined}
@@ -509,8 +550,35 @@ export function SketchTacticalBoardPanel() {
               texts={activeFrame.texts}
               readOnly={playing}
               onChange={saveTexts}
-              placeMode={tool === "text"}
+              placeMode={tool === "text" && !playing}
+              selectMode={selectionMode}
+              selectedTextId={selection?.kind === "text" ? selection.id : null}
+              onSelectText={(id, anchor) => {
+                if (id == null) {
+                  setSelection(null);
+                  return;
+                }
+                setSelection({ kind: "text", id, x: anchor.x, y: anchor.y });
+              }}
             />
+            {selection && !playing ? (
+              <button
+                type="button"
+                className="absolute z-30 rounded-md border border-red-500/50 bg-red-600 px-2 py-1 text-[11px] font-semibold text-white shadow-lg hover:bg-red-500"
+                style={{
+                  left: `${(selection.x / BOARD_CANVAS_WIDTH) * 100}%`,
+                  top: `${(selection.y / BOARD_CANVAS_HEIGHT) * 100}%`,
+                  transform: "translate(-50%, calc(-100% - 8px))",
+                }}
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  deleteSelection();
+                }}
+              >
+                Excluir
+              </button>
+            ) : null}
           </div>
         </div>
 
@@ -521,7 +589,14 @@ export function SketchTacticalBoardPanel() {
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="grid grid-cols-2 gap-1">
-              <ToolBtn active={tool === "select"} onClick={() => setTool("select")} label="Mover" />
+              <ToolBtn
+                active={tool === "select"}
+                onClick={() => {
+                  setTool("select");
+                  setSelection(null);
+                }}
+                label="Seleccionar"
+              />
               <ToolBtn active={tool === "text"} onClick={() => setTool("text")} label="T" icon={<Type className="h-3.5 w-3.5" />} />
             </div>
             <p className="text-[10px] uppercase tracking-wide text-zinc-600">Linhas</p>
