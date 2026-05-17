@@ -108,7 +108,7 @@ async function recordCanvasStream(
       const type = mimeType.split(";")[0] || "video/webm";
       resolve(new Blob(chunks, { type }));
     };
-    recorder.onerror = () => reject(recorder.error ?? new Error("MediaRecorder failed"));
+    recorder.onerror = () => reject(new Error("MediaRecorder failed"));
   });
 
   recorder.start(250);
