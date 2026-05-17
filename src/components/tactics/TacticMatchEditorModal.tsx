@@ -50,6 +50,7 @@ export function TacticMatchEditorModal({
   const [teamGoals, setTeamGoals] = useState(0);
   const [opponentGoals, setOpponentGoals] = useState(0);
   const [lines, setLines] = useState<TacticMatchPlayerLine[]>([]);
+  const [competition, setCompetition] = useState("");
   const [matchNotes, setMatchNotes] = useState("");
 
   const rosterById = useMemo(() => new Map(roster.map((p) => [p.id, p])), [roster]);
@@ -62,6 +63,7 @@ export function TacticMatchEditorModal({
       setTeamGoals(existing.teamGoals);
       setOpponentGoals(existing.opponentGoals);
       setLines(existing.playerStats.length ? [...existing.playerStats] : []);
+      setCompetition(existing.competition ?? "");
       setMatchNotes(existing.notes ?? "");
     } else {
       setDate(new Date().toISOString().slice(0, 10));
@@ -70,6 +72,7 @@ export function TacticMatchEditorModal({
       setOpponentGoals(0);
       const seed = suggestedPlayerIds.filter((id) => rosterById.has(id));
       setLines(seed.length ? seed.map((id) => emptyLine(id)) : []);
+      setCompetition("");
       setMatchNotes("");
     }
   }, [open, existing, suggestedPlayerIds, rosterById]);
@@ -114,6 +117,7 @@ export function TacticMatchEditorModal({
       opponentGoals,
       outcome,
       playerStats,
+      competition: competition.trim() || undefined,
       notes: matchNotes.trim() || undefined,
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,
@@ -164,6 +168,15 @@ export function TacticMatchEditorModal({
               <label className="text-xs text-zinc-500">Adversário</label>
               <Input value={opponent} onChange={(e) => setOpponent(e.target.value)} placeholder="Equipa" className="mt-1" />
             </div>
+          </div>
+          <div>
+            <label className="text-xs text-zinc-500">Competição</label>
+            <Input
+              value={competition}
+              onChange={(e) => setCompetition(e.target.value)}
+              placeholder="Ex.: Liga, Taça, Amigável"
+              className="mt-1"
+            />
           </div>
           {!existing && quickImportMatches.length > 0 ? (
             <div>

@@ -377,6 +377,12 @@ export function mergeSketchArea(raw: unknown, fallback: SketchAreaState): Sketch
     ? (profilesRaw.map((x) => normalizeScoutingProfile(x)).filter(Boolean) as SketchAreaState["scoutingProfiles"])
     : base.scoutingProfiles;
   const scoutingBoard = normalizeScoutingBoardFromStorage(u.scoutingBoard);
+  const monthlyRaw = Array.isArray(u.monthlyReportNotes) ? (u.monthlyReportNotes as SketchAreaState["monthlyReportNotes"]) : [];
+  const monthlyReportNotes = monthlyRaw.filter(
+    (n): n is NonNullable<SketchAreaState["monthlyReportNotes"]>[number] =>
+      !!n && typeof n === "object" && typeof (n as { monthKey?: string }).monthKey === "string"
+  );
+
   return {
     calendarEvents: Array.isArray(u.calendarEvents) ? (u.calendarEvents as SketchAreaState["calendarEvents"]) : base.calendarEvents,
     notes: Array.isArray(u.notes) ? (u.notes as SketchAreaState["notes"]) : base.notes,
@@ -386,6 +392,7 @@ export function mergeSketchArea(raw: unknown, fallback: SketchAreaState): Sketch
     watchlist: Array.isArray(u.watchlist) ? (u.watchlist as SketchAreaState["watchlist"]) : base.watchlist,
     scoutingProfiles: profiles,
     scoutingBoard,
+    monthlyReportNotes,
   };
 }
 
@@ -402,5 +409,18 @@ export function mergeSketchAreaState(local: SketchAreaState, cloud: SketchAreaSt
     watchlist: mergeSketchEntsById(a.watchlist, b.watchlist),
     scoutingProfiles: mergeSketchEntsById(a.scoutingProfiles, b.scoutingProfiles),
     scoutingBoard: mergeScoutingBoards(a.scoutingBoard, b.scoutingBoard),
+    monthlyReportNotes: mergeMonthlyReportNotes(a.monthlyReportNotes ?? [], b.monthlyReportNotes ?? []),
   };
+}
+
+function mergeMonthlyReportNotes(
+  a: NonNullable<SketchAreaState["monthlyReportNotes"]>,
+  b: NonNullable<SketchAreaState["monthlyReportNotes"]>
+): NonNullable<SketchAreaState["monthlyReportNotes"]> {
+  const byKey = new Map<string, (typeof a)[number]>();
+  for (const n of [...a, ...b]) {
+    const prev = byKey.get(n.monthKey);
+    if (!prev || (n.updatedAt ?? "") >= (prev.updatedAt ?? "")) byKey.set(n.monthKey, n);
+  }
+  return [...byKey.values()].sort((x, y) => y.monthKey.localeCompare(x.monthKey));
 }

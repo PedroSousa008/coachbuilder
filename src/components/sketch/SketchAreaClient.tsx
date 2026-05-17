@@ -58,7 +58,7 @@ import {
   SketchBoardCanvas,
 } from "./SketchBoardCanvas";
 import { SketchOpponentAnalysisPanel } from "./SketchOpponentAnalysisPanel";
-import { SketchWeeklyReportPanel } from "./SketchWeeklyReportPanel";
+import { SketchMonthlyReportPanel } from "./SketchMonthlyReportPanel";
 import { SketchWatchlistPanel } from "./SketchWatchlistPanel";
 import { SketchCaptationsPanel } from "./SketchCaptationsPanel";
 
@@ -81,7 +81,7 @@ const TABS: { id: TabId; label: string; icon: typeof Calendar }[] = [
   { id: "board", label: "Quadro", icon: LayoutGrid },
   { id: "watchlist", label: "Observação", icon: Users },
   { id: "opponentAi", label: "Análise Adversário AI", icon: Sparkles },
-  { id: "weeklyReport", label: "Relatório 30 dias", icon: FileBarChart },
+  { id: "weeklyReport", label: "Relatório mensal", icon: FileBarChart },
   { id: "captations", label: "Captações", icon: UserRoundSearch },
 ];
 
@@ -118,7 +118,7 @@ export function SketchAreaClient() {
   const initialTab: TabId =
     tabParam === "opponent-ai"
       ? "opponentAi"
-      : tabParam === "weekly-report"
+      : tabParam === "weekly-report" || tabParam === "monthly-report" || tabParam === "relatorio-mensal"
         ? "weeklyReport"
         : tabParam === "captations" || tabParam === "captacoes"
           ? "captations"
@@ -1294,7 +1294,7 @@ export function SketchAreaClient() {
       {tab === "watchlist" ? <SketchWatchlistPanel /> : null}
 
       {tab === "opponentAi" ? <SketchOpponentAnalysisPanel /> : null}
-      {tab === "weeklyReport" ? <SketchWeeklyReportPanel /> : null}
+      {tab === "weeklyReport" ? <SketchMonthlyReportPanel /> : null}
       {tab === "captations" ? <SketchCaptationsPanel /> : null}
     </div>
   );

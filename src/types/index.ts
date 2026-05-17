@@ -87,6 +87,8 @@ export interface TacticMatch {
   tacticId: string;
   date: string;
   opponent: string;
+  /** Competição ou fase (ex.: «Liga», «Taça»). */
+  competition?: string;
   teamGoals: number;
   opponentGoals: number;
   outcome: "win" | "draw" | "loss";
@@ -1014,6 +1016,17 @@ export interface SketchWatchlistEntry {
   updatedAt: string;
 }
 
+/** Análise qualitativa manual do treinador por mês (YYYY-MM). */
+export interface SketchMonthlyReportNotes {
+  monthKey: string;
+  teamForm?: string;
+  bestPhase?: string;
+  worstPhase?: string;
+  strengths?: string;
+  problems?: string;
+  updatedAt: string;
+}
+
 export interface SketchAreaState {
   calendarEvents: SketchCalendarEvent[];
   notes: SketchStaffNote[];
@@ -1025,4 +1038,6 @@ export interface SketchAreaState {
   scoutingProfiles: SketchScoutingProfile[];
   /** Quadro táctico sandbox (igual ao das Táticas, persistido no workspace). */
   scoutingBoard: SketchScoutingBoardState;
+  /** Notas qualitativas do relatório mensal (Sketch Area). */
+  monthlyReportNotes?: SketchMonthlyReportNotes[];
 }
