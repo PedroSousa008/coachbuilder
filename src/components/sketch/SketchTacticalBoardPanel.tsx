@@ -27,8 +27,14 @@ import {
   SketchBoardCanvas,
   BOARD_COLORS,
   NUMBERED_DISK_COLORS,
+  boardFrameToDataUrl,
   type SketchBoardCanvasHandle,
 } from "./SketchBoardCanvas";
+import {
+  downloadBlob,
+  downloadDataUrl,
+  exportBoardAnimationVideo,
+} from "@/lib/sketch-board-export";
 import { SketchBoardTextLayer } from "./SketchBoardTextLayer";
 import { cn } from "@/lib/utils";
 import {
@@ -110,6 +116,7 @@ export function SketchTacticalBoardPanel() {
   const [playing, setPlaying] = useState(false);
   const [playSpeed, setPlaySpeed] = useState<SketchBoardPlaybackSpeed>("normal");
   const [playStrokes, setPlayStrokes] = useState<SketchStroke[] | null>(null);
+  const [mediaExporting, setMediaExporting] = useState(false);
 
   const activeDraftRaw = useMemo(() => {
     if (sketchArea.boardDrafts.length === 0) return null;
@@ -243,6 +250,27 @@ export function SketchTacticalBoardPanel() {
 
   const selectedPlayer = players.find((p) => p.id === selectedPlayerId) ?? null;
 
+  const boardRenderOpts = useMemo(() => {
+    const p = PITCH_COLOR_PRESETS.find((x) => x.id === pitchPreset) ?? PITCH_COLOR_PRESETS[0]!;
+    return {
+      pitchTemplate: activeDraft?.pitchTemplate ?? ("full" as const),
+      grassA: p.grassA,
+      grassB: p.grassB,
+    };
+  }, [pitchPreset, activeDraft?.pitchTemplate]);
+
+  const frameCount = activeDraft?.frames?.length ?? 1;
+  const isMultiFrame = frameCount > 1;
+
+  const framePrintImages = useMemo(() => {
+    const frames = activeDraft?.frames ?? (activeFrame ? [activeFrame] : []);
+    return frames.map((f, i) => ({
+      id: f.id,
+      label: f.label || `Frame ${i + 1}`,
+      src: boardFrameToDataUrl(f.strokes, f.texts, boardRenderOpts),
+    }));
+  }, [activeDraft?.frames, activeFrame, boardRenderOpts]);
+
   const selectionMode = tool === "select" && !playing;
 
   const applyBoardSelection = useCallback((next: BoardSelection | null) => {
@@ -312,13 +340,31 @@ export function SketchTacticalBoardPanel() {
     };
   }, [playing, activeDraft, playSpeed]);
 
-  const exportPng = () => {
-    const url = canvasRef.current?.exportPng();
-    if (!url) return;
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${activeDraft?.title ?? "quadro"}.png`;
-    a.click();
+  const downloadBoardMedia = async () => {
+    if (!activeDraft) return;
+    const frames = activeDraft.frames ?? (activeFrame ? [activeFrame] : []);
+    if (frames.length === 0) return;
+    const base =
+      (activeDraft.title ?? "quadro")
+        .replace(/[^\w\s\-áàâãéêíóôõúçÁÀÂÃÉÊÍÓÔÕÚÇ]/gi, "")
+        .trim() || "quadro";
+
+    if (frames.length === 1) {
+      const f = frames[0]!;
+      const url = boardFrameToDataUrl(f.strokes, f.texts, boardRenderOpts);
+      if (url) downloadDataUrl(url, `${base}.png`);
+      return;
+    }
+
+    setMediaExporting(true);
+    try {
+      const blob = await exportBoardAnimationVideo(frames, boardRenderOpts, playSpeed);
+      downloadBlob(blob, `${base}.webm`);
+    } catch {
+      alert("Não foi possível exportar o vídeo neste browser. Tenta Chrome ou Edge.");
+    } finally {
+      setMediaExporting(false);
+    }
   };
 
   const handlePlaceText = useCallback(
@@ -382,6 +428,9 @@ export function SketchTacticalBoardPanel() {
           #sketch-tactical-print, #sketch-tactical-print * { visibility: visible; }
           #sketch-tactical-print { position: absolute; left: 0; top: 0; width: 100%; padding: 12mm; }
           .no-print { display: none !important; }
+          .print-board-frames { display: block !important; }
+          .print-frame-page { break-after: page; page-break-after: always; }
+          .print-frame-page:last-child { break-after: auto; page-break-after: auto; }
         }
       `}</style>
 
@@ -417,9 +466,15 @@ export function SketchTacticalBoardPanel() {
         <Button type="button" variant="secondary" className="text-xs" onClick={() => setMetaOpen((v) => !v)}>
           Detalhes
         </Button>
-        <Button type="button" variant="secondary" className="text-xs" onClick={exportPng}>
+        <Button
+          type="button"
+          variant="secondary"
+          className="text-xs"
+          onClick={() => void downloadBoardMedia()}
+          disabled={mediaExporting}
+        >
           <Download className="h-3.5 w-3.5" />
-          Imagem
+          {mediaExporting ? "A exportar…" : isMultiFrame ? "Vídeo" : "Imagem"}
         </Button>
         <Button type="button" variant="secondary" className="text-xs" onClick={printBoard}>
           PDF
@@ -538,7 +593,7 @@ export function SketchTacticalBoardPanel() {
         </Card>
 
         {/* Centro — campo */}
-        <div className={cn("relative min-h-[280px]", expanded && "flex min-h-0 flex-1 flex-col")}>
+        <div className={cn("relative min-h-[280px] no-print", expanded && "flex min-h-0 flex-1 flex-col")}>
           <div
             data-board-wrap
             className={cn("relative", expanded && "flex min-h-0 flex-1 flex-col")}
@@ -822,6 +877,21 @@ export function SketchTacticalBoardPanel() {
           </div>
         </CardContent>
       </Card>
+      <div className="print-board-frames hidden">
+        <div className="mb-6 space-y-1">
+          <h1 className="text-xl font-bold text-black">{activeDraft.title}</h1>
+          {activeDraft.objective ? <p className="text-sm text-zinc-700">{activeDraft.objective}</p> : null}
+          <p className="text-xs text-zinc-500">
+            {framePrintImages.length} frame{framePrintImages.length === 1 ? "" : "s"}
+          </p>
+        </div>
+        {framePrintImages.map((f) => (
+          <section key={f.id} className="print-frame-page mb-8">
+            <h2 className="mb-2 text-sm font-semibold text-black">{f.label}</h2>
+            <img src={f.src} alt={f.label} className="w-full rounded-lg border border-zinc-200" />
+          </section>
+        ))}
+      </div>
     </div>
   );
 }

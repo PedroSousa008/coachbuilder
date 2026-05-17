@@ -1,7 +1,7 @@
 "use client";
 
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef } from "react";
-import type { SketchPitchTemplate, SketchStroke, SketchStrokeTool } from "@/types";
+import type { SketchBoardText, SketchPitchTemplate, SketchStroke, SketchStrokeTool } from "@/types";
 import { cn } from "@/lib/utils";
 import {
   BOARD_CANVAS_HEIGHT,
@@ -98,7 +98,7 @@ const DEFAULT_GRASS_A = "#1a3d2e";
 const DEFAULT_GRASS_B = "#0f2419";
 const LINE = "rgba(248, 250, 252, 0.94)";
 
-function drawPitchBackground(
+export function drawPitchBackground(
   ctx: CanvasRenderingContext2D,
   w: number,
   h: number,
@@ -396,6 +396,57 @@ function drawCornerArcs(
   ctx.beginPath();
   ctx.arc(xR - r, yB - r, r, 0, Math.PI * 0.5, false);
   ctx.stroke();
+}
+
+export function drawBoardTexts(ctx: CanvasRenderingContext2D, texts: SketchBoardText[]) {
+  for (const t of texts) {
+    if (!t.text.trim()) continue;
+    const fontSize = t.fontSize ?? boardSc(13);
+    ctx.fillStyle = t.color;
+    ctx.font = `600 ${fontSize}px system-ui, -apple-system, sans-serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    const lines = t.text.split("\n");
+    const lineHeight = fontSize * 1.25;
+    const startY = t.y - ((lines.length - 1) * lineHeight) / 2;
+    lines.forEach((line, i) => {
+      ctx.fillText(line, t.x, startY + i * lineHeight);
+    });
+  }
+}
+
+export type BoardRenderOptions = {
+  pitchTemplate: SketchPitchTemplate;
+  grassA: string;
+  grassB: string;
+};
+
+export function renderBoardFrame(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  strokes: SketchStroke[],
+  texts: SketchBoardText[],
+  opts: BoardRenderOptions
+) {
+  ctx.clearRect(0, 0, width, height);
+  drawPitchBackground(ctx, width, height, opts.pitchTemplate, opts.grassA, opts.grassB);
+  drawStrokes(ctx, strokes);
+  drawBoardTexts(ctx, texts);
+}
+
+export function boardFrameToDataUrl(
+  strokes: SketchStroke[],
+  texts: SketchBoardText[],
+  opts: BoardRenderOptions
+): string {
+  const canvas = document.createElement("canvas");
+  canvas.width = BOARD_CANVAS_WIDTH;
+  canvas.height = BOARD_CANVAS_HEIGHT;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return "";
+  renderBoardFrame(ctx, BOARD_CANVAS_WIDTH, BOARD_CANVAS_HEIGHT, strokes, texts, opts);
+  return canvas.toDataURL("image/png");
 }
 
 function drawStrokes(ctx: CanvasRenderingContext2D, strokes: SketchStroke[]) {
