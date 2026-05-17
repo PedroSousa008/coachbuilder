@@ -863,7 +863,17 @@ export function TrainingPlansClient() {
                         </div>
                         <div className="mt-3 flex-1">
                           {item.videoUrl ? (
-                            <TrainingVideoEmbed videoUrl={item.videoUrl} title={item.title} />
+                            <TrainingVideoEmbed
+                              videoUrl={item.videoUrl}
+                              fallbackVideoDataUrl={
+                                item.isCoachSketchExercise
+                                  ? savedTrainingExercises.find(
+                                      (e) => e.id === item.coachSavedExerciseId
+                                    )?.videoDataUrl
+                                  : undefined
+                              }
+                              title={item.title}
+                            />
                           ) : (
                             <p className="rounded-xl border border-dashed border-surface-border bg-black/20 px-3 py-8 text-center text-xs text-zinc-500">
                               Sem vídeo de demonstração para este exercício.
@@ -1084,7 +1094,13 @@ export function TrainingPlansClient() {
                           <span className="text-zinc-400">Variações:</span> {ex.variations}
                         </p>
                       ) : null}
-                      {ex.videoUrl ? <TrainingVideoEmbed videoUrl={ex.videoUrl} title={ex.title} /> : null}
+                      {ex.videoUrl ? (
+                        <TrainingVideoEmbed
+                          videoUrl={ex.videoUrl}
+                          fallbackVideoDataUrl={ex.videoDataUrl}
+                          title={ex.title}
+                        />
+                      ) : null}
                       {ex.diagramHint ? (
                         <p className="mt-2 rounded-lg bg-zinc-800/80 px-3 py-2 font-mono text-xs text-zinc-400">
                           {ex.diagramHint}

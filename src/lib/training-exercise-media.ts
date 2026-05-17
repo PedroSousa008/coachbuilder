@@ -1,7 +1,16 @@
-import { idbKvDelete, idbKvGet, idbKvSet } from "@/lib/coachbuilder-idb-kv";
+import {
+  loadPersistedJson,
+  PERSIST_IDB_OVERFLOW_SUFFIX,
+  savePersistedJson,
+} from "@/lib/coachbuilder-persist";
+import { idbKvDelete } from "@/lib/coachbuilder-idb-kv";
 
-const VIDEO_KEY_PREFIX = "coach-exercise-video-v1:";
 export const COACH_EXERCISE_VIDEO_SCHEME = "coach-exercise-video:";
+
+const VIDEO_PERSIST_PREFIX = "coachbuilder-coach-exercise-video-";
+
+/** Tamanho máximo do vídeo embutido no workspace (caracteres data URL). */
+export const COACH_EXERCISE_INLINE_VIDEO_MAX_CHARS = 4_000_000;
 
 export function coachExerciseVideoUrl(exerciseId: string): string {
   return `${COACH_EXERCISE_VIDEO_SCHEME}${exerciseId}`;
@@ -17,8 +26,8 @@ export function parseCoachExerciseVideoId(url: string): string | null {
   return id || null;
 }
 
-function videoStorageKey(exerciseId: string): string {
-  return `${VIDEO_KEY_PREFIX}${exerciseId}`;
+function videoPersistKey(exerciseId: string): string {
+  return `${VIDEO_PERSIST_PREFIX}${exerciseId}`;
 }
 
 function blobToDataUrl(blob: Blob): Promise<string> {
@@ -37,16 +46,40 @@ function blobToDataUrl(blob: Blob): Promise<string> {
   });
 }
 
-/** Guarda o MP4/WebM do exercício na pasta local do browser (IndexedDB), como os MP4 em public/. */
-export async function storeCoachExerciseVideo(exerciseId: string, blob: Blob): Promise<void> {
+/**
+ * Guarda o vídeo do exercício (mesma persistência que o resto da app: localStorage + IDB se necessário).
+ * Devolve o data URL para cópia de segurança opcional no registo do exercício.
+ */
+export async function storeCoachExerciseVideo(exerciseId: string, blob: Blob): Promise<string> {
+  if (blob.size < 1024) {
+    throw new Error("A gravação do vídeo falhou (ficheiro vazio). Tenta Chrome ou Edge.");
+  }
   const dataUrl = await blobToDataUrl(blob);
-  await idbKvSet(videoStorageKey(exerciseId), dataUrl);
+  const key = videoPersistKey(exerciseId);
+  const result = await savePersistedJson(key, dataUrl);
+  if (!result.ok) {
+    throw new Error("Não foi possível guardar o vídeo — armazenamento local cheio.");
+  }
+  const check = await loadPersistedJson<string | null>(key, null);
+  if (!check || check.length < 200) {
+    throw new Error("O vídeo não ficou guardado correctamente neste dispositivo.");
+  }
+  return dataUrl;
 }
 
 export async function getCoachExerciseVideoDataUrl(exerciseId: string): Promise<string | null> {
-  return idbKvGet(videoStorageKey(exerciseId));
+  return loadPersistedJson<string | null>(videoPersistKey(exerciseId), null);
 }
 
 export async function deleteCoachExerciseVideo(exerciseId: string): Promise<void> {
-  await idbKvDelete(videoStorageKey(exerciseId));
+  const key = videoPersistKey(exerciseId);
+  if (typeof window !== "undefined") {
+    try {
+      localStorage.removeItem(key);
+      localStorage.removeItem(key + PERSIST_IDB_OVERFLOW_SUFFIX);
+    } catch {
+      /* ignore */
+    }
+  }
+  await idbKvDelete(key).catch(() => {});
 }

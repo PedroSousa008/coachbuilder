@@ -36,11 +36,19 @@ function youtubeVideoId(raw: string): string | null {
   return null;
 }
 
+function mimeFromDataUrl(dataUrl: string): string | undefined {
+  const m = /^data:([^;,]+)/.exec(dataUrl);
+  return m?.[1];
+}
+
 export function TrainingVideoEmbed({
   videoUrl,
+  fallbackVideoDataUrl,
   title = "Vídeo do exercício",
 }: {
   videoUrl: string;
+  /** Cópia guardada no exercício (fallback se a chave local falhar). */
+  fallbackVideoDataUrl?: string;
   title?: string;
 }) {
   const [mediaFailed, setMediaFailed] = useState(false);
@@ -58,7 +66,7 @@ export function TrainingVideoEmbed({
     }
     const exerciseId = parseCoachExerciseVideoId(videoUrl);
     if (!exerciseId) {
-      setCoachVideoSrc(null);
+      setCoachVideoSrc(fallbackVideoDataUrl ?? null);
       return;
     }
     let cancelled = false;
@@ -66,14 +74,15 @@ export function TrainingVideoEmbed({
     setMediaFailed(false);
     void getCoachExerciseVideoDataUrl(exerciseId).then((dataUrl) => {
       if (cancelled) return;
-      setCoachVideoSrc(dataUrl);
+      const src = dataUrl ?? fallbackVideoDataUrl ?? null;
+      setCoachVideoSrc(src);
       setCoachVideoLoading(false);
-      if (!dataUrl) setMediaFailed(true);
+      if (!src) setMediaFailed(true);
     });
     return () => {
       cancelled = true;
     };
-  }, [videoUrl, isCoachVideo]);
+  }, [videoUrl, isCoachVideo, fallbackVideoDataUrl]);
 
   if (isYoutube) {
     return (
@@ -98,6 +107,7 @@ export function TrainingVideoEmbed({
       : encodeLocalPublicPath(videoUrl.startsWith("/") ? videoUrl.trim() : `/${videoUrl.trim()}`);
   const src = raw;
   const isLocalFile = !isCoachVideo && src?.startsWith("/");
+  const videoMime = src?.startsWith("data:") ? mimeFromDataUrl(src) : undefined;
 
   return (
     <div className="mt-3 space-y-2 rounded-xl border border-surface-border bg-surface-raised/30 p-3">
@@ -107,7 +117,7 @@ export function TrainingVideoEmbed({
       ) : mediaFailed || !src ? (
         <p className="text-sm text-amber-200/90">
           {isCoachVideo
-            ? "Vídeo do exercício não encontrado neste dispositivo. Guarda novamente a partir do quadro tático."
+            ? "Vídeo do exercício não encontrado neste dispositivo. Volta ao quadro tático e carrega outra vez em Guardar Treino."
             : "Não foi possível carregar o ficheiro. Coloca o MP4 na pasta public ou substitui por um link YouTube."}
         </p>
       ) : (
@@ -119,7 +129,7 @@ export function TrainingVideoEmbed({
           title={title}
           onError={() => setMediaFailed(true)}
         >
-          <source src={src} />
+          <source src={src} type={videoMime} />
         </video>
       )}
       {src && !isCoachVideo ? (

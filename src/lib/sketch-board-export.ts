@@ -14,6 +14,39 @@ import {
 
 const EXPORT_FPS = 30;
 
+/** Canvas no DOM — necessário para MediaRecorder fiável em Safari e mobile. */
+function attachRecordingCanvas(): {
+  canvas: HTMLCanvasElement;
+  ctx: CanvasRenderingContext2D;
+  cleanup: () => void;
+} {
+  const canvas = document.createElement("canvas");
+  canvas.width = BOARD_CANVAS_WIDTH;
+  canvas.height = BOARD_CANVAS_HEIGHT;
+  canvas.setAttribute("aria-hidden", "true");
+  Object.assign(canvas.style, {
+    position: "fixed",
+    left: "-9999px",
+    top: "0",
+    width: "1px",
+    height: "1px",
+    opacity: "0",
+    pointerEvents: "none",
+    zIndex: "-1",
+  });
+  document.body.appendChild(canvas);
+  const ctx = canvas.getContext("2d");
+  if (!ctx) {
+    canvas.remove();
+    throw new Error("Canvas 2D unavailable");
+  }
+  return {
+    canvas,
+    ctx,
+    cleanup: () => canvas.remove(),
+  };
+}
+
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
@@ -44,11 +77,7 @@ export async function exportBoardAnimationVideo(
     throw new Error("exportBoardAnimationVideo requires at least 2 frames");
   }
 
-  const canvas = document.createElement("canvas");
-  canvas.width = BOARD_CANVAS_WIDTH;
-  canvas.height = BOARD_CANVAS_HEIGHT;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("Canvas 2D unavailable");
+  const { canvas, ctx, cleanup } = attachRecordingCanvas();
 
   const mimeType = pickVideoMimeType();
   const stream = canvas.captureStream(EXPORT_FPS);
@@ -97,7 +126,12 @@ export async function exportBoardAnimationVideo(
 
   recorder.stop();
   stream.getTracks().forEach((t) => t.stop());
-  return blobReady;
+  const blob = await blobReady;
+  cleanup();
+  if (blob.size < 1024) {
+    throw new Error("A gravação do vídeo não produziu dados — tenta noutro browser.");
+  }
+  return blob;
 }
 
 export function downloadDataUrl(dataUrl: string, filename: string) {
@@ -178,11 +212,7 @@ export async function exportBoardStaticHoldVideo(
   opts: BoardRenderOptions,
   holdMs = 2800
 ): Promise<Blob> {
-  const canvas = document.createElement("canvas");
-  canvas.width = BOARD_CANVAS_WIDTH;
-  canvas.height = BOARD_CANVAS_HEIGHT;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("Canvas 2D unavailable");
+  const { canvas, ctx, cleanup } = attachRecordingCanvas();
 
   const mimeType = pickVideoMimeType();
   const stream = canvas.captureStream(EXPORT_FPS);
@@ -209,7 +239,12 @@ export async function exportBoardStaticHoldVideo(
   }
   recorder.stop();
   stream.getTracks().forEach((t) => t.stop());
-  return blobReady;
+  const blob = await blobReady;
+  cleanup();
+  if (blob.size < 1024) {
+    throw new Error("A gravação do vídeo não produziu dados — tenta noutro browser.");
+  }
+  return blob;
 }
 
 /** Vídeo da animação ou frame estático se só existir um frame. */

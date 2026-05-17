@@ -6,7 +6,11 @@ import {
   boardFramesCompositeDataUrl,
   exportBoardVideoForFrames,
 } from "@/lib/sketch-board-export";
-import { coachExerciseVideoUrl, storeCoachExerciseVideo } from "@/lib/training-exercise-media";
+import {
+  COACH_EXERCISE_INLINE_VIDEO_MAX_CHARS,
+  coachExerciseVideoUrl,
+  storeCoachExerciseVideo,
+} from "@/lib/training-exercise-media";
 import type { NewSavedTrainingExerciseInput } from "@/types";
 
 export type SaveBoardTrainingFormInput = {
@@ -34,7 +38,7 @@ export async function buildSavedExerciseFromBoardDraft(
 
   const printImageDataUrl = boardFramesCompositeDataUrl(frames, boardRenderOpts);
   const videoBlob = await exportBoardVideoForFrames(frames, boardRenderOpts, playSpeed);
-  await storeCoachExerciseVideo(exerciseId, videoBlob);
+  const videoDataUrlStored = await storeCoachExerciseVideo(exerciseId, videoBlob);
 
   const explanation = form.explanation.trim();
 
@@ -49,6 +53,10 @@ export async function buildSavedExerciseFromBoardDraft(
       ? "Ver explicação do exercício no quadro tático e no vídeo de demonstração."
       : "Exercício criado no quadro tático da Sketch Area.",
     videoUrl: coachExerciseVideoUrl(exerciseId),
+    videoDataUrl:
+      videoDataUrlStored.length <= COACH_EXERCISE_INLINE_VIDEO_MAX_CHARS
+        ? videoDataUrlStored
+        : undefined,
     fromSketchBoard: true,
     printImageDataUrl: printImageDataUrl || undefined,
     sketchBoardDraftId: normalized.id,

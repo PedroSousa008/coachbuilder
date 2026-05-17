@@ -380,6 +380,8 @@ export interface SavedTrainingExercise {
   printImageDataUrl?: string;
   /** Ligação ao rascunho do quadro (evita duplicados). */
   sketchBoardDraftId?: string;
+  /** Cópia inline do vídeo (só se couber no armazenamento); fallback se o IDB falhar. */
+  videoDataUrl?: string;
 }
 
 export type NewSavedTrainingExerciseInput = {
@@ -400,6 +402,7 @@ export type NewSavedTrainingExerciseInput = {
   themes?: SavedExerciseCategory[];
   printImageDataUrl?: string;
   sketchBoardDraftId?: string;
+  videoDataUrl?: string;
   id?: string;
 };
 

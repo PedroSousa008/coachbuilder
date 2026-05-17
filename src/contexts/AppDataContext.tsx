@@ -1855,6 +1855,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       themes: input.themes,
       printImageDataUrl: input.printImageDataUrl,
       sketchBoardDraftId: input.sketchBoardDraftId,
+      videoDataUrl: input.videoDataUrl,
     };
     setSavedTrainingExercises((prev) => {
       if (input.sketchBoardDraftId) {
