@@ -5,6 +5,7 @@
 
 import type { Player, SavedExerciseCategory, TrainingAgeGroupId } from "@/types";
 import {
+  ensureExerciseAgeDefaults,
   resolveExerciseAgeGroupsForTitle,
   type TrainingExerciseAgeMap,
 } from "@/lib/training-age-groups";
@@ -2197,6 +2198,8 @@ Ao forçar jogo longo, garante-se vantagem numérica no meio-campo (4v2), aument
     }),
   },
 ];
+
+ensureExerciseAgeDefaults(MAIN_DRILLS.map((d) => d.title));
 
 function scoreDrill(themes: TrainingThemeId[], def: MainDrillDef): number {
   let s = 0;

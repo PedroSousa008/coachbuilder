@@ -180,11 +180,37 @@ export function normalizeTrainingExerciseAgeMap(raw: unknown): TrainingExerciseA
   return Object.keys(out).length > 0 ? out : undefined;
 }
 
+/** Junta defaults do catálogo com overrides guardados no perfil do treinador. */
+export function mergeTrainingExerciseAgeMap(
+  userMap: TrainingExerciseAgeMap | undefined
+): TrainingExerciseAgeMap {
+  const merged: TrainingExerciseAgeMap = { ...DEFAULT_TRAINING_EXERCISE_AGE_MAP };
+  if (userMap) {
+    for (const [title, groups] of Object.entries(userMap)) {
+      const normalized = normalizeTrainingAgeGroups(groups);
+      if (normalized.length > 0) merged[title] = normalized;
+    }
+  }
+  return merged;
+}
+
+/** Garante que cada título do catálogo built-in tem pelo menos o escalão por defeito (todos). */
+export function ensureExerciseAgeDefaults(titles: readonly string[]): void {
+  for (const title of titles) {
+    const key = title.trim();
+    if (!key) continue;
+    const existing = DEFAULT_TRAINING_EXERCISE_AGE_MAP[key];
+    if (existing && existing.length > 0) continue;
+    DEFAULT_TRAINING_EXERCISE_AGE_MAP[key] = [...TRAINING_AGE_GROUPS];
+  }
+}
+
 export function resolveExerciseAgeGroupsForTitle(
   title: string,
   map: TrainingExerciseAgeMap | null | undefined
 ): TrainingAgeGroupId[] {
-  const mapped = map?.[title] ?? DEFAULT_TRAINING_EXERCISE_AGE_MAP[title];
+  const effective = map ?? DEFAULT_TRAINING_EXERCISE_AGE_MAP;
+  const mapped = effective[title] ?? DEFAULT_TRAINING_EXERCISE_AGE_MAP[title];
   if (mapped && mapped.length > 0) return normalizeTrainingAgeGroups(mapped);
   return [...TRAINING_AGE_GROUPS];
 }

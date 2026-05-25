@@ -35,6 +35,8 @@ import { Bookmark, PlayCircle, Search } from "lucide-react";
 import {
   TRAINING_AGE_GROUP_LABELS,
   TRAINING_AGE_GROUPS,
+  mergeTrainingExerciseAgeMap,
+  resolveExerciseAgeGroupsForTitle,
   type TrainingExerciseAgeMap,
 } from "@/lib/training-age-groups";
 import {
@@ -154,6 +156,7 @@ export function TrainingPlansClient() {
   const [libraryFilter, setLibraryFilter] = useState<"all" | SavedExerciseCategory>("all");
   const [catalogExpandedIds, setCatalogExpandedIds] = useState<Set<string>>(() => new Set());
   const [catalogFilterPick, setCatalogFilterPick] = useState<Set<SavedExerciseCategory>>(() => new Set());
+  const [catalogSearch, setCatalogSearch] = useState("");
   const [manualTotalExercises, setManualTotalExercises] = useState<number>(6);
   const [manualCategoryTargets, setManualCategoryTargets] = useState<Record<SavedExerciseCategory, number>>({
     warmup: 1,
@@ -184,6 +187,10 @@ export function TrainingPlansClient() {
 
   const selectedAgeGroup: TrainingAgeGroupId = coachProfile.trainingSquadAgeGroup ?? "juvenil";
   const exerciseAgeMap: TrainingExerciseAgeMap | undefined = coachProfile.trainingExerciseAgeMap;
+  const effectiveExerciseAgeMap = useMemo(
+    () => mergeTrainingExerciseAgeMap(exerciseAgeMap),
+    [exerciseAgeMap]
+  );
 
   const trainingCatalog = useMemo(() => {
     const builtIn = getTrainingCatalogItems(selectedPlayers);
@@ -199,9 +206,24 @@ export function TrainingPlansClient() {
   );
 
   const filteredTrainingCatalog = useMemo(() => {
-    if (catalogFilterPick.size === 0) return trainingCatalog;
-    return trainingCatalog.filter((item) => item.filterCategories.some((c) => catalogFilterPick.has(c)));
-  }, [trainingCatalog, catalogFilterPick]);
+    let items = trainingCatalog.filter((item) =>
+      item.phase === "cooldown" ||
+      resolveExerciseAgeGroupsForTitle(item.title, effectiveExerciseAgeMap).includes(selectedAgeGroup)
+    );
+    if (catalogFilterPick.size > 0) {
+      items = items.filter((item) => item.filterCategories.some((c) => catalogFilterPick.has(c)));
+    }
+    const q = catalogSearch.trim().toLowerCase();
+    if (q) {
+      items = items.filter(
+        (item) =>
+          item.title.toLowerCase().includes(q) ||
+          item.brief.toLowerCase().includes(q) ||
+          item.filterCategories.some((c) => SAVED_EXERCISE_CATEGORY_LABELS[c].toLowerCase().includes(q))
+      );
+    }
+    return items;
+  }, [trainingCatalog, catalogFilterPick, catalogSearch, selectedAgeGroup, effectiveExerciseAgeMap]);
 
   const savedExerciseTitleSet = useMemo(
     () => new Set(savedTrainingExercises.map((ex) => normalizeExerciseTitle(ex.title))),
@@ -446,7 +468,7 @@ export function TrainingPlansClient() {
           objective: objective.trim(),
           players: selectedPlayers,
           ageGroup: selectedAgeGroup,
-          exerciseAgeMap,
+          exerciseAgeMap: effectiveExerciseAgeMap,
         });
         setFullPlan(plan);
         setFullMeta({ durationMin, playerCount: selectedCount });
@@ -475,7 +497,12 @@ export function TrainingPlansClient() {
     setDrillLoading(true);
     queueMicrotask(() => {
       try {
-        const drill = buildLocalSingleDrill(drillBrief.trim(), selectedPlayers, selectedAgeGroup, exerciseAgeMap);
+        const drill = buildLocalSingleDrill(
+          drillBrief.trim(),
+          selectedPlayers,
+          selectedAgeGroup,
+          effectiveExerciseAgeMap
+        );
         setSingleDrill(drill);
       } catch (e) {
         const msg = e instanceof Error ? e.message : "";
@@ -813,6 +840,21 @@ export function TrainingPlansClient() {
               </p>
             </CardHeader>
             <CardContent className="space-y-6">
+              <div>
+                <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">Pesquisar</p>
+                <input
+                  type="search"
+                  value={catalogSearch}
+                  onChange={(e) => setCatalogSearch(e.target.value)}
+                  placeholder="Ex.: Variações para Cruzamento, 3 Cenários 5v5…"
+                  className="mt-2 w-full rounded-xl border border-surface-border bg-[#0c1014] px-3 py-2 text-sm text-zinc-200 placeholder:text-zinc-600"
+                />
+                <p className="mt-2 text-xs text-zinc-600">
+                  {filteredTrainingCatalog.length} exercício(s) para{" "}
+                  <span className="text-zinc-400">{TRAINING_AGE_GROUP_LABELS[selectedAgeGroup]}</span>
+                  {catalogFilterPick.size > 0 || catalogSearch.trim() ? " (com filtros activos)" : ""}.
+                </p>
+              </div>
               <div>
                 <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">Filtrar por tipo</p>
                 <p className="mt-1 text-xs text-zinc-600">
@@ -1205,7 +1247,13 @@ export function TrainingPlansClient() {
             const want = manualCategoryTargets[c] ?? 0;
             const selectedIds = manualSelectedCatalogIds[c] ?? [];
             const options = trainingCatalog
-              .filter((item) => item.filterCategories.includes(c))
+              .filter(
+                (item) =>
+                  item.filterCategories.includes(c) &&
+                  resolveExerciseAgeGroupsForTitle(item.title, effectiveExerciseAgeMap).includes(
+                    selectedAgeGroup
+                  )
+              )
               .sort((a, b) => a.title.localeCompare(b.title, "pt-PT"));
             return (
               <Card key={`manual-pick-${c}`}>
