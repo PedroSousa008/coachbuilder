@@ -82,6 +82,14 @@ export const DEFAULT_TRAINING_EXERCISE_AGE_MAP: TrainingExerciseAgeMap = {
     "juvenil",
     "senior",
   ],
+  "3 Cenários 5v5": [
+    "benjamin",
+    "iniciado",
+    "infantil",
+    "junior",
+    "juvenil",
+    "senior",
+  ],
   "4v4 mais apoios laterais": [
     "benjamin",
     "infantil",

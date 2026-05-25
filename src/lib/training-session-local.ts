@@ -294,6 +294,12 @@ export const VARIACAO_CRUZAMENTOS_VIDEO_URL = "/videos/training/variação-cruza
 export const CROSSING_DRILL_VIDEO_URL = "/videos/training/crossing-drill.mp4";
 
 /**
+ * Vídeo do exercício "3 Cenários 5v5".
+ * Coloca o ficheiro em `public/videos/training/3-cenários.mp4`.
+ */
+export const THREE_SCENARIOS_5V5_VIDEO_URL = "/videos/training/3-cenários.mp4";
+
+/**
  * Vídeo do exercício "4v4 + Apoios Laterais".
  * Coloca o ficheiro em `public/videos/training/4v4-4-teams.mp4`.
  */
@@ -676,6 +682,11 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
     "cruzamento overlap",
     "variacoes para cruzamento",
     "coordenacao lateral extremo",
+    "3 cenarios 5v5",
+    "golo vale x2",
+    "reposicao rapida treinador",
+    "apenas passes para a frente",
+    "primeira equipa a marcar 3 golos",
     "4v4 mais apoios",
     "4v4 apoios laterais",
     "sai imediatamente",
@@ -778,6 +789,9 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
     "timing do cruzamento",
     "variacao de cruzamentos",
     "variacoes para cruzamento",
+    "3 cenarios 5v5",
+    "golo vale duplo",
+    "bloco alto",
     "underlap",
     "underlap do extremo",
     "underlap do lateral",
@@ -1651,6 +1665,26 @@ const MAIN_DRILLS: MainDrillDef[] = [
     }),
   },
   {
+    themes: ["possession", "transition", "finishing", "physical"],
+    title: "3 Cenários 5v5",
+    describe: (pl, m) => ({
+      description: `Jogo competitivo 5v5 com regras variáveis num campo reduzido com 2 balizas grandes. O objetivo é ser a primeira equipa a marcar 3 golos; a vencedora mantém-se em campo e a derrotada sai, sendo substituída por uma equipa que está fora a realizar trabalho físico (abdominais, sprints, etc.). Após cada golo muda a regra: 1ª — Golo vale x2 se todos os jogadores estiverem à frente da linha da área (bloco alto, agressividade ofensiva e reação rápida); 2ª — Reposição rápida do treinador: após golo, nova bola imediata para a equipa que marcou (intensidade, pressão e velocidade de transição); 3ª — Apenas passes para a frente: só passes em progressão (decisões rápidas, jogo direto, mobilidade ofensiva e duelos 1v1). O foco está na competitividade, intensidade, reação rápida, pressão ofensiva e tomada de decisão em espaço reduzido. (${m} min)`,
+      coachingPoints:
+        "1.ª regra: linha da área como referência — todos à frente antes do remate para valer duplo; atacar com bloco alto e recuperação imediata se perder. 2.ª regra: equipa que marca recebe bola do treinador sem esperar pelo GR; transição ofensiva em ≤3 toques quando possível. 3.ª regra: passes só em progressão (sem recuar com a bola); comunicar a mudança de regra após cada golo. Equipa de fora: trabalho físico curto e intenso; entrada rápida ao apito para não atrasar o jogo.",
+      setup:
+        "Campo reduzido proporcional à idade (ex. ~40–50×30–35 m); 2 balizas grandes com GR ou jogadores nas traves; 3 equipas de 5 com coletes distintos; linha da área marcada com cones; bolas extra com o treinador para a 2.ª regra.",
+      groupSplit:
+        pl.length >= 15
+          ? "3×5 em campo; rotação vencedor fica / derrotado sai + equipa de fora com trabalho físico; alternar GR ou neutro se necessário."
+          : pl.length >= 12
+            ? "2 equipas de 5 + terceira reduzida (4v4+1 neutro) ou 4v4 com jogadores de fora a rodar após 2 golos."
+            : "4v4 com regras por blocos de tempo em vez de por golo; coach como terceira referência ou trabalho físico simbólico.",
+      diagramHint:
+        "Rectângulo 5v5; 3 equipas; após golo → mudança de regra (x2 com bloco alto / reposição coach / passes só para a frente); vencedor mantém, derrotado sai → equipa de fora entra.",
+      videoUrl: THREE_SCENARIOS_5V5_VIDEO_URL,
+    }),
+  },
+  {
     themes: ["transition", "finishing", "physical"],
     title: "Superioridade nos Setores",
     describe: (pl, m) => ({
@@ -2446,6 +2480,7 @@ const SINGLE_DRILL_20_MIN_TITLES = new Set<string>([
   "Transição com Finalização",
   "Recuperação de Bola no Rondo para Finalização",
   "4v4 + Apoios Laterais",
+  "3 Cenários 5v5",
   "Superioridade nos Setores",
 ]);
 /** Valor médio quando o treinador indica ~15–20 min (ex.: bloco final). */
@@ -2615,6 +2650,15 @@ function singleDrillProgressionVariationsForTitle(title: string): {
         "Apoios exteriores com máximo 2 toques num bloco de 3 min antes de voltar a 1 toque; ou campo mais estreito para forçar verticalidade; ou golo de cabeça vale duplo.",
       variations:
         "Rotação dos apoios laterais com os da linha de baliza a cada 5 minutos; ou equipa que marca mantém o campo e escolhe qual adversário entra; ou limite de 8 s para remate após recuperação no 4v4.",
+    };
+  }
+
+  if (title === "3 Cenários 5v5") {
+    return {
+      progression:
+        "Meta de 2 golos em vez de 3 para acelerar rotações; ou na 1.ª regra exige 4 jogadores (não todos) à frente da linha para o duplo; ou na 3.ª regra permite 1 passe para trás por posse antes de progressão.",
+      variations:
+        "Ciclo fixo das 3 regras por ordem (1→2→3) em vez de mudar só após golo; ou equipa de fora entra sem trabalho físico num bloco; ou golo de cabeça vale +1 em qualquer regra.",
     };
   }
 
@@ -3033,6 +3077,7 @@ export function getTrainingCatalogItems(players: Player[]): TrainingCatalogItem[
     "Exercício de Finalização 3v2": ["finishing", "defensive"],
     "Ataque com 5 Equipas 3v3": ["finishing", "transition", "physical"],
     "4v4 + Apoios Laterais": ["finishing", "transition", "physical"],
+    "3 Cenários 5v5": ["possession", "transition", "finishing", "physical"],
     "Superioridade nos Setores": ["finishing", "transition", "physical"],
 
     // Organização defensiva

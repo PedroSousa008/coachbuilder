@@ -36,6 +36,7 @@ const TRAINING_EXERCISE_PRINT_IMAGE_BY_TITLE: Record<string, string> = {
   "Movimentação dentro de Área em Cruzamentos": "movimentação-cruzamento.png",
   "Variação de Cruzamentos": "variação-cruzamentos.png",
   "Variações para Cruzamento": "crossing-drill.png",
+  "3 Cenários 5v5": "3-cenários.png",
   "4v4 + Apoios Laterais": "4v4-4-teams.png",
   "Superioridade nos Setores": "superioridade-setores.png",
   "4 Exercícios de Finalização": "4-finishing-drills.png",
