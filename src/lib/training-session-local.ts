@@ -296,9 +296,9 @@ export const CROSSING_DRILL_VIDEO_URL = "/videos/training/crossing-drill.mp4";
 
 /**
  * Vídeo do exercício "3 Cenários 5v5".
- * Coloca o ficheiro em `public/videos/training/3-cenários.mp4`.
+ * Coloca o ficheiro em `public/videos/training/3-cenarios.mp4`.
  */
-export const THREE_SCENARIOS_5V5_VIDEO_URL = "/videos/training/3-cenários.mp4";
+export const THREE_SCENARIOS_5V5_VIDEO_URL = "/videos/training/3-cenarios.mp4";
 
 /**
  * Vídeo do exercício "4v4 + Apoios Laterais".

@@ -47,4 +47,4 @@ Expected file names:
 - `pressing-exercise.png`
 - `defensive-recovery.png`
 - `crossing-drill.png`
-- `3-cenários.png`
+- `3-cenarios.png`
