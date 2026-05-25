@@ -301,6 +301,12 @@ export const CROSSING_DRILL_VIDEO_URL = "/videos/training/crossing-drill.mp4";
 export const THREE_SCENARIOS_5V5_VIDEO_URL = "/videos/training/3-cenarios.mp4";
 
 /**
+ * Vídeo do exercício "Ataque após sucessão de passes".
+ * Coloca o ficheiro em `public/videos/training/possession-to-attack.mp4`.
+ */
+export const POSSESSION_TO_ATTACK_VIDEO_URL = "/videos/training/possession-to-attack.mp4";
+
+/**
  * Vídeo do exercício "4v4 + Apoios Laterais".
  * Coloca o ficheiro em `public/videos/training/4v4-4-teams.mp4`.
  */
@@ -688,11 +694,20 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
     "reposicao rapida treinador",
     "apenas passes para a frente",
     "primeira equipa a marcar 3 golos",
+    "ataque rapido",
+    "ataque apos sucessao de passes",
+    "possession to attack",
     "4v4 mais apoios",
     "4v4 apoios laterais",
     "sai imediatamente",
     "equipa de fora entra",
     "superioridade nos setores",
+    "ataque apos sucessao de passes",
+    "sucessao de passes",
+    "7 passes consecutivos",
+    "6v2 posse",
+    "5v4 ofensivo",
+    "organizacao ofensiva e defensiva",
     "superioridade ofensiva",
     "reconhecimento de superioridade",
     "organizacao ofensiva",
@@ -1686,6 +1701,26 @@ const MAIN_DRILLS: MainDrillDef[] = [
     }),
   },
   {
+    themes: ["possession", "transition", "finishing"],
+    title: "Ataque após sucessão de passes",
+    describe: (pl, m) => ({
+      description: `Exercício por setores com posse e transição ofensiva. Uma equipa defende a baliza de 11 e a outra ataca; a defensora procura recuperar e finalizar em 2 balizas pequenas. O campo divide-se em 2 setores. No primeiro, um retângulo onde a equipa atacante tem superioridade 6v2: os 6 mantêm-se nas laterais, circulam a bola e tentam completar 7 passes consecutivos. Após os 7 passes, a bola entra no segundo setor (n.º 10/falso 9, avançado e 2 extremos) numa situação inicial 4v4; o jogador que fez o passe de ligação pode avançar, transformando a jogada em 5v4 ofensivo para atacar rapidamente a baliza de 11. Se a defesa recuperar, os 2 pressores no retângulo saem e junta-se superioridade ofensiva para atacar as 2 mini-balizas. O foco está na posse sob pressão, ligação entre setores, transição ofensiva rápida e reação à recuperação. (${m} min)`,
+      coachingPoints:
+        "No retângulo 6v2: largura nas laterais, passes curtos e ritmo para contar 7 seguidos sem perder; decisão clara no 7.º passe para o 2.º setor. No 4v4→5v4: quem liga entra com velocidade; falso 9/10 a ligar extremos e avançado; remate ou último passe em ≤6–8 s após entrada no 2.º setor. Na recuperação defensiva: os 2 do retângulo saem de imediato; transição compacta para as 2 mini-balizas com superioridade numérica e poucos toques.",
+      setup:
+        "Mais de meio campo em 2 setores; retângulo delimitado no 1.º setor; baliza de 11 + 2 mini-balizas; coletes de 2 cores; bolas extra com o treinador; linha de transição entre setores bem marcada.",
+      groupSplit:
+        pl.length >= 16
+          ? "Estrutura completa 6+2 no retângulo, 4+1 no 2.º setor e defesa à baliza + 2 pressores; rodar funções (posse, ligação, extremos, defesa) a cada 5–6 min."
+          : pl.length >= 12
+            ? "Reduzir a 5v2 no retângulo ou meta de 5 passes antes de ligar; manter 5v4 no 2.º setor com neutro de apoio se faltarem jogadores."
+            : "Simplificar para 4v2 + 5 passes e 3v3+1 no 2.º setor; 1 mini-baliza na transição defensiva.",
+      diagramHint:
+        "Setor 1: retângulo 6v2 nas laterais → 7 passes → passe ao setor 2 (4v4: 10, avançado, 2 extremos) → entrada do passador (5v4) → finalização à baliza 11; recuperação → 2 pressores saem + superioridade → 2 mini-balizas.",
+      videoUrl: POSSESSION_TO_ATTACK_VIDEO_URL,
+    }),
+  },
+  {
     themes: ["transition", "finishing", "physical"],
     title: "Superioridade nos Setores",
     describe: (pl, m) => ({
@@ -2484,6 +2519,7 @@ const SINGLE_DRILL_20_MIN_TITLES = new Set<string>([
   "Recuperação de Bola no Rondo para Finalização",
   "4v4 + Apoios Laterais",
   "3 Cenários 5v5",
+  "Ataque após sucessão de passes",
   "Superioridade nos Setores",
 ]);
 /** Valor médio quando o treinador indica ~15–20 min (ex.: bloco final). */
@@ -2662,6 +2698,15 @@ function singleDrillProgressionVariationsForTitle(title: string): {
         "Meta de 2 golos em vez de 3 para acelerar rotações; ou na 1.ª regra exige 4 jogadores (não todos) à frente da linha para o duplo; ou na 3.ª regra permite 1 passe para trás por posse antes de progressão.",
       variations:
         "Ciclo fixo das 3 regras por ordem (1→2→3) em vez de mudar só após golo; ou equipa de fora entra sem trabalho físico num bloco; ou golo de cabeça vale +1 em qualquer regra.",
+    };
+  }
+
+  if (title === "Ataque após sucessão de passes") {
+    return {
+      progression:
+        "Sobe a meta para 8–10 passes no retângulo antes de ligar; ou o passador que entra no 2.º setor só pode tocar uma vez antes de finalizar; ou defesa que recupera tem máximo 6 s para marcar numa mini-baliza.",
+      variations:
+        "Ligação obrigatória pelo extremo da direita durante 3 min; ou 2 toques máx. no 2.º setor após entrada do 5.º homem; ou no retângulo só 1 toque nas laterais para acelerar circulação.",
     };
   }
 
@@ -3081,6 +3126,7 @@ export function getTrainingCatalogItems(players: Player[]): TrainingCatalogItem[
     "Ataque com 5 Equipas 3v3": ["finishing", "transition", "physical"],
     "4v4 + Apoios Laterais": ["finishing", "transition", "physical"],
     "3 Cenários 5v5": ["possession", "transition", "finishing", "physical"],
+    "Ataque após sucessão de passes": ["possession", "transition", "finishing"],
     "Superioridade nos Setores": ["finishing", "transition", "physical"],
 
     // Organização defensiva

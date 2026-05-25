@@ -90,6 +90,14 @@ export const DEFAULT_TRAINING_EXERCISE_AGE_MAP: TrainingExerciseAgeMap = {
     "juvenil",
     "senior",
   ],
+  "Ataque após sucessão de passes": [
+    "benjamin",
+    "iniciado",
+    "infantil",
+    "junior",
+    "juvenil",
+    "senior",
+  ],
   "4v4 mais apoios laterais": [
     "benjamin",
     "infantil",

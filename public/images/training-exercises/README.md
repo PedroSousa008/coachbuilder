@@ -48,3 +48,4 @@ Expected file names:
 - `defensive-recovery.png`
 - `crossing-drill.png`
 - `3-cenarios.png`
+- `possession-to-attack.png`
