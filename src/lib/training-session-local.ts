@@ -288,6 +288,12 @@ export const MOVIMENTACAO_AREA_CRUZAMENTOS_VIDEO_URL =
 export const VARIACAO_CRUZAMENTOS_VIDEO_URL = "/videos/training/variação-cruzamentos.mp4";
 
 /**
+ * Vídeo do exercício "Variações para Cruzamento".
+ * Coloca o ficheiro em `public/videos/training/crossing-drill.mp4`.
+ */
+export const CROSSING_DRILL_VIDEO_URL = "/videos/training/crossing-drill.mp4";
+
+/**
  * Vídeo do exercício "4v4 + Apoios Laterais".
  * Coloca o ficheiro em `public/videos/training/4v4-4-teams.mp4`.
  */
@@ -668,6 +674,8 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
     "3 atacantes contra 1",
     "bola aerea nas costas",
     "cruzamento overlap",
+    "variacoes para cruzamento",
+    "coordenacao lateral extremo",
     "4v4 mais apoios",
     "4v4 apoios laterais",
     "sai imediatamente",
@@ -769,6 +777,10 @@ const THEME_KEYWORDS: Record<TrainingThemeId, readonly string[]> = {
     "timming",
     "timing do cruzamento",
     "variacao de cruzamentos",
+    "variacoes para cruzamento",
+    "underlap",
+    "underlap do extremo",
+    "underlap do lateral",
     "primeiro poste segundo poste",
     "4v4 mais apoios",
     "finalizacoes rapidas",
@@ -1596,6 +1608,26 @@ const MAIN_DRILLS: MainDrillDef[] = [
       diagramHint:
         "3 equipas; setas 1.º poste / central / 2.º poste; três vias de cruzamento (combinação exterior, devolução interior, 1-2 com treinador na banda oposta); pontuação por golo.",
       videoUrl: VARIACAO_CRUZAMENTOS_VIDEO_URL,
+    }),
+  },
+  {
+    themes: ["possession", "transition", "finishing", "wide"],
+    title: "Variações para Cruzamento",
+    describe: (pl, m) => ({
+      description: `O exercício trabalha as relações e movimentações entre lateral e extremo, com duas variações de underlap. 1ª Variação — Underlap do extremo: o lateral mantém-se bem aberto, enquanto o extremo ocupa uma posição mais interior para fechar espaço e dar apoio. A jogada começa com uma tabela entre central e médio-centro, seguida de passe do central no lateral. O lateral conduz e espera pelo underlap do extremo nas costas da defesa; no timing certo, coloca a bola no espaço para o extremo entrar em zona de cruzamento/finalização. Na área entram os 2 avançados (movimentos cruzados) e o médio do lado da bola na entrada da área. 2ª Variação — Underlap do lateral: o extremo fica aberto e o lateral posiciona-se por dentro. Após a tabela entre central e médio, o central joga nas costas do lateral para o extremo que vem receber. O extremo conduz e espera pelo momento em que o lateral ultrapassa o defesa/manequim em underlap; a bola entra no lateral, que em 1 ou 2 toques deve cruzar rapidamente. Na área surgem novamente os 2 avançados e o médio do lado da bola. O foco está no timing das desmarcações, coordenação lateral-extremo, exploração do espaço interior e qualidade do cruzamento. (${m} min)`,
+      coachingPoints:
+        "1.ª variação: lateral aberto e paciente; extremo interior a fechar e a atacar o underlap só no timing do passe em profundidade; cruzamento com pé orientado à área. 2.ª variação: extremo aberto a conduzir; lateral por dentro a ultrapassar no underlap; cruzamento em 1–2 toques sem atrasar. Avançados com rotas distintas (1.º poste, penalty, 2.º poste); médio a chegar na entrada da área no momento do cruzamento.",
+      setup:
+        "Último terço ou meio campo ofensivo (~35–42 m de profundidade); baliza ou GR; manequins ou defesas leves na linha do underlap; cones para corredores lateral/extremo; bolas em cada estação.",
+      groupSplit:
+        pl.length >= 14
+          ? "Filas por função: centrais e médios na tabela; pares lateral/extremo a rodar após cada sequência completa (1.ª e 2.ª variação); dois avançados + médio do lado a alternar na área."
+          : pl.length >= 10
+            ? "Mesma estrutura com menos filas; coach como central ou defesa de referência se faltarem jogadores."
+            : "Reduz a um corredor; 1 avançado + médio na área ou neutro de apoio; foco na qualidade do underlap antes do volume.",
+      diagramHint:
+        "Tabela central–médio → passe ao lateral ou extremo conforme variação; seta underlap (extremo ou lateral) → passe em profundidade → cruzamento → 2 avançados + médio na área; repetir na 2.ª variação com papéis invertidos.",
+      videoUrl: CROSSING_DRILL_VIDEO_URL,
     }),
   },
   {
@@ -2431,6 +2463,7 @@ const SINGLE_DRILL_15_MIN_TITLES = new Set<string>([
   "Combinações sob Pressão",
   "Movimentação dentro de Área em Cruzamentos",
   "Variação de Cruzamentos",
+  "Variações para Cruzamento",
   "Circuito de Construção para Quebrar Linhas",
   "Saída de Jogo com Finalização Rápida",
   "Rondo com Variação do Jogo",
@@ -2564,6 +2597,15 @@ function singleDrillProgressionVariationsForTitle(title: string): {
         "Golo vale duplo se sair de cruzamento de primeira após devolução interior; ou limita a 1 toque antes do cruzamento em todas as variantes durante 3 minutos; ou acrescenta segundo defensor na área (sombra).",
       variations:
         "Ciclo obrigatório: 2 min em cada uma das 3 variações antes de libertar escolha livre; ou troca o servidor (coach por médio) no 1-2 da banda; ou cruzamento só com o pé não dominante numa ronda.",
+    };
+  }
+
+  if (title === "Variações para Cruzamento") {
+    return {
+      progression:
+        "Só 1.ª variação durante 6 min e depois só 2.ª; ou lateral/extremo trocam de banda a cada 4 séries; ou cruzamento obrigatório ao segundo poste durante um bloco.",
+      variations:
+        "Adiciona defensor activo no underlap; ou médio só pode finalizar de primeira; ou extremo e lateral invertem papéis fixos por 3 minutos antes de libertar escolha.",
     };
   }
 
@@ -2984,6 +3026,7 @@ export function getTrainingCatalogItems(players: Player[]): TrainingCatalogItem[
     "Corrida do Meio Campo nas Costas da Defesa": ["finishing"],
     "Movimentação dentro de Área em Cruzamentos": ["finishing", "transition"],
     "Variação de Cruzamentos": ["finishing", "transition"],
+    "Variações para Cruzamento": ["possession", "transition", "finishing"],
     "Overlap do Lateral: Extremo": ["finishing"],
     "Overlap do Lateral: Avançado ": ["finishing"],
     "Transição Rápida 3v2": ["finishing", "defensive", "transition", "physical"],

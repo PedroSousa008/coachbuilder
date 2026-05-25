@@ -46,3 +46,4 @@ Expected file names:
 - `short-free-kick.png`
 - `pressing-exercise.png`
 - `defensive-recovery.png`
+- `crossing-drill.png`

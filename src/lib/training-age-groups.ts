@@ -74,6 +74,14 @@ export const DEFAULT_TRAINING_EXERCISE_AGE_MAP: TrainingExerciseAgeMap = {
     "junior",
     "senior",
   ],
+  "Variações para Cruzamento": [
+    "benjamin",
+    "iniciado",
+    "infantil",
+    "junior",
+    "juvenil",
+    "senior",
+  ],
   "4v4 mais apoios laterais": [
     "benjamin",
     "infantil",

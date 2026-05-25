@@ -35,6 +35,7 @@ const TRAINING_EXERCISE_PRINT_IMAGE_BY_TITLE: Record<string, string> = {
   "Cruzamento e Finalização fora da Área": "cross-and-strike.png",
   "Movimentação dentro de Área em Cruzamentos": "movimentação-cruzamento.png",
   "Variação de Cruzamentos": "variação-cruzamentos.png",
+  "Variações para Cruzamento": "crossing-drill.png",
   "4v4 + Apoios Laterais": "4v4-4-teams.png",
   "Superioridade nos Setores": "superioridade-setores.png",
   "4 Exercícios de Finalização": "4-finishing-drills.png",
@@ -118,6 +119,7 @@ const VIDEO_BASENAME_TO_PRINT_IMAGE: Record<string, string> = {
   "full-back-overlap-2.mp4": "full-back-overlap-striker.png",
   "3x2-fast-breaks.mp4": "3v2-fast-break.png",
   "jogo-galo.mp4": "jogo-galo.png",
+  "crossing-drill.mp4": "crossing-drill.png",
 };
 
 function normalizeExerciseTitle(title: string): string {
