@@ -5,7 +5,7 @@ import { useMemo } from "react";
 import { Calendar, CalendarDays, GitBranch, MessageSquare, PenSquare, Target, TrendingUp } from "lucide-react";
 import { DashboardHero } from "@/components/dashboard/DashboardHero";
 import { DashboardMetricCard } from "@/components/dashboard/DashboardMetricCard";
-import { DashboardUpcomingSchedule } from "@/components/dashboard/DashboardUpcomingSchedule";
+import { DashboardMonthCalendarPreview } from "@/components/dashboard/DashboardMonthCalendarPreview";
 import { DashboardNextTraining } from "@/components/dashboard/DashboardNextTraining";
 import { DashboardNextMatch } from "@/components/dashboard/DashboardNextMatch";
 import { DashboardInboxPreview } from "@/components/dashboard/DashboardInboxPreview";
@@ -86,7 +86,7 @@ export default function DashboardPage() {
 
       <section className="grid gap-6 lg:grid-cols-12 lg:items-stretch">
         <div className="lg:col-span-7">
-          <DashboardUpcomingSchedule />
+          <DashboardMonthCalendarPreview />
         </div>
         <div className="lg:col-span-5">
           <DashboardNextTraining />

@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { Table2 } from "lucide-react";
 import type { MatchFixture, ParsedMatchEvent } from "@/types";
 import { useAppData } from "@/contexts/AppDataContext";
@@ -9,29 +10,15 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { FixtureFormModal } from "@/components/calendar/FixtureFormModal";
 import { useScheduleNow } from "@/hooks/useScheduleNow";
+import { useCalendarEntries } from "@/hooks/useCalendarEntries";
 import { buildMonthGrid, isSameLocalDay } from "@/lib/coaching-professionals-calendar";
+import { dayIsoLocal, type CalendarEntry } from "@/lib/calendar-entries";
 import { cn } from "@/lib/utils";
 import type { SketchCalendarEventCategory } from "@/types";
 import { scoreTeamMatch, teamNamesLikelyMatch } from "@/lib/league-team-name-match";
 
 const cellInputClass =
   "h-8 min-w-0 px-1.5 py-0 text-xs tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none";
-
-function monthDayKey(isoDate: string): string | null {
-  if (!isoDate) return null;
-  const d = new Date(`${isoDate}T00:00:00`);
-  if (Number.isNaN(d.getTime())) return null;
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${m}-${day}`;
-}
-
-function dayIsoLocal(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
 
 function monthInputFromDate(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
@@ -580,6 +567,8 @@ export function CalendarPageClient() {
   const resultsImageInputRef = useRef<HTMLInputElement>(null);
   const [viewMonth, setViewMonth] = useState(() => new Date());
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
+  const searchParams = useSearchParams();
+  const { entriesByDay, monthTopics } = useCalendarEntries(viewMonth);
   const [eventModalOpen, setEventModalOpen] = useState(false);
   const [newEventTitle, setNewEventTitle] = useState("");
   const [newEventTopic, setNewEventTopic] = useState<SketchCalendarEventCategory>("other");
@@ -593,90 +582,14 @@ export function CalendarPageClient() {
   );
   const today = useMemo(() => new Date(nowMs), [nowMs]);
 
-  type CalendarEntry = {
-    id: string;
-    date: string;
-    label: string;
-    kind: "fixture" | "birthday" | "sketch_event" | "note";
-    deletable: boolean;
-  };
-
-  const allCalendarEntries = useMemo(() => {
-    const entries: CalendarEntry[] = [];
-    for (const f of fixtures) {
-      entries.push({
-        id: f.id,
-        date: dayIsoLocal(new Date(f.kickoff)),
-        label: `Jogo: vs ${f.opponent}`,
-        kind: "fixture",
-        deletable: true,
-      });
-    }
-    const pushBirthday = (name: string, subtitle: string, dob?: string) => {
-      const k = monthDayKey(dob ?? "");
-      if (!k) return;
-      const [mm, dd] = k.split("-");
-      const month = Number(mm);
-      const day = Number(dd);
-      for (let y = viewMonth.getFullYear() - 2; y <= viewMonth.getFullYear() + 4; y++) {
-        const d = new Date(y, month - 1, day);
-        if (Number.isNaN(d.getTime())) continue;
-        entries.push({
-          id: `birthday-${subtitle}-${name}-${y}-${month}-${day}`,
-          date: dayIsoLocal(d),
-          label: `Aniversário do ${name} (${subtitle})`,
-          kind: "birthday",
-          deletable: false,
-        });
-      }
-    };
-    pushBirthday(coachProfile.name.trim() || "Treinador", "Treinador", coachProfile.dateOfBirth);
-    for (const p of players) pushBirthday(p.name, `Jogador #${p.number}`, p.dateOfBirth);
-    for (const s of staff) pushBirthday(s.name, `Staff ${s.role}`, s.dateOfBirth);
-    for (const ev of sketchArea.calendarEvents) {
-      entries.push({
-        id: ev.id,
-        date: ev.date,
-        label: `Evento: ${ev.title}`,
-        kind: "sketch_event",
-        deletable: true,
-      });
-    }
-    for (const note of sketchArea.notes) {
-      if (!note.date) continue;
-      entries.push({
-        id: note.id,
-        date: note.date,
-        label: `Nota Sketch: ${note.title}`,
-        kind: "note",
-        deletable: true,
-      });
-    }
-    return entries;
-  }, [coachProfile.dateOfBirth, coachProfile.name, fixtures, players, sketchArea.calendarEvents, sketchArea.notes, staff, viewMonth]);
-
-  const entriesByDay = useMemo(() => {
-    const map = new Map<string, CalendarEntry[]>();
-    for (const e of allCalendarEntries) {
-      const list = map.get(e.date) ?? [];
-      list.push(e);
-      map.set(e.date, list);
-    }
-    return map;
-  }, [allCalendarEntries]);
-
-  const monthTopics = useMemo(() => {
-    const y = viewMonth.getFullYear();
-    const m = viewMonth.getMonth();
-    const out: Array<{ date: string; label: string; kind: "fixture" | "birthday" | "sketch_event" | "note" }> = [];
-    for (const [date, list] of entriesByDay.entries()) {
-      const d = new Date(`${date}T00:00:00`);
-      if (Number.isNaN(d.getTime())) continue;
-      if (d.getFullYear() !== y || d.getMonth() !== m) continue;
-      for (const item of list) out.push({ date: item.date, label: item.label, kind: item.kind });
-    }
-    return out.sort((a, b) => a.date.localeCompare(b.date) || a.label.localeCompare(b.label));
-  }, [entriesByDay, viewMonth]);
+  useEffect(() => {
+    const dateParam = searchParams.get("date");
+    if (!dateParam || !/^\d{4}-\d{2}-\d{2}$/.test(dateParam)) return;
+    const d = new Date(`${dateParam}T12:00:00`);
+    if (Number.isNaN(d.getTime())) return;
+    setViewMonth(new Date(d.getFullYear(), d.getMonth(), 1));
+    setSelectedDay(d);
+  }, [searchParams]);
 
   const handleCreateLeagueSetup = () => {
     const teams = Number(setupTeamsDraft);
@@ -1145,7 +1058,9 @@ export function CalendarPageClient() {
                         it.kind === "birthday" && "text-emerald-200",
                         it.kind === "fixture" && "text-zinc-200",
                         it.kind === "sketch_event" && "text-sky-200",
-                        it.kind === "note" && "text-amber-200"
+                        it.kind === "note" && "text-amber-200",
+                        it.kind === "training" && "text-violet-200",
+                        it.kind === "task" && "text-orange-200"
                       )}
                     >
                       {it.label}
