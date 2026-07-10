@@ -234,6 +234,10 @@ function mergeWorkspaceSnapshotsClient(cloud: WorkspaceSnapshotV1, local: Worksp
         cloud.coachProfile.avatarDataUrl,
         local.coachProfile.avatarDataUrl
       ),
+      clubCrestDataUrl: pickFirstNonEmptyAvatarUrl(
+        cloud.coachProfile.clubCrestDataUrl,
+        local.coachProfile.clubCrestDataUrl
+      ),
     },
     league: {
       ...local.league,
@@ -715,8 +719,14 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           setTrainingSessions(snap.trainingSessions);
           setTrainingPlayerIdsBySession(snap.trainingPlayers);
           setFixtures(snap.fixtures);
+          const baseProfile = normalizeCoachProfileState({
+            ...defaultCoachProfile(),
+            ...snap.coachProfile,
+          } as CoachProfileState);
           setCoachProfileState(
-            normalizeCoachProfileState({ ...defaultCoachProfile(), ...snap.coachProfile } as CoachProfileState)
+            baseProfile.clubCrestDataUrl || !mergedCallup.clubLogoDataUrl
+              ? baseProfile
+              : { ...baseProfile, clubCrestDataUrl: mergedCallup.clubLogoDataUrl }
           );
           setLeagueTableUrlState(snap.league.url ?? "");
           setLeagueTableRows(snap.league.rows ?? []);
@@ -795,6 +805,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
                   avatarDataUrl: pickFirstNonEmptyAvatarUrl(
                     cloudBox.json.payload.coachProfile.avatarDataUrl,
                     local.coachProfile.avatarDataUrl
+                  ),
+                  clubCrestDataUrl: pickFirstNonEmptyAvatarUrl(
+                    cloudBox.json.payload.coachProfile.clubCrestDataUrl,
+                    local.coachProfile.clubCrestDataUrl
                   ),
                 },
               };

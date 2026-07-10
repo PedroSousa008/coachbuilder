@@ -5,150 +5,101 @@ import { useMemo } from "react";
 import { CalendarDays } from "lucide-react";
 import { useAppData } from "@/contexts/AppDataContext";
 import { calendarDayLisbon } from "@/lib/lisbon-date";
-import { formatRelativeDay } from "@/lib/format";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { DashboardEmptyState } from "@/components/dashboard/DashboardEmptyState";
+import {
+  buildUpcomingCalendarEvents,
+  formatScheduleDayHeader,
+  groupUpcomingEventsByDay,
+} from "@/lib/dashboard-upcoming-events";
 import { cn } from "@/lib/utils";
 
-function dayKey(iso: string): string {
-  if (iso.length >= 10) return iso.slice(0, 10);
-  return calendarDayLisbon(iso);
-}
-
-function todayKey(): string {
-  return calendarDayLisbon(Date.now());
-}
-
-type ScheduleRow = {
-  key: string;
-  day: string;
-  label: string;
-  sub?: string;
-  isToday: boolean;
-};
+const PREVIEW_LIMIT = 5;
 
 export function DashboardUpcomingSchedule() {
   const { trainingSessions, fixtures, sketchArea } = useAppData();
   const { language } = useLanguage();
   const isPt = language === "pt-PT";
-  const t0 = todayKey();
+  const t0 = calendarDayLisbon(Date.now());
 
-  const rows = useMemo(() => {
-    const out: ScheduleRow[] = [];
+  const allEvents = useMemo(
+    () =>
+      buildUpcomingCalendarEvents({
+        trainingSessions,
+        fixtures,
+        sketchArea,
+        todayIso: t0,
+      }),
+    [fixtures, sketchArea, trainingSessions, t0]
+  );
 
-    for (const ev of sketchArea.calendarEvents) {
-      if (ev.date < t0) continue;
-      const time = ev.timeStart ? ` · ${ev.timeStart}` : "";
-      out.push({
-        key: `sk-${ev.id}`,
-        day: ev.date,
-        label: ev.title,
-        sub: `${ev.category.replace(/_/g, " ")}${time}`,
-        isToday: ev.date === t0,
-      });
-    }
-    for (const s of trainingSessions) {
-      const d = dayKey(s.date);
-      if (d < t0) continue;
-      out.push({
-        key: `tr-${s.id}`,
-        day: d,
-        label: s.title,
-        sub: `${s.durationMin} min · ${s.intensity}`,
-        isToday: d === t0,
-      });
-    }
-    for (const f of fixtures) {
-      const d = calendarDayLisbon(f.kickoff);
-      if (d < t0) continue;
-      const ko = new Date(f.kickoff).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
-      out.push({
-        key: `fx-${f.id}`,
-        day: d,
-        label: `vs ${f.opponent}`,
-        sub: `${ko} · ${f.venue}`,
-        isToday: d === t0,
-      });
-    }
-    for (const task of sketchArea.tasks) {
-      if (task.completed || !task.dueDate || task.dueDate < t0) continue;
-      out.push({
-        key: `tk-${task.id}`,
-        day: task.dueDate,
-        label: task.title,
-        sub: isPt ? "Tarefa" : "Task",
-        isToday: task.dueDate === t0,
-      });
-    }
-
-    return out
-      .sort((a, b) => a.day.localeCompare(b.day) || a.label.localeCompare(b.label))
-      .slice(0, 10);
-  }, [fixtures, sketchArea.calendarEvents, sketchArea.tasks, trainingSessions, t0, isPt]);
+  const previewEvents = allEvents.slice(0, PREVIEW_LIMIT);
+  const extraCount = Math.max(0, allEvents.length - PREVIEW_LIMIT);
+  const grouped = useMemo(() => groupUpcomingEventsByDay(previewEvents), [previewEvents]);
 
   const hasOverdue = sketchArea.tasks.some((x) => !x.completed && x.dueDate && x.dueDate < t0);
 
   return (
-    <section
+    <Link
+      href="/app/calendar"
       className={cn(
-        "flex h-full flex-col rounded-[20px] border border-white/[0.06] bg-[#111111] shadow-[0_1px_0_rgba(255,255,255,0.04),0_12px_40px_rgba(0,0,0,0.35)] transition-all duration-200 hover:border-white/[0.08]"
+        "group flex h-full flex-col rounded-[20px] border border-white/[0.06] bg-[#111111] shadow-[0_1px_0_rgba(255,255,255,0.04),0_12px_40px_rgba(0,0,0,0.35)]",
+        "transition-all duration-200 hover:-translate-y-0.5 hover:border-white/[0.1] hover:bg-[#141414] hover:shadow-[0_16px_48px_rgba(0,0,0,0.45)]"
       )}
     >
-      <div className="flex items-start justify-between gap-4 border-b border-white/[0.06] px-6 py-5">
-        <div>
-          <h2 className="font-display text-lg font-semibold tracking-tight text-white">
-            {isPt ? "Agenda próxima" : "Upcoming schedule"}
-          </h2>
-          <p className="mt-1 text-[13px] text-zinc-500">
-            {isPt ? "Calendário, treinos e tarefas" : "Calendar, training and tasks"}
-          </p>
-        </div>
-        <Link
-          href="/app/calendar"
-          className="shrink-0 text-[13px] font-medium text-zinc-500 transition-colors duration-200 hover:text-accent"
-        >
-          {isPt ? "Calendário" : "Calendar"}
-        </Link>
+      <div className="border-b border-white/[0.06] px-6 py-5">
+        <h2 className="font-display text-lg font-semibold tracking-tight text-white">
+          {isPt ? "Agenda próxima" : "Upcoming schedule"}
+        </h2>
+        <p className="mt-1 text-[13px] text-zinc-500">
+          {isPt ? "Pré-visualização do calendário" : "Calendar preview"}
+        </p>
       </div>
 
       <div className="flex flex-1 flex-col p-6">
-        {rows.length === 0 ? (
-          <DashboardEmptyState
-            icon={CalendarDays}
-            title={isPt ? "Nada agendado" : "Nothing scheduled"}
-            description={
-              isPt
-                ? "Ainda não há eventos futuros. Usa o Calendário para jogos ou o Sketch Area para notas e tarefas."
-                : "No upcoming events yet. Use Calendar for fixtures or Sketch Area for notes and tasks."
-            }
-            actionLabel={isPt ? "Abrir calendário" : "Open calendar"}
-            actionHref="/app/calendar"
-            className="flex-1"
-          />
+        {previewEvents.length === 0 ? (
+          <div className="flex flex-1 flex-col items-center justify-center rounded-2xl border border-dashed border-white/[0.08] bg-white/[0.02] px-6 py-10 text-center">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/[0.06] bg-white/[0.03] text-zinc-500">
+              <CalendarDays className="h-5 w-5" strokeWidth={1.5} />
+            </div>
+            <p className="mt-4 text-[15px] font-medium text-zinc-300">
+              {isPt ? "Nada agendado" : "Nothing scheduled"}
+            </p>
+            <p className="mt-2 max-w-xs text-[13px] leading-relaxed text-zinc-500">
+              {isPt
+                ? "Os teus próximos treinos, jogos e tarefas aparecem aqui automaticamente."
+                : "Your upcoming trainings, matches and tasks will appear here automatically."}
+            </p>
+          </div>
         ) : (
-          <ul className="space-y-2">
-            {rows.map((row) => (
-              <li
-                key={row.key}
-                className={cn(
-                  "rounded-xl border px-4 py-3 transition-colors duration-200",
-                  row.isToday
-                    ? "border-accent/20 bg-accent/[0.04]"
-                    : "border-white/[0.05] bg-white/[0.02] hover:border-white/[0.08] hover:bg-white/[0.03]"
-                )}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="truncate text-[15px] font-medium text-white">{row.label}</p>
-                    {row.sub ? <p className="mt-0.5 text-[13px] text-zinc-500">{row.sub}</p> : null}
-                  </div>
-                  <span className="shrink-0 text-[13px] text-zinc-600">
-                    {row.isToday ? (isPt ? "Hoje" : "Today") : formatRelativeDay(row.day)}
-                  </span>
-                </div>
-              </li>
+          <div className="space-y-5">
+            {grouped.map((group) => (
+              <div key={group.day}>
+                <p className="text-[13px] font-medium capitalize text-zinc-500">
+                  {formatScheduleDayHeader(group.day, t0, isPt)}
+                </p>
+                <ul className="mt-2 space-y-2">
+                  {group.events.map((ev) => (
+                    <li key={ev.id} className="flex gap-2 text-[15px] leading-snug">
+                      <span className="text-zinc-600" aria-hidden>
+                        •
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium text-zinc-200">{ev.title}</p>
+                        {ev.timeLabel ? (
+                          <p className="mt-0.5 text-[13px] tabular-nums text-zinc-500">{ev.timeLabel}</p>
+                        ) : null}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             ))}
-          </ul>
+            {extraCount > 0 ? (
+              <p className="text-[13px] text-zinc-600">
+                {isPt ? `+${extraCount} mais` : `+${extraCount} more`}
+              </p>
+            ) : null}
+          </div>
         )}
 
         {hasOverdue ? (
@@ -157,6 +108,6 @@ export function DashboardUpcomingSchedule() {
           </p>
         ) : null}
       </div>
-    </section>
+    </Link>
   );
 }

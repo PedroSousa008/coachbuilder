@@ -777,6 +777,8 @@ export interface CoachProfileState {
   phone?: string;
   bio?: string;
   avatarDataUrl?: string;
+  /** Brasão / logo do clube (data URL). Identidade persistente na app. */
+  clubCrestDataUrl?: string;
   socialInstagram?: string;
   socialTwitter?: string;
   socialLinkedin?: string;

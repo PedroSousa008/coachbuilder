@@ -14,6 +14,7 @@ import { canUseOwnerCoachTools } from "@/lib/owner-coach-tools-client";
 import { useScheduleNow } from "@/hooks/useScheduleNow";
 import { resolveNextMatchForCoach } from "@/lib/next-match";
 import { collectUniqueTeamNames, pickBestTeamMatch } from "@/lib/team-match";
+import { ClubCrestBadge } from "@/components/club/ClubCrestBadge";
 
 export function AppHeader({ title }: { title: string }) {
   const [open, setOpen] = useState(false);
@@ -209,6 +210,14 @@ export function AppHeader({ title }: { title: string }) {
         >
           <Menu className="h-5 w-5" />
         </button>
+        {coachProfile.clubCrestDataUrl ? (
+          <ClubCrestBadge
+            crestDataUrl={coachProfile.clubCrestDataUrl}
+            clubName={coachProfile.club}
+            size="sm"
+            className="flex shrink-0"
+          />
+        ) : null}
         <div className="min-w-0">
           <h1 className="truncate font-display text-lg font-semibold tracking-tight text-white">{title}</h1>
         </div>

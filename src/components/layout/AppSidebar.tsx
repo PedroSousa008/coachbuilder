@@ -25,6 +25,7 @@ import { clientEmailShowsAdminNav } from "@/lib/bootstrap-admin-client";
 import { hasFullWorkspaceAccess } from "@/lib/subscription-client";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { canUseOwnerCoachTools } from "@/lib/owner-coach-tools-client";
+import { ClubCrestBadge } from "@/components/club/ClubCrestBadge";
 
 export function AppSidebar() {
   const pathname = usePathname();
@@ -66,14 +67,24 @@ export function AppSidebar() {
 
   return (
     <aside className="fixed left-0 top-0 z-40 hidden h-screen w-64 flex-col border-r border-surface-border bg-[#0c1014]/95 backdrop-blur-xl lg:flex">
-      <div className="flex h-16 items-center gap-2 border-b border-surface-border px-5">
-        <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-xl border border-surface-border/70 bg-white">
-          <img src="/icon.png" alt="CoachBuilder logo" className="h-full w-full object-contain" />
+      <div className="flex h-16 items-center justify-between gap-2 border-b border-surface-border px-5">
+        <div className="flex min-w-0 items-center gap-2">
+          <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-xl border border-surface-border/70 bg-white">
+            <img src="/icon.png" alt="CoachBuilder logo" className="h-full w-full object-contain" />
+          </div>
+          <div className="min-w-0">
+            <p className="font-display text-sm font-semibold text-white">CoachBuilder</p>
+            <p className="truncate text-[11px] text-zinc-500">{t("sidebar.operatingSystem")}</p>
+          </div>
         </div>
-        <div>
-          <p className="font-display text-sm font-semibold text-white">CoachBuilder</p>
-          <p className="text-[11px] text-zinc-500">{t("sidebar.operatingSystem")}</p>
-        </div>
+        {coachProfile.clubCrestDataUrl ? (
+          <ClubCrestBadge
+            crestDataUrl={coachProfile.clubCrestDataUrl}
+            clubName={coachProfile.club}
+            size="sm"
+            className="rounded-full"
+          />
+        ) : null}
       </div>
       <nav className="flex flex-1 flex-col gap-0.5 p-3">
         {adminNav.map((item) => {

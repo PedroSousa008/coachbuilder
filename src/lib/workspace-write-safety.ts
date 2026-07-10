@@ -143,6 +143,10 @@ export function mergeWorkspacePayloadSafely(
       incoming.coachProfile.avatarDataUrl,
       existing.coachProfile.avatarDataUrl
     ),
+    clubCrestDataUrl: pickFirstNonEmptyAvatarUrl(
+      incoming.coachProfile.clubCrestDataUrl,
+      existing.coachProfile.clubCrestDataUrl
+    ),
   };
 
   const mergedTeamCallup =
