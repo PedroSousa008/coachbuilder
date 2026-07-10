@@ -1,57 +1,85 @@
 ---
-description: Agent runs terminal, git commit+push after changes; Vercel auto-deploys via GitHub
+description: Agent builds locally, commits during work, pushes to main only when ready or on request; Vercel auto-deploys via GitHub
 alwaysApply: true
 ---
 
 # CoachBuilder — agent workflow
 
-## Default: always ship to Vercel (via Git)
+## Default: local first, push when ready (via Git)
 
-- **Push automático:** Sempre que houver alterações de código ou config que devam ir para produção, o agente faz **commit + push para `origin` no fim da tarefa**, sem esperar que o utilizador peça “faz push” — exceto se o utilizador disser explicitamente para não fazer push.
-- **User expectation:** From here on, **the agent** (not the user) does **commit + push** after meaningful edits, except when the user explicitly opts out (“não faças push”, “só local”, “não commits yet”). Do not assume the user will use Source Control or Terminal to push.
-- **Unless the user explicitly says not to push** (e.g. “local only”, “don’t commit yet”), finish every substantive coding task by **committing and pushing** to `origin` on the branch Vercel watches. That push is what triggers **automatic Vercel deployment** — no separate “deploy to Vercel” button is required when Git integration is connected.
-- Work in the **git root** for this app: the workspace folder **`CoachBrain`** is the same repo as [github.com/PedroSousa008/coachbuilder](https://github.com/PedroSousa008/coachbuilder) — Next.js lives at the **repo root** (`package.json`, `src/`), not in a nested `coachbuilder/` subfolder.
+- **Não fazer push automático** no fim de cada tarefa. Trabalhar localmente, **commit** quando fizer sentido, e **só fazer push para `origin/main` quando**:
+  1. O utilizador pedir explicitamente (**“ship it”**, **“podes fazer push”**, **“deploy”**, **“publica”**), ou
+  2. Confirmares que a tarefa está **completa** e pedires confirmação antes de enviar (se o utilizador não tiver dito “não faças push”).
+- **Frases que significam só local:** “não faças push”, “só local”, “don’t commit yet”, “don’t push yet” — respeitar sempre; zero push.
+- **Objetivo:** evitar deploys Vercel longos (~2–3 min) e falhas em produção. **Validar antes de enviar**, não depois.
+- Work in the **git root**: workspace **`CoachBrain`** = [github.com/PedroSousa008/coachbuilder](https://github.com/PedroSousa008/coachbuilder) — Next.js at repo root (`package.json`, `src/`).
+
+## Validação obrigatória antes de push
+
+Antes de **qualquer** `git push origin main`:
+
+1. `git status` / `git diff` — rever o que vai sair
+2. **`npm run build`** (ou `npm run vercel-build` se fizer sentido) — **tem de passar** sem erros TypeScript/build
+3. Corrigir falhas **localmente**; novo commit se necessário
+4. Só então `git push origin main`
+
+Se `npm` não estiver disponível no ambiente do agente, avisar o utilizador e **não fazer push** até build validado ou pedido explícito com risco aceite.
+
+Push via SSH deploy key quando disponível:
+`GIT_SSH_COMMAND="ssh -i $HOME/.ssh/id_ed25519_coachbuilder_deploy -o IdentitiesOnly=yes" git push origin main`
 
 ## Terminal and tooling
 
 - **Do not** ask the user to run commands in their terminal. **You** run shell commands (`npm`, `git`, etc.) in the environment.
-- Prefer **absolute paths** under the project when running commands, e.g. `/Users/pedrocastrosousa/Desktop/Sousa/CoachBrain`.
+- Prefer **absolute paths** under the project, e.g. `/Users/pedrocastrosousa/Desktop/Sousa/CoachBuilder/CoachBrain`.
 
 ## Novos exercícios de treino (vídeo + foto PDF)
 
-- Quando o utilizador pede um **novo exercício** e indica explicitamente o **nome do ficheiro de vídeo** (ex. `passe-rotura.mp4`) e o **nome da foto** para o PDF (ex. `passe-rotura.png`), o objetivo é que **os dois media** entrem no **mesmo commit/push** que o código (registo no catálogo, URLs, `training-exercise-print-images`, idades, etc.).
-- **Caminhos habituais:** `public/videos/training/<nome>.mp4` e `public/images/training-exercises/<nome>.png` — usar **nomes só ASCII** nos ficheiros e no código (evitar NFD/NFC em deploy Linux/Vercel).
-- Antes do commit: `git status` e `git add` dos ficheiros em `public/` **se existirem** no workspace; se ainda não existirem, procurar variantes (untracked, nome parecido) ou pedir ao utilizador que os coloque na pasta e repetir — **não** fechar a tarefa só com código se os ficheiros já estiverem no disco por ele.
+- Quando o utilizador pede um **novo exercício** com **vídeo** e **foto PDF**, incluir media + código no **mesmo commit** (catálogo, URLs, `training-exercise-print-images`, idades).
+- **Caminhos:** `public/videos/training/<nome>.mp4` e `public/images/training-exercises/<nome>.png` — **nomes só ASCII** (evitar acentos em deploy Linux/Vercel).
+- Antes do commit: `git status` e `git add` dos ficheiros em `public/` se existirem no disco.
 
-## Git and delivery
+## Git during work (sem push)
 
-- After **meaningful code or config changes** (anything that should ship), run:
-  1. `git status` / `git diff` as needed
-  2. `git add -A`
-  3. `git commit -m "<clear, conventional message>"`
-  4. `git push origin main` (or the current default branch)
-- If there is **nothing to commit**, do not create empty commits; still **push** if local commits exist that are not on `origin`.
-- Resolve merge conflicts in the workspace if they appear; do not leave the branch broken.
+Durante uma tarefa em curso:
+
+1. `git status` / `git diff` as needed
+2. `git add` dos ficheiros relevantes
+3. `git commit -m "<clear message>"` — **commits locais são OK e encorajados**
+4. **Não** `git push` até secção “When to push” abaixo
+
+- Não criar commits vazios.
+- Resolver conflitos no workspace; não deixar a branch partida.
+
+## When to push (“ship it”)
+
+Só fazer push quando o utilizador pedir deploy **ou** quando confirmares que está pronto **e** build passou:
+
+1. `npm run build` — **green**
+2. `git push origin main` (branch que a Vercel observa)
+3. Informar o commit hash e que a Vercel vai arrancar deploy (~2–3 min; clone + install + prisma + next build)
+
+**Pushing to `origin/main` is the deploy trigger** — não há botão separado “deploy to Vercel” com Git integration ligada.
 
 ## Vercel deployment
 
-- This project is intended to deploy **automatically** when code reaches GitHub: [Vercel Git integration](https://vercel.com/docs/deployments/git) builds on every push to the connected branch (usually `main`).
-- **Pushing to `origin/main` is the deploy trigger** — there is no separate “push to Vercel” step when the Vercel project is imported from [github.com/PedroSousa008/coachbuilder](https://github.com/PedroSousa008/coachbuilder).
-- Only if Git integration is **not** used: deploy with Vercel CLI using a token already present in the environment (e.g. `VERCEL_TOKEN`), non-interactively. **Never** commit tokens or put them in the repo.
+- Deploy **automático** em cada push a `main`: [Vercel Git integration](https://vercel.com/docs/deployments/git).
+- Repo: [github.com/PedroSousa008/coachbuilder](https://github.com/PedroSousa008/coachbuilder).
+- **Node:** `package.json` → `"engines": { "node": "24.x" }`.
+- Tempos típicos: clone (~1–2 min com media no repo) + install + migrate/seed + build. **&lt;1m30s total é improvável** sem otimizar o repo; o ganho principal é **menos pushes** e **zero pushes com build partido**.
 
 ## If Vercel shows no new deployment after a push
 
-Git pushes go to **GitHub** first. Vercel deploys only if the **Vercel project’s Git settings** match this repo and branch.
+1. [github.com/PedroSousa008/coachbuilder/commits/main](https://github.com/PedroSousa008/coachbuilder/commits/main) — commit lá?
+2. Vercel → Settings → Git: repo `PedroSousa008/coachbuilder`, branch `main`, root `.`
+3. Deployments → build log se **Error**
+4. GitHub deploy key (Settings → Deploy keys): `docs/coachbuilder-deploy-key.pub`, write access — ver `docs/PUBLICAR-VERCEL.md`
 
-1. **Confirm GitHub has the commit**: open [github.com/PedroSousa008/coachbuilder/commits/main](https://github.com/PedroSousa008/coachbuilder/commits/main) — the latest commit should match what was just pushed.
-2. In **Vercel → your project → Settings → Git**: **Connected Git Repository** must be `PedroSousa008/coachbuilder` (not another repo or fork). **Production Branch** must be `main` (or whatever you push to).
-3. **Root Directory** must be empty or `.` — this app lives at the repo root, not inside a parent folder.
-4. Open **Deployments**: if a deployment exists but is **Error**, open the build log (TypeScript/build failure). Fix the error, commit, push again.
-5. If the repo was renamed or Git was disconnected: **Reconnect** the GitHub integration or **Import** the project again from the correct repo.
-6. To force a new build: an empty commit + push can re-trigger the webhook: `git commit --allow-empty -m "chore: trigger Vercel"` && `git push origin main`.
+## Resumo para o agente
 
-## When the user asks for “deploy” or “ship it”
-
-1. Ensure the app builds if possible (`npm run build`) when dependencies are available.
-2. Commit and **push** to GitHub.
-3. Confirm that Vercel will pick up the deployment from the push (no extra user terminal steps).
+| Fase | Ação |
+|------|------|
+| Durante trabalho | editar → commit local → **sem push** |
+| Antes de push | `npm run build` tem de passar |
+| Push | só a pedido do utilizador ou tarefa fechada + build OK |
+| Deploy | automático na Vercel após push a `main` |
