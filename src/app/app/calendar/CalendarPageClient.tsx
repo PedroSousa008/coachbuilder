@@ -553,8 +553,6 @@ export function CalendarPageClient() {
     sketchArea,
     setSketchArea,
     coachProfile,
-    players,
-    staff,
   } = useAppData();
 
   const [fixtureModalOpen, setFixtureModalOpen] = useState(false);
