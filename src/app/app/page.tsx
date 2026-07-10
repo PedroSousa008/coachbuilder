@@ -1,7 +1,18 @@
 "use client";
 
 import Link from "next/link";
+import { useMemo } from "react";
 import { Calendar, CalendarDays, GitBranch, MessageSquare, PenSquare, Target, TrendingUp } from "lucide-react";
+import { DashboardHero } from "@/components/dashboard/DashboardHero";
+import { DashboardMetricCard } from "@/components/dashboard/DashboardMetricCard";
+import { DashboardUpcomingSchedule } from "@/components/dashboard/DashboardUpcomingSchedule";
+import { DashboardNextTraining } from "@/components/dashboard/DashboardNextTraining";
+import { DashboardNextMatch } from "@/components/dashboard/DashboardNextMatch";
+import { DashboardInboxPreview } from "@/components/dashboard/DashboardInboxPreview";
+import { DashboardContinueWorking } from "@/components/dashboard/DashboardContinueWorking";
+import { useAppData } from "@/contexts/AppDataContext";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { summarizePastClubResults } from "@/lib/past-club-results-utils";
 
 export default function DashboardPage() {
   const { coachProfile, savedTactics, trainingSessions, pastClubResults } = useAppData();
