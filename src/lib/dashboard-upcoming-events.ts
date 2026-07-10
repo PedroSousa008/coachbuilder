@@ -1,5 +1,5 @@
 import { calendarDayLisbon } from "@/lib/lisbon-date";
-import type { Fixture, SketchAreaState, TrainingSession } from "@/types";
+import type { MatchFixture, SketchAreaState, TrainingSession } from "@/types";
 
 export type UpcomingCalendarEvent = {
   id: string;
@@ -38,7 +38,7 @@ export function formatScheduleDayHeader(dayIso: string, todayIso: string, isPt: 
 
 export function buildUpcomingCalendarEvents(params: {
   trainingSessions: TrainingSession[];
-  fixtures: Fixture[];
+  fixtures: MatchFixture[];
   sketchArea: SketchAreaState;
   todayIso?: string;
 }): UpcomingCalendarEvent[] {
