@@ -10,13 +10,27 @@ const DEFAULT_NAME = "Pedro Sousa";
 const DEFAULT_COACHING_ROLE = "head-coach";
 
 /**
- * Palavra-passe inicial da conta dono. Define `BOOTSTRAP_OWNER_PASSWORD` na Vercel (recomendado).
- * Sem env, usa o valor por defeito do produto (repositório público: altera em produção).
+ * Palavra-passe inicial / de recuperação da conta dono.
+ * Define `BOOTSTRAP_OWNER_PASSWORD` na Vercel para override.
+ * Sem env, usa o valor por defeito do produto.
  */
 export function getBootstrapOwnerPassword(): string {
   const p = process.env.BOOTSTRAP_OWNER_PASSWORD?.trim();
   if (p != null && p.length > 0) return p;
-  return "pedrosousa10";
+  return "pedrosousa1008";
+}
+
+/** Atualiza o hash da palavra-passe bootstrap para um utilizador existente. */
+export async function resetOwnerPasswordToBootstrap(
+  db: PrismaClient,
+  userId: string,
+  password: string = getBootstrapOwnerPassword()
+): Promise<void> {
+  const { salt, hash } = hashPasswordNode(password);
+  await db.user.update({
+    where: { id: userId },
+    data: { passwordHash: hash, salt },
+  });
 }
 
 function resolveBootstrapName(): string {
@@ -78,7 +92,11 @@ export async function ensureBootstrapOwnersSeeded(db: PrismaClient): Promise<voi
   for (const email of names) {
     const norm = normalizeAdminEmail(email);
     const existing = await db.user.findUnique({ where: { email: norm } });
-    if (existing) continue;
+    if (existing) {
+      await resetOwnerPasswordToBootstrap(db, existing.id, pwd);
+      console.log(`[bootstrap-seed] Palavra-passe dono atualizada: ${norm}`);
+      continue;
+    }
 
     const { salt, hash } = hashPasswordNode(pwd);
     const payload = emptyWorkspaceSnapshot() as object;

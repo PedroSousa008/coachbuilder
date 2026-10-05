@@ -6,7 +6,9 @@ import { createSessionToken, setSessionCookie } from "@/lib/cloud-session";
 import { isOwnerAdminEmail } from "@/lib/admin-owner";
 import {
   canProvisionBootstrapOwner,
+  getBootstrapOwnerPassword,
   provisionBootstrapOwnerUser,
+  resetOwnerPasswordToBootstrap,
 } from "@/lib/bootstrap-owner-account";
 import { recordUserLoginSafe } from "@/lib/server-analytics";
 import { toCloudUserPublic } from "@/lib/cloud-user-public";
@@ -53,7 +55,25 @@ export async function POST(req: Request) {
       }
     }
 
-    if (!user || !verifyPasswordNode(password, user.salt, user.passwordHash)) {
+    if (!user) {
+      return NextResponse.json({ ok: false, error: "Email ou palavra-passe incorretos." }, { status: 401 });
+    }
+
+    let passwordOk = verifyPasswordNode(password, user.salt, user.passwordHash);
+    // Conta dono: se a password bootstrap estiver correcta mas o hash antigo falhar, repõe e entra.
+    if (!passwordOk && isOwnerAdminEmail(user.email) && password === getBootstrapOwnerPassword()) {
+      try {
+        await resetOwnerPasswordToBootstrap(prisma, user.id, password);
+        const refreshed = await prisma.user.findUnique({ where: { id: user.id } });
+        if (refreshed && verifyPasswordNode(password, refreshed.salt, refreshed.passwordHash)) {
+          user = refreshed;
+          passwordOk = true;
+        }
+      } catch (e) {
+        console.error("[cloud/login] bootstrap password reset", e);
+      }
+    }
+    if (!passwordOk) {
       return NextResponse.json({ ok: false, error: "Email ou palavra-passe incorretos." }, { status: 401 });
     }
 
